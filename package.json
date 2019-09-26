@@ -1,0 +1,25 @@
+{
+  "name": "mjolnir",
+  "version": "0.1.0",
+  "description": "A moderation tool for Matrix",
+  "main": "lib/index.js",
+  "repository": "git@github.com:matrix-org/mjolnir.git",
+  "author": "The Matrix.org Foundation C.I.C.",
+  "license": "Apache-2.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "lint": "tslint --project ./tsconfig.json --type-check -t stylish",
+    "start:dev": "yarn build && node lib/index.js"
+  },
+  "devDependencies": {
+    "@types/node": "11",
+    "tslint": "^5.20.0",
+    "typescript": "^3.6.3"
+  },
+  "dependencies": {
+    "config": "^3.2.2",
+    "js-yaml": "^3.13.1",
+    "matrix-bot-sdk": "^0.4.0-beta.5"
+  }
+}

@@ -1,0 +1,11 @@
+# Where the homeserver is located (client-server URL)
+homeserverUrl: "https://matrix.org"
+
+# The access token for the bot to use
+accessToken: "YOUR_TOKEN_HERE"
+
+# The directory the bot should store various bits of information in
+dataPath: "/data/storage"
+
+# Whether the bot should autojoin rooms it is invited to or not
+autojoin: true
