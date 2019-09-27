@@ -34,6 +34,7 @@ const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json
 const client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
 const lists: BanList[] = [];
 let managementRoomId = "";
+const protectedRooms: { [roomId: string]: string } = {};
 
 if (config.autojoin) {
     AutojoinRoomsMixin.setupOnClient(client);
@@ -48,7 +49,7 @@ client.on("room.event", async (roomId, event) => {
             await list.updateList();
         }
 
-        const errors = await applyServerAcls(lists, await client.getJoinedRooms(), client);
+        const errors = await applyServerAcls(lists, Object.keys(protectedRooms), client);
         return printActionResult(errors);
     } else if (event['type'] === "m.room.member") {
         // TODO: Check membership against ban lists
@@ -56,6 +57,7 @@ client.on("room.event", async (roomId, event) => {
 });
 
 client.on("room.message", async (roomId, event) => {
+    if (roomId !== managementRoomId) return;
     if (!event['content']) return;
 
     const content = event['content'];
@@ -83,6 +85,19 @@ client.on("room.message", async (roomId, event) => {
         lists.push(list);
     }
 
+    // Ensure we're also joined to the rooms we're protecting
+    for (const roomRef of config.protectedRooms) {
+        const permalink = Permalinks.parseUrl(roomRef);
+        if (!permalink.roomIdOrAlias) continue;
+
+        let roomId = await client.resolveRoom(permalink.roomIdOrAlias);
+        if (!joinedRooms.includes(roomId)) {
+            roomId = await client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+        }
+
+        protectedRooms[roomId] = roomRef;
+    }
+
     // Ensure we're also in the management room
     managementRoomId = await client.joinRoom(config.managementRoom);
     await client.sendNotice(managementRoomId, "Mjolnir is starting up. Use !mjolnir to query status.");
@@ -103,7 +118,7 @@ async function printStatus(roomId: string) {
     // Append header information first
     html += "<b>Running: </b>✅<br/>";
     text += "Running: ✅\n";
-    html += `<b>Protected rooms: </b> ${rooms.length}<br/>`;
+    html += `<b>Protected rooms: </b> ${Object.keys(protectedRooms).length}<br/>`;
     text += `Protected rooms: ${rooms.length}\n`;
 
     // Append list information
@@ -133,12 +148,13 @@ async function printActionResult(errors: RoomUpdateError[]) {
         html += `<font color="#ff0000"><b>${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
         text += `${errors.length} errors updating protected rooms!\n`;
         for (const error of errors) {
-            html += `<li><a href="https://matrix.to/#/${error.roomId}">${error.roomId}</a> - ${error.errorMessage}</li>`;
-            text += `${error.roomId} - ${error.errorMessage}\n`;
+            const url = protectedRooms[error.roomId] ? protectedRooms[error.roomId] : `https://matrix.to/#/${error.roomId}`;
+            html += `<li><a href="${url}">${error.roomId}</a> - ${error.errorMessage}</li>`;
+            text += `${url} - ${error.errorMessage}\n`;
         }
         html += "</ul>";
     } else {
-        html += `<font color="#00ff00"><b>Updated all protected rooms with new rules successfully.</b></font>`;
+        html += `<font color="#00cc00"><b>Updated all protected rooms with new rules successfully.</b></font>`;
         text += "Updated all protected rooms with new rules successfully";
     }
 

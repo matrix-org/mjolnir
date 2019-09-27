@@ -12,7 +12,12 @@ autojoin: true
 
 # The room ID where people can use the bot. The bot has no access controls, so
 # anyone in this room can use the bot - secure your room!
+# This should be a room alias or room ID - not a matrix.to URL.
 managementRoom: "#moderators:example.org"
+
+# A list of rooms to protect (matrix.to URLs)
+protectedRooms:
+  - "https://matrix.to/#/#yourroom:example.org"
 
 # A list of ban lists to follow (matrix.to URLs)
 banLists:

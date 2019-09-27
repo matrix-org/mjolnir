@@ -22,6 +22,7 @@ interface IConfig {
     dataPath: string;
     autojoin: boolean;
     managementRoom: string;
+    protectedRooms: string[]; // matrix.to urls
     banLists: string[]; // matrix.to urls
 }
 
