@@ -14,17 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
+
 export const RECOMMENDATION_BAN = "m.ban";
 export const RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"];
 
 export class ListRule {
-    constructor(public entity: string, private action: string, public reason: string) {
-        // TODO: Convert entity to regex
+
+    private glob: MatrixGlob;
+
+    constructor(public readonly entity: string, private action: string, public readonly reason: string) {
+        this.glob = new MatrixGlob(entity);
     }
 
     public get recommendation(): string {
         if (RECOMMENDATION_BAN_TYPES.includes(this.action)) return RECOMMENDATION_BAN;
     }
 
-    // TODO: Match checking functions
+    public isMatch(entity: string): boolean {
+        return this.glob.test(entity);
+    }
 }

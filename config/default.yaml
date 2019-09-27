@@ -9,3 +9,11 @@ dataPath: "/data/storage"
 
 # Whether the bot should autojoin rooms it is invited to or not
 autojoin: true
+
+# The room ID where people can use the bot. The bot has no access controls, so
+# anyone in this room can use the bot - secure your room!
+managementRoom: "#moderators:example.org"
+
+# A list of ban lists to follow (matrix.to URLs)
+banLists:
+  - "https://matrix.to/#/#sample-ban-list:t2bot.io" # S.A.M.P.L.E.

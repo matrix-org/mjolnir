@@ -21,6 +21,8 @@ interface IConfig {
     accessToken: string;
     dataPath: string;
     autojoin: boolean;
+    managementRoom: string;
+    banLists: string[]; // matrix.to urls
 }
 
 export default <IConfig>config;
