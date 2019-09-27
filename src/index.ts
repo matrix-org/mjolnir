@@ -24,7 +24,9 @@ import {
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 import config from "./config";
-import BanList, { ALL_RULE_TYPES } from "./BanList";
+import BanList, { ALL_RULE_TYPES } from "./models/BanList";
+import { applyServerAcls } from "./actions/ApplyAcl";
+import { RoomUpdateError } from "./models/RoomUpdateError";
 
 LogService.setLogger(new RichConsoleLogger());
 
@@ -44,8 +46,10 @@ client.on("room.event", async (roomId, event) => {
         for (const list of lists) {
             if (list.roomId !== roomId) continue;
             await list.updateList();
-            // TODO: Re-apply ACLs as needed
         }
+
+        const errors = await applyServerAcls(lists, await client.getJoinedRooms(), client);
+        return printActionResult(errors);
     } else if (event['type'] === "m.room.member") {
         // TODO: Check membership against ban lists
     }
@@ -106,8 +110,9 @@ async function printStatus(roomId: string) {
     html += "<b>Subscribed lists:</b><br><ul>";
     text += "Subscribed lists:\n";
     for (const list of lists) {
-        html += `<li><a href="${list.roomRef}">${list.roomId}</a> (${list.rules.length} rules)</li>`;
-        text += `${list.roomRef} (${list.rules.length} rules)\n`;
+        const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
+        html += `<li><a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
+        text += `${list.roomRef} (${ruleInfo})\n`;
     }
     html += "</ul>";
 
@@ -118,4 +123,30 @@ async function printStatus(roomId: string) {
         formatted_body: html,
     };
     return client.sendMessage(roomId, message);
+}
+
+async function printActionResult(errors: RoomUpdateError[]) {
+    let html = "";
+    let text = "";
+
+    if (errors.length > 0) {
+        html += `<font color="#ff0000"><b>${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
+        text += `${errors.length} errors updating protected rooms!\n`;
+        for (const error of errors) {
+            html += `<li><a href="https://matrix.to/#/${error.roomId}">${error.roomId}</a> - ${error.errorMessage}</li>`;
+            text += `${error.roomId} - ${error.errorMessage}\n`;
+        }
+        html += "</ul>";
+    } else {
+        html += `<font color="#00ff00"><b>Updated all protected rooms with new rules successfully.</b></font>`;
+        text += "Updated all protected rooms with new rules successfully";
+    }
+
+    const message = {
+        msgtype: "m.notice",
+        body: text,
+        format: "org.matrix.custom.html",
+        formatted_body: html,
+    };
+    return client.sendMessage(managementRoomId, message);
 }

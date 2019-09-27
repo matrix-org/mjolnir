@@ -23,7 +23,7 @@ export class ListRule {
 
     private glob: MatrixGlob;
 
-    constructor(public readonly entity: string, private action: string, public readonly reason: string) {
+    constructor(public readonly entity: string, private action: string, public readonly reason: string, public readonly kind: string) {
         this.glob = new MatrixGlob(entity);
     }
 

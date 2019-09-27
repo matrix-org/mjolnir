@@ -27,9 +27,21 @@ export const SERVER_RULE_TYPES = [RULE_SERVER, "org.matrix.mjolnir.rule.server"]
 export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
 
 export default class BanList {
-    public rules: ListRule[] = [];
+    private rules: ListRule[] = [];
 
     constructor(public readonly roomId: string, public readonly roomRef, private client: MatrixClient) {
+    }
+
+    public get serverRules(): ListRule[] {
+        return this.rules.filter(r => r.kind === RULE_SERVER);
+    }
+
+    public get userRules(): ListRule[] {
+        return this.rules.filter(r => r.kind === RULE_USER);
+    }
+
+    public get roomRules(): ListRule[] {
+        return this.rules.filter(r => r.kind === RULE_ROOM);
     }
 
     public async updateList() {
@@ -39,6 +51,17 @@ export default class BanList {
         for (const event of state) {
             if (event['state_key'] === '' || !ALL_RULE_TYPES.includes(event['type'])) {
                 continue;
+            }
+
+            let kind: string = null;
+            if (USER_RULE_TYPES.includes(event['type'])) {
+                kind = RULE_USER;
+            } else if (ROOM_RULE_TYPES.includes(event['type'])) {
+                kind = RULE_ROOM;
+            } else if (SERVER_RULE_TYPES.includes(event['type'])) {
+                kind = RULE_SERVER;
+            } else {
+                continue; // invalid/unknown
             }
 
             // It's a rule - parse it
@@ -53,7 +76,7 @@ export default class BanList {
                 continue;
             }
 
-            this.rules.push(new ListRule(entity, recommendation, reason));
+            this.rules.push(new ListRule(entity, recommendation, reason, kind));
         }
     }
 
