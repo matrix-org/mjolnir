@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
+import { RichReply } from "matrix-bot-sdk";
 
 // !mjolnir
 export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir) {
@@ -37,11 +38,7 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
     }
     html += "</ul>";
 
-    const message = {
-        msgtype: "m.notice",
-        body: text,
-        format: "org.matrix.custom.html",
-        formatted_body: html,
-    };
-    return mjolnir.client.sendMessage(roomId, message);
+    const reply = RichReply.createFor(roomId, event, text, html);
+    reply["msgtype"] = "m.notice";
+    return mjolnir.client.sendMessage(roomId, reply);
 }

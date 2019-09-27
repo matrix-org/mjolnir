@@ -25,7 +25,7 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     const cmd = event['content']['body'];
     const parts = cmd.trim().split(' ');
 
-    if (parts.length === 1) {
+    if (parts.length === 1 || parts[1] === 'status') {
         return execStatusCommand(roomId, event, mjolnir);
     } else if (parts[1] === 'ban' && parts.length > 3) {
         return execBanCommand(roomId, event, mjolnir, parts);
