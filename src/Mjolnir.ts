@@ -21,6 +21,10 @@ import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 
 export class Mjolnir {
+
+    private displayName: string;
+    private localpart: string;
+
     constructor(
         public readonly client: MatrixClient,
         public readonly managementRoomId: string,
@@ -35,11 +39,23 @@ export class Mjolnir {
             if (!event['content']) return;
 
             const content = event['content'];
-            if (content['msgtype'] === "m.text" && content['body'] && content['body'].startsWith(COMMAND_PREFIX)) {
+            if (content['msgtype'] === "m.text" && content['body']) {
+                const prefixes = [COMMAND_PREFIX, this.localpart + ":", this.displayName + ":", await client.getUserId() + ":"];
+                if (!prefixes.find(p => content['body'].startsWith(p))) return;
+
                 await client.sendReadReceipt(roomId, event['event_id']);
                 return handleCommand(roomId, event, this);
             }
         });
+
+        client.getUserId().then(userId => {
+            this.localpart = userId.split(':')[0].substring(1);
+            return client.getUserProfile(userId);
+        }).then(profile => {
+            if (profile['displayname']) {
+                this.displayName = profile['displayname'];
+            }
+        })
     }
 
     public start() {
