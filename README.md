@@ -17,6 +17,7 @@ Phase 2:
 * [ ] Riot hooks (independent of mjolnir?)
 * [ ] Support community-defined scopes? (ie: no hardcoded config)
 * [ ] Vet rooms on startup option
+* [ ] Room upgrade handling (both protected+list rooms)
 
 ## Docker (preferred)
 
