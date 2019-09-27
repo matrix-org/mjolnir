@@ -62,7 +62,6 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
-
 // !mjolnir unban <user|server|room> <glob>
 export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = parseBits(parts);
