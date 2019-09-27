@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixClient } from "matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
 import { execStatusCommand } from "./StatusCommand";
+import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -26,6 +26,10 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
 
     if (parts.length === 1) {
         return execStatusCommand(roomId, event, mjolnir);
+    } else if (parts[1] === 'ban' && parts.length > 3) {
+        return execBanCommand(roomId, event, mjolnir, parts);
+    } else if (parts[1] === 'unban' && parts.length > 3) {
+        return execUnbanCommand(roomId, event, mjolnir, parts);
     } else {
         // TODO: Help menu
     }

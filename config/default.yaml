@@ -15,6 +15,12 @@ autojoin: true
 # This should be a room alias or room ID - not a matrix.to URL.
 managementRoom: "#moderators:example.org"
 
+# The room ID or alias where the bot's own personal ban list is kept. This is
+# where the commands to manage a ban list end up being routed to. Note that
+# this room is NOT automatically added to the banLists list below - you will
+# need to add it yourself!
+publishedBanListRoom: "#banlist:example.org"
+
 # A list of rooms to protect (matrix.to URLs)
 protectedRooms:
   - "https://matrix.to/#/#yourroom:example.org"

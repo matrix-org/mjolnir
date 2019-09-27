@@ -19,6 +19,11 @@ import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
 export const RECOMMENDATION_BAN = "m.ban";
 export const RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"];
 
+export function recommendationToStable(recommendation: string, unstable = true): string {
+    if (RECOMMENDATION_BAN_TYPES.includes(recommendation)) return unstable ? RECOMMENDATION_BAN_TYPES[RECOMMENDATION_BAN_TYPES.length - 1] : RECOMMENDATION_BAN;
+    return null;
+}
+
 export class ListRule {
 
     private glob: MatrixGlob;

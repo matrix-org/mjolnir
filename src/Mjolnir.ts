@@ -23,7 +23,8 @@ import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 export class Mjolnir {
     constructor(
         public readonly client: MatrixClient,
-        private managementRoomId: string,
+        public readonly managementRoomId: string,
+        public readonly publishedBanListRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
         public readonly banLists: BanList[],
     ) {
@@ -49,10 +50,13 @@ export class Mjolnir {
         if (!event['state_key']) return; // we also don't do anything with state events that have no state key
 
         if (ALL_RULE_TYPES.includes(event['type'])) {
+            let updated = false;
             for (const list of this.banLists) {
                 if (list.roomId !== roomId) continue;
                 await list.updateList();
+                updated = true;
             }
+            if (!updated) return;
 
             const errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
             return this.printActionResult(errors);

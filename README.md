@@ -8,8 +8,8 @@ TODO: Describe what all this means.
 
 Phase 1:
 * [ ] Ban users
-* [ ] ACL servers
-* [ ] Update lists with new bans/ACLs
+* [x] ACL servers
+* [x] Update lists with new bans/ACLs
 * [ ] "Ban on sight" mode (rather than proactive)
 
 Phase 2:

@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 
+// !mjolnir
 export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     let html = "";
     let text = "";

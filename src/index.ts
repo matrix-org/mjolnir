@@ -24,9 +24,7 @@ import {
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 import config from "./config";
-import BanList, { ALL_RULE_TYPES } from "./models/BanList";
-import { applyServerAcls } from "./actions/ApplyAcl";
-import { RoomUpdateError } from "./models/RoomUpdateError";
+import BanList from "./models/BanList";
 import { Mjolnir } from "./Mjolnir";
 
 LogService.setLogger(new RichConsoleLogger());
@@ -40,7 +38,7 @@ if (config.autojoin) {
 
 (async function () {
     const banLists: BanList[] = [];
-    const protectedRooms:{[roomId: string]: string} = {};
+    const protectedRooms: { [roomId: string]: string } = {};
 
     // Ensure we're in all the rooms we expect to be in
     const joinedRooms = await client.getJoinedRooms();
@@ -71,11 +69,17 @@ if (config.autojoin) {
         protectedRooms[roomId] = roomRef;
     }
 
+    // Ensure we've joined the ban list we're publishing too
+    let banListRoomId = await client.resolveRoom(config.publishedBanListRoom);
+    if (!joinedRooms.includes(banListRoomId)) {
+        banListRoomId = await client.joinRoom(config.publishedBanListRoom);
+    }
+
     // Ensure we're also in the management room
     const managementRoomId = await client.joinRoom(config.managementRoom);
     await client.sendNotice(managementRoomId, "Mjolnir is starting up. Use !mjolnir to query status.");
 
-    const bot = new Mjolnir(client, managementRoomId, protectedRooms, banLists);
+    const bot = new Mjolnir(client, managementRoomId, banListRoomId, protectedRooms, banLists);
     await bot.start();
 
     // TODO: Check permissions for mjolnir in protected rooms
