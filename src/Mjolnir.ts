@@ -63,23 +63,39 @@ export class Mjolnir {
         return this.client.start();
     }
 
+    public async syncLists() {
+        for (const list of this.banLists) {
+            await list.updateList();
+        }
+
+        let errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
+        await this.printActionResult(errors);
+
+        errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
+        await this.printActionResult(errors);
+    }
+
+    public async syncListForRoom(roomId: string) {
+        let updated = false;
+        for (const list of this.banLists) {
+            if (list.roomId !== roomId) continue;
+            await list.updateList();
+            updated = true;
+        }
+        if (!updated) return;
+
+        let errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
+        await this.printActionResult(errors);
+
+        errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
+        await this.printActionResult(errors);
+    }
+
     private async handleEvent(roomId: string, event: any) {
         if (!event['state_key']) return; // we also don't do anything with state events that have no state key
 
         if (ALL_RULE_TYPES.includes(event['type'])) {
-            let updated = false;
-            for (const list of this.banLists) {
-                if (list.roomId !== roomId) continue;
-                await list.updateList();
-                updated = true;
-            }
-            if (!updated) return;
-
-            let errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
-            await this.printActionResult(errors);
-
-            errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
-            await this.printActionResult(errors);
+            await this.syncListForRoom(roomId);
         } else if (event['type'] === "m.room.member") {
             const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
             await this.printActionResult(errors);
