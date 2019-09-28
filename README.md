@@ -13,12 +13,15 @@ Phase 1:
 
 Phase 2:
 * [ ] Pantalaimon support
-* [ ] Synapse antispam module
-* [ ] Riot hooks (independent of mjolnir?)
-* [ ] Support community-defined scopes? (ie: no hardcoded config)
+* [ ] Redact messages on ban (optionally)
+* [ ] Less spam in management room
 * [ ] Vet rooms on startup option
 * [ ] Room upgrade handling (both protected+list rooms)
-* [ ] Redact messages on ban (optional)
+
+Phase 3:
+* [ ] Synapse antispam module
+* [ ] Support community-defined scopes? (ie: no hardcoded config)
+* [ ] Riot hooks (independent of mjolnir?)
 
 ## Docker (preferred)
 
