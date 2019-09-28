@@ -12,6 +12,7 @@ Phase 1:
 * [x] Update lists with new bans/ACLs
 
 Phase 2:
+* [ ] Pantalaimon support
 * [ ] Synapse antispam module
 * [ ] Riot hooks (independent of mjolnir?)
 * [ ] Support community-defined scopes? (ie: no hardcoded config)
