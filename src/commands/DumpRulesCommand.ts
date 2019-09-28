@@ -53,6 +53,9 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
             html += "<li><i>No rules</i>";
             text += "* No rules\n";
         }
+
+        html += "</ul>";
+        text += "\n";
     }
 
     if (!hasLists) {
