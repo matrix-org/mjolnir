@@ -42,7 +42,11 @@ export class Mjolnir {
             const content = event['content'];
             if (content['msgtype'] === "m.text" && content['body']) {
                 const prefixes = [COMMAND_PREFIX, this.localpart + ":", this.displayName + ":", await client.getUserId() + ":"];
-                if (!prefixes.find(p => content['body'].startsWith(p))) return;
+                const prefixUsed = prefixes.find(p => content['body'].startsWith(p));
+                if (!prefixUsed) return;
+
+                // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
+                event['content']['body'] = COMMAND_PREFIX + content['body'].substring(prefixUsed.length);
 
                 await client.sendReadReceipt(roomId, event['event_id']);
                 return handleCommand(roomId, event, this);
