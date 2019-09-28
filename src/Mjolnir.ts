@@ -19,6 +19,7 @@ import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
+import { applyUserBans } from "./actions/ApplyBan";
 
 export class Mjolnir {
 
@@ -74,30 +75,41 @@ export class Mjolnir {
             }
             if (!updated) return;
 
-            const errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
-            return this.printActionResult(errors);
+            let errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
+            await this.printActionResult(errors);
+
+            errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
+            await this.printActionResult(errors);
         } else if (event['type'] === "m.room.member") {
-            // TODO: Check membership against ban banLists
+            const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
+            await this.printActionResult(errors);
         }
+
+
+        const html = `<font color="#00cc00"><b>Updated all protected rooms with new rules successfully.</b></font>`;
+        const text = "Updated all protected rooms with new rules successfully";
+        await this.client.sendMessage(this.managementRoomId, {
+            msgtype: "m.notice",
+            body: text,
+            format: "org.matrix.custom.html",
+            formatted_body: html,
+        });
     }
 
     private async printActionResult(errors: RoomUpdateError[]) {
+        if (errors.length <= 0) return;
+
         let html = "";
         let text = "";
 
-        if (errors.length > 0) {
-            html += `<font color="#ff0000"><b>${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
-            text += `${errors.length} errors updating protected rooms!\n`;
-            for (const error of errors) {
-                const url = this.protectedRooms[error.roomId] ? this.protectedRooms[error.roomId] : `https://matrix.to/#/${error.roomId}`;
-                html += `<li><a href="${url}">${error.roomId}</a> - ${error.errorMessage}</li>`;
-                text += `${url} - ${error.errorMessage}\n`;
-            }
-            html += "</ul>";
-        } else {
-            html += `<font color="#00cc00"><b>Updated all protected rooms with new rules successfully.</b></font>`;
-            text += "Updated all protected rooms with new rules successfully";
+        html += `<font color="#ff0000"><b>${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
+        text += `${errors.length} errors updating protected rooms!\n`;
+        for (const error of errors) {
+            const url = this.protectedRooms[error.roomId] ? this.protectedRooms[error.roomId] : `https://matrix.to/#/${error.roomId}`;
+            html += `<li><a href="${url}">${error.roomId}</a> - ${error.errorMessage}</li>`;
+            text += `${url} - ${error.errorMessage}\n`;
         }
+        html += "</ul>";
 
         const message = {
             msgtype: "m.notice",

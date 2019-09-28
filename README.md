@@ -7,7 +7,7 @@ A moderation tool for Matrix.
 TODO: Describe what all this means.
 
 Phase 1:
-* [ ] Ban users
+* [x] Ban users
 * [x] ACL servers
 * [x] Update lists with new bans/ACLs
 
