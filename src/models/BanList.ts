@@ -86,11 +86,4 @@ export default class BanList {
             this.rules.push(new ListRule(entity, recommendation, reason, kind));
         }
     }
-
-    public getRuleFor(entity: string): ListRule {
-        for (const rule of this.rules) {
-            if (rule.isMatch(entity)) return rule;
-        }
-        return null;
-    }
 }
