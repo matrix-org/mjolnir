@@ -17,6 +17,7 @@ Phase 2:
 * [ ] Less spam in management room
 * [ ] Vet rooms on startup option
 * [ ] Room upgrade handling (both protected+list rooms)
+* [ ] Command to actually unban users (instead of leaving them stuck)
 
 Phase 3:
 * [ ] Synapse antispam module
