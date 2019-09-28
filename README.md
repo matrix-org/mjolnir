@@ -10,7 +10,6 @@ Phase 1:
 * [ ] Ban users
 * [x] ACL servers
 * [x] Update lists with new bans/ACLs
-* [ ] "Ban on sight" mode (rather than proactive)
 
 Phase 2:
 * [ ] Synapse antispam module
