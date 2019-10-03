@@ -12,7 +12,7 @@ Phase 1:
 * [x] Update lists with new bans/ACLs
 
 Phase 2:
-* [ ] Pantalaimon support
+* [x] Pantalaimon support
 * [ ] Redact messages on ban (optionally)
 * [ ] Less spam in management room
 * [ ] Vet rooms on startup option

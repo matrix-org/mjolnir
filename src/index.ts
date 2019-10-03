@@ -19,6 +19,7 @@ import {
     AutojoinRoomsMixin,
     LogService,
     MatrixClient,
+    PantalaimonClient,
     Permalinks,
     RichConsoleLogger,
     SimpleFsStorageProvider
@@ -29,14 +30,21 @@ import { Mjolnir } from "./Mjolnir";
 
 LogService.setLogger(new RichConsoleLogger());
 
-const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));
-const client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
-
-if (config.autojoin) {
-    AutojoinRoomsMixin.setupOnClient(client);
-}
-
 (async function () {
+    const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));
+
+    let client: MatrixClient;
+    if (config.pantalaimon.use) {
+        const pantalaimon = new PantalaimonClient(config.homeserverUrl, storage);
+        client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    } else {
+        client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
+    }
+
+    if (config.autojoin) {
+        AutojoinRoomsMixin.setupOnClient(client);
+    }
+
     const banLists: BanList[] = [];
     const protectedRooms: { [roomId: string]: string } = {};
 

@@ -1,8 +1,22 @@
-# Where the homeserver is located (client-server URL)
+# Where the homeserver is located (client-server URL). This should point at
+# pantalaimon if you're using that.
 homeserverUrl: "https://matrix.org"
 
-# The access token for the bot to use
+# The access token for the bot to use. Do not populate if using Pantalaimon.
 accessToken: "YOUR_TOKEN_HERE"
+
+# Pantalaimon options (https://github.com/matrix-org/pantalaimon)
+pantalaimon:
+  # If true, accessToken above is ignored and the username/password below will be
+  # used instead. The access token of the bot will be stored in the dataPath.
+  use: false
+
+  # The username to login with.
+  username: mjolnir
+
+  # The password to login with. Can be removed after the bot has logged in once and
+  # stored the access token.
+  password: your_password
 
 # The directory the bot should store various bits of information in
 dataPath: "/data/storage"

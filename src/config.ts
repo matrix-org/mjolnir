@@ -19,6 +19,11 @@ import * as config from "config";
 interface IConfig {
     homeserverUrl: string;
     accessToken: string;
+    pantalaimon: {
+        use: boolean;
+        username: string;
+        password: string;
+    };
     dataPath: string;
     autojoin: boolean;
     managementRoom: string;
