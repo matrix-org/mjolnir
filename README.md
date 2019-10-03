@@ -14,7 +14,7 @@ Phase 1:
 Phase 2:
 * [x] Pantalaimon support
 * [ ] Redact messages on ban (optionally)
-* [ ] Less spam in management room
+* [ ] Less spam in management room (or more, by request)
 * [ ] Vet rooms on startup option
 * [ ] Room upgrade handling (both protected+list rooms)
 * [ ] Command to actually unban users (instead of leaving them stuck)
