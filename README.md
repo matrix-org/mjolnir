@@ -13,6 +13,7 @@ Phase 1:
 
 Phase 2:
 * [x] Pantalaimon support
+* [ ] No-op mode (for verifying behaviour)
 * [ ] Redact messages on ban (optionally)
 * [ ] Less spam in management room (or more, by request)
 * [ ] Vet rooms on startup option
