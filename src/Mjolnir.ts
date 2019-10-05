@@ -78,29 +78,35 @@ export class Mjolnir {
         return this.client.start().then(async () => {
             this.currentState = STATE_CHECKING_PERMISSIONS;
             if (config.verifyPermissionsOnStartup) {
-                await this.client.sendNotice(this.managementRoomId, "Checking permissions...");
-                await this.verifyPermissions();
+                if (config.verboseLogging) {
+                    await this.client.sendNotice(this.managementRoomId, "Checking permissions...");
+                }
+                await this.verifyPermissions(config.verboseLogging);
             }
         }).then(async () => {
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
-                await this.client.sendNotice(this.managementRoomId, "Syncing lists...");
-                await this.syncLists();
+                if (config.verboseLogging) {
+                    await this.client.sendNotice(this.managementRoomId, "Syncing lists...");
+                }
+                await this.syncLists(config.verboseLogging);
             }
         }).then(async () => {
             this.currentState = STATE_RUNNING;
-            await this.client.sendNotice(this.managementRoomId, "Startup complete.");
+            if (config.verboseLogging) {
+                await this.client.sendNotice(this.managementRoomId, "Startup complete.");
+            }
         });
     }
 
-    public async verifyPermissions() {
+    public async verifyPermissions(verbose: boolean = true) {
         const errors: RoomUpdateError[] = [];
         for (const roomId of Object.keys(this.protectedRooms)) {
             errors.push(...(await this.verifyPermissionsIn(roomId)));
         }
 
         const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:");
-        if (!hadErrors) {
+        if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";
             await this.client.sendMessage(this.managementRoomId, {
@@ -164,7 +170,7 @@ export class Mjolnir {
         return errors;
     }
 
-    public async syncLists() {
+    public async syncLists(verbose: boolean = true) {
         for (const list of this.banLists) {
             await list.updateList();
         }
@@ -176,9 +182,9 @@ export class Mjolnir {
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
 
-        if (!hadErrors) {
+        if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
-            const text = "Updated all protected rooms with new rules successfully";
+            const text = "Done updating rooms - no errors";
             await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
