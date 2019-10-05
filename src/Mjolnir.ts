@@ -94,57 +94,9 @@ export class Mjolnir {
     }
 
     public async verifyPermissions() {
-        const ownUserId = await this.client.getUserId();
-
         const errors: RoomUpdateError[] = [];
         for (const roomId of Object.keys(this.protectedRooms)) {
-            try {
-                const powerLevels = await this.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
-                if (!powerLevels) {
-                    // noinspection ExceptionCaughtLocallyJS
-                    throw new Error("Missing power levels state event");
-                }
-
-                function plDefault(val: number|undefined|null, def: number): number {
-                    if (!val && val !== 0) return def;
-                    return val;
-                }
-
-                const users = powerLevels['users'] || {};
-                const events = powerLevels['events'] || {};
-                const usersDefault = plDefault(powerLevels['users_default'], 0);
-                const stateDefault = plDefault(powerLevels['state_default'], 50);
-                const ban = plDefault(powerLevels['ban'], 50);
-                const kick = plDefault(powerLevels['kick'], 50);
-                const redact = plDefault(powerLevels['redact'], 50);
-
-                const userLevel = plDefault(users[ownUserId], usersDefault);
-                const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
-
-                // Wants: ban, kick, redact, m.room.server_acl
-
-                if (userLevel < ban) {
-                    // noinspection ExceptionCaughtLocallyJS
-                    throw new Error(`Missing power level for bans: ${userLevel} < ${ban}`);
-                }
-                if (userLevel < kick) {
-                    // noinspection ExceptionCaughtLocallyJS
-                    throw new Error(`Missing power level for kicks: ${userLevel} < ${kick}`);
-                }
-                if (userLevel < redact) {
-                    // noinspection ExceptionCaughtLocallyJS
-                    throw new Error(`Missing power level for redactions: ${userLevel} < ${redact}`);
-                }
-                if (userLevel < aclLevel) {
-                    // noinspection ExceptionCaughtLocallyJS
-                    throw new Error(`Missing power level for server ACLs: ${userLevel} < ${aclLevel}`);
-                }
-
-                // Otherwise OK
-            } catch (e) {
-                LogService.error("Mjolnir", e);
-                errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
-            }
+            errors.push(...(await this.verifyPermissionsIn(roomId)));
         }
 
         const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:");
@@ -158,6 +110,58 @@ export class Mjolnir {
                 formatted_body: html,
             });
         }
+    }
+
+    private async verifyPermissionsIn(roomId: string): Promise<RoomUpdateError[]> {
+        const errors: RoomUpdateError[] = [];
+
+        try {
+            const ownUserId = await this.client.getUserId();
+
+            const powerLevels = await this.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
+            if (!powerLevels) {
+                // noinspection ExceptionCaughtLocallyJS
+                throw new Error("Missing power levels state event");
+            }
+
+            function plDefault(val: number | undefined | null, def: number): number {
+                if (!val && val !== 0) return def;
+                return val;
+            }
+
+            const users = powerLevels['users'] || {};
+            const events = powerLevels['events'] || {};
+            const usersDefault = plDefault(powerLevels['users_default'], 0);
+            const stateDefault = plDefault(powerLevels['state_default'], 50);
+            const ban = plDefault(powerLevels['ban'], 50);
+            const kick = plDefault(powerLevels['kick'], 50);
+            const redact = plDefault(powerLevels['redact'], 50);
+
+            const userLevel = plDefault(users[ownUserId], usersDefault);
+            const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
+
+            // Wants: ban, kick, redact, m.room.server_acl
+
+            if (userLevel < ban) {
+                errors.push({roomId, errorMessage: `Missing power level for bans: ${userLevel} < ${ban}`});
+            }
+            if (userLevel < kick) {
+                errors.push({roomId, errorMessage: `Missing power level for kicks: ${userLevel} < ${kick}`});
+            }
+            if (userLevel < redact) {
+                errors.push({roomId, errorMessage: `Missing power level for redactions: ${userLevel} < ${redact}`});
+            }
+            if (userLevel < aclLevel) {
+                errors.push({roomId, errorMessage: `Missing power level for server ACLs: ${userLevel} < ${aclLevel}`});
+            }
+
+            // Otherwise OK
+        } catch (e) {
+            LogService.error("Mjolnir", e);
+            errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
+        }
+
+        return errors;
     }
 
     public async syncLists() {
@@ -213,7 +217,33 @@ export class Mjolnir {
     }
 
     private async handleEvent(roomId: string, event: any) {
-        if (!event['state_key']) return; // we also don't do anything with state events that have no state key
+        if (event['type'] === 'm.room.power_levels' && event['state_key'] === '' && Object.keys(this.protectedRooms).includes(roomId)) {
+            // power levels were updated - recheck permissions
+            const url = this.protectedRooms[roomId];
+            const html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
+            const text = `Power levels changed in ${url} - checking permissions...`;
+            await this.client.sendMessage(this.managementRoomId, {
+                msgtype: "m.notice",
+                body: text,
+                format: "org.matrix.custom.html",
+                formatted_body: html,
+            });
+            const errors = await this.verifyPermissionsIn(roomId);
+            const hadErrors = await this.printActionResult(errors);
+            if (!hadErrors) {
+                const html = `<font color="#00cc00">All permissions look OK.</font>`;
+                const text = "All permissions look OK.";
+                await this.client.sendMessage(this.managementRoomId, {
+                    msgtype: "m.notice",
+                    body: text,
+                    format: "org.matrix.custom.html",
+                    formatted_body: html,
+                });
+            }
+            return;
+        }
+
+        if (!event['state_key']) return; // from here we don't do anything with events missing/empty state key
 
         if (ALL_RULE_TYPES.includes(event['type'])) {
             await this.syncListForRoom(roomId);
@@ -234,7 +264,7 @@ export class Mjolnir {
         } else return; // Not processed
     }
 
-    private async printActionResult(errors: RoomUpdateError[], title: string=null) {
+    private async printActionResult(errors: RoomUpdateError[], title: string = null) {
         if (errors.length <= 0) return false;
 
         let html = "";
