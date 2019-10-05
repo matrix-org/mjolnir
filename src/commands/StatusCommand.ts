@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Mjolnir } from "../Mjolnir";
+import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, STATE_SYNCING } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
 
 // !mjolnir
@@ -22,9 +22,31 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
     let html = "";
     let text = "";
 
-    // Append header information first
-    html += "<b>Running: </b>✅<br/>";
-    text += "Running: ✅\n";
+    const state = mjolnir.state;
+
+    switch(state) {
+        case STATE_NOT_STARTED:
+            html += "<b>Running: </b>❌ (not started)<br/>";
+            text += "Running: ❌ (not started)\n";
+            break;
+        case STATE_CHECKING_PERMISSIONS:
+            html += "<b>Running: </b>❌ (checking own permissions)<br/>";
+            text += "Running: ❌ (checking own permissions)\n";
+            break;
+        case STATE_SYNCING:
+            html += "<b>Running: </b>❌ (syncing lists)<br/>";
+            text += "Running: ❌ (syncing lists)\n";
+            break;
+        case STATE_RUNNING:
+            html += "<b>Running: </b>✅<br/>";
+            text += "Running: ✅\n";
+            break;
+        default:
+            html += "<b>Running: </b>❌ (unknown state)<br/>";
+            text += "Running: ❌ (unknown state)\n";
+            break;
+    }
+
     html += `<b>Protected rooms: </b> ${Object.keys(mjolnir.protectedRooms).length}<br/>`;
     text += `Protected rooms: ${mjolnir.protectedRooms.length}\n`;
 

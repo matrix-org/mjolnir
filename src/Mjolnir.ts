@@ -22,10 +22,16 @@ import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { applyUserBans } from "./actions/ApplyBan";
 import config from "./config";
 
+export const STATE_NOT_STARTED = "not_started";
+export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
+export const STATE_SYNCING = "syncing";
+export const STATE_RUNNING = "running";
+
 export class Mjolnir {
 
     private displayName: string;
     private localpart: string;
+    private currentState: string = STATE_NOT_STARTED;
 
     constructor(
         public readonly client: MatrixClient,
@@ -62,6 +68,10 @@ export class Mjolnir {
                 this.displayName = profile['displayname'];
             }
         })
+    }
+
+    public get state(): string {
+        return this.currentState;
     }
 
     public start() {
