@@ -90,7 +90,6 @@ LogService.setLogger(new RichConsoleLogger());
     const bot = new Mjolnir(client, managementRoomId, banListRoomId, protectedRooms, banLists);
     await bot.start();
 
-    // TODO: Check permissions for mjolnir in protected rooms
     // TODO: Complain about permission changes in protected rooms (including after power levels change)
 
     LogService.info("index", "Bot started!")

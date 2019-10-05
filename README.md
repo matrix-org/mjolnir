@@ -17,7 +17,7 @@ Phase 2:
 * [ ] Redact messages on ban (optionally)
 * [x] More useful spam in management room
 * [ ] Command to import ACLs, etc from rooms
-* [ ] Vet rooms on startup option
+* [x] Vet rooms on startup option
 * [ ] Command to actually unban users (instead of leaving them stuck)
 
 Phase 3:

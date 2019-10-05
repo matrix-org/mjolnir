@@ -29,6 +29,7 @@ interface IConfig {
     managementRoom: string;
     verboseLogging: boolean;
     syncOnStartup: boolean;
+    verifyPermissionsOnStartup: boolean;
     publishedBanListRoom: string;
     protectedRooms: string[]; // matrix.to urls
     banLists: string[]; // matrix.to urls

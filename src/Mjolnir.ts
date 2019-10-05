@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient } from "matrix-bot-sdk";
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
@@ -75,12 +75,89 @@ export class Mjolnir {
     }
 
     public start() {
-        return this.client.start().then(() => {
-            if (config.syncOnStartup) {
-                this.client.sendNotice(this.managementRoomId, "Syncing lists...");
-                return this.syncLists();
+        return this.client.start().then(async () => {
+            this.currentState = STATE_CHECKING_PERMISSIONS;
+            if (config.verifyPermissionsOnStartup) {
+                await this.client.sendNotice(this.managementRoomId, "Checking permissions...");
+                await this.verifyPermissions();
             }
+        }).then(async () => {
+            this.currentState = STATE_SYNCING;
+            if (config.syncOnStartup) {
+                await this.client.sendNotice(this.managementRoomId, "Syncing lists...");
+                await this.syncLists();
+            }
+        }).then(async () => {
+            this.currentState = STATE_RUNNING;
+            await this.client.sendNotice(this.managementRoomId, "Startup complete.");
         });
+    }
+
+    public async verifyPermissions() {
+        const ownUserId = await this.client.getUserId();
+
+        const errors: RoomUpdateError[] = [];
+        for (const roomId of Object.keys(this.protectedRooms)) {
+            try {
+                const powerLevels = await this.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
+                if (!powerLevels) {
+                    // noinspection ExceptionCaughtLocallyJS
+                    throw new Error("Missing power levels state event");
+                }
+
+                function plDefault(val: number|undefined|null, def: number): number {
+                    if (!val && val !== 0) return def;
+                    return val;
+                }
+
+                const users = powerLevels['users'] || {};
+                const events = powerLevels['events'] || {};
+                const usersDefault = plDefault(powerLevels['users_default'], 0);
+                const stateDefault = plDefault(powerLevels['state_default'], 50);
+                const ban = plDefault(powerLevels['ban'], 50);
+                const kick = plDefault(powerLevels['kick'], 50);
+                const redact = plDefault(powerLevels['redact'], 50);
+
+                const userLevel = plDefault(users[ownUserId], usersDefault);
+                const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
+
+                // Wants: ban, kick, redact, m.room.server_acl
+
+                if (userLevel < ban) {
+                    // noinspection ExceptionCaughtLocallyJS
+                    throw new Error(`Missing power level for bans: ${userLevel} < ${ban}`);
+                }
+                if (userLevel < kick) {
+                    // noinspection ExceptionCaughtLocallyJS
+                    throw new Error(`Missing power level for kicks: ${userLevel} < ${kick}`);
+                }
+                if (userLevel < redact) {
+                    // noinspection ExceptionCaughtLocallyJS
+                    throw new Error(`Missing power level for redactions: ${userLevel} < ${redact}`);
+                }
+                if (userLevel < aclLevel) {
+                    // noinspection ExceptionCaughtLocallyJS
+                    throw new Error(`Missing power level for server ACLs: ${userLevel} < ${aclLevel}`);
+                }
+
+                // Otherwise OK
+            } catch (e) {
+                LogService.error("Mjolnir", e);
+                errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
+            }
+        }
+
+        const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:");
+        if (!hadErrors) {
+            const html = `<font color="#00cc00">All permissions look OK.</font>`;
+            const text = "All permissions look OK.";
+            await this.client.sendMessage(this.managementRoomId, {
+                msgtype: "m.notice",
+                body: text,
+                format: "org.matrix.custom.html",
+                formatted_body: html,
+            });
+        }
     }
 
     public async syncLists() {

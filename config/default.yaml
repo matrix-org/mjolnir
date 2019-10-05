@@ -37,6 +37,11 @@ verboseLogging: true
 # is the same as running !mjolnir sync immediately after startup.
 syncOnStartup: true
 
+# Set to false to prevent Mjolnir from checking its permissions on startup. This
+# is recommended to be left as "true" to catch room permission problems (state
+# resets, etc) before Mjolnir is needed.
+verifyPermissionsOnStartup: true
+
 # The room ID or alias where the bot's own personal ban list is kept. This is
 # where the commands to manage a ban list end up being routed to. Note that
 # this room is NOT automatically added to the banLists list below - you will
