@@ -72,11 +72,23 @@ export class Mjolnir {
             await list.updateList();
         }
 
-        let errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
-        await this.printActionResult(errors);
+        let hadErrors = false;
 
-        errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
-        await this.printActionResult(errors);
+        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
+        const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
+        hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
+
+        if (!hadErrors) {
+            const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
+            const text = "Updated all protected rooms with new rules successfully";
+            await this.client.sendMessage(this.managementRoomId, {
+                msgtype: "m.notice",
+                body: text,
+                format: "org.matrix.custom.html",
+                formatted_body: html,
+            });
+        }
     }
 
     public async syncListForRoom(roomId: string) {
@@ -88,11 +100,23 @@ export class Mjolnir {
         }
         if (!updated) return;
 
-        let errors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this.client);
-        await this.printActionResult(errors);
+        let hadErrors = false;
 
-        errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
-        await this.printActionResult(errors);
+        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
+        const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
+        hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
+
+        if (!hadErrors) {
+            const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
+            const text = "Done updating rooms - no errors";
+            await this.client.sendMessage(this.managementRoomId, {
+                msgtype: "m.notice",
+                body: text,
+                format: "org.matrix.custom.html",
+                formatted_body: html,
+            });
+        }
     }
 
     private async handleEvent(roomId: string, event: any) {
@@ -101,29 +125,33 @@ export class Mjolnir {
         if (ALL_RULE_TYPES.includes(event['type'])) {
             await this.syncListForRoom(roomId);
         } else if (event['type'] === "m.room.member") {
-            const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this.client);
-            await this.printActionResult(errors);
-        }
+            const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+            const hadErrors = await this.printActionResult(errors);
 
-
-        const html = `<font color="#00cc00"><b>Updated all protected rooms with new rules successfully.</b></font>`;
-        const text = "Updated all protected rooms with new rules successfully";
-        await this.client.sendMessage(this.managementRoomId, {
-            msgtype: "m.notice",
-            body: text,
-            format: "org.matrix.custom.html",
-            formatted_body: html,
-        });
+            if (!hadErrors) {
+                const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
+                const text = "Done updating rooms - no errors";
+                await this.client.sendMessage(this.managementRoomId, {
+                    msgtype: "m.notice",
+                    body: text,
+                    format: "org.matrix.custom.html",
+                    formatted_body: html,
+                });
+            }
+        } else return; // Not processed
     }
 
-    private async printActionResult(errors: RoomUpdateError[]) {
-        if (errors.length <= 0) return;
+    private async printActionResult(errors: RoomUpdateError[], title: string=null) {
+        if (errors.length <= 0) return false;
 
         let html = "";
         let text = "";
 
-        html += `<font color="#ff0000"><b>${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
-        text += `${errors.length} errors updating protected rooms!\n`;
+        const htmlTitle = title ? `${title}<br />` : '';
+        const textTitle = title ? `${title}\n` : '';
+
+        html += `<font color="#ff0000"><b>${htmlTitle}${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
+        text += `${textTitle}${errors.length} errors updating protected rooms!\n`;
         for (const error of errors) {
             const url = this.protectedRooms[error.roomId] ? this.protectedRooms[error.roomId] : `https://matrix.to/#/${error.roomId}`;
             html += `<li><a href="${url}">${error.roomId}</a> - ${error.errorMessage}</li>`;
@@ -137,6 +165,7 @@ export class Mjolnir {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        return this.client.sendMessage(this.managementRoomId, message);
+        await this.client.sendMessage(this.managementRoomId, message);
+        return true;
     }
 }

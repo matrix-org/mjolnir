@@ -27,7 +27,11 @@ autojoin: true
 # The room ID where people can use the bot. The bot has no access controls, so
 # anyone in this room can use the bot - secure your room!
 # This should be a room alias or room ID - not a matrix.to URL.
+# Note: Mjolnir is fairly verbose - expect a lot of messages from it.
 managementRoom: "#moderators:example.org"
+
+# Set to false to make the management room a bit quieter.
+verboseLogging: true
 
 # The room ID or alias where the bot's own personal ban list is kept. This is
 # where the commands to manage a ban list end up being routed to. Note that

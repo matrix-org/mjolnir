@@ -15,22 +15,28 @@ limitations under the License.
 */
 
 import BanList from "../models/BanList";
-import { MatrixClient } from "matrix-bot-sdk";
 import { RoomUpdateError } from "../models/RoomUpdateError";
+import { Mjolnir } from "../Mjolnir";
+import config from "../config";
 
 /**
  * Applies the member bans represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
  * @param {BanList[]} lists The lists to determine bans from.
  * @param {string[]} roomIds The room IDs to apply the bans in.
- * @param {MatrixClient} client The Matrix client to apply the bans with.
+ * @param {Mjolnir} mjolnir The Mjolnir client to apply the bans with.
  */
-export async function applyUserBans(lists: BanList[], roomIds: string[], client: MatrixClient): Promise<RoomUpdateError[]> {
+export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // We can only ban people who are not already banned, and who match the rules.
     const errors: RoomUpdateError[] = [];
     for (const roomId of roomIds) {
         try {
-            const state = await client.getRoomState(roomId);
+            if (config.verboseLogging) {
+                // We specifically use sendNotice to avoid having to escape HTML
+                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Updating member bans in ${roomId}`);
+            }
+
+            const state = await mjolnir.client.getRoomState(roomId);
             const members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']);
 
             for (const member of members) {
@@ -46,7 +52,13 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], client:
                     for (const userRule of list.userRules) {
                         if (userRule.isMatch(member['state_key'])) {
                             // User needs to be banned
-                            await client.banUser(member['state_key'], roomId, userRule.reason);
+
+                            if (config.verboseLogging) {
+                                // We specifically use sendNotice to avoid having to escape HTML
+                                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Banning ${member['state_key']} in ${roomId} for: ${userRule.reason}`);
+                            }
+
+                            await mjolnir.client.banUser(member['state_key'], roomId, userRule.reason);
                             banned = true;
                             break;
                         }

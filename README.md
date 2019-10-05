@@ -15,7 +15,8 @@ Phase 2:
 * [x] Pantalaimon support
 * [ ] No-op mode (for verifying behaviour)
 * [ ] Redact messages on ban (optionally)
-* [ ] Less spam in management room (or more, by request)
+* [x] More useful spam in management room
+* [ ] Command to import ACLs, etc from rooms
 * [ ] Vet rooms on startup option
 * [ ] Room upgrade handling (both protected+list rooms)
 * [ ] Command to actually unban users (instead of leaving them stuck)

@@ -15,18 +15,19 @@ limitations under the License.
 */
 
 import BanList from "../models/BanList";
-import { MatrixClient } from "matrix-bot-sdk";
 import { ServerAcl } from "../models/ServerAcl";
 import { RoomUpdateError } from "../models/RoomUpdateError";
+import { Mjolnir } from "../Mjolnir";
+import config from "../config";
 
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
  * @param {BanList[]} lists The lists to construct ACLs from.
  * @param {string[]} roomIds The room IDs to apply the ACLs in.
- * @param {MatrixClient} client The Matrix client to apply the ACLs with.
+ * @param {Mjolnir} mjolnir The Mjolnir client to apply the ACLs with.
  */
-export async function applyServerAcls(lists: BanList[], roomIds: string[], client: MatrixClient): Promise<RoomUpdateError[]> {
+export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // Construct a server ACL first
     const acl = new ServerAcl().denyIpAddresses().allowServer("*");
     for (const list of lists) {
@@ -35,10 +36,22 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], clien
         }
     }
 
+    const finalAcl = acl.safeAclContent();
+
+    if (config.verboseLogging) {
+        // We specifically use sendNotice to avoid having to escape HTML
+        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
+    }
+
     const errors: RoomUpdateError[] = [];
     for (const roomId of roomIds) {
         try {
-            await client.sendStateEvent(roomId, "m.room.server_acl", "", acl.safeAclContent());
+            if (config.verboseLogging) {
+                // We specifically use sendNotice to avoid having to escape HTML
+                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Applying ACL in ${roomId}`);
+            }
+
+            await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
         } catch (e) {
             errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
         }
