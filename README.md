@@ -18,11 +18,11 @@ Phase 2:
 * [x] More useful spam in management room
 * [ ] Command to import ACLs, etc from rooms
 * [ ] Vet rooms on startup option
-* [ ] Room upgrade handling (both protected+list rooms)
 * [ ] Command to actually unban users (instead of leaving them stuck)
 
 Phase 3:
 * [ ] Synapse antispam module
+* [ ] Room upgrade handling (both protected+list rooms)
 * [ ] Support community-defined scopes? (ie: no hardcoded config)
 * [ ] Riot hooks (independent of mjolnir?)
 

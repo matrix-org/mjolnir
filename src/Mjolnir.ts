@@ -20,6 +20,7 @@ import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { applyUserBans } from "./actions/ApplyBan";
+import config from "./config";
 
 export class Mjolnir {
 
@@ -64,7 +65,12 @@ export class Mjolnir {
     }
 
     public start() {
-        return this.client.start();
+        return this.client.start().then(() => {
+            if (config.syncOnStartup) {
+                this.client.sendNotice(this.managementRoomId, "Syncing lists...");
+                return this.syncLists();
+            }
+        });
     }
 
     public async syncLists() {

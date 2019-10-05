@@ -33,6 +33,10 @@ managementRoom: "#moderators:example.org"
 # Set to false to make the management room a bit quieter.
 verboseLogging: true
 
+# Set to false to disable synchronizing the ban lists on startup. If true, this
+# is the same as running !mjolnir sync immediately after startup.
+syncOnStartup: true
+
 # The room ID or alias where the bot's own personal ban list is kept. This is
 # where the commands to manage a ban list end up being routed to. Note that
 # this room is NOT automatically added to the banLists list below - you will

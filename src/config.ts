@@ -28,6 +28,7 @@ interface IConfig {
     autojoin: boolean;
     managementRoom: string;
     verboseLogging: boolean;
+    syncOnStartup: boolean;
     publishedBanListRoom: string;
     protectedRooms: string[]; // matrix.to urls
     banLists: string[]; // matrix.to urls
