@@ -21,6 +21,7 @@ import { execDumpRulesCommand } from "./DumpRulesCommand";
 import { LogService, RichReply } from "matrix-bot-sdk";
 import * as htmlEscape from "escape-html";
 import { execSyncCommand } from "./SyncCommand";
+import { execPermissionCheckCommand } from "./PermissionCheckCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -39,6 +40,8 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
             return execDumpRulesCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'sync') {
             return execSyncCommand(roomId, event, mjolnir);
+        } else if (parts[1] === 'verify') {
+            return execPermissionCheckCommand(roomId, event, mjolnir);
         } else {
             // Help menu
             const menu = "" +
@@ -48,6 +51,7 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
                 "!mjolnir unban <user|room|server> <glob>          - Removes an entity from the ban list\n" +
                 "!mjolnir rules                                    - Lists the rules currently in use by Mjolnir\n" +
                 "!mjolnir sync                                     - Force updates of all lists and re-apply rules\n" +
+                "!mjolnir verify                                   - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir help                                     - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;
