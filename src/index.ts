@@ -48,21 +48,7 @@ LogService.setLogger(new RichConsoleLogger());
     const banLists: BanList[] = [];
     const protectedRooms: { [roomId: string]: string } = {};
 
-    // Ensure we're in all the rooms we expect to be in
     const joinedRooms = await client.getJoinedRooms();
-    for (const roomRef of config.banLists) {
-        const permalink = Permalinks.parseUrl(roomRef);
-        if (!permalink.roomIdOrAlias) continue;
-
-        const roomId = await client.resolveRoom(permalink.roomIdOrAlias);
-        if (!joinedRooms.includes(roomId)) {
-            await client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
-        }
-
-        const list = new BanList(roomId, roomRef, client);
-        await list.updateList();
-        banLists.push(list);
-    }
 
     // Ensure we're also joined to the rooms we're protecting
     for (const roomRef of config.protectedRooms) {

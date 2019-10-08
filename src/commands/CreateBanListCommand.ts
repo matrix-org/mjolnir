@@ -54,9 +54,10 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
     });
 
     const roomRef = Permalinks.forRoom(listRoomId);
+    await mjolnir.watchList(roomRef);
 
-    const html = `Created new list (<a href="${roomRef}">${listRoomId}</a>). It is not tracked - you will have to add this to the Mjolnir config to use it.`;
-    const text = `Created new list (${roomRef}). It is not tracked - you will have to add this to the Mjolnir config to use it.`;
+    const html = `Created new list (<a href="${roomRef}">${listRoomId}</a>). This list is now being watched.`;
+    const text = `Created new list (${roomRef}). This list is now being watched.`;
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, reply);

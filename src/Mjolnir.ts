@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogService, MatrixClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
@@ -37,7 +37,7 @@ export class Mjolnir {
         public readonly client: MatrixClient,
         public readonly managementRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
-        public readonly banLists: BanList[],
+        private banLists: BanList[],
     ) {
         client.on("room.event", this.handleEvent.bind(this));
 
@@ -69,6 +69,10 @@ export class Mjolnir {
         })
     }
 
+    public get lists(): BanList[] {
+        return this.banLists;
+    }
+
     public get state(): string {
         return this.currentState;
     }
@@ -88,6 +92,7 @@ export class Mjolnir {
                 if (config.verboseLogging) {
                     await this.client.sendNotice(this.managementRoomId, "Syncing lists...");
                 }
+                await this.buildWatchedBanLists();
                 await this.syncLists(config.verboseLogging);
             }
         }).then(async () => {
@@ -96,6 +101,52 @@ export class Mjolnir {
                 await this.client.sendNotice(this.managementRoomId, "Startup complete.");
             }
         });
+    }
+
+    public async watchList(roomRef: string) {
+        const joinedRooms = await this.client.getJoinedRooms();
+        const permalink = Permalinks.parseUrl(roomRef);
+        if (!permalink.roomIdOrAlias) return;
+
+        const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
+        if (!joinedRooms.includes(roomId)) {
+            await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+        }
+
+        if (this.banLists.find(b => b.roomId === roomId)) return;
+
+        const list = new BanList(roomId, roomRef, this.client);
+        await list.updateList();
+        this.banLists.push(list);
+    }
+
+    public async unwatchList(roomRef: string) {
+        const permalink = Permalinks.parseUrl(roomRef);
+        if (!permalink.roomIdOrAlias) return;
+
+        const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
+        const list = this.banLists.find(b => b.roomId === roomId);
+        if (list) this.banLists.splice(this.banLists.indexOf(list), 1);
+    }
+
+    public async buildWatchedBanLists() {
+        const banLists: BanList[] = [];
+        const joinedRooms = await this.client.getJoinedRooms();
+        for (const roomRef of config.banLists) {
+            const permalink = Permalinks.parseUrl(roomRef);
+            if (!permalink.roomIdOrAlias) continue;
+
+            const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
+            if (!joinedRooms.includes(roomId)) {
+                await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+            }
+
+            const list = new BanList(roomId, roomRef, this.client);
+            await list.updateList();
+            banLists.push(list);
+        }
+
+        this.banLists = banLists;
     }
 
     public async verifyPermissions(verbose: boolean = true) {
