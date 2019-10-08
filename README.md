@@ -1,6 +1,7 @@
 # mjolnir
 
-A moderation tool for Matrix.
+A moderation tool for Matrix. Visit [#mjolnir:matrix.org](https://matrix.to/#/#mjolnir:matrix.org)
+for more information.
 
 ## Features
 
@@ -28,20 +29,19 @@ Phase 3:
 
 ## Docker (preferred)
 
-Mjolnir does not yet have its own image published.
+Mjolnir is on Docker Hub as [matrixdotorg/mjolnir](https://hub.docker.com/r/matrixdotorg/mjolnir)
+but can be built yourself with `docker build -t mjolnir .`.
 
 ```bash
 git clone https://github.com/matrix-org/mjolnir.git
 cd mjolnir
-
-docker build -t mjolnir .
 
 # Copy and edit the config. It is not recommended to change the data path.
 mkdir -p /etc/mjolnir
 cp config/default.yaml /etc/mjolnir/production.yaml
 nano /etc/mjolnir/production.yaml
 
-docker run --rm -it -v /etc/mjolnir:/data mjolnir
+docker run --rm -it -v /etc/mjolnir:/data matrixdotorg/mjolnir:latest
 ```
 
 ## Build it
