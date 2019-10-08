@@ -53,7 +53,7 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
     // Append list information
     html += "<b>Subscribed ban lists:</b><br><ul>";
     text += "Subscribed ban lists:\n";
-    for (const list of mjolnir.banLists) {
+    for (const list of mjolnir.lists) {
         const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
         html += `<li><a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
         text += `* ${list.roomRef} (${ruleInfo})\n`;

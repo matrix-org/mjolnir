@@ -24,7 +24,7 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
     let text = "Rules currently in use:\n";
 
     let hasLists = false;
-    for (const list of mjolnir.banLists) {
+    for (const list of mjolnir.lists) {
         hasLists = true;
         let hasRules = false;
 

@@ -27,29 +27,29 @@ import { execUnwatchCommand, execWatchCommand } from "./WatchUnwatchCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
-export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
+export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     const cmd = event['content']['body'];
     const parts = cmd.trim().split(' ');
 
     try {
         if (parts.length === 1 || parts[1] === 'status') {
-            return execStatusCommand(roomId, event, mjolnir);
+            return await execStatusCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'ban' && parts.length > 4) {
-            return execBanCommand(roomId, event, mjolnir, parts);
+            return await execBanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'unban' && parts.length > 4) {
-            return execUnbanCommand(roomId, event, mjolnir, parts);
+            return await execUnbanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rules') {
-            return execDumpRulesCommand(roomId, event, mjolnir);
+            return await execDumpRulesCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'sync') {
-            return execSyncCommand(roomId, event, mjolnir);
+            return await execSyncCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'verify') {
-            return execPermissionCheckCommand(roomId, event, mjolnir);
+            return await execPermissionCheckCommand(roomId, event, mjolnir);
         } else if (parts.length >= 5 && parts[1] === 'list' && parts[2] === 'create') {
-            return execCreateListCommand(roomId, event, mjolnir, parts);
+            return await execCreateListCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'watch' && parts.length > 1) {
-            return execWatchCommand(roomId, event, mjolnir, parts);
+            return await execWatchCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'unwatch' && parts.length > 1) {
-            return execUnwatchCommand(roomId, event, mjolnir, parts);
+            return await execUnwatchCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -66,7 +66,7 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
             const text = `Mjolnir help:\n${menu}`;
             const reply = RichReply.createFor(roomId, event, text, html);
             reply["msgtype"] = "m.notice";
-            return mjolnir.client.sendMessage(roomId, reply);
+            return await mjolnir.client.sendMessage(roomId, reply);
         }
     } catch (e) {
         LogService.error("CommandHandler", e);

@@ -59,7 +59,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     };
     const stateKey = `rule:${bits.glob}`;
 
-    const list = mjolnir.banLists.find(b => b.listShortcode === bits.listShortcode);
+    const list = mjolnir.lists.find(b => b.listShortcode === bits.listShortcode);
     if (!list) {
         const replyText = "No ban list with that shortcode was found.";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
@@ -84,7 +84,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
     const ruleContent = {}; // empty == clear/unban
     const stateKey = `rule:${bits.glob}`;
 
-    const list = mjolnir.banLists.find(b => b.listShortcode === bits.listShortcode);
+    const list = mjolnir.lists.find(b => b.listShortcode === bits.listShortcode);
     if (!list) {
         const replyText = "No ban list with that shortcode was found.";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
