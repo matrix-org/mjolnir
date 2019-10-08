@@ -20,6 +20,7 @@ Phase 2:
 * [ ] Command to import ACLs, etc from rooms
 * [x] Vet rooms on startup option
 * [ ] Command to actually unban users (instead of leaving them stuck)
+* [ ] Support multiple lists
 
 Phase 3:
 * [ ] Synapse antispam module
