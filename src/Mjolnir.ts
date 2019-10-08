@@ -222,7 +222,9 @@ export class Mjolnir {
     }
 
     private async handleEvent(roomId: string, event: any) {
-        if (event['type'] === 'm.room.power_levels' && event['state_key'] === '' && Object.keys(this.protectedRooms).includes(roomId)) {
+        if (!Object.keys(this.protectedRooms).includes(roomId)) return;
+
+        if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
             // power levels were updated - recheck permissions
             const url = this.protectedRooms[roomId];
             const html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
