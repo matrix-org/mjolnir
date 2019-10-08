@@ -23,6 +23,7 @@ import * as htmlEscape from "escape-html";
 import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
 import { execCreateListCommand } from "./CreateBanListCommand";
+import { execUnwatchCommand, execWatchCommand } from "./WatchUnwatchCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -45,6 +46,10 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
             return execPermissionCheckCommand(roomId, event, mjolnir);
         } else if (parts.length >= 5 && parts[1] === 'list' && parts[2] === 'create') {
             return execCreateListCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'watch' && parts.length > 1) {
+            return execWatchCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'unwatch' && parts.length > 1) {
+            return execUnwatchCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +

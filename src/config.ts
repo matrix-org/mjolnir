@@ -31,7 +31,6 @@ interface IConfig {
     syncOnStartup: boolean;
     verifyPermissionsOnStartup: boolean;
     protectedRooms: string[]; // matrix.to urls
-    banLists: string[]; // matrix.to urls
 }
 
 export default <IConfig>config;

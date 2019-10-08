@@ -45,7 +45,3 @@ verifyPermissionsOnStartup: true
 # A list of rooms to protect (matrix.to URLs)
 protectedRooms:
   - "https://matrix.to/#/#yourroom:example.org"
-
-# A list of ban lists to follow (matrix.to URLs)
-banLists:
-  - "https://matrix.to/#/#sample-ban-list:t2bot.io" # S.A.M.P.L.E.

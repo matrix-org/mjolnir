@@ -27,6 +27,8 @@ export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
 export const STATE_SYNCING = "syncing";
 export const STATE_RUNNING = "running";
 
+const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
+
 export class Mjolnir {
 
     private displayName: string;
@@ -103,36 +105,56 @@ export class Mjolnir {
         });
     }
 
-    public async watchList(roomRef: string) {
+    public async watchList(roomRef: string): Promise<BanList> {
         const joinedRooms = await this.client.getJoinedRooms();
         const permalink = Permalinks.parseUrl(roomRef);
-        if (!permalink.roomIdOrAlias) return;
+        if (!permalink.roomIdOrAlias) return null;
 
         const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
         if (!joinedRooms.includes(roomId)) {
             await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
         }
 
-        if (this.banLists.find(b => b.roomId === roomId)) return;
+        if (this.banLists.find(b => b.roomId === roomId)) return null;
 
         const list = new BanList(roomId, roomRef, this.client);
         await list.updateList();
         this.banLists.push(list);
+
+        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
+            references: this.banLists.map(b => b.roomRef),
+        });
+
+        return list;
     }
 
-    public async unwatchList(roomRef: string) {
+    public async unwatchList(roomRef: string): Promise<BanList> {
         const permalink = Permalinks.parseUrl(roomRef);
-        if (!permalink.roomIdOrAlias) return;
+        if (!permalink.roomIdOrAlias) return null;
 
         const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
         const list = this.banLists.find(b => b.roomId === roomId);
         if (list) this.banLists.splice(this.banLists.indexOf(list), 1);
+
+        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
+            references: this.banLists.map(b => b.roomRef),
+        });
+
+        return list;
     }
 
     public async buildWatchedBanLists() {
         const banLists: BanList[] = [];
         const joinedRooms = await this.client.getJoinedRooms();
-        for (const roomRef of config.banLists) {
+
+        let watchedListsEvent = {};
+        try {
+            watchedListsEvent = await this.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
+        } catch (e) {
+            // ignore - not important
+        }
+
+        for (const roomRef of (watchedListsEvent['references'] || [])) {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
 
