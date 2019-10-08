@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient } from "matrix-bot-sdk";
 import { ListRule } from "./ListRule";
 
 export const RULE_USER = "m.room.rule.user";
@@ -26,6 +26,8 @@ export const ROOM_RULE_TYPES = [RULE_ROOM, "org.matrix.mjolnir.rule.room"];
 export const SERVER_RULE_TYPES = [RULE_SERVER, "org.matrix.mjolnir.rule.server"];
 export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
 
+export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
+
 export function ruleTypeToStable(rule: string, unstable = true): string {
     if (USER_RULE_TYPES.includes(rule)) return unstable ? USER_RULE_TYPES[USER_RULE_TYPES.length - 1] : RULE_USER;
     if (ROOM_RULE_TYPES.includes(rule)) return unstable ? ROOM_RULE_TYPES[ROOM_RULE_TYPES.length - 1] : RULE_ROOM;
@@ -35,8 +37,22 @@ export function ruleTypeToStable(rule: string, unstable = true): string {
 
 export default class BanList {
     private rules: ListRule[] = [];
+    private shortcode: string = null;
 
     constructor(public readonly roomId: string, public readonly roomRef, private client: MatrixClient) {
+    }
+
+    public get listShortcode(): string {
+        return this.shortcode;
+    }
+
+    public set listShortcode(newShortcode: string) {
+        const currentShortcode = this.shortcode;
+        this.shortcode = newShortcode;
+        this.client.sendStateEvent(this.roomId, SHORTCODE_EVENT_TYPE, '', {shortcode: this.shortcode}).catch(err => {
+            LogService.error("BanList", err);
+            if (this.shortcode === newShortcode) this.shortcode = currentShortcode;
+        });
     }
 
     public get serverRules(): ListRule[] {
@@ -56,6 +72,11 @@ export default class BanList {
 
         const state = await this.client.getRoomState(this.roomId);
         for (const event of state) {
+            if (event['state_key'] === '' && event['type'] === SHORTCODE_EVENT_TYPE) {
+                this.shortcode = (event['content'] || {})['shortcode'] || null;
+                continue;
+            }
+
             if (event['state_key'] === '' || !ALL_RULE_TYPES.includes(event['type'])) {
                 continue;
             }

@@ -77,17 +77,11 @@ LogService.setLogger(new RichConsoleLogger());
         protectedRooms[roomId] = roomRef;
     }
 
-    // Ensure we've joined the ban list we're publishing too
-    let banListRoomId = await client.resolveRoom(config.publishedBanListRoom);
-    if (!joinedRooms.includes(banListRoomId)) {
-        banListRoomId = await client.joinRoom(config.publishedBanListRoom);
-    }
-
     // Ensure we're also in the management room
     const managementRoomId = await client.joinRoom(config.managementRoom);
     await client.sendNotice(managementRoomId, "Mjolnir is starting up. Use !mjolnir to query status.");
 
-    const bot = new Mjolnir(client, managementRoomId, banListRoomId, protectedRooms, banLists);
+    const bot = new Mjolnir(client, managementRoomId, protectedRooms, banLists);
     await bot.start();
 
     LogService.info("index", "Bot started!")

@@ -19,10 +19,11 @@ import { RULE_ROOM, RULE_SERVER, RULE_USER, ruleTypeToStable } from "../models/B
 import { RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 
-function parseBits(parts: string[]): { entityType: string, ruleType: string, glob: string, reason: string } {
-    const entityType = parts[2].toLowerCase();
-    const glob = parts[3];
-    const reason = parts.slice(4).join(' ') || "<no reason>";
+function parseBits(parts: string[]): { listShortcode: string, entityType: string, ruleType: string, glob: string, reason: string } {
+    const shortcode = parts[2].toLowerCase();
+    const entityType = parts[3].toLowerCase();
+    const glob = parts[4];
+    const reason = parts.slice(5).join(' ') || "<no reason>";
 
     let rule = null;
     if (entityType === "user") {
@@ -33,11 +34,11 @@ function parseBits(parts: string[]): { entityType: string, ruleType: string, glo
         rule = RULE_SERVER;
     }
     if (!rule) {
-        return {entityType, ruleType: null, glob, reason};
+        return {listShortcode: shortcode, entityType, ruleType: null, glob, reason};
     }
     rule = ruleTypeToStable(rule);
 
-    return {entityType, ruleType: rule, glob, reason};
+    return {listShortcode: shortcode, entityType, ruleType: rule, glob, reason};
 }
 
 // !mjolnir ban <user|server|room> <glob> [reason]
@@ -58,7 +59,15 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     };
     const stateKey = `rule:${bits.glob}`;
 
-    await mjolnir.client.sendStateEvent(mjolnir.publishedBanListRoomId, bits.ruleType, stateKey, ruleContent);
+    const list = mjolnir.banLists.find(b => b.listShortcode === bits.listShortcode);
+    if (!list) {
+        const replyText = "No ban list with that shortcode was found.";
+        const reply = RichReply.createFor(roomId, event, replyText, replyText);
+        reply["msgtype"] = "m.notice";
+        return mjolnir.client.sendMessage(roomId, reply);
+    }
+
+    await mjolnir.client.sendStateEvent(list.roomId, bits.ruleType, stateKey, ruleContent);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
@@ -75,6 +84,14 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
     const ruleContent = {}; // empty == clear/unban
     const stateKey = `rule:${bits.glob}`;
 
-    await mjolnir.client.sendStateEvent(mjolnir.publishedBanListRoomId, bits.ruleType, stateKey, ruleContent);
+    const list = mjolnir.banLists.find(b => b.listShortcode === bits.listShortcode);
+    if (!list) {
+        const replyText = "No ban list with that shortcode was found.";
+        const reply = RichReply.createFor(roomId, event, replyText, replyText);
+        reply["msgtype"] = "m.notice";
+        return mjolnir.client.sendMessage(roomId, reply);
+    }
+
+    await mjolnir.client.sendStateEvent(list.roomId, bits.ruleType, stateKey, ruleContent);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

@@ -36,7 +36,6 @@ export class Mjolnir {
     constructor(
         public readonly client: MatrixClient,
         public readonly managementRoomId: string,
-        public readonly publishedBanListRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
         public readonly banLists: BanList[],
     ) {

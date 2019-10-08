@@ -22,6 +22,7 @@ import { LogService, RichReply } from "matrix-bot-sdk";
 import * as htmlEscape from "escape-html";
 import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
+import { execCreateListCommand } from "./CreateBanListCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -32,9 +33,9 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     try {
         if (parts.length === 1 || parts[1] === 'status') {
             return execStatusCommand(roomId, event, mjolnir);
-        } else if (parts[1] === 'ban' && parts.length > 3) {
+        } else if (parts[1] === 'ban' && parts.length > 4) {
             return execBanCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'unban' && parts.length > 3) {
+        } else if (parts[1] === 'unban' && parts.length > 4) {
             return execUnbanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rules') {
             return execDumpRulesCommand(roomId, event, mjolnir);
@@ -42,17 +43,20 @@ export function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
             return execSyncCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'verify') {
             return execPermissionCheckCommand(roomId, event, mjolnir);
+        } else if (parts.length >= 5 && parts[1] === 'list' && parts[2] === 'create') {
+            return execCreateListCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
-                "!mjolnir                                          - Print status information\n" +
-                "!mjolnir status                                   - Print status information\n" +
-                "!mjolnir ban <user|room|server> <glob> [reason]   - Adds an entity to the ban list\n" +
-                "!mjolnir unban <user|room|server> <glob>          - Removes an entity from the ban list\n" +
-                "!mjolnir rules                                    - Lists the rules currently in use by Mjolnir\n" +
-                "!mjolnir sync                                     - Force updates of all lists and re-apply rules\n" +
-                "!mjolnir verify                                   - Ensures Mjolnir can moderate all your rooms\n" +
-                "!mjolnir help                                     - This menu\n";
+                "!mjolnir                                                            - Print status information\n" +
+                "!mjolnir status                                                     - Print status information\n" +
+                "!mjolnir ban <list_shortcode> <user|room|server> <glob> [reason]    - Adds an entity to the ban list\n" +
+                "!mjolnir unban <list_shortcode> <user|room|server> <glob>           - Removes an entity from the ban list\n" +
+                "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
+                "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
+                "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
+                "!mjolnir list create <shortcode> <alias_localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
+                "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;
             const reply = RichReply.createFor(roomId, event, text, html);
