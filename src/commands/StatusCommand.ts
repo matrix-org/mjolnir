@@ -24,7 +24,7 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
 
     const state = mjolnir.state;
 
-    switch(state) {
+    switch (state) {
         case STATE_NOT_STARTED:
             html += "<b>Running: </b>❌ (not started)<br/>";
             text += "Running: ❌ (not started)\n";

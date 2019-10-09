@@ -171,7 +171,7 @@ export class Mjolnir {
         this.banLists = banLists;
     }
 
-    public async verifyPermissions(verbose: boolean = true) {
+    public async verifyPermissions(verbose = true) {
         const errors: RoomUpdateError[] = [];
         for (const roomId of Object.keys(this.protectedRooms)) {
             errors.push(...(await this.verifyPermissionsIn(roomId)));
@@ -242,7 +242,7 @@ export class Mjolnir {
         return errors;
     }
 
-    public async syncLists(verbose: boolean = true) {
+    public async syncLists(verbose = true) {
         for (const list of this.banLists) {
             await list.updateList();
         }
@@ -300,8 +300,8 @@ export class Mjolnir {
         if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
             // power levels were updated - recheck permissions
             const url = this.protectedRooms[roomId];
-            const html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
-            const text = `Power levels changed in ${url} - checking permissions...`;
+            let html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
+            let text = `Power levels changed in ${url} - checking permissions...`;
             await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
@@ -311,8 +311,8 @@ export class Mjolnir {
             const errors = await this.verifyPermissionsIn(roomId);
             const hadErrors = await this.printActionResult(errors);
             if (!hadErrors) {
-                const html = `<font color="#00cc00">All permissions look OK.</font>`;
-                const text = "All permissions look OK.";
+                html = `<font color="#00cc00">All permissions look OK.</font>`;
+                text = "All permissions look OK.";
                 await this.client.sendMessage(this.managementRoomId, {
                     msgtype: "m.notice",
                     body: text,
