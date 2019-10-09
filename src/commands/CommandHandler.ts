@@ -24,6 +24,7 @@ import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
 import { execCreateListCommand } from "./CreateBanListCommand";
 import { execUnwatchCommand, execWatchCommand } from "./WatchUnwatchCommand";
+import { execRedactCommand } from "./RedactCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -50,6 +51,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execWatchCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'unwatch' && parts.length > 1) {
             return await execUnwatchCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'redact' && parts.length > 1) {
+            return await execRedactCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -57,6 +60,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir status                                                     - Print status information\n" +
                 "!mjolnir ban <list_shortcode> <user|room|server> <glob> [reason]    - Adds an entity to the ban list\n" +
                 "!mjolnir unban <list_shortcode> <user|room|server> <glob>           - Removes an entity from the ban list\n" +
+                "!mjolnir redact <user_id> [room alias/ID]                           - Redacts messages by the sender in the target room (or all rooms)\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +

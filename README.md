@@ -15,7 +15,7 @@ Phase 1:
 Phase 2:
 * [x] Pantalaimon support
 * [x] No-op mode (for verifying behaviour)
-* [ ] Redact messages on ban (optionally)
+* [x] Redact messages on ban (optionally)
 * [x] More useful spam in management room
 * [ ] Command to import ACLs, etc from rooms
 * [x] Vet rooms on startup option
