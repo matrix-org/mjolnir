@@ -296,6 +296,7 @@ export class Mjolnir {
 
     private async handleEvent(roomId: string, event: any) {
         if (!Object.keys(this.protectedRooms).includes(roomId)) return;
+        if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
 
         if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
             // power levels were updated - recheck permissions
