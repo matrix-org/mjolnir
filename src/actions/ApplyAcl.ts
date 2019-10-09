@@ -51,7 +51,9 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
                 await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Applying ACL in ${roomId}`);
             }
 
-            await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
+            if (!config.noop) {
+                await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
+            }
         } catch (e) {
             errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
         }

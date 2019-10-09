@@ -30,6 +30,7 @@ interface IConfig {
     verboseLogging: boolean;
     syncOnStartup: boolean;
     verifyPermissionsOnStartup: boolean;
+    noop: boolean;
     protectedRooms: string[]; // matrix.to urls
 }
 

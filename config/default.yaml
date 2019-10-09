@@ -42,6 +42,11 @@ syncOnStartup: true
 # resets, etc) before Mjolnir is needed.
 verifyPermissionsOnStartup: true
 
+# If true, Mjolnir won't actually ban users or apply server ACLs, but will
+# think it has. This is useful to see what it does in a scenario where the
+# bot might not be trusted fully, yet. Default false (do bans/ACLs).
+noop: false
+
 # A list of rooms to protect (matrix.to URLs)
 protectedRooms:
   - "https://matrix.to/#/#yourroom:example.org"

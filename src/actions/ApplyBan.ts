@@ -58,7 +58,10 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                                 await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Banning ${member['state_key']} in ${roomId} for: ${userRule.reason}`);
                             }
 
-                            await mjolnir.client.banUser(member['state_key'], roomId, userRule.reason);
+                            if (!config.noop) {
+                                await mjolnir.client.banUser(member['state_key'], roomId, userRule.reason);
+                            }
+
                             banned = true;
                             break;
                         }
