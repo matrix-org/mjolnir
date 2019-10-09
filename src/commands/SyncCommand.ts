@@ -18,6 +18,5 @@ import { Mjolnir } from "../Mjolnir";
 
 // !mjolnir sync
 export async function execSyncCommand(roomId: string, event: any, mjolnir: Mjolnir) {
-    await mjolnir.syncLists();
-    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    return mjolnir.syncLists();
 }
