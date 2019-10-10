@@ -15,9 +15,11 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RULE_ROOM, RULE_SERVER, RULE_USER, ruleTypeToStable } from "../models/BanList";
+import { RULE_ROOM, RULE_SERVER, RULE_USER, ruleTypeToStable, USER_RULE_TYPES } from "../models/BanList";
 import { RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
+import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
+import config from "../config";
 
 function parseBits(parts: string[]): { listShortcode: string, entityType: string, ruleType: string, glob: string, reason: string } {
     const shortcode = parts[2].toLowerCase();
@@ -41,7 +43,7 @@ function parseBits(parts: string[]): { listShortcode: string, entityType: string
     return {listShortcode: shortcode, entityType, ruleType: rule, glob, reason};
 }
 
-// !mjolnir ban <user|server|room> <glob> [reason]
+// !mjolnir ban <shortcode> <user|server|room> <glob> [reason]
 export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = parseBits(parts);
     if (!bits.ruleType) {
@@ -71,7 +73,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
-// !mjolnir unban <user|server|room> <glob>
+// !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
 export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = parseBits(parts);
     if (!bits.ruleType) {
@@ -93,5 +95,35 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
     }
 
     await mjolnir.client.sendStateEvent(list.roomId, bits.ruleType, stateKey, ruleContent);
+
+    if (USER_RULE_TYPES.includes(bits.ruleType) && parts.length > 5 && parts[5] === 'true') {
+        const rule = new MatrixGlob(bits.glob);
+        await mjolnir.client.sendNotice(mjolnir.managementRoomId, "Unbanning users that match glob: " + bits.glob);
+        let unbannedSomeone = false;
+        for (const protectedRoomId of Object.keys(mjolnir.protectedRooms)) {
+            const members = await mjolnir.client.getMembers(protectedRoomId, null, ['ban'], null);
+            for (const member of members) {
+                const victim = member['state_key'];
+                if (!member['content'] || member['content']['membership'] !== 'ban') continue;
+                if (rule.test(victim)) {
+                    if (config.verboseLogging) {
+                        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Unbanning ${victim} in ${protectedRoomId}`);
+                    }
+                    if (!config.noop) {
+                        await mjolnir.client.unbanUser(victim, protectedRoomId);
+                    }
+                    unbannedSomeone = true;
+                }
+            }
+        }
+
+        if (unbannedSomeone) {
+            if (config.verboseLogging) {
+                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Syncing lists to ensure no users were accidentally unbanned`);
+            }
+            await mjolnir.syncLists(config.verboseLogging);
+        }
+    }
+
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

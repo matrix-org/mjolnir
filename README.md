@@ -19,7 +19,7 @@ Phase 2:
 * [x] More useful spam in management room
 * [x] Command to import ACLs, etc from rooms
 * [x] Vet rooms on startup option
-* [ ] Command to actually unban users (instead of leaving them stuck)
+* [x] Command to actually unban users (instead of leaving them stuck)
 * [x] Support multiple lists
 
 Phase 3:
