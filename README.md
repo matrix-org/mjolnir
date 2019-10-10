@@ -17,7 +17,7 @@ Phase 2:
 * [x] No-op mode (for verifying behaviour)
 * [x] Redact messages on ban (optionally)
 * [x] More useful spam in management room
-* [ ] Command to import ACLs, etc from rooms
+* [x] Command to import ACLs, etc from rooms
 * [x] Vet rooms on startup option
 * [ ] Command to actually unban users (instead of leaving them stuck)
 * [x] Support multiple lists
