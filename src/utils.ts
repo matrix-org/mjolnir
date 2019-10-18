@@ -35,6 +35,7 @@ export async function getMessagesByUserSinceLastJoin(client: MatrixClient, sende
             timeline: {
                 senders: [sender],
                 rooms: [roomId],
+                types: ["m.room.message"],
             },
             ephemeral: {
                 limit: 0,
