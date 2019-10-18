@@ -29,6 +29,7 @@ import config from "../config";
 export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // We can only ban people who are not already banned, and who match the rules.
     const errors: RoomUpdateError[] = [];
+    let bansApplied = 0;
     for (const roomId of roomIds) {
         try {
             if (config.verboseLogging) {
@@ -62,6 +63,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                                 await mjolnir.client.banUser(member['state_key'], roomId, userRule.reason);
                             }
 
+                            bansApplied++;
                             banned = true;
                             break;
                         }
@@ -73,5 +75,17 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
             errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
         }
     }
+
+    if (bansApplied > 0) {
+        const html = `<font color="#00cc00"><b>Banned ${bansApplied} people</b></font>`;
+        const text = `Banned ${bansApplied} people`;
+        await this.client.sendMessage(mjolnir.managementRoomId, {
+            msgtype: "m.notice",
+            body: text,
+            format: "org.matrix.custom.html",
+            formatted_body: html,
+        });
+    }
+
     return errors;
 }
