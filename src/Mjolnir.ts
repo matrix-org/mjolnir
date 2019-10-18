@@ -295,54 +295,43 @@ export class Mjolnir {
     }
 
     private async handleEvent(roomId: string, event: any) {
-        if (!Object.keys(this.protectedRooms).includes(roomId)) return;
-        if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
-
-        if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
-            // power levels were updated - recheck permissions
-            const url = this.protectedRooms[roomId];
-            let html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
-            let text = `Power levels changed in ${url} - checking permissions...`;
-            await this.client.sendMessage(this.managementRoomId, {
-                msgtype: "m.notice",
-                body: text,
-                format: "org.matrix.custom.html",
-                formatted_body: html,
-            });
-            const errors = await this.verifyPermissionsIn(roomId);
-            const hadErrors = await this.printActionResult(errors);
-            if (!hadErrors) {
-                html = `<font color="#00cc00">All permissions look OK.</font>`;
-                text = "All permissions look OK.";
+        if (Object.keys(this.protectedRooms).includes(roomId)) {
+            if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
+            if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
+                // power levels were updated - recheck permissions
+                const url = this.protectedRooms[roomId];
+                let html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
+                let text = `Power levels changed in ${url} - checking permissions...`;
                 await this.client.sendMessage(this.managementRoomId, {
                     msgtype: "m.notice",
                     body: text,
                     format: "org.matrix.custom.html",
                     formatted_body: html,
                 });
+                const errors = await this.verifyPermissionsIn(roomId);
+                const hadErrors = await this.printActionResult(errors);
+                if (!hadErrors) {
+                    html = `<font color="#00cc00">All permissions look OK.</font>`;
+                    text = "All permissions look OK.";
+                    await this.client.sendMessage(this.managementRoomId, {
+                        msgtype: "m.notice",
+                        body: text,
+                        format: "org.matrix.custom.html",
+                        formatted_body: html,
+                    });
+                }
+                return;
+            } else if (event['type'] === "m.room.member") {
+                const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+                await this.printActionResult(errors);
             }
-            return;
         }
 
-        if (!event['state_key']) return; // from here we don't do anything with events missing/empty state key
-
-        if (ALL_RULE_TYPES.includes(event['type'])) {
-            await this.syncListForRoom(roomId);
-        } else if (event['type'] === "m.room.member") {
-            const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
-            const hadErrors = await this.printActionResult(errors);
-
-            if (!hadErrors) {
-                const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
-                const text = "Done updating rooms - no errors";
-                await this.client.sendMessage(this.managementRoomId, {
-                    msgtype: "m.notice",
-                    body: text,
-                    format: "org.matrix.custom.html",
-                    formatted_body: html,
-                });
+        if (this.banLists.map(b => b.roomId).includes(roomId)) {
+            if (ALL_RULE_TYPES.includes(event['type'])) {
+                await this.syncListForRoom(roomId);
             }
-        } else return; // Not processed
+        }
     }
 
     private async printActionResult(errors: RoomUpdateError[], title: string = null) {
