@@ -24,10 +24,10 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
     const importRoomId = await mjolnir.client.resolveRoom(parts[2]);
     const list = mjolnir.lists.find(b => b.listShortcode === parts[3]);
     if (!list) {
-        const message = "Unable to find list - check your shortcode.";
-        const reply = RichReply.createFor(roomId, event, message, message);
-        reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
+        const errMessage = "Unable to find list - check your shortcode.";
+        const errReply = RichReply.createFor(roomId, event, errMessage, errMessage);
+        errReply["msgtype"] = "m.notice";
+        return mjolnir.client.sendMessage(roomId, errReply);
     }
 
     let importedRules = 0;

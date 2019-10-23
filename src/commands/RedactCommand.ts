@@ -33,12 +33,12 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         }
 
         const eventsToRedact = await getMessagesByUserSinceLastJoin(mjolnir.client, userId, targetRoomId);
-        for (const event of eventsToRedact) {
+        for (const victimEvent of eventsToRedact) {
             if (config.verboseLogging) {
-                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Redacting ${event['event_id']} in ${targetRoomId}`);
+                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
             }
             if (!config.noop) {
-                await mjolnir.client.redactEvent(targetRoomId, event['event_id']);
+                await mjolnir.client.redactEvent(targetRoomId, victimEvent['event_id']);
             }
         }
     }
