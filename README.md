@@ -23,7 +23,7 @@ Phase 2:
 * [x] Support multiple lists
 
 Phase 3:
-* [ ] Synapse antispam module
+* [x] Synapse antispam module
 * [ ] Room upgrade handling (both protected+list rooms)
 * [ ] Support community-defined scopes? (ie: no hardcoded config)
 * [ ] Riot hooks (independent of mjolnir?)
