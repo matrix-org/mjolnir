@@ -16,13 +16,12 @@
 import logging
 from .list_rule import ListRule, ALL_RULE_TYPES, USER_RULE_TYPES, SERVER_RULE_TYPES, ROOM_RULE_TYPES
 from twisted.internet import defer
-from synapse.storage.state import StateFilter
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
 class BanList(object):
-    def __init__(self, hs, room_id):
-        self.hs = hs
+    def __init__(self, api, room_id):
+        self.api = api
         self.room_id = room_id
         self.server_rules = []
         self.user_rules = []
@@ -69,12 +68,5 @@ class BanList(object):
             elif event_type in SERVER_RULE_TYPES:
                 self.server_rules.append(rule)
 
-    @defer.inlineCallbacks
     def get_relevant_state_events(self):
-        store = self.hs.get_datastore()
-        ev_filter = StateFilter.from_types([(t, None) for t in ALL_RULE_TYPES])
-        state_ids = yield store.get_filtered_current_state_ids(
-            room_id=self.room_id, state_filter=ev_filter
-        )
-        state = yield store.get_events(state_ids.values())
-        return state.values()
+        return self.api.get_state_events_in_room(self.room_id, [(t, None) for t in ALL_RULE_TYPES])

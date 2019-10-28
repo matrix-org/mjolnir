@@ -21,12 +21,12 @@ from synapse.types import UserID
 logger = logging.getLogger("synapse.contrib." + __name__)
 
 class AntiSpam(object):
-    def __init__(self, config, hs):
+    def __init__(self, config, api):
         self.block_invites = config.get("block_invites", True)
         self.block_messages = config.get("block_messages", False)
         self.list_room_ids = config.get("ban_lists", [])
         self.rooms_to_lists = {}  # type: Dict[str, BanList]
-        self.hs = hs
+        self.api = api
 
         # Now we build the ban lists so we can match them
         self.build_lists()
@@ -41,7 +41,7 @@ class AntiSpam(object):
 
     def get_list_for_room(self, room_id):
         if room_id not in self.rooms_to_lists:
-            self.rooms_to_lists[room_id] = BanList(hs=self.hs, room_id=room_id)
+            self.rooms_to_lists[room_id] = BanList(api=self.api, room_id=room_id)
         return self.rooms_to_lists[room_id]
 
     def is_user_banned(self, user_id):
