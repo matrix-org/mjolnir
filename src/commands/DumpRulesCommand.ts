@@ -28,8 +28,10 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
         hasLists = true;
         let hasRules = false;
 
-        html += `<a href="${list.roomRef}">${list.roomId}</a>:<br/><ul>`;
-        text += `${list.roomRef}:\n`;
+        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${list.listShortcode})` : '';
+
+        html += `<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:<br/><ul>`;
+        text += `${list.roomRef}${shortcodeInfo}:\n`;
 
         for (const rule of list.serverRules) {
             hasRules = true;

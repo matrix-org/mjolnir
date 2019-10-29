@@ -68,6 +68,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
+                "!mjolnir watch <room alias/ID>                                      - Watches a ban list\n" +
+                "!mjolnir unwatch <room alias/ID>                                    - Unwatches a ban list\n" +
                 "!mjolnir import <room alias/ID> <list shortcode>                    - Imports bans and ACLs into the given list\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
