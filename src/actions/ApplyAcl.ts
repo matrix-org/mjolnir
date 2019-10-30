@@ -47,6 +47,22 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
     for (const roomId of roomIds) {
         try {
             if (config.verboseLogging) {
+                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Checking ACLs for ${roomId}`);
+            }
+
+            try {
+                const currentAcl = await mjolnir.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
+                if (acl.matches(currentAcl)) {
+                    if (config.verboseLogging) {
+                        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Skipping ACLs for ${roomId} because they are already the right ones`);
+                    }
+                    continue;
+                }
+            } catch (e) {
+                // ignore - assume no ACL
+            }
+
+            if (config.verboseLogging) {
                 // We specifically use sendNotice to avoid having to escape HTML
                 await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Applying ACL in ${roomId}`);
             }

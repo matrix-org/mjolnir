@@ -76,4 +76,38 @@ export class ServerAcl {
             allow_ip_literals: this.allowIps,
         };
     }
+
+    public matches(acl: any): boolean {
+        if (!acl) return false;
+
+        const allow = acl['allow'];
+        const deny = acl['deny'];
+        const ips = acl['allow_ip_literals'];
+
+        let allowMatches = true; // until proven false
+        let denyMatches = true; // until proven false
+        let ipsMatch = ips === this.allowIps;
+
+        const currentAllowed = setToArray(this.allowedServers);
+        if (allow.length === currentAllowed.length) {
+            for (const s of allow) {
+                if (!currentAllowed.includes(s)) {
+                    allowMatches = false;
+                    break;
+                }
+            }
+        } else allowMatches = false;
+
+        const currentDenied = setToArray(this.deniedServers);
+        if (deny.length === currentDenied.length) {
+            for (const s of deny) {
+                if (!currentDenied.includes(s)) {
+                    denyMatches = false;
+                    break;
+                }
+            }
+        } else denyMatches = false;
+
+        return denyMatches && allowMatches && ipsMatch;
+    }
 }
