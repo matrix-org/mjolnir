@@ -1,8 +1,8 @@
 FROM node:alpine
 COPY . /tmp/src
 RUN cd /tmp/src \
-    && npm install \
-    && npm run build \
+    && yarn install \
+    && yarn build \
     && mv lib/ /mjolnir/ \
     && mv node_modules / \
     && cd / \
