@@ -33,6 +33,10 @@ managementRoom: "#moderators:example.org"
 # Set to false to make the management room a bit quieter.
 verboseLogging: true
 
+# The log level for the logs themselves. One of DEBUG, INFO, WARN, and ERROR.
+# This should be at INFO or DEBUG in order to get support for Mjolnir problems.
+logLevel: "INFO"
+
 # Set to false to disable synchronizing the ban lists on startup. If true, this
 # is the same as running !mjolnir sync immediately after startup.
 syncOnStartup: true

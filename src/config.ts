@@ -28,6 +28,7 @@ interface IConfig {
     autojoin: boolean;
     managementRoom: string;
     verboseLogging: boolean;
+    logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
     syncOnStartup: boolean;
     verifyPermissionsOnStartup: boolean;
     noop: boolean;

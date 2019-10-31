@@ -17,6 +17,7 @@ limitations under the License.
 import * as path from "path";
 import {
     AutojoinRoomsMixin,
+    LogLevel,
     LogService,
     MatrixClient,
     PantalaimonClient,
@@ -29,6 +30,9 @@ import BanList from "./models/BanList";
 import { Mjolnir } from "./Mjolnir";
 
 LogService.setLogger(new RichConsoleLogger());
+LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
+
+LogService.info("index", "Starting bot...");
 
 (async function () {
     const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));
@@ -69,6 +73,4 @@ LogService.setLogger(new RichConsoleLogger());
 
     const bot = new Mjolnir(client, managementRoomId, protectedRooms, banLists);
     await bot.start();
-
-    LogService.info("index", "Bot started!")
 })();
