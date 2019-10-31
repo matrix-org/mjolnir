@@ -65,6 +65,11 @@ node lib/index.js
 
 ## Synapse Antispam Module
 
+Using the bot to manage your rooms is great, however if you want to use your ban lists 
+(or someone else's) on your server to affect all of your users then an antispam module
+is needed. Primarily meant to block invites from undesired homeservers/users, Mjolnir's
+antispam module is a way to interpret ban lists and apply them to your entire homeserver.
+
 First, install the module to your Synapse python environment:
 ```
 pip install -e git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdirectory=synapse_antispam
