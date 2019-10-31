@@ -701,10 +701,10 @@ lru-cache@^5.1.1:
   dependencies:
     yallist "^3.0.2"
 
-matrix-bot-sdk@^0.4.0-beta.9:
-  version "0.4.0-beta.9"
-  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.4.0-beta.9.tgz#09e640e697d74495e14712e19f3039af6df44005"
-  integrity sha512-bolWW2rOoEXI5Hp9B9M7r/xRdTnjSB+AxlMUTKlaE8IRhbi+CpLKAR+gR+t2uN/8GgBqwelKJ2AVUFfgeD7Row==
+matrix-bot-sdk@^0.4.0-beta.10:
+  version "0.4.0-beta.10"
+  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.4.0-beta.10.tgz#0079f7dca06b065b6cad928e35abf0ef45f8531f"
+  integrity sha512-x+ZX5M3vX9M3GJS3Y1nNEfUqsOMCyd/+z3Ke49AnBSDuT0BpyLtlK/+RL33x9mdLg45N0jiYbx3/xOx5F1f6sw==
   dependencies:
     "@types/node" "^10.14.9"
     bluebird "^3.5.5"
