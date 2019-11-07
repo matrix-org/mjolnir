@@ -339,7 +339,8 @@ export class Mjolnir {
                 }
                 return;
             } else if (event['type'] === "m.room.member") {
-                const errors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+                // Only apply bans in the room we're looking at.
+                const errors = await applyUserBans(this.banLists, [roomId], this);
                 await this.printActionResult(errors);
             }
         }
