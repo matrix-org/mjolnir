@@ -37,30 +37,38 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
             // We specifically use sendNotice to avoid having to escape HTML
             await logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`);
 
-            const state = await mjolnir.client.getRoomState(roomId);
-            const members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']);
+            let members: { userId: string, membership: string }[];
+
+            if (config.fasterMembershipChecks) {
+                const memberIds = await mjolnir.client.getJoinedRoomMembers(roomId);
+                members = memberIds.map(u => {
+                    return {userId: u, membership: "join"};
+                });
+            } else {
+                const state = await mjolnir.client.getRoomState(roomId);
+                members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']).map(s => {
+                    return {userId: s['state_key'], membership: s['content'] ? s['content']['membership'] : 'leave'};
+                });
+            }
 
             for (const member of members) {
-                const content = member['content'];
-                if (!content) continue; // Invalid, but whatever.
-
-                if (content['membership'] === 'ban') {
+                if (member.membership === 'ban') {
                     continue; // user already banned
                 }
 
                 let banned = false;
                 for (const list of lists) {
                     for (const userRule of list.userRules) {
-                        if (userRule.isMatch(member['state_key'])) {
+                        if (userRule.isMatch(member.userId)) {
                             // User needs to be banned
 
                             // We specifically use sendNotice to avoid having to escape HTML
-                            await logMessage(LogLevel.DEBUG, "ApplyBan", `Banning ${member['state_key']} in ${roomId} for: ${userRule.reason}`);
+                            await logMessage(LogLevel.DEBUG, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`);
 
                             if (!config.noop) {
-                                await mjolnir.client.banUser(member['state_key'], roomId, userRule.reason);
+                                await mjolnir.client.banUser(member.userId, roomId, userRule.reason);
                             } else {
-                                await logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member['state_key']} in ${roomId} but Mjolnir is running in no-op mode`);
+                                await logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`);
                             }
 
                             bansApplied++;

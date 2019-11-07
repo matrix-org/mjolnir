@@ -34,6 +34,7 @@ interface IConfig {
     verifyPermissionsOnStartup: boolean;
     noop: boolean;
     protectedRooms: string[]; // matrix.to urls
+    fasterMembershipChecks: boolean;
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
