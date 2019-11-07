@@ -19,6 +19,8 @@ import { ServerAcl } from "../models/ServerAcl";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
 import config from "../config";
+import { LogLevel } from "matrix-bot-sdk";
+import { logMessage } from "../LogProxy";
 
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
@@ -40,35 +42,31 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
 
     if (config.verboseLogging) {
         // We specifically use sendNotice to avoid having to escape HTML
-        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
+        await mjolnir.client.sendNotice(config.managementRoom, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
     }
 
     const errors: RoomUpdateError[] = [];
     for (const roomId of roomIds) {
         try {
-            if (config.verboseLogging) {
-                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Checking ACLs for ${roomId}`);
-            }
+            await logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`);
 
             try {
                 const currentAcl = await mjolnir.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
                 if (acl.matches(currentAcl)) {
-                    if (config.verboseLogging) {
-                        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Skipping ACLs for ${roomId} because they are already the right ones`);
-                    }
+                    await logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`);
                     continue;
                 }
             } catch (e) {
                 // ignore - assume no ACL
             }
 
-            if (config.verboseLogging) {
-                // We specifically use sendNotice to avoid having to escape HTML
-                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Applying ACL in ${roomId}`);
-            }
+            // We specifically use sendNotice to avoid having to escape HTML
+            await logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`);
 
             if (!config.noop) {
                 await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
+            } else {
+                await logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`);
             }
         } catch (e) {
             errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});

@@ -18,6 +18,8 @@ import BanList from "../models/BanList";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
 import config from "../config";
+import { logMessage } from "../LogProxy";
+import { LogLevel } from "matrix-bot-sdk";
 
 /**
  * Applies the member bans represented by the ban lists to the provided rooms, returning the
@@ -32,10 +34,8 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
     let bansApplied = 0;
     for (const roomId of roomIds) {
         try {
-            if (config.verboseLogging) {
-                // We specifically use sendNotice to avoid having to escape HTML
-                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Updating member bans in ${roomId}`);
-            }
+            // We specifically use sendNotice to avoid having to escape HTML
+            await logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`);
 
             const state = await mjolnir.client.getRoomState(roomId);
             const members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']);
@@ -54,13 +54,13 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                         if (userRule.isMatch(member['state_key'])) {
                             // User needs to be banned
 
-                            if (config.verboseLogging) {
-                                // We specifically use sendNotice to avoid having to escape HTML
-                                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Banning ${member['state_key']} in ${roomId} for: ${userRule.reason}`);
-                            }
+                            // We specifically use sendNotice to avoid having to escape HTML
+                            await logMessage(LogLevel.DEBUG, "ApplyBan", `Banning ${member['state_key']} in ${roomId} for: ${userRule.reason}`);
 
                             if (!config.noop) {
                                 await mjolnir.client.banUser(member['state_key'], roomId, userRule.reason);
+                            } else {
+                                await logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member['state_key']} in ${roomId} but Mjolnir is running in no-op mode`);
                             }
 
                             bansApplied++;
@@ -79,7 +79,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
     if (bansApplied > 0) {
         const html = `<font color="#00cc00"><b>Banned ${bansApplied} people</b></font>`;
         const text = `Banned ${bansApplied} people`;
-        await this.client.sendMessage(mjolnir.managementRoomId, {
+        await this.client.sendMessage(config.managementRoom, {
             msgtype: "m.notice",
             body: text,
             format: "org.matrix.custom.html",

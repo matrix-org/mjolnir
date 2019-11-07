@@ -83,6 +83,6 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
         const text = "There was an error processing your command - see console/log for details";
         const reply = RichReply.createFor(roomId, event, text, text);
         reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
+        return await mjolnir.client.sendMessage(roomId, reply);
     }
 }

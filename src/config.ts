@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import * as config from "config";
+import { MatrixClient } from "matrix-bot-sdk";
 
 interface IConfig {
     homeserverUrl: string;
@@ -33,6 +34,14 @@ interface IConfig {
     verifyPermissionsOnStartup: boolean;
     noop: boolean;
     protectedRooms: string[]; // matrix.to urls
+
+    /**
+     * Config options only set at runtime. Try to avoid using the objects
+     * here as much as possible.
+     */
+    RUNTIME: {
+        client: MatrixClient;
+    };
 }
 
 export default <IConfig>config;

@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { applyUserBans } from "./actions/ApplyBan";
 import config from "./config";
+import { logMessage } from "./LogProxy";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -37,14 +38,13 @@ export class Mjolnir {
 
     constructor(
         public readonly client: MatrixClient,
-        public readonly managementRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
     ) {
         client.on("room.event", this.handleEvent.bind(this));
 
         client.on("room.message", async (roomId, event) => {
-            if (roomId !== managementRoomId) return;
+            if (roomId !== config.managementRoom) return;
             if (!event['content']) return;
 
             const content = event['content'];
@@ -55,6 +55,7 @@ export class Mjolnir {
 
                 // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
                 event['content']['body'] = COMMAND_PREFIX + content['body'].substring(prefixUsed.length);
+                LogService.info("Mjolnir", `Command being run by ${event['sender']}: ${event['content']['body']}`);
 
                 await client.sendReadReceipt(roomId, event['event_id']);
                 return handleCommand(roomId, event, this);
@@ -83,25 +84,19 @@ export class Mjolnir {
         return this.client.start().then(async () => {
             this.currentState = STATE_CHECKING_PERMISSIONS;
             if (config.verifyPermissionsOnStartup) {
-                if (config.verboseLogging) {
-                    await this.client.sendNotice(this.managementRoomId, "Checking permissions...");
-                }
+                await logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
                 await this.verifyPermissions(config.verboseLogging);
             }
         }).then(async () => {
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
-                if (config.verboseLogging) {
-                    await this.client.sendNotice(this.managementRoomId, "Syncing lists...");
-                }
+                await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.buildWatchedBanLists();
                 await this.syncLists(config.verboseLogging);
             }
         }).then(async () => {
             this.currentState = STATE_RUNNING;
-            if (config.verboseLogging) {
-                await this.client.sendNotice(this.managementRoomId, "Startup complete.");
-            }
+            await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
         });
     }
 
@@ -181,7 +176,7 @@ export class Mjolnir {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";
-            await this.client.sendMessage(this.managementRoomId, {
+            await this.client.sendMessage(config.managementRoom, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -257,7 +252,7 @@ export class Mjolnir {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(this.managementRoomId, {
+            await this.client.sendMessage(config.managementRoom, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -285,7 +280,7 @@ export class Mjolnir {
         if (!hadErrors) {
             const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(this.managementRoomId, {
+            await this.client.sendMessage(config.managementRoom, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -302,7 +297,7 @@ export class Mjolnir {
                 const url = this.protectedRooms[roomId];
                 let html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
                 let text = `Power levels changed in ${url} - checking permissions...`;
-                await this.client.sendMessage(this.managementRoomId, {
+                await this.client.sendMessage(config.managementRoom, {
                     msgtype: "m.notice",
                     body: text,
                     format: "org.matrix.custom.html",
@@ -313,7 +308,7 @@ export class Mjolnir {
                 if (!hadErrors) {
                     html = `<font color="#00cc00">All permissions look OK.</font>`;
                     text = "All permissions look OK.";
-                    await this.client.sendMessage(this.managementRoomId, {
+                    await this.client.sendMessage(config.managementRoom, {
                         msgtype: "m.notice",
                         body: text,
                         format: "org.matrix.custom.html",
@@ -358,7 +353,7 @@ export class Mjolnir {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(this.managementRoomId, message);
+        await this.client.sendMessage(config.managementRoom, message);
         return true;
     }
 }

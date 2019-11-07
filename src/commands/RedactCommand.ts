@@ -17,6 +17,8 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import { getMessagesByUserSinceLastJoin } from "../utils";
 import config from "../config";
+import { logMessage } from "../LogProxy";
+import { LogLevel } from "matrix-bot-sdk";
 
 // !mjolnir redact <user ID> [room alias]
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -28,17 +30,15 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
 
     const targetRoomIds = roomAlias ? [roomAlias] : Object.keys(mjolnir.protectedRooms);
     for (const targetRoomId of targetRoomIds) {
-        if (config.verboseLogging) {
-            await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Fetching sent messages for ${userId} in ${targetRoomId} to redact...`);
-        }
+        await logMessage(LogLevel.DEBUG, "RedactCommand", `Fetching sent messages for ${userId} in ${targetRoomId} to redact...`);
 
         const eventsToRedact = await getMessagesByUserSinceLastJoin(mjolnir.client, userId, targetRoomId);
         for (const victimEvent of eventsToRedact) {
-            if (config.verboseLogging) {
-                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
-            }
+            await logMessage(LogLevel.DEBUG, "RedactCommand", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
             if (!config.noop) {
                 await mjolnir.client.redactEvent(targetRoomId, victimEvent['event_id']);
+            } else {
+                await logMessage(LogLevel.WARN, "RedactCommand", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`);
             }
         }
     }

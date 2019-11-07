@@ -28,6 +28,9 @@ import {
 import config from "./config";
 import BanList from "./models/BanList";
 import { Mjolnir } from "./Mjolnir";
+import { logMessage } from "./LogProxy";
+
+config.RUNTIME = {client: null};
 
 LogService.setLogger(new RichConsoleLogger());
 LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
@@ -44,6 +47,8 @@ LogService.info("index", "Starting bot...");
     } else {
         client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
     }
+
+    config.RUNTIME.client = client;
 
     if (config.autojoin) {
         AutojoinRoomsMixin.setupOnClient(client);
@@ -68,9 +73,9 @@ LogService.info("index", "Starting bot...");
     }
 
     // Ensure we're also in the management room
-    const managementRoomId = await client.joinRoom(config.managementRoom);
-    await client.sendNotice(managementRoomId, "Mjolnir is starting up. Use !mjolnir to query status.");
+    config.managementRoom = await client.joinRoom(config.managementRoom);
+    await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
-    const bot = new Mjolnir(client, managementRoomId, protectedRooms, banLists);
+    const bot = new Mjolnir(client, protectedRooms, banLists);
     await bot.start();
 })();

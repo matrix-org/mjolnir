@@ -16,10 +16,11 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RULE_ROOM, RULE_SERVER, RULE_USER, ruleTypeToStable, USER_RULE_TYPES } from "../models/BanList";
-import { RichReply } from "matrix-bot-sdk";
+import { LogLevel, RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
 import config from "../config";
+import { logMessage } from "../LogProxy";
 
 function parseBits(parts: string[]): { listShortcode: string, entityType: string, ruleType: string, glob: string, reason: string } {
     const shortcode = parts[2].toLowerCase();
@@ -98,7 +99,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
 
     if (USER_RULE_TYPES.includes(bits.ruleType) && parts.length > 5 && parts[5] === 'true') {
         const rule = new MatrixGlob(bits.glob);
-        await mjolnir.client.sendNotice(mjolnir.managementRoomId, "Unbanning users that match glob: " + bits.glob);
+        await logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.glob);
         let unbannedSomeone = false;
         for (const protectedRoomId of Object.keys(mjolnir.protectedRooms)) {
             const members = await mjolnir.client.getMembers(protectedRoomId, null, ['ban'], null);
@@ -106,21 +107,21 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
                 const victim = member['state_key'];
                 if (!member['content'] || member['content']['membership'] !== 'ban') continue;
                 if (rule.test(victim)) {
-                    if (config.verboseLogging) {
-                        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Unbanning ${victim} in ${protectedRoomId}`);
-                    }
+                    await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`);
+
                     if (!config.noop) {
                         await mjolnir.client.unbanUser(victim, protectedRoomId);
+                    } else {
+                        await logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${victim} in ${protectedRoomId} but Mjolnir is running in no-op mode`);
                     }
+
                     unbannedSomeone = true;
                 }
             }
         }
 
         if (unbannedSomeone) {
-            if (config.verboseLogging) {
-                await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Syncing lists to ensure no users were accidentally unbanned`);
-            }
+            await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure no users were accidentally unbanned`);
             await mjolnir.syncLists(config.verboseLogging);
         }
     }
