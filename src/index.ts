@@ -60,6 +60,7 @@ LogService.info("index", "Starting bot...");
     const joinedRooms = await client.getJoinedRooms();
 
     // Ensure we're also joined to the rooms we're protecting
+    LogService.info("index", "Resolving protected rooms...");
     for (const roomRef of config.protectedRooms) {
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) continue;
@@ -73,6 +74,7 @@ LogService.info("index", "Starting bot...");
     }
 
     // Ensure we're also in the management room
+    LogService.info("index", "Resolving management room...");
     const managementRoomId = await client.resolveRoom(config.managementRoom);
     if (!joinedRooms.includes(managementRoomId)) {
         config.managementRoom = await client.joinRoom(config.managementRoom);
