@@ -20,6 +20,7 @@ import { Mjolnir } from "../Mjolnir";
 import config from "../config";
 import { logMessage } from "../LogProxy";
 import { LogLevel } from "matrix-bot-sdk";
+import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
 /**
  * Applies the member bans represented by the ban lists to the provided rooms, returning the
@@ -80,7 +81,12 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                 }
             }
         } catch (e) {
-            errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
+            const message = e.message || (e.body ? e.body.error : '<no message>');
+            errors.push({
+                roomId,
+                errorMessage: message,
+                errorKind: message.includes("You don't have permission to ban") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL,
+            });
         }
     }
 

@@ -21,6 +21,7 @@ import { Mjolnir } from "../Mjolnir";
 import config from "../config";
 import { LogLevel } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
+import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
@@ -69,7 +70,9 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
                 await logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`);
             }
         } catch (e) {
-            errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
+            const message = e.message || (e.body ? e.body.error : '<no message>');
+            const kind = message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
+            errors.push({roomId, errorMessage: message, errorKind: kind});
         }
     }
 

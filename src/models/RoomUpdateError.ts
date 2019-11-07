@@ -17,4 +17,5 @@ limitations under the License.
 export interface RoomUpdateError {
     roomId: string;
     errorMessage: string;
+    errorKind: string;
 }

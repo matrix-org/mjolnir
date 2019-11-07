@@ -18,5 +18,5 @@ import { Mjolnir } from "../Mjolnir";
 
 // !mjolnir verify
 export async function execPermissionCheckCommand(roomId: string, event: any, mjolnir: Mjolnir) {
-    return mjolnir.verifyPermissions();
+    return mjolnir.verifyPermissions(true, true);
 }

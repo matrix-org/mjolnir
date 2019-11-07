@@ -22,6 +22,7 @@ import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { applyUserBans } from "./actions/ApplyBan";
 import config from "./config";
 import { logMessage } from "./LogProxy";
+import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -166,13 +167,13 @@ export class Mjolnir {
         this.banLists = banLists;
     }
 
-    public async verifyPermissions(verbose = true) {
+    public async verifyPermissions(verbose = true, printRegardless = false) {
         const errors: RoomUpdateError[] = [];
         for (const roomId of Object.keys(this.protectedRooms)) {
             errors.push(...(await this.verifyPermissionsIn(roomId)));
         }
 
-        const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:");
+        const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:", printRegardless);
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";
@@ -216,22 +217,42 @@ export class Mjolnir {
             // Wants: ban, kick, redact, m.room.server_acl
 
             if (userLevel < ban) {
-                errors.push({roomId, errorMessage: `Missing power level for bans: ${userLevel} < ${ban}`});
+                errors.push({
+                    roomId,
+                    errorMessage: `Missing power level for bans: ${userLevel} < ${ban}`,
+                    errorKind: ERROR_KIND_PERMISSION,
+                });
             }
             if (userLevel < kick) {
-                errors.push({roomId, errorMessage: `Missing power level for kicks: ${userLevel} < ${kick}`});
+                errors.push({
+                    roomId,
+                    errorMessage: `Missing power level for kicks: ${userLevel} < ${kick}`,
+                    errorKind: ERROR_KIND_PERMISSION,
+                });
             }
             if (userLevel < redact) {
-                errors.push({roomId, errorMessage: `Missing power level for redactions: ${userLevel} < ${redact}`});
+                errors.push({
+                    roomId,
+                    errorMessage: `Missing power level for redactions: ${userLevel} < ${redact}`,
+                    errorKind: ERROR_KIND_PERMISSION,
+                });
             }
             if (userLevel < aclLevel) {
-                errors.push({roomId, errorMessage: `Missing power level for server ACLs: ${userLevel} < ${aclLevel}`});
+                errors.push({
+                    roomId,
+                    errorMessage: `Missing power level for server ACLs: ${userLevel} < ${aclLevel}`,
+                    errorKind: ERROR_KIND_PERMISSION,
+                });
             }
 
             // Otherwise OK
         } catch (e) {
             LogService.error("Mjolnir", e);
-            errors.push({roomId, errorMessage: e.message || (e.body ? e.body.error : '<no message>')});
+            errors.push({
+                roomId,
+                errorMessage: e.message || (e.body ? e.body.error : '<no message>'),
+                errorKind: ERROR_KIND_FATAL,
+            });
         }
 
         return errors;
@@ -294,6 +315,7 @@ export class Mjolnir {
             if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
+                ErrorCache.resetError(roomId, ERROR_KIND_PERMISSION);
                 const url = this.protectedRooms[roomId];
                 let html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
                 let text = `Power levels changed in ${url} - checking permissions...`;
@@ -329,8 +351,16 @@ export class Mjolnir {
         }
     }
 
-    private async printActionResult(errors: RoomUpdateError[], title: string = null) {
+    private async printActionResult(errors: RoomUpdateError[], title: string = null, logAnyways = false) {
         if (errors.length <= 0) return false;
+
+        if (!logAnyways) {
+            errors = errors.filter(e => ErrorCache.triggerError(e.roomId, e.errorKind));
+            if (errors.length <= 0) {
+                LogService.warn("Mjolnir", "Multiple errors are happening, however they are muted. Please check the management room.");
+                return true;
+            }
+        }
 
         let html = "";
         let text = "";
