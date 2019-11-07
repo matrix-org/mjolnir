@@ -73,7 +73,12 @@ LogService.info("index", "Starting bot...");
     }
 
     // Ensure we're also in the management room
-    config.managementRoom = await client.joinRoom(config.managementRoom);
+    const managementRoomId = await client.resolveRoom(config.managementRoom);
+    if (!joinedRooms.includes(managementRoomId)) {
+        config.managementRoom = await client.joinRoom(config.managementRoom);
+    } else {
+        config.managementRoom = managementRoomId;
+    }
     await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
     const bot = new Mjolnir(client, protectedRooms, banLists);
