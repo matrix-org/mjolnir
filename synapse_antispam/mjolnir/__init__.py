@@ -1,0 +1,1 @@
+from .antispam import AntiSpam

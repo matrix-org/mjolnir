@@ -23,7 +23,7 @@ Phase 2:
 * [x] Support multiple lists
 
 Phase 3:
-* [ ] Synapse antispam module
+* [x] Synapse antispam module
 * [ ] Room upgrade handling (both protected+list rooms)
 * [ ] Support community-defined scopes? (ie: no hardcoded config)
 * [ ] Riot hooks (independent of mjolnir?)
@@ -62,6 +62,48 @@ nano config/development.yaml
 
 node lib/index.js
 ```
+
+## Synapse Antispam Module
+
+Using the bot to manage your rooms is great, however if you want to use your ban lists 
+(or someone else's) on your server to affect all of your users then an antispam module
+is needed. Primarily meant to block invites from undesired homeservers/users, Mjolnir's
+antispam module is a way to interpret ban lists and apply them to your entire homeserver.
+
+First, install the module to your Synapse python environment:
+```
+pip install -e git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdirectory=synapse_antispam
+```
+
+*Note*: Where your python environment is depends on your installation method. Visit
+[#synapse:matrix.org](https://matrix.to/#/#synapse:matrix.org) if you're not sure.
+
+Then add the following to your `homeserver.yaml`:
+```yaml
+spam_checker:
+  module: mjolnir.AntiSpam
+  config:
+    # Prevent servers/users in the ban lists from inviting users on this
+    # server to rooms. Default true.
+    block_invites: true
+    # Flag messages sent by servers/users in the ban lists as spam. Currently
+    # this means that spammy messages will appear as empty to users. Default
+    # false.
+    block_messages: false
+    # The room IDs of the ban lists to honour. Unlike other parts of Mjolnir,
+    # this list cannot be room aliases or permalinks. This server is expected
+    # to already be joined to the room - Mjolnir will not automatically join
+    # these rooms.
+    ban_lists:
+      - "!roomid:example.org"
+```
+
+Be sure to change the configuration to match your setup. Your server is expected to
+already be participating in the ban lists - if it is not, you will need to have a user
+on your homeserver join. The antispam module will not join the rooms for you.
+
+If you change the configuration, you will need to restart Synapse. You'll also need
+to restart Synapse to install the plugin.
 
 ## Development
 
