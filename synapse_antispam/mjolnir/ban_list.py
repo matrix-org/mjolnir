@@ -16,7 +16,7 @@
 import logging
 from .list_rule import ListRule, ALL_RULE_TYPES, USER_RULE_TYPES, SERVER_RULE_TYPES, ROOM_RULE_TYPES
 from twisted.internet import defer
-from synapse.logging.context import LoggingContext
+from synapse.metrics.background_process_metrics import run_as_background_process
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
@@ -31,7 +31,7 @@ class BanList(object):
 
     def build(with_event=None):
         @defer.inlineCallbacks
-        def run(self, with_event=None):
+        def run(with_event):
             events = yield self.get_relevant_state_events()
             if with_event is not None:
                 events = [*events, with_event]
@@ -70,8 +70,7 @@ class BanList(object):
                 elif event_type in SERVER_RULE_TYPES:
                     self.server_rules.append(rule)
 
-        with LoggingContext("mjolnir_ban_list_build"):
-            run(with_event=with_event)
+        run_as_background_process("mjolnir_build_ban_list", run, with_event)
 
     def get_relevant_state_events(self):
         return self.api.get_state_events_in_room(self.room_id, [(t, None) for t in ALL_RULE_TYPES])
