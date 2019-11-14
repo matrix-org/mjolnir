@@ -15,91 +15,121 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RULE_ROOM, RULE_SERVER, RULE_USER, ruleTypeToStable, USER_RULE_TYPES } from "../models/BanList";
-import { LogLevel, RichReply } from "matrix-bot-sdk";
+import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
+import { LogLevel, LogService, RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
 import config from "../config";
 import { logMessage } from "../LogProxy";
+import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 
-function parseBits(parts: string[]): { listShortcode: string, entityType: string, ruleType: string, glob: string, reason: string } {
-    const shortcode = parts[2].toLowerCase();
-    const entityType = parts[3].toLowerCase();
-    const glob = parts[4];
-    const reason = parts.slice(5).join(' ') || "<no reason>";
+interface Arguments {
+    list: BanList;
+    entity: string;
+    ruleType: string;
+    reason: string;
+}
 
-    let rule = null;
-    if (entityType === "user") {
-        rule = RULE_USER;
-    } else if (entityType === "room") {
-        rule = RULE_ROOM;
-    } else if (entityType === "server") {
-        rule = RULE_SERVER;
+// Exported for tests
+export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments> {
+    let defaultShortcode = null;
+    try {
+        const data = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
+        defaultShortcode = data['shortcode'];
+    } catch (e) {
+        LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");
+        LogService.warn("UnbanBanCommand", e);
+
+        // Assume no default.
     }
-    if (!rule) {
-        return {listShortcode: shortcode, entityType, ruleType: null, glob, reason};
-    }
-    rule = ruleTypeToStable(rule);
 
-    return {listShortcode: shortcode, entityType, ruleType: rule, glob, reason};
+    let argumentIndex = 2;
+    let ruleType = null;
+    let entity = null;
+    let list = null;
+    while (argumentIndex < 6 && argumentIndex < parts.length) {
+        const arg = parts[argumentIndex++];
+        if (!arg) break;
+        if (["user", "room", "server"].includes(arg.toLowerCase())) {
+            if (arg.toLowerCase() === 'user') ruleType = RULE_USER;
+            if (arg.toLowerCase() === 'room') ruleType = RULE_ROOM;
+            if (arg.toLowerCase() === 'server') ruleType = RULE_SERVER;
+        } else if (!entity && (arg[0] === '@' || arg[0] === '!' || arg[0] === '#' || arg.includes("*"))) {
+            entity = arg;
+            if (arg.startsWith("@") && !ruleType) ruleType = RULE_USER;
+            else if (arg.startsWith("#") && !ruleType) ruleType = RULE_ROOM;
+            else if (arg.startsWith("!") && !ruleType) ruleType = RULE_ROOM;
+            else if (!ruleType) ruleType = RULE_SERVER;
+        } else if (!list) {
+            const foundList = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === arg.toLowerCase());
+            if (foundList) {
+                list = foundList;
+            }
+        }
+
+        if (entity) break;
+    }
+
+    if (!list) {
+        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode);
+    }
+
+    if (!entity) {
+        entity = parts[argumentIndex - 1];
+        if (!ruleType) ruleType = RULE_SERVER; // due to the conditions above, it can't be anything else
+        console.log(parts);
+    }
+
+    let replyMessage = null;
+    if (!list) replyMessage = "No ban list matching that shortcode was found";
+    else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
+    else if (!entity) replyMessage = "No entity found to ban";
+
+    if (replyMessage) {
+        const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
+        reply["msgtype"] = "m.notice";
+        await mjolnir.client.sendMessage(roomId, reply);
+        return null;
+    }
+
+    return {
+        list,
+        entity,
+        ruleType,
+        reason: parts.splice(argumentIndex).join(" ").trim(),
+    };
 }
 
 // !mjolnir ban <shortcode> <user|server|room> <glob> [reason]
 export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const bits = parseBits(parts);
-    if (!bits.ruleType) {
-        const replyText = "Unknown entity type '" + bits.entityType + "' - try one of user, room, or server";
-        const reply = RichReply.createFor(roomId, event, replyText, replyText);
-        reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
-    }
+    const bits = await parseArguments(roomId, event, mjolnir, parts);
+    if (!bits) return; // error already handled
 
     const recommendation = recommendationToStable(RECOMMENDATION_BAN);
     const ruleContent = {
-        entity: bits.glob,
+        entity: bits.entity,
         recommendation,
         reason: bits.reason,
     };
-    const stateKey = `rule:${bits.glob}`;
+    const stateKey = `rule:${bits.entity}`;
 
-    const list = mjolnir.lists.find(b => b.listShortcode === bits.listShortcode);
-    if (!list) {
-        const replyText = "No ban list with that shortcode was found.";
-        const reply = RichReply.createFor(roomId, event, replyText, replyText);
-        reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
-    }
-
-    await mjolnir.client.sendStateEvent(list.roomId, bits.ruleType, stateKey, ruleContent);
+    await mjolnir.client.sendStateEvent(bits.list.roomId, bits.ruleType, stateKey, ruleContent);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
 export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const bits = parseBits(parts);
-    if (!bits.ruleType) {
-        const replyText = "Unknown entity type '" + bits.entityType + "' - try one of user, room, or server";
-        const reply = RichReply.createFor(roomId, event, replyText, replyText);
-        reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
-    }
+    const bits = await parseArguments(roomId, event, mjolnir, parts);
+    if (!bits) return; // error already handled
 
     const ruleContent = {}; // empty == clear/unban
-    const stateKey = `rule:${bits.glob}`;
+    const stateKey = `rule:${bits.entity}`;
 
-    const list = mjolnir.lists.find(b => b.listShortcode === bits.listShortcode);
-    if (!list) {
-        const replyText = "No ban list with that shortcode was found.";
-        const reply = RichReply.createFor(roomId, event, replyText, replyText);
-        reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
-    }
-
-    await mjolnir.client.sendStateEvent(list.roomId, bits.ruleType, stateKey, ruleContent);
+    await mjolnir.client.sendStateEvent(bits.list.roomId, bits.ruleType, stateKey, ruleContent);
 
     if (USER_RULE_TYPES.includes(bits.ruleType) && parts.length > 5 && parts[5] === 'true') {
-        const rule = new MatrixGlob(bits.glob);
-        await logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.glob);
+        const rule = new MatrixGlob(bits.entity);
+        await logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
         for (const protectedRoomId of Object.keys(mjolnir.protectedRooms)) {
             const members = await mjolnir.client.getMembers(protectedRoomId, null, ['ban'], null);

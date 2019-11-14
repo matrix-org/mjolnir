@@ -37,9 +37,9 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
     try {
         if (parts.length === 1 || parts[1] === 'status') {
             return await execStatusCommand(roomId, event, mjolnir);
-        } else if (parts[1] === 'ban' && parts.length > 4) {
+        } else if (parts[1] === 'ban' && parts.length > 2) {
             return await execBanCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'unban' && parts.length > 4) {
+        } else if (parts[1] === 'unban' && parts.length > 2) {
             return await execUnbanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rules') {
             return await execDumpRulesCommand(roomId, event, mjolnir);

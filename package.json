@@ -9,11 +9,17 @@
   "private": true,
   "scripts": {
     "build": "tsc",
-    "lint": "tslint --project ./tsconfig.json --type-check -t stylish",
-    "start:dev": "yarn build && node lib/index.js"
+    "lint": "tslint --project ./tsconfig.json -t stylish",
+    "start:dev": "yarn build && node lib/index.js",
+    "test": "ts-mocha --project ./tsconfig.json test/**/*.ts"
   },
   "devDependencies": {
+    "@types/expect": "^24.3.0",
+    "@types/mocha": "^5.2.7",
     "@types/node": "11",
+    "expect": "^24.9.0",
+    "mocha": "^6.2.2",
+    "ts-mocha": "^6.0.0",
     "tslint": "^5.20.0",
     "typescript": "^3.6.3"
   },
