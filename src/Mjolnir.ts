@@ -311,6 +311,18 @@ export class Mjolnir {
     }
 
     private async handleEvent(roomId: string, event: any) {
+        // Check for UISI errors
+        if (roomId === config.managementRoom) {
+            if (event['type'] === 'm.room.message' && event['content'] && event['content']['body']) {
+                if (event['content']['body'] === "** Unable to decrypt: The sender's device has not sent us the keys for this message. **") {
+                    // UISI
+                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '⚠');
+                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], 'UISI');
+                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '🚨');
+                }
+            }
+        }
+
         if (Object.keys(this.protectedRooms).includes(roomId)) {
             if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
