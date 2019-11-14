@@ -62,6 +62,23 @@ describe("UnbanBanCommand", () => {
             expect(bits.list.listShortcode).toBe("test");
         });
 
+        it("should be able to detect servers with ban reasons", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).lists = [{listShortcode: "test"}];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
+            };
+
+            const command = "!mjolnir ban test example.org reason here";
+            const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
+            expect(bits).toBeTruthy();
+            expect(bits.reason).toBe("reason here");
+            expect(bits.ruleType).toBe(RULE_SERVER);
+            expect(bits.entity).toBe("example.org");
+            expect(bits.list).toBeDefined();
+            expect(bits.list.listShortcode).toBe("test");
+        });
+
         it("should be able to detect servers with globs", async () => {
             const mjolnir = createTestMjolnir();
             (<any>mjolnir).lists = [{listShortcode: "test"}];
@@ -113,6 +130,23 @@ describe("UnbanBanCommand", () => {
             expect(bits.list.listShortcode).toBe("test");
         });
 
+        it("should be able to detect room IDs with ban reasons", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).lists = [{listShortcode: "test"}];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
+            };
+
+            const command = "!mjolnir ban test !example.org reason here";
+            const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
+            expect(bits).toBeTruthy();
+            expect(bits.reason).toBe("reason here");
+            expect(bits.ruleType).toBe(RULE_ROOM);
+            expect(bits.entity).toBe("!example.org");
+            expect(bits.list).toBeDefined();
+            expect(bits.list.listShortcode).toBe("test");
+        });
+
         it("should be able to detect room IDs with globs", async () => {
             const mjolnir = createTestMjolnir();
             (<any>mjolnir).lists = [{listShortcode: "test"}];
@@ -141,6 +175,23 @@ describe("UnbanBanCommand", () => {
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
+            expect(bits.ruleType).toBe(RULE_ROOM);
+            expect(bits.entity).toBe("#example.org");
+            expect(bits.list).toBeDefined();
+            expect(bits.list.listShortcode).toBe("test");
+        });
+
+        it("should be able to detect room aliases with ban reasons", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).lists = [{listShortcode: "test"}];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
+            };
+
+            const command = "!mjolnir ban test #example.org reason here";
+            const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
+            expect(bits).toBeTruthy();
+            expect(bits.reason).toBe("reason here");
             expect(bits.ruleType).toBe(RULE_ROOM);
             expect(bits.entity).toBe("#example.org");
             expect(bits.list).toBeDefined();
@@ -192,6 +243,23 @@ describe("UnbanBanCommand", () => {
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
+            expect(bits.ruleType).toBe(RULE_USER);
+            expect(bits.entity).toBe("@example.org");
+            expect(bits.list).toBeDefined();
+            expect(bits.list.listShortcode).toBe("test");
+        });
+
+        it("should be able to detect user IDs with ban reasons", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).lists = [{listShortcode: "test"}];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
+            };
+
+            const command = "!mjolnir ban test @example.org reason here";
+            const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
+            expect(bits).toBeTruthy();
+            expect(bits.reason).toBe("reason here");
             expect(bits.ruleType).toBe(RULE_USER);
             expect(bits.entity).toBe("@example.org");
             expect(bits.list).toBeDefined();

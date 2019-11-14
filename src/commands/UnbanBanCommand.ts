@@ -70,14 +70,19 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
         if (entity) break;
     }
 
-    if (!list) {
-        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode);
+    if (!entity) {
+        // It'll be a server at this point - figure out which positional argument is the server
+        // name and where the reason starts.
+        let serverIndex = 2;
+        if (ruleType) serverIndex++;
+        if (list) serverIndex++;
+        entity = parts[serverIndex];
+        if (!ruleType) ruleType = RULE_SERVER;
+        argumentIndex = serverIndex + 1;
     }
 
-    if (!entity) {
-        entity = parts[argumentIndex - 1];
-        if (!ruleType) ruleType = RULE_SERVER; // due to the conditions above, it can't be anything else
-        console.log(parts);
+    if (!list) {
+        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode);
     }
 
     let replyMessage = null;
