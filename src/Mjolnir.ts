@@ -387,4 +387,21 @@ export class Mjolnir {
         await this.client.sendMessage(config.managementRoom, message);
         return true;
     }
+
+    public async isSynapseAdmin(): Promise<boolean> {
+        try {
+            const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
+            const response = await this.client.doRequest("GET", endpoint);
+            return response['admin'];
+        } catch (e) {
+            LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
+            LogService.error("Mjolnir", e);
+            return false; // assume not
+        }
+    }
+
+    public async deactivateSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v1/deactivate/${userId}`;
+        return await this.client.doRequest("POST", endpoint);
+    }
 }
