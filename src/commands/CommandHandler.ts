@@ -26,6 +26,7 @@ import { execCreateListCommand } from "./CreateBanListCommand";
 import { execUnwatchCommand, execWatchCommand } from "./WatchUnwatchCommand";
 import { execRedactCommand } from "./RedactCommand";
 import { execImportCommand } from "./ImportCommand";
+import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -56,6 +57,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execRedactCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'import' && parts.length > 2) {
             return await execImportCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'default' && parts.length > 2) {
+            return await execSetDefaultListCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -71,6 +74,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir watch <room alias/ID>                                      - Watches a ban list\n" +
                 "!mjolnir unwatch <room alias/ID>                                    - Unwatches a ban list\n" +
                 "!mjolnir import <room alias/ID> <list shortcode>                    - Imports bans and ACLs into the given list\n" +
+                "!mjolnir default <shortcode>                                        - Sets the default list for commands\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;
