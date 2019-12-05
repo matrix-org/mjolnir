@@ -28,6 +28,7 @@ import { execRedactCommand } from "./RedactCommand";
 import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
+import { execDisableProtection, execEnableProtection, execListProtections } from "./ProtectionsCommands";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -62,6 +63,12 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execSetDefaultListCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'deactivate' && parts.length > 2) {
             return await execDeactivateCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'protections') {
+            return await execListProtections(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'enable' && parts.length > 1) {
+            return await execEnableProtection(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'disable' && parts.length > 1) {
+            return await execDisableProtection(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -79,6 +86,9 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir import <room alias/ID> <list shortcode>                    - Imports bans and ACLs into the given list\n" +
                 "!mjolnir default <shortcode>                                        - Sets the default list for commands\n" +
                 "!mjolnir deactivate <user ID>                                       - Deactivates a user ID\n" +
+                "!mjolnir protections                                                - List all available protections\n" +
+                "!mjolnir enable <protection>                                        - Enables a particular protection\n" +
+                "!mjolnir disable <protection>                                       - Disables a particular protection\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;

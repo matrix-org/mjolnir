@@ -23,6 +23,8 @@ import { applyUserBans } from "./actions/ApplyBan";
 import config from "./config";
 import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
+import { IProtection } from "./protections/IProtection";
+import { PROTECTIONS } from "./protections/protections";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -30,12 +32,14 @@ export const STATE_SYNCING = "syncing";
 export const STATE_RUNNING = "running";
 
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
+const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 
 export class Mjolnir {
 
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
+    private protections: IProtection[] = [];
 
     constructor(
         public readonly client: MatrixClient,
@@ -81,6 +85,10 @@ export class Mjolnir {
         return this.currentState;
     }
 
+    public get enabledProtections(): IProtection[] {
+        return this.protections;
+    }
+
     public start() {
         return this.client.start().then(async () => {
             this.currentState = STATE_CHECKING_PERMISSIONS;
@@ -94,11 +102,59 @@ export class Mjolnir {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.buildWatchedBanLists();
                 await this.syncLists(config.verboseLogging);
+                await this.enableProtections();
             }
         }).then(async () => {
             this.currentState = STATE_RUNNING;
             await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
         });
+    }
+
+    private async getEnabledProtections() {
+        let enabled: string[] = [];
+        try {
+            const protections = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            if (protections && protections['enabled']) {
+                for (const protection of protections['enabled']) {
+                    enabled.push(protection);
+                }
+            }
+        } catch (e) {
+            LogService.warn("Mjolnir", e);
+        }
+
+        return enabled;
+    }
+
+    private async enableProtections() {
+        for (const protection of await this.getEnabledProtections()) {
+            try {
+                this.enableProtection(protection, false);
+            } catch (e) {
+                LogService.warn("Mjolnir", e);
+            }
+        }
+    }
+
+    public async enableProtection(protectionName: string, persist = true): Promise<any> {
+        const definition = PROTECTIONS[protectionName];
+        if (!definition) throw new Error("Failed to find protection by name: " + protectionName);
+
+        const protection = definition.factory();
+        this.protections.push(protection);
+
+        if (persist) {
+            const existing = this.protections.map(p => p.name);
+            await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
+        }
+    }
+
+    public async disableProtection(protectionName: string): Promise<any> {
+        const idx = this.protections.findIndex(p => p.name === protectionName);
+        if (idx >= 0) this.protections.splice(idx, 1);
+
+        const existing = this.protections.map(p => p.name);
+        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
     }
 
     public async watchList(roomRef: string): Promise<BanList> {
@@ -325,6 +381,18 @@ export class Mjolnir {
 
         if (Object.keys(this.protectedRooms).includes(roomId)) {
             if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
+
+            // Iterate all the protections
+            for (const protection of this.protections) {
+                try {
+                    await protection.handleEvent(this, roomId, event);
+                } catch (e) {
+                    LogService.error("Mjolnir", "Error handling protection: " + protection.name);
+                    LogService.error("Mjolnir", e);
+                    await this.client.sendNotice(config.managementRoom, "There was an error processing an event through a protection - see log for details.");
+                }
+            }
+
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
                 ErrorCache.resetError(roomId, ERROR_KIND_PERMISSION);
