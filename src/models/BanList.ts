@@ -43,7 +43,7 @@ export default class BanList {
     }
 
     public get listShortcode(): string {
-        return this.shortcode;
+        return this.shortcode || '';
     }
 
     public set listShortcode(newShortcode: string) {
@@ -98,9 +98,9 @@ export default class BanList {
 
             const entity = content['entity'];
             const recommendation = content['recommendation'];
-            const reason = content['reason'];
+            const reason = content['reason'] || '<no reason>';
 
-            if (!entity || !recommendation || !reason) {
+            if (!entity || !recommendation) {
                 continue;
             }
 
