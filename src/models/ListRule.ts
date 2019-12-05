@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
+import { MatrixGlob } from "matrix-bot-sdk";
 
 export const RECOMMENDATION_BAN = "m.ban";
 export const RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"];

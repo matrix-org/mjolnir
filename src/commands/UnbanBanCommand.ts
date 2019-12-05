@@ -16,9 +16,8 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
-import { LogLevel, LogService, RichReply } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
-import { MatrixGlob } from "matrix-bot-sdk/lib/MatrixGlob";
 import config from "../config";
 import { logMessage } from "../LogProxy";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
@@ -137,7 +136,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
         await logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
         for (const protectedRoomId of Object.keys(mjolnir.protectedRooms)) {
-            const members = await mjolnir.client.getMembers(protectedRoomId, null, ['ban'], null);
+            const members = await mjolnir.client.getRoomMembers(protectedRoomId, null, ['ban'], null);
             for (const member of members) {
                 const victim = member['state_key'];
                 if (!member['content'] || member['content']['membership'] !== 'ban') continue;
