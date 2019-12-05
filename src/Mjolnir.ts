@@ -379,6 +379,14 @@ export class Mjolnir {
             }
         }
 
+        // Check for updated ban lists before checking protected rooms - the ban lists might be protected
+        // themselves.
+        if (this.banLists.map(b => b.roomId).includes(roomId)) {
+            if (ALL_RULE_TYPES.includes(event['type'])) {
+                await this.syncListForRoom(roomId);
+            }
+        }
+
         if (Object.keys(this.protectedRooms).includes(roomId)) {
             if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
 
@@ -422,12 +430,6 @@ export class Mjolnir {
                 // Only apply bans in the room we're looking at.
                 const errors = await applyUserBans(this.banLists, [roomId], this);
                 await this.printActionResult(errors);
-            }
-        }
-
-        if (this.banLists.map(b => b.roomId).includes(roomId)) {
-            if (ALL_RULE_TYPES.includes(event['type'])) {
-                await this.syncListForRoom(roomId);
             }
         }
     }

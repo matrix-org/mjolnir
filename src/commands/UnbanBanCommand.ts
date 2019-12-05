@@ -119,10 +119,6 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
 
     await mjolnir.client.sendStateEvent(bits.list.roomId, bits.ruleType, stateKey, ruleContent);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
-
-    // Just sync the lists to apply the ban as it might not always come down /sync for some reason
-    await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure the ban is applied`);
-    await mjolnir.syncLists(config.verboseLogging);
 }
 
 // !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
