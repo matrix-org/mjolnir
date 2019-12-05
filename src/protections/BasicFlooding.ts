@@ -24,7 +24,7 @@ const TIMESTAMP_THRESHOLD = 30000; // 30s out of phase
 
 export class BasicFlooding implements IProtection {
 
-    public lastEvents: { [roomId: string]: {[userId: string]: {originServerTs: number, eventId: string}[]} } = {};
+    public lastEvents: { [roomId: string]: { [userId: string]: { originServerTs: number, eventId: string }[] } } = {};
 
     constructor() {
     }
@@ -65,8 +65,8 @@ export class BasicFlooding implements IProtection {
         }
 
         // Trim the oldest messages off the user's history if it's getting large
-        if (forUser.length > MAX_PER_MINUTE*2) {
-            forUser.splice(0, forUser.length - (MAX_PER_MINUTE*2) - 1);
+        if (forUser.length > MAX_PER_MINUTE * 2) {
+            forUser.splice(0, forUser.length - (MAX_PER_MINUTE * 2) - 1);
         }
     }
 }
