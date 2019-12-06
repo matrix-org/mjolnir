@@ -13,6 +13,8 @@ If you're actively dealing with an incident, here's what you need to know:
 * `!mjolnir rules` will tell you what the shortcodes are for your ban lists (needed above).
 * `!mjolnir redact @spammer:example.org #room:example.org` will redact someone's posts in a specific room.
 * `!mjolnir redact @spammer:example.org` will redact someone's posts in all rooms Mjolnir protects.
+* `!mjolnir protections` will show you your available protections - green circles mean enabled.
+* `!mjolnir enable <protection>` to turn on a protection.
 
 ## How Mjolnir works
 
