@@ -18,7 +18,9 @@ import { Mjolnir } from "../Mjolnir";
 
 /**
  * Represents a protection mechanism of sorts. Protections are intended to be
- * event-based (ie: X messages in a period of time, or posting X events)
+ * event-based (ie: X messages in a period of time, or posting X events).
+ *
+ * Protections are guaranteed to be run before redaction handlers.
  */
 export interface IProtection {
     readonly name: string;

@@ -25,6 +25,7 @@ import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
+import { AutomaticRedactionQueue } from "./queues/AutomaticRedactionQueue";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -40,6 +41,7 @@ export class Mjolnir {
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     private protections: IProtection[] = [];
+    private redactionQueue = new AutomaticRedactionQueue();
 
     constructor(
         public readonly client: MatrixClient,
@@ -87,6 +89,10 @@ export class Mjolnir {
 
     public get enabledProtections(): IProtection[] {
         return this.protections;
+    }
+
+    public get redactionHandler(): AutomaticRedactionQueue {
+        return this.redactionQueue;
     }
 
     public start() {
@@ -395,11 +401,17 @@ export class Mjolnir {
                 try {
                     await protection.handleEvent(this, roomId, event);
                 } catch (e) {
+                    const eventPermalink = Permalinks.forEvent(roomId, event['event_id']);
                     LogService.error("Mjolnir", "Error handling protection: " + protection.name);
+                    LogService.error("Mjolnir", "Failed event: " + eventPermalink);
                     LogService.error("Mjolnir", e);
-                    await this.client.sendNotice(config.managementRoom, "There was an error processing an event through a protection - see log for details.");
+                    await this.client.sendNotice(config.managementRoom, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
                 }
             }
+
+            // Run the event handlers - we always run this after protections so that the protections
+            // can flag the event for redaction.
+            await this.redactionQueue.handleEvent(roomId, event, this.client);
 
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions

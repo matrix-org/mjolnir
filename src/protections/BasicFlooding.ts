@@ -24,7 +24,8 @@ const TIMESTAMP_THRESHOLD = 30000; // 30s out of phase
 
 export class BasicFlooding implements IProtection {
 
-    public lastEvents: { [roomId: string]: { [userId: string]: { originServerTs: number, eventId: string }[] } } = {};
+    private lastEvents: { [roomId: string]: { [userId: string]: { originServerTs: number, eventId: string }[] } } = {};
+    private recentlyBanned: string[] = [];
 
     constructor() {
     }
@@ -55,12 +56,21 @@ export class BasicFlooding implements IProtection {
         }
 
         if (messageCount >= MAX_PER_MINUTE) {
-            await logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`);
-            await mjolnir.client.banUser(event['sender'], roomId, "spam");
+            // Prioritize redaction over ban - we can always keep redacting what the user said.
+
+            if (this.recentlyBanned.includes(event['sender'])) return; // already handled (will be redacted)
+            mjolnir.redactionHandler.addUser(event['sender']);
+            this.recentlyBanned.push(event['sender']); // flag to reduce spam
+
             // Redact all the things the user said too
             for (const eventId of forUser.map(e => e.eventId)) {
                 await mjolnir.client.redactEvent(roomId, eventId, "spam");
             }
+
+            await logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`);
+            await mjolnir.client.banUser(event['sender'], roomId, "spam");
+
+            // Free up some memory now that we're ready to handle it elsewhere
             forUser = forRoom[event['sender']] = []; // reset the user's list
         }
 

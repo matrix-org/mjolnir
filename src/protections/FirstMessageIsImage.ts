@@ -21,7 +21,8 @@ import { logMessage } from "../LogProxy";
 
 export class FirstMessageIsImage implements IProtection {
 
-    public justJoined: { [roomId: string]: string[] } = {};
+    private justJoined: { [roomId: string]: string[] } = {};
+    private recentlyBanned: string[] = [];
 
     constructor() {
     }
@@ -55,9 +56,17 @@ export class FirstMessageIsImage implements IProtection {
             const formattedBody = content['formatted_body'] || '';
             const isMedia = msgtype === 'm.image' || msgtype === 'm.video' || formattedBody.toLowerCase().includes('<img');
             if (isMedia && this.justJoined[roomId].includes(event['sender'])) {
-                await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining.`);
-                await mjolnir.client.banUser(event['sender'], roomId, "spam");
+                // Prioritize redaction over ban because we can always keep redacting the user's messages
+
+                if (this.recentlyBanned.includes(event['sender'])) return; // already handled (will be redacted)
+                mjolnir.redactionHandler.addUser(event['sender']);
+                this.recentlyBanned.push(event['sender']); // flag to reduce spam
+
+                // Redact the event
                 await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
+
+                await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
+                await mjolnir.client.banUser(event['sender'], roomId, "spam");
             }
         }
 
