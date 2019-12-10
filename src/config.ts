@@ -35,6 +35,7 @@ interface IConfig {
     noop: boolean;
     protectedRooms: string[]; // matrix.to urls
     fasterMembershipChecks: boolean;
+    automaticallyRedactForReasons: string[]; // case-insensitive globs
 
     /**
      * Config options only set at runtime. Try to avoid using the objects

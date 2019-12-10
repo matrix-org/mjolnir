@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks } from "matrix-bot-sdk";
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
@@ -42,12 +42,17 @@ export class Mjolnir {
     private currentState: string = STATE_NOT_STARTED;
     private protections: IProtection[] = [];
     private redactionQueue = new AutomaticRedactionQueue();
+    private automaticRedactionReasons: MatrixGlob[] = [];
 
     constructor(
         public readonly client: MatrixClient,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
     ) {
+        for (const reason of config.automaticallyRedactForReasons) {
+            this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
+        }
+
         client.on("room.event", this.handleEvent.bind(this));
 
         client.on("room.message", async (roomId, event) => {
@@ -93,6 +98,10 @@ export class Mjolnir {
 
     public get redactionHandler(): AutomaticRedactionQueue {
         return this.redactionQueue;
+    }
+
+    public get automaticRedactGlobs(): MatrixGlob[] {
+        return this.automaticRedactionReasons;
     }
 
     public start() {

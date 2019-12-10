@@ -57,6 +57,14 @@ noop: false
 # server struggles with /state requests then set this to true.
 fasterMembershipChecks: false
 
+# A case-insensitive list of ban reasons to automatically redact a user's
+# messages for. Typically this is useful to avoid having to type two commands
+# to the bot. Use asterisks to represent globs (ie: "spam*testing" would match
+# "spam for testing" as well as "spamtesting").
+automaticallyRedactForReasons:
+  - "spam"
+  - "advertising"
+
 # A list of rooms to protect (matrix.to URLs)
 protectedRooms:
   - "https://matrix.to/#/#yourroom:example.org"

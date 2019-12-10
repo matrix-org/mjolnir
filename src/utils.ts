@@ -14,7 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogService, MatrixClient, MatrixGlob } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixClient, MatrixGlob } from "matrix-bot-sdk";
+import { logMessage } from "./LogProxy";
+import config from "./config";
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -33,6 +35,22 @@ export function isTrueJoinEvent(event: any): boolean {
 
     // We look at the previous membership to filter out profile changes
     return membership === 'join' && prevMembership !== "join";
+}
+
+export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: string, targetRoomIds: string[]) {
+    for (const targetRoomId of targetRoomIds) {
+        await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`);
+
+        const eventsToRedact = await getMessagesByUserSinceLastJoin(client, userIdOrGlob, targetRoomId);
+        for (const victimEvent of eventsToRedact) {
+            await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
+            if (!config.noop) {
+                await client.redactEvent(targetRoomId, victimEvent['event_id']);
+            } else {
+                await logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`);
+            }
+        }
+    }
 }
 
 /**

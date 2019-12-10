@@ -15,10 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { getMessagesByUserSinceLastJoin } from "../utils";
-import config from "../config";
-import { logMessage } from "../LogProxy";
-import { LogLevel } from "matrix-bot-sdk";
+import { redactUserMessagesIn } from "../utils";
 
 // !mjolnir redact <user ID> [room alias]
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -29,19 +26,7 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     }
 
     const targetRoomIds = roomAlias ? [roomAlias] : Object.keys(mjolnir.protectedRooms);
-    for (const targetRoomId of targetRoomIds) {
-        await logMessage(LogLevel.DEBUG, "RedactCommand", `Fetching sent messages for ${userId} in ${targetRoomId} to redact...`);
-
-        const eventsToRedact = await getMessagesByUserSinceLastJoin(mjolnir.client, userId, targetRoomId);
-        for (const victimEvent of eventsToRedact) {
-            await logMessage(LogLevel.DEBUG, "RedactCommand", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
-            if (!config.noop) {
-                await mjolnir.client.redactEvent(targetRoomId, victimEvent['event_id']);
-            } else {
-                await logMessage(LogLevel.WARN, "RedactCommand", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`);
-            }
-        }
-    }
+    await redactUserMessagesIn(mjolnir.client, userId, targetRoomIds);
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
