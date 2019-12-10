@@ -16,6 +16,7 @@ limitations under the License.
 
 import { LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
+import config from "../config";
 
 export class AutomaticRedactionQueue {
     private usersToRedact: Set<string> = new Set<string>();
@@ -36,7 +37,11 @@ export class AutomaticRedactionQueue {
             const permalink = Permalinks.forEvent(roomId, event['event_id']);
             try {
                 LogService.info("AutomaticRedactionQueue", `Redacting event because the user is listed as bad: ${permalink}`)
-                await mjolnirClient.redactEvent(roomId, event['event_id']);
+                if (!config.noop) {
+                    await mjolnirClient.redactEvent(roomId, event['event_id']);
+                } else {
+                    await logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
+                }
             } catch (e) {
                 logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
                 LogService.warn("AutomaticRedactionQueue", e);

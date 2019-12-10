@@ -18,6 +18,7 @@ import { IProtection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
+import config from "../config";
 
 export const MAX_PER_MINUTE = 10; // if this is exceeded, we'll ban the user for spam and redact their messages
 const TIMESTAMP_THRESHOLD = 30000; // 30s out of phase
@@ -63,12 +64,20 @@ export class BasicFlooding implements IProtection {
             this.recentlyBanned.push(event['sender']); // flag to reduce spam
 
             // Redact all the things the user said too
-            for (const eventId of forUser.map(e => e.eventId)) {
-                await mjolnir.client.redactEvent(roomId, eventId, "spam");
+            if (!config.noop) {
+                for (const eventId of forUser.map(e => e.eventId)) {
+                    await mjolnir.client.redactEvent(roomId, eventId, "spam");
+                }
+            } else {
+                await logMessage(LogLevel.WARN, "BasicFlooding", `Tried to redact messages for ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`);
             }
 
             await logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`);
-            await mjolnir.client.banUser(event['sender'], roomId, "spam");
+            if (!config.noop) {
+                await mjolnir.client.banUser(event['sender'], roomId, "spam");
+            } else {
+                await logMessage(LogLevel.WARN, "BasicFlooding", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`);
+            }
 
             // Free up some memory now that we're ready to handle it elsewhere
             forUser = forRoom[event['sender']] = []; // reset the user's list

@@ -18,6 +18,7 @@ import { IProtection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
+import config from "../config";
 
 export class FirstMessageIsImage implements IProtection {
 
@@ -63,10 +64,18 @@ export class FirstMessageIsImage implements IProtection {
                 this.recentlyBanned.push(event['sender']); // flag to reduce spam
 
                 // Redact the event
-                await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
+                if (!config.noop) {
+                    await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
+                } else {
+                    await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`);
+                }
 
                 await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
-                await mjolnir.client.banUser(event['sender'], roomId, "spam");
+                if (!config.noop) {
+                    await mjolnir.client.banUser(event['sender'], roomId, "spam");
+                } else {
+                    await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`);
+                }
             }
         }
 
