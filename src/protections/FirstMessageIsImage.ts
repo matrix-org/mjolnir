@@ -19,6 +19,7 @@ import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
+import { isTrueJoinEvent } from "../utils";
 
 export class FirstMessageIsImage implements IProtection {
 
@@ -36,14 +37,7 @@ export class FirstMessageIsImage implements IProtection {
         if (!this.justJoined[roomId]) this.justJoined[roomId] = [];
 
         if (event['type'] === 'm.room.member') {
-            const membership = event['content']['membership'] || 'join';
-            let prevMembership = "leave";
-            if (event['unsigned'] && event['unsigned']['prev_content']) {
-                prevMembership = event['unsigned']['prev_content']['membership'] || 'leave';
-            }
-
-            // We look at the previous membership to filter out profile changes
-            if (membership === 'join' && prevMembership !== "join") {
+            if (isTrueJoinEvent(event)) {
                 this.justJoined[roomId].push(event['state_key']);
                 LogService.info("FirstMessageIsImage", `Tracking ${event['state_key']} in ${roomId} as just joined`);
             }
