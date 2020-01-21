@@ -34,6 +34,7 @@ export const STATE_RUNNING = "running";
 
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
+const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 
 export class Mjolnir {
 
@@ -81,7 +82,7 @@ export class Mjolnir {
             if (profile['displayname']) {
                 this.displayName = profile['displayname'];
             }
-        })
+        });
     }
 
     public get lists(): BanList[] {
@@ -113,6 +114,17 @@ export class Mjolnir {
             }
         }).then(async () => {
             this.currentState = STATE_SYNCING;
+            await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
+            try {
+                 const data = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                 if (data && data['rooms']) {
+                     for (const roomId of data['rooms']) {
+                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
+                     }
+                 }
+            } catch (e) {
+                LogService.warn("Mjolnir", e);
+            }
             if (config.syncOnStartup) {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.buildWatchedBanLists();
@@ -123,6 +135,36 @@ export class Mjolnir {
             this.currentState = STATE_RUNNING;
             await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
         });
+    }
+
+    public async addProtectedRoom(roomId: string) {
+        const permalink = Permalinks.forRoom(roomId);
+        this.protectedRooms[roomId] = permalink;
+
+        let additionalProtectedRooms;
+        try {
+            additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+        } catch (e) {
+            LogService.warn("Mjolnir", e);
+        }
+        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
+        additionalProtectedRooms.rooms.push(roomId);
+        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
+        await this.syncLists(config.verboseLogging);
+    }
+
+    public async removeProtectedRoom(roomId: string) {
+        delete this.protectedRooms[roomId];
+
+        let additionalProtectedRooms;
+        try {
+            additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+        } catch (e) {
+            LogService.warn("Mjolnir", e);
+        }
+        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
+        additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
+        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
     }
 
     private async getEnabledProtections() {

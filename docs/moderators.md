@@ -83,3 +83,8 @@ you want to redact events by that person from all protected rooms, don't specify
 Sometimes you might want to see what Mjolnir is up to. There's some commands in `!mjolnir help` that could
 be of use to you, such as `!mjolnir rules` to see what rules it is actually enforcing and `!mjolnir status`
 to see if Mjolnir is even running where you expect it to.
+
+Adding protected rooms on the fly is as easy as `!mjolnir rooms add <room alias>`. You can see all the rooms
+which are protected with `!mjolnir rooms`, and remove a room with `!mjolnir rooms remove <room alias>`. Note
+that rooms which are listed in the config may be protected again when the bot restarts - to remove these rooms
+permanently from protection, remove them from the config.

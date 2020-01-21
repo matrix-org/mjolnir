@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
 import { execDisableProtection, execEnableProtection, execListProtections } from "./ProtectionsCommands";
+import { execListProtectedRooms } from "./ListProtectedRoomsCommand";
+import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtectedRoomsCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -69,6 +71,12 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execEnableProtection(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'disable' && parts.length > 1) {
             return await execDisableProtection(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'add') {
+            return await execAddProtectedRoom(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'remove') {
+            return await execRemoveProtectedRoom(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'rooms' && parts.length === 2) {
+            return await execListProtectedRooms(roomId, event, mjolnir);
         } else {
             // Help menu
             const menu = "" +
@@ -89,6 +97,9 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir protections                                                - List all available protections\n" +
                 "!mjolnir enable <protection>                                        - Enables a particular protection\n" +
                 "!mjolnir disable <protection>                                       - Disables a particular protection\n" +
+                "!mjolnir rooms                                                      - Lists all the protected rooms\n" +
+                "!mjolnir rooms add <room alias/ID>                                  - Adds a protected room (may cause high server load)\n" +
+                "!mjolnir rooms remove <room alias/ID>                               - Removes a protected room\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;
