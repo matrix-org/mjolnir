@@ -24,6 +24,12 @@ dataPath: "/data/storage"
 # Whether the bot should autojoin rooms it is invited to or not
 autojoin: true
 
+# If `autojoin` is true, this defines whether anyone can invite the bot (the
+# default), or only those in the `managementRoom` below. Generally this option
+# should be set to true (only allow people in the management room to do invites)
+# when using autojoin.
+autojoinOnlyIfManager: false
+
 # The room ID where people can use the bot. The bot has no access controls, so
 # anyone in this room can use the bot - secure your room!
 # This should be a room alias or room ID - not a matrix.to URL.

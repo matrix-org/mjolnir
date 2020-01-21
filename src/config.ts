@@ -27,6 +27,7 @@ interface IConfig {
     };
     dataPath: string;
     autojoin: boolean;
+    autojoinOnlyIfManager: boolean;
     managementRoom: string;
     verboseLogging: boolean;
     logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";

@@ -29,6 +29,7 @@ import config from "./config";
 import BanList from "./models/BanList";
 import { Mjolnir } from "./Mjolnir";
 import { logMessage } from "./LogProxy";
+import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEvent";
 
 config.RUNTIME = {client: null};
 
@@ -51,7 +52,16 @@ LogService.info("index", "Starting bot...");
     config.RUNTIME.client = client;
 
     if (config.autojoin) {
-        AutojoinRoomsMixin.setupOnClient(client);
+        if (config.autojoinOnlyIfManager) {
+            client.on("room.invite", async (roomId: string, inviteEvent: any) => {
+                const membershipEvent = new MembershipEvent(inviteEvent);
+                const managers = await client.getJoinedRoomMembers(config.managementRoom);
+                if (!managers.includes(membershipEvent.sender)) return; // ignore invite
+                return client.joinRoom(roomId);
+            });
+        } else {
+            AutojoinRoomsMixin.setupOnClient(client);
+        }
     }
 
     const banLists: BanList[] = [];
