@@ -19,8 +19,8 @@ import { RichReply } from "matrix-bot-sdk";
 
 // !mjolnir rooms
 export async function execListProtectedRooms(roomId: string, event: any, mjolnir: Mjolnir) {
-    let html = "<b>Protected rooms:</b><br/><ul>";
-    let text = "Protected rooms:\n";
+    let html = `<b>Protected rooms (${Object.keys(mjolnir.protectedRooms).length}):</b><br/><ul>`;
+    let text = `Protected rooms (${Object.keys(mjolnir.protectedRooms).length}):\n`;
 
     let hasRooms = false;
     for (const roomId in mjolnir.protectedRooms) {

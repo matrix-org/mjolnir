@@ -44,6 +44,7 @@ export class Mjolnir {
     private protections: IProtection[] = [];
     private redactionQueue = new AutomaticRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
+    private protectedJoinedRoomIds: string[] = [];
 
     constructor(
         public readonly client: MatrixClient,
@@ -73,6 +74,15 @@ export class Mjolnir {
                 await client.sendReadReceipt(roomId, event['event_id']);
                 return handleCommand(roomId, event, this);
             }
+        });
+
+        client.on("room.join", (roomId: string, event: any) => {
+            LogService.info("Mjolnir", `Joined ${roomId}`);
+            return this.resyncJoinedRooms();
+        });
+        client.on("room.leave", (roomId: string, event: any) => {
+            LogService.info("Mjolnir", `Left ${roomId}`);
+            return this.resyncJoinedRooms();
         });
 
         client.getUserId().then(userId => {
@@ -115,6 +125,7 @@ export class Mjolnir {
         }).then(async () => {
             this.currentState = STATE_SYNCING;
             await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
+            await this.resyncJoinedRooms(false);
             try {
                  const data = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
                  if (data && data['rooms']) {
@@ -138,8 +149,7 @@ export class Mjolnir {
     }
 
     public async addProtectedRoom(roomId: string) {
-        const permalink = Permalinks.forRoom(roomId);
-        this.protectedRooms[roomId] = permalink;
+        this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
 
         let additionalProtectedRooms;
         try {
@@ -165,6 +175,23 @@ export class Mjolnir {
         if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
         additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
+    }
+
+    private async resyncJoinedRooms(withSync = true) {
+        if (!config.protectAllJoinedRooms) return;
+
+        const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== config.managementRoom);
+        for (const roomId of this.protectedJoinedRoomIds) {
+            delete this.protectedRooms[roomId];
+        }
+        this.protectedJoinedRoomIds = joinedRoomIds;
+        for (const roomId of joinedRoomIds) {
+            this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
+        }
+
+        if (withSync) {
+            await this.syncLists(config.verboseLogging);
+        }
     }
 
     private async getEnabledProtections() {

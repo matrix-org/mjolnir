@@ -37,6 +37,7 @@ interface IConfig {
     protectedRooms: string[]; // matrix.to urls
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
+    protectAllJoinedRooms: boolean;
 
     /**
      * Config options only set at runtime. Try to avoid using the objects

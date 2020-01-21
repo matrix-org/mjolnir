@@ -74,3 +74,11 @@ automaticallyRedactForReasons:
 # A list of rooms to protect (matrix.to URLs)
 protectedRooms:
   - "https://matrix.to/#/#yourroom:example.org"
+
+# Set this option to true to protect every room the bot is joined to. Note that
+# this effectively makes the protectedRooms and associated commands useless because
+# the bot by nature must be joined to the room to protect it.
+#
+# Note: the management room is *excluded* from this condition. Add it to the
+# protected rooms to protect it.
+protectAllJoinedRooms: false

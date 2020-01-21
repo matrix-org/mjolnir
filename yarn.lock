@@ -1534,10 +1534,10 @@ map-visit@^1.0.0:
   dependencies:
     object-visit "^1.0.0"
 
-matrix-bot-sdk@^0.4.0:
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.4.0.tgz#a2189e9cdb01d34b2a9c56003167eb33b1a12752"
-  integrity sha512-ZIICFEYDsSX3emPnVRTV1FIV22zkt7KiJbTYN4rHQ3Z/rk66RB7Y+TMHxrkJCqPs3xVdaGmGkh5m+hNi4fibRg==
+matrix-bot-sdk@^0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.4.1.tgz#4a0a5d5c20a8444612f760c689adba0e7dfe5424"
+  integrity sha512-ePsmL6ZOVLsSY06fqS3c/3ZWXtfoCk3vUcHyciU+tgRrJqPP2wV15vbs8gHdavIWXmwno3wK95Xc45oH6Uibhg==
   dependencies:
     "@types/express" "^4.17.2"
     bluebird "^3.7.1"
