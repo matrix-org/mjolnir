@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
     }
 
     html += `<b>Protected rooms: </b> ${Object.keys(mjolnir.protectedRooms).length}<br/>`;
-    text += `Protected rooms: ${mjolnir.protectedRooms.length}\n`;
+    text += `Protected rooms: ${Object.keys(mjolnir.protectedRooms).length}\n`;
 
     // Append list information
     html += "<b>Subscribed ban lists:</b><br><ul>";
@@ -57,6 +57,10 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
         const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
         html += `<li><a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
         text += `* ${list.roomRef} (${ruleInfo})\n`;
+    }
+    if (mjolnir.lists.length === 0) {
+        html += "<li><i>None</i></li>";
+        text += "* None\n";
     }
     html += "</ul>";
 
