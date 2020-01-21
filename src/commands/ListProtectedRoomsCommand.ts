@@ -23,11 +23,11 @@ export async function execListProtectedRooms(roomId: string, event: any, mjolnir
     let text = `Protected rooms (${Object.keys(mjolnir.protectedRooms).length}):\n`;
 
     let hasRooms = false;
-    for (const roomId in mjolnir.protectedRooms) {
+    for (const protectedRoomId in mjolnir.protectedRooms) {
         hasRooms = true;
 
-        const roomUrl = mjolnir.protectedRooms[roomId];
-        html += `<li><a href="${roomUrl}">${roomId}</a></li>`;
+        const roomUrl = mjolnir.protectedRooms[protectedRoomId];
+        html += `<li><a href="${roomUrl}">${protectedRoomId}</a></li>`;
         text += `* ${roomUrl}\n`;
     }
 
