@@ -38,9 +38,9 @@ git clone https://github.com/matrix-org/mjolnir.git
 cd mjolnir
 
 # Copy and edit the config. It is not recommended to change the data path.
-mkdir -p /etc/mjolnir
-cp config/default.yaml /etc/mjolnir/production.yaml
-nano /etc/mjolnir/production.yaml
+mkdir -p /etc/mjolnir/config
+cp config/default.yaml /etc/mjolnir/config/production.yaml
+nano /etc/mjolnir/config/production.yaml
 
 docker run --rm -it -v /etc/mjolnir:/data matrixdotorg/mjolnir:latest
 ```
