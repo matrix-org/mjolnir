@@ -29,7 +29,7 @@ class BanList(object):
         self.room_rules = []
         self.build()
 
-    def build(with_event=None):
+    def build(self, with_event=None):
         @defer.inlineCallbacks
         def run(with_event):
             events = yield self.get_relevant_state_events()
