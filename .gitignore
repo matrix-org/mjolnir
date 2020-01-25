@@ -2,6 +2,7 @@ config/*
 !config/default.yaml
 lib/
 storage/
+venv/
 
 /.idea
 
