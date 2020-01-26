@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,6 +38,11 @@ interface IConfig {
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
     protectAllJoinedRooms: boolean;
+    banListServer: {
+        enabled: boolean;
+        bind: string;
+        port: number;
+    };
 
     /**
      * Config options only set at runtime. Try to avoid using the objects

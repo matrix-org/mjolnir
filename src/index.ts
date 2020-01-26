@@ -30,6 +30,7 @@ import BanList from "./models/BanList";
 import { Mjolnir } from "./Mjolnir";
 import { logMessage } from "./LogProxy";
 import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEvent";
+import {BanListServer} from "./server/BanListServer";
 
 config.RUNTIME = {client: null};
 
@@ -94,5 +95,11 @@ LogService.info("index", "Starting bot...");
     await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
     const bot = new Mjolnir(client, protectedRooms, banLists);
+
+    if (config.banListServer && config.banListServer.enabled) {
+        const server = new BanListServer(bot);
+        await server.start();
+    }
+
     await bot.start();
 })();

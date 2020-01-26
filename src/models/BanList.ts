@@ -67,6 +67,10 @@ export default class BanList {
         return this.rules.filter(r => r.kind === RULE_ROOM);
     }
 
+    public get allRules(): ListRule[] {
+        return [...this.serverRules, ...this.userRules, ...this.roomRules];
+    }
+
     public async updateList() {
         this.rules = [];
 

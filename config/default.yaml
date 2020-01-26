@@ -82,3 +82,14 @@ protectedRooms:
 # Note: the management room is *excluded* from this condition. Add it to the
 # protected rooms to protect it.
 protectAllJoinedRooms: false
+
+# An optional server for the Synapse Mjolnir plugin to connect to. This is
+# recommended if you're running the Synapse module in a worker environment,
+# particularly if you're running a federation reader.
+#
+# It is not recommended to expose this to the wider internet. Connections
+# are over TCP only.
+banListServer:
+  enabled: false
+  bind: "0.0.0.0"
+  port: 24465
