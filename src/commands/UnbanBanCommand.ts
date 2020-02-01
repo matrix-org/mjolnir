@@ -87,7 +87,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     let replyMessage = null;
     if (!list) replyMessage = "No ban list matching that shortcode was found";
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
-    else if (!entity) replyMessage = "No entity found to ban";
+    else if (!entity) replyMessage = "No entity found to (un)ban";
 
     if (replyMessage) {
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
@@ -131,15 +131,16 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
 
     await mjolnir.client.sendStateEvent(bits.list.roomId, bits.ruleType, stateKey, ruleContent);
 
-    if (USER_RULE_TYPES.includes(bits.ruleType) && parts.length > 5 && parts[5] === 'true') {
+    if (USER_RULE_TYPES.includes(bits.ruleType) && bits.reason === 'true') {
         const rule = new MatrixGlob(bits.entity);
         await logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
         for (const protectedRoomId of Object.keys(mjolnir.protectedRooms)) {
             const members = await mjolnir.client.getRoomMembers(protectedRoomId, null, ['ban'], null);
+            await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Found ${members.length} banned user(s)`);
             for (const member of members) {
-                const victim = member['state_key'];
-                if (!member['content'] || member['content']['membership'] !== 'ban') continue;
+                const victim = member.membershipFor;
+                if (member.membership !== 'ban') continue;
                 if (rule.test(victim)) {
                     await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`);
 
