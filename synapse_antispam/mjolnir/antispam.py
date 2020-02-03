@@ -52,6 +52,14 @@ class AntiSpam(object):
                     return rule.action == RECOMMENDATION_BAN
         return False
 
+    def is_room_banned(self, invite_room_id):
+        for room_id in self.rooms_to_lists:
+            ban_list = self.rooms_to_lists[room_id]
+            for rule in ban_list.room_rules:
+                if rule.matches(invite_room_id):
+                    return rule.action == RECOMMENDATION_BAN
+        return False
+
     def is_server_banned(self, server_name):
         for room_id in self.rooms_to_lists:
             ban_list = self.rooms_to_lists[room_id]
@@ -90,6 +98,8 @@ class AntiSpam(object):
 
         sender = UserID.from_string(inviter_user_id)
         if self.is_user_banned(sender.to_string()):
+            return False
+        if self.is_room_banned(room_id):
             return False
         if self.is_server_banned(sender.domain):
             return False
