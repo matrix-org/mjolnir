@@ -87,7 +87,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     let replyMessage = null;
     if (!list) replyMessage = "No ban list matching that shortcode was found";
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
-    else if (!entity) replyMessage = "No entity found to (un)ban";
+    else if (!entity) replyMessage = "No entity found";
 
     if (replyMessage) {
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
