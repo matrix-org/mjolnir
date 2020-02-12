@@ -93,3 +93,20 @@ banListServer:
   enabled: false
   bind: "0.0.0.0"
   port: 5186
+
+# Misc options for command handling and commands
+commands:
+  # If true, Mjolnir will respond to commands like !help and !ban instead of
+  # requiring a prefix. This is useful if Mjolnir is the only bot running in
+  # your management room.
+  #
+  # Note that Mjolnir can be pinged by display name instead of having to use
+  # the !mjolnir prefix. For example, "my_moderator_bot: ban @spammer:example.org"
+  # will ban a user.
+  allowNoPrefix: false
+
+  # In addition to the bot's display name, !mjolnir, and optionally no prefix
+  # above, the bot will respond to these names. The items here can be used either
+  # as display names or prefixed with exclamation points.
+  additionalPrefixes:
+    - "mjolnir_bot"

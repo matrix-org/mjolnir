@@ -43,6 +43,10 @@ interface IConfig {
         bind: string;
         port: number;
     };
+    commands: {
+        allowNoPrefix: boolean;
+        additionalPrefixes: string[];
+    };
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
