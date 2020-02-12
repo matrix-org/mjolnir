@@ -507,25 +507,11 @@ export class Mjolnir {
                 // power levels were updated - recheck permissions
                 ErrorCache.resetError(roomId, ERROR_KIND_PERMISSION);
                 const url = this.protectedRooms[roomId];
-                let html = `Power levels changed in <a href="${url}">${roomId}</a> - checking permissions...`;
-                let text = `Power levels changed in ${url} - checking permissions...`;
-                await this.client.sendMessage(config.managementRoom, {
-                    msgtype: "m.notice",
-                    body: text,
-                    format: "org.matrix.custom.html",
-                    formatted_body: html,
-                });
+                await logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${url} - checking permissions...`);
                 const errors = await this.verifyPermissionsIn(roomId);
                 const hadErrors = await this.printActionResult(errors);
                 if (!hadErrors) {
-                    html = `<font color="#00cc00">All permissions look OK.</font>`;
-                    text = "All permissions look OK.";
-                    await this.client.sendMessage(config.managementRoom, {
-                        msgtype: "m.notice",
-                        body: text,
-                        format: "org.matrix.custom.html",
-                        formatted_body: html,
-                    });
+                    await logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
                 }
                 return;
             } else if (event['type'] === "m.room.member") {
