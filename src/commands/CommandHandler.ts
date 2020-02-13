@@ -31,6 +31,8 @@ import { execDeactivateCommand } from "./DeactivateCommand";
 import { execDisableProtection, execEnableProtection, execListProtections } from "./ProtectionsCommands";
 import { execListProtectedRooms } from "./ListProtectedRoomsCommand";
 import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtectedRoomsCommand";
+import { execMoveAliasCommand } from "./MoveAliasCommand";
+import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -77,6 +79,12 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execRemoveProtectedRoom(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rooms' && parts.length === 2) {
             return await execListProtectedRooms(roomId, event, mjolnir);
+        } else if (parts[1] === 'move' && parts.length > 3) {
+            return await execMoveAliasCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'directory' && parts.length > 3 && parts[2] === 'add') {
+            return await execAddRoomToDirectoryCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'directory' && parts.length > 3 && parts[2] === 'remove') {
+            return await execRemoveRoomFromDirectoryCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -100,6 +108,9 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir rooms                                                      - Lists all the protected rooms\n" +
                 "!mjolnir rooms add <room alias/ID>                                  - Adds a protected room (may cause high server load)\n" +
                 "!mjolnir rooms remove <room alias/ID>                               - Removes a protected room\n" +
+                "!mjolnir move <room alias> <room alias/ID>                          - Moves a <room alias> to a new <room ID>\n" +
+                "!mjolnir directory add <room alias/ID>                              - Publishes a room in the server's room directory\n" +
+                "!mjolnir directory remove <room alias/ID>                           - Removes a room from the server's room directory\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;
