@@ -90,6 +90,9 @@ spam_checker:
     # this means that spammy messages will appear as empty to users. Default
     # false.
     block_messages: false
+    # Remove users from the user directory search by filtering matrix IDs and
+    # display names by the entries in the user ban list. Default false.
+    block_usernames: false
     # The room IDs of the ban lists to honour. Unlike other parts of Mjolnir,
     # this list cannot be room aliases or permalinks. This server is expected
     # to already be joined to the room - Mjolnir will not automatically join
