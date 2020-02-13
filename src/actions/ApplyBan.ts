@@ -65,7 +65,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                             // User needs to be banned
 
                             // We specifically use sendNotice to avoid having to escape HTML
-                            await logMessage(LogLevel.DEBUG, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`);
+                            await logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`);
 
                             if (!config.noop) {
                                 // Always prioritize redactions above bans
@@ -94,17 +94,6 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                 errorKind: message.includes("You don't have permission to ban") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL,
             });
         }
-    }
-
-    if (bansApplied > 0) {
-        const html = `<font color="#00cc00"><b>Banned ${bansApplied} people</b></font>`;
-        const text = `Banned ${bansApplied} people`;
-        await mjolnir.client.sendMessage(config.managementRoom, {
-            msgtype: "m.notice",
-            body: text,
-            format: "org.matrix.custom.html",
-            formatted_body: html,
-        });
     }
 
     return errors;
