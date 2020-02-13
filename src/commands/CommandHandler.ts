@@ -34,6 +34,7 @@ import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtec
 import { execMoveAliasCommand } from "./MoveAliasCommand";
 import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";
 import { execSetPowerLevelCommand } from "./SetPowerLevelCommand";
+import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -88,6 +89,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execRemoveRoomFromDirectoryCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'powerlevel' && parts.length > 3) {
             return await execSetPowerLevelCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'shutdown' && parts[2] === 'room' && parts.length > 3) {
+            return await execShutdownRoomCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -114,6 +117,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir move <room alias> <room alias/ID>                          - Moves a <room alias> to a new <room ID>\n" +
                 "!mjolnir directory add <room alias/ID>                              - Publishes a room in the server's room directory\n" +
                 "!mjolnir directory remove <room alias/ID>                           - Removes a room from the server's room directory\n" +
+                "!mjolnir shutdown room <room alias/ID>                              - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;

@@ -574,4 +574,11 @@ export class Mjolnir {
         const endpoint = `/_synapse/admin/v1/deactivate/${userId}`;
         return await this.client.doRequest("POST", endpoint);
     }
+
+    public async shutdownSynapseRoom(roomId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v1/shutdown_room/${roomId}`;
+        return await this.client.doRequest("POST", endpoint, null, {
+            new_room_user_id: await this.client.getUserId(),
+        });
+    }
 }
