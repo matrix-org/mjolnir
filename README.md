@@ -5,30 +5,32 @@ for more information.
 
 ## Features
 
-TODO: Describe what all this means.
+As an all-in-one moderation tool, it can protect your server from malicious invites, spam
+messages, and whatever else you don't want. In addition to server-level protection, Mjolnir
+is great for communities wanting to protect their rooms without having to use their personal
+accounts for moderation.
 
-Phase 1:
-* [x] Ban users
-* [x] ACL servers
-* [x] Update lists with new bans/ACLs
+The bot by default includes support for bans, redactions, anti-spam, server ACLs, room
+directory changes, room alias transfers, account deactivation, room shutdown, and more.
 
-Phase 2:
-* [x] Pantalaimon support
-* [x] No-op mode (for verifying behaviour)
-* [x] Redact messages on ban (optionally)
-* [x] More useful spam in management room
-* [x] Command to import ACLs, etc from rooms
-* [x] Vet rooms on startup option
-* [x] Command to actually unban users (instead of leaving them stuck)
-* [x] Support multiple lists
+## Bot configuration
 
-Phase 3:
-* [x] Synapse antispam module
-* [ ] Room upgrade handling (both protected+list rooms)
-* [ ] Support community-defined scopes? (ie: no hardcoded config)
-* [ ] Riot hooks (independent of mjolnir?)
+It is recommended to use [Pantalaimon](https://github.com/matrix-org/pantalaimon) so your
+management room can be encrypted. This also applies if you are looking to moderate an encrypted
+room. 
 
-## Docker (preferred)
+If you aren't using encrypted rooms anywhere, get an access token by opening Riot in an
+incognito/private window and log in as the bot. From the Help & Support tab in settings there
+is an access token field - copy and paste that into your config. Most importantly: do not log
+out and instead just close the window. Logging out will make the token you just copied useless.
+
+**Note**: Mjolnir expects to be free of rate limiting - see [Synapse #6286](https://github.com/matrix-org/synapse/issues/6286)
+for information on how to achieve this.
+
+**Note**: To deactivate users, move aliases, shutdown rooms, etc Mjolnir will need to be a server
+admin.
+
+## Docker installation (preferred)
 
 Mjolnir is on Docker Hub as [matrixdotorg/mjolnir](https://hub.docker.com/r/matrixdotorg/mjolnir)
 but can be built yourself with `docker build -t mjolnir .`.
@@ -45,7 +47,7 @@ nano /etc/mjolnir/config/production.yaml
 docker run --rm -it -v /etc/mjolnir:/data matrixdotorg/mjolnir:latest
 ```
 
-## Build it
+## Build it (alternative installation)
 
 This bot requires `yarn` and Node 10.
 
@@ -62,6 +64,20 @@ nano config/development.yaml
 
 node lib/index.js
 ```
+
+## Quickstart guide
+
+After your bot is up and running, you'll want to run a couple commands to get everything
+set up:
+
+1. `!mjolnir list create COC code-of-conduct-ban-list` - This will create a new ban list
+   with the shortcode `COC` and an alias of `#code-of-conduct-ban-list:example.org`. You
+   will be invited to the room it creates automatically where you can change settings such
+   as the visibility of the room.
+2. `!mjolnir default COC` - This sets the default ban list to the list we just created to
+   help with the ban commands later on.
+3. Review the [Moderator's Guide](https://github.com/matrix-org/mjolnir/blob/master/docs/moderators.md).
+4. Review `!mjolnir help` to see what else the bot can do.
 
 ## Synapse Antispam Module
 
