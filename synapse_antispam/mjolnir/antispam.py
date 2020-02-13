@@ -24,6 +24,7 @@ class AntiSpam(object):
     def __init__(self, config, api):
         self.block_invites = config.get("block_invites", True)
         self.block_messages = config.get("block_messages", False)
+        self.block_usernames = config.get("block_usernames", False)
         self.list_room_ids = config.get("ban_lists", [])
         self.rooms_to_lists = {}  # type: Dict[str, BanList]
         self.api = api
@@ -105,6 +106,14 @@ class AntiSpam(object):
             return False
 
         return True  # allowed (as far as we're concerned)
+
+    def check_username_for_spam(self, user_profile):
+        if not self.block_usernames:
+            return True  # allowed (we aren't blocking based on usernames)
+
+        # Check whether the user ID or display name matches any of the banned
+        # patterns.
+        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(user_profile["display_name"])
 
     def user_may_create_room(self, user_id):
         return True  # allowed
