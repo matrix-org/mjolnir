@@ -115,10 +115,10 @@ class AntiSpam(object):
     def user_may_publish_room(self, user_id, room_id):
         return True  # allowed
 
-    def check_username_for_spam(self, user_id, display_name):
+    def check_username_for_spam(self, user_profile):
         # Check whether the user ID or display name matches any of the banned
         # patterns.
-        return self.is_user_banned(user_id) or self.is_user_banned(display_name)
+        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(user_profile["display_name"])
 
     @staticmethod
     def parse_config(config):
