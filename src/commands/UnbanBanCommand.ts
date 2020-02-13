@@ -113,7 +113,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     const ruleContent = {
         entity: bits.entity,
         recommendation,
-        reason: bits.reason,
+        reason: bits.reason || '<no reason supplied>',
     };
     const stateKey = `rule:${bits.entity}`;
 
