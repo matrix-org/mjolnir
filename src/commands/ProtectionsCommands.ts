@@ -48,7 +48,7 @@ export async function execListProtections(roomId: string, event: any, mjolnir: M
     let text = "Available protections:\n";
 
     for (const protection of possibleProtections) {
-        const emoji = enabledProtections.includes(protection) ? '🟢' : '🔴'; // green vs red circles
+        const emoji = enabledProtections.includes(protection) ? '🟢 (enabled)' : '🔴 (disabled)';
         html += `<li>${emoji} <code>${protection}</code> - ${PROTECTIONS[protection].description}</li>`;
         text += `* ${emoji} ${protection} - ${PROTECTIONS[protection].description}\n`;
     }
