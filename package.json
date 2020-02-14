@@ -1,6 +1,6 @@
 {
   "name": "mjolnir",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "description": "A moderation tool for Matrix",
   "main": "lib/index.js",
   "repository": "git@github.com:matrix-org/mjolnir.git",
