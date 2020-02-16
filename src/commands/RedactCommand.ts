@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { redactUserMessagesIn } from "../utils";
+import { Permalinks } from "matrix-bot-sdk";
 
 // !mjolnir redact <user ID> [room alias]
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -23,6 +24,15 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     let roomAlias = null;
     if (parts.length > 3) {
         roomAlias = await mjolnir.client.resolveRoom(parts[3]);
+    }
+
+    if (userId[0] !== '@') {
+        // Assume it's a permalink
+        const parsed = Permalinks.parseUrl(parts[2]);
+        const targetRoomId = await mjolnir.client.resolveRoom(parsed.roomIdOrAlias);
+        await mjolnir.client.redactEvent(targetRoomId, parsed.eventId);
+        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+        return;
     }
 
     const targetRoomIds = roomAlias ? [roomAlias] : Object.keys(mjolnir.protectedRooms);
