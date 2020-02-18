@@ -68,8 +68,12 @@ export class Mjolnir {
                     this.localpart + ":",
                     this.displayName + ":",
                     await client.getUserId() + ":",
+                    this.localpart + " ",
+                    this.displayName + " ",
+                    await client.getUserId() + " ",
                     ...config.commands.additionalPrefixes.map(p => `!${p}`),
                     ...config.commands.additionalPrefixes.map(p => `${p}:`),
+                    ...config.commands.additionalPrefixes.map(p => `${p} `),
                     ...config.commands.additionalPrefixes,
                 ];
                 if (config.commands.allowNoPrefix) prefixes.push("!");
