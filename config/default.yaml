@@ -81,6 +81,9 @@ protectedRooms:
 #
 # Note: the management room is *excluded* from this condition. Add it to the
 # protected rooms to protect it.
+#
+# Note: ban list rooms the bot is watching but didn't create will not be protected.
+# Manually add these rooms to the protected rooms list if you want them protected.
 protectAllJoinedRooms: false
 
 # An optional server for the Synapse Mjolnir plugin to connect to. This is

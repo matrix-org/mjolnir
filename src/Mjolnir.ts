@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks } from "matrix-bot-sdk";
+import { CreateEvent, LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks } from "matrix-bot-sdk";
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
@@ -35,6 +35,7 @@ export const STATE_RUNNING = "running";
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
+const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
 export class Mjolnir {
 
@@ -45,12 +46,16 @@ export class Mjolnir {
     private redactionQueue = new AutomaticRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
     private protectedJoinedRoomIds: string[] = [];
+    private explicitlyProtectedRoomIds: string[] = [];
+    private knownUnprotectedRooms: string[] = [];
 
     constructor(
         public readonly client: MatrixClient,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
     ) {
+        this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
+
         for (const reason of config.automaticallyRedactForReasons) {
             this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
         }
@@ -134,27 +139,31 @@ export class Mjolnir {
     public start() {
         return this.client.start().then(async () => {
             this.currentState = STATE_CHECKING_PERMISSIONS;
+
+            await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
+            await this.resyncJoinedRooms(false);
+            try {
+                const data = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                if (data && data['rooms']) {
+                    for (const roomId of data['rooms']) {
+                        this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
+                        this.explicitlyProtectedRoomIds.push(roomId);
+                    }
+                }
+            } catch (e) {
+                LogService.warn("Mjolnir", e);
+            }
+            await this.buildWatchedBanLists();
+            this.applyUnprotectedRooms();
+
             if (config.verifyPermissionsOnStartup) {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
                 await this.verifyPermissions(config.verboseLogging);
             }
         }).then(async () => {
             this.currentState = STATE_SYNCING;
-            await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
-            await this.resyncJoinedRooms(false);
-            try {
-                 const data = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
-                 if (data && data['rooms']) {
-                     for (const roomId of data['rooms']) {
-                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
-                     }
-                 }
-            } catch (e) {
-                LogService.warn("Mjolnir", e);
-            }
             if (config.syncOnStartup) {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.buildWatchedBanLists();
                 await this.syncLists(config.verboseLogging);
                 await this.enableProtections();
             }
@@ -166,6 +175,10 @@ export class Mjolnir {
 
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
+
+        const unprotectedIdx = this.knownUnprotectedRooms.indexOf(roomId);
+        if (unprotectedIdx >= 0) this.knownUnprotectedRooms.splice(unprotectedIdx, 1);
+        this.explicitlyProtectedRoomIds.push(roomId);
 
         let additionalProtectedRooms;
         try {
@@ -181,6 +194,9 @@ export class Mjolnir {
 
     public async removeProtectedRoom(roomId: string) {
         delete this.protectedRooms[roomId];
+
+        const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
+        if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
 
         let additionalProtectedRooms;
         try {
@@ -204,6 +220,8 @@ export class Mjolnir {
         for (const roomId of joinedRoomIds) {
             this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
         }
+
+        this.applyUnprotectedRooms();
 
         if (withSync) {
             await this.syncLists(config.verboseLogging);
@@ -277,6 +295,8 @@ export class Mjolnir {
             references: this.banLists.map(b => b.roomRef),
         });
 
+        await this.warnAboutUnprotectedBanListRoom(roomId);
+
         return list;
     }
 
@@ -293,6 +313,33 @@ export class Mjolnir {
         });
 
         return list;
+    }
+
+    public async warnAboutUnprotectedBanListRoom(roomId: string) {
+        if (!config.protectAllJoinedRooms) return; // doesn't matter
+        if (this.explicitlyProtectedRoomIds.includes(roomId)) return; // explicitly protected
+
+        const createEvent = new CreateEvent(await this.client.getRoomStateEvent(roomId, "m.room.create", ""));
+        if (createEvent.creator === await this.client.getUserId()) return; // we created it
+
+        if (!this.knownUnprotectedRooms.includes(roomId)) this.knownUnprotectedRooms.push(roomId);
+        this.applyUnprotectedRooms();
+
+        try {
+            const accountData = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            if (accountData && accountData['warned']) return; // already warned
+        } catch (e) {
+            // Ignore - probably haven't warned about it yet
+        }
+
+        await logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`);
+        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, {warned: true});
+    }
+
+    private applyUnprotectedRooms() {
+        for (const roomId of this.knownUnprotectedRooms) {
+            delete this.protectedRooms[roomId];
+        }
     }
 
     public async buildWatchedBanLists() {
@@ -314,6 +361,8 @@ export class Mjolnir {
             if (!joinedRooms.includes(roomId)) {
                 await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
             }
+
+            await this.warnAboutUnprotectedBanListRoom(roomId);
 
             const list = new BanList(roomId, roomRef, this.client);
             await list.updateList();
