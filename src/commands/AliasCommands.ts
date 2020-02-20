@@ -36,3 +36,39 @@ export async function execMoveAliasCommand(roomId: string, event: any, mjolnir: 
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
+
+// !mjolnir alias add <alias> <target room>
+export async function execAddAliasCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const aliasToAdd = parts[3];
+    const targetRoom = parts[4];
+
+    const isAdmin = await mjolnir.isSynapseAdmin();
+    if (!isAdmin) {
+        const message = "I am not a Synapse administrator, or the endpoint is blocked";
+        const reply = RichReply.createFor(roomId, event, message, message);
+        reply['msgtype'] = "m.notice";
+        return mjolnir.client.sendMessage(roomId, reply);
+    }
+
+    const newRoomId = await mjolnir.client.resolveRoom(targetRoom);
+    await mjolnir.client.createRoomAlias(aliasToAdd, newRoomId);
+
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+}
+
+// !mjolnir alias remove <alias>
+export async function execRemoveAliasCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const aliasToRemove = parts[3];
+
+    const isAdmin = await mjolnir.isSynapseAdmin();
+    if (!isAdmin) {
+        const message = "I am not a Synapse administrator, or the endpoint is blocked";
+        const reply = RichReply.createFor(roomId, event, message, message);
+        reply['msgtype'] = "m.notice";
+        return mjolnir.client.sendMessage(roomId, reply);
+    }
+
+    await mjolnir.client.deleteRoomAlias(aliasToRemove);
+
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+}
