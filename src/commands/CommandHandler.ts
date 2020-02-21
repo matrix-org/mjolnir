@@ -34,7 +34,7 @@ import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtec
 import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";
 import { execSetPowerLevelCommand } from "./SetPowerLevelCommand";
 import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
-import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand } from "./AliasCommands";
+import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -91,6 +91,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execAddAliasCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'alias' && parts.length > 3 && parts[2] === 'remove') {
             return await execRemoveAliasCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'resolve' && parts.length > 2) {
+            return await execResolveCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'powerlevel' && parts.length > 3) {
             return await execSetPowerLevelCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'shutdown' && parts[2] === 'room' && parts.length > 3) {
@@ -124,6 +126,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir directory remove <room alias/ID>                           - Removes a room from the server's room directory\n" +
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
+                "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
                 "!mjolnir shutdown room <room alias/ID>                              - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
                 "!mjolnir help                                                       - This menu\n";

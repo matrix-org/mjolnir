@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
+import * as htmlEscape from "escape-html";
 
 // !mjolnir move <alias> <new room ID>
 export async function execMoveAliasCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -71,4 +72,17 @@ export async function execRemoveAliasCommand(roomId: string, event: any, mjolnir
     await mjolnir.client.deleteRoomAlias(aliasToRemove);
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+}
+
+// !mjolnir resolve <alias>
+export async function execResolveCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const toResolve = parts[2];
+
+    const resolvedRoomId = await mjolnir.client.resolveRoom(toResolve);
+
+    const message = `Room ID for ${toResolve} is ${resolvedRoomId}`;
+    const html = `Room ID for ${htmlEscape(toResolve)} is ${htmlEscape(resolvedRoomId)}`;
+    const reply = RichReply.createFor(roomId, event, message, html);
+    reply["msgtype"] = "m.notice";
+    await mjolnir.client.sendMessage(roomId, reply);
 }
