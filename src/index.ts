@@ -16,7 +16,6 @@ limitations under the License.
 
 import * as path from "path";
 import {
-    AutojoinRoomsMixin,
     LogLevel,
     LogService,
     MatrixClient,
@@ -30,7 +29,7 @@ import BanList from "./models/BanList";
 import { Mjolnir } from "./Mjolnir";
 import { logMessage } from "./LogProxy";
 import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEvent";
-import {BanListServer} from "./server/BanListServer";
+import { BanListServer } from "./server/BanListServer";
 
 config.RUNTIME = {client: null};
 
@@ -52,18 +51,20 @@ LogService.info("index", "Starting bot...");
 
     config.RUNTIME.client = client;
 
-    if (config.autojoin) {
+    client.on("room.invite", async (roomId: string, inviteEvent: any) => {
+        const membershipEvent = new MembershipEvent(inviteEvent);
+
         if (config.autojoinOnlyIfManager) {
-            client.on("room.invite", async (roomId: string, inviteEvent: any) => {
-                const membershipEvent = new MembershipEvent(inviteEvent);
-                const managers = await client.getJoinedRoomMembers(config.managementRoom);
-                if (!managers.includes(membershipEvent.sender)) return; // ignore invite
-                return client.joinRoom(roomId);
-            });
+            const managers = await client.getJoinedRoomMembers(config.managementRoom);
+            if (!managers.includes(membershipEvent.sender)) return; // ignore invite
         } else {
-            AutojoinRoomsMixin.setupOnClient(client);
+            const groupMembers = await client.unstableApis.getGroupUsers(config.acceptInvitesFromGroup);
+            const userIds = groupMembers.map(m => m.user_id);
+            if (!userIds.includes(membershipEvent.sender)) return; // ignore invite
         }
-    }
+
+        return client.joinRoom(roomId);
+    });
 
     const banLists: BanList[] = [];
     const protectedRooms: { [roomId: string]: string } = {};
