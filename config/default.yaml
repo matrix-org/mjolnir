@@ -29,6 +29,11 @@ autojoinOnlyIfManager: true
 # the bot to new rooms.
 acceptInvitesFromGroup: '+example:example.org'
 
+# If the bot is invited to a room and it won't accept the invite (due to the
+# conditions above), report it to the management room. Defaults to disabled (no
+# reporting).
+recordIgnoredInvites: false
+
 # The room ID where people can use the bot. The bot has no access controls, so
 # anyone in this room can use the bot - secure your room!
 # This should be a room alias or room ID - not a matrix.to URL.
