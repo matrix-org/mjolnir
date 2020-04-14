@@ -15,6 +15,7 @@ If you're actively dealing with an incident, here's what you need to know:
 * `!mjolnir redact @spammer:example.org` will redact someone's posts in all rooms Mjolnir protects.
 * `!mjolnir protections` will show you your available protections - green circles mean enabled.
 * `!mjolnir enable <protection>` to turn on a protection.
+* `!mjolnir move <room alias> <room alias/ID>` Moves a room alias to a new room ID
 
 ## How Mjolnir works
 
