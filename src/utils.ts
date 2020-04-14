@@ -37,11 +37,11 @@ export function isTrueJoinEvent(event: any): boolean {
     return membership === 'join' && prevMembership !== "join";
 }
 
-export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: string, targetRoomIds: string[]) {
+export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: string, targetRoomIds: string[], limit = 1000) {
     for (const targetRoomId of targetRoomIds) {
         await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`);
 
-        const eventsToRedact = await getMessagesByUserSinceLastJoin(client, userIdOrGlob, targetRoomId);
+        const eventsToRedact = await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit);
         for (const victimEvent of eventsToRedact) {
             await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
             if (!config.noop) {
@@ -59,20 +59,20 @@ export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: s
  * @param {MatrixClient} client The client to use.
  * @param {string} sender The sender. Can include wildcards to match multiple people.
  * @param {string} roomId The room ID to search in.
+ * @param {number} limit The maximum number of messages to search. Defaults to 1000.
  * @returns {Promise<any>} Resolves to the events sent by the user(s) prior to join.
  */
-export async function getMessagesByUserSinceLastJoin(client: MatrixClient, sender: string, roomId: string): Promise<any[]> {
-    const limit = 1000; // maximum number of events to process, regardless of outcome
+export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number): Promise<any[]> {
     const filter = {
         room: {
             rooms: [roomId],
             state: {
-                types: ["m.room.member"],
+                // types: ["m.room.member"], // We'll redact all types of events
                 rooms: [roomId],
             },
             timeline: {
                 rooms: [roomId],
-                types: ["m.room.message"],
+                // types: ["m.room.message"], // We'll redact all types of events
             },
             ephemeral: {
                 limit: 0,
@@ -131,7 +131,6 @@ export async function getMessagesByUserSinceLastJoin(client: MatrixClient, sende
     if (!response) return [];
 
     const messages = [];
-    const stopProcessingMembers = [];
     let processed = 0;
 
     const timeline = (((response['rooms'] || {})['join'] || {})[roomId] || {})['timeline'] || {};
@@ -143,12 +142,7 @@ export async function getMessagesByUserSinceLastJoin(client: MatrixClient, sende
             if (processed >= limit) return messages; // we're done even if we don't want to be
             processed++;
 
-            if (stopProcessingMembers.includes(event['sender'])) continue;
             if (testUser(event['sender'])) messages.push(event);
-            if (event['type'] === 'm.room.member' && testUser(event['state_key']) && isTrueJoinEvent(event)) {
-                stopProcessingMembers.push(event['sender']);
-                if (!isGlob) return messages; // done!
-            }
         }
 
         if (token) {
