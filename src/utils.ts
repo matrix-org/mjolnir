@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixClient, MatrixGlob } from "matrix-bot-sdk";
+import {
+    LogLevel,
+    LogService,
+    MatrixClient,
+    MatrixGlob,
+    MessageType,
+    Permalinks,
+    TextualMessageEventContent,
+    UserID
+} from "matrix-bot-sdk";
 import { logMessage } from "./LogProxy";
 import config from "./config";
+import * as htmlEscape from "escape-html";
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -39,15 +49,15 @@ export function isTrueJoinEvent(event: any): boolean {
 
 export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: string, targetRoomIds: string[], limit = 1000) {
     for (const targetRoomId of targetRoomIds) {
-        await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`);
+        await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
 
         const eventsToRedact = await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit);
         for (const victimEvent of eventsToRedact) {
-            await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`);
+            await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
             if (!config.noop) {
                 await client.redactEvent(targetRoomId, victimEvent['event_id']);
             } else {
-                await logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`);
+                await logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
             }
         }
     }
@@ -157,4 +167,44 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     } while (token);
 
     return messages;
+}
+
+export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
+    if (!Array.isArray(roomIds)) roomIds = [roomIds];
+
+    const content: TextualMessageEventContent = {
+        body: text,
+        formatted_body: htmlEscape(text),
+        msgtype: msgtype,
+        format: "org.matrix.custom.html",
+    };
+
+    const escapeRegex = (v: string): string => {
+        return v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    };
+
+    const viaServers = [(new UserID(await client.getUserId())).domain];
+    for (const roomId of roomIds) {
+        const alias = (await getRoomAlias(client, roomId)) || roomId;
+        const regexRoomId = new RegExp(escapeRegex(roomId), "g");
+        content.body = content.body.replace(regexRoomId, alias);
+        content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${Permalinks.forRoom(alias, viaServers)}">${alias}</a>`);
+    }
+
+    return content;
+}
+
+// TODO: Merge this function into js-bot-sdk
+async function getRoomAlias(client: MatrixClient, roomId: string): Promise<string> {
+    try {
+        const event = await client.getRoomStateEvent(roomId, "m.room.canonical_alias", "");
+        if (!event) return null;
+
+        const canonical = event['alias'];
+        const alt = event['alt_aliases'] || [];
+
+        return canonical || alt[0];
+    } catch (e) {
+        return null; // assume none
+    }
 }

@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,14 +69,14 @@ export class BasicFlooding implements IProtection {
                     await mjolnir.client.redactEvent(roomId, eventId, "spam");
                 }
             } else {
-                await logMessage(LogLevel.WARN, "BasicFlooding", `Tried to redact messages for ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`);
+                await logMessage(LogLevel.WARN, "BasicFlooding", `Tried to redact messages for ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }
 
-            await logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`);
+            await logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`, roomId);
             if (!config.noop) {
                 await mjolnir.client.banUser(event['sender'], roomId, "spam");
             } else {
-                await logMessage(LogLevel.WARN, "BasicFlooding", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`);
+                await logMessage(LogLevel.WARN, "BasicFlooding", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }
 
             // Free up some memory now that we're ready to handle it elsewhere

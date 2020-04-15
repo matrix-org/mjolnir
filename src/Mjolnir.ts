@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -332,7 +332,7 @@ export class Mjolnir {
             // Ignore - probably haven't warned about it yet
         }
 
-        await logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`);
+        await logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
         await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, {warned: true});
     }
 
@@ -559,8 +559,7 @@ export class Mjolnir {
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
                 ErrorCache.resetError(roomId, ERROR_KIND_PERMISSION);
-                const url = this.protectedRooms[roomId];
-                await logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${url} - checking permissions...`);
+                await logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
                 const errors = await this.verifyPermissionsIn(roomId);
                 const hadErrors = await this.printActionResult(errors);
                 if (!hadErrors) {

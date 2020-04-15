@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, LogService, RichReply } from "matrix-bot-sdk";
+import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 
 // !mjolnir rooms add <room alias/ID>
@@ -33,7 +33,7 @@ export async function execRemoveProtectedRoom(roomId: string, event: any, mjolni
         await mjolnir.client.leaveRoom(protectedRoomId);
     } catch (e) {
         LogService.warn("AddRemoveProtectedRoomsCommand", e);
-        await logMessage(LogLevel.WARN, "AddRemoveProtectedRoomsCommand", `Failed to leave ${protectedRoomId} - the room is no longer being protected, but the bot could not leave`);
+        await logMessage(LogLevel.WARN, "AddRemoveProtectedRoomsCommand", `Failed to leave ${protectedRoomId} - the room is no longer being protected, but the bot could not leave`, protectedRoomId);
     }
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

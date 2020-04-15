@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -142,12 +142,12 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
                 const victim = member.membershipFor;
                 if (member.membership !== 'ban') continue;
                 if (rule.test(victim)) {
-                    await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`);
+                    await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`, protectedRoomId);
 
                     if (!config.noop) {
                         await mjolnir.client.unbanUser(victim, protectedRoomId);
                     } else {
-                        await logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${victim} in ${protectedRoomId} but Mjolnir is running in no-op mode`);
+                        await logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${victim} in ${protectedRoomId} but Mjolnir is running in no-op mode`, protectedRoomId);
                     }
 
                     unbannedSomeone = true;

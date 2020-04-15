@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,12 +49,12 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
     const errors: RoomUpdateError[] = [];
     for (const roomId of roomIds) {
         try {
-            await logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`);
+            await logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
 
             try {
                 const currentAcl = await mjolnir.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
                 if (acl.matches(currentAcl)) {
-                    await logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`);
+                    await logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
                     continue;
                 }
             } catch (e) {
@@ -62,12 +62,12 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
             }
 
             // We specifically use sendNotice to avoid having to escape HTML
-            await logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`);
+            await logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
 
             if (!config.noop) {
                 await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
             } else {
-                await logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`);
+                await logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');

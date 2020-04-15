@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -61,14 +61,14 @@ export class FirstMessageIsImage implements IProtection {
                 if (!config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
-                    await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`);
+                    await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
 
                 await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
                 if (!config.noop) {
                     await mjolnir.client.banUser(event['sender'], roomId, "spam");
                 } else {
-                    await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`);
+                    await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }

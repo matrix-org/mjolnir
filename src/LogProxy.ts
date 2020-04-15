@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@ limitations under the License.
 
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import config from "./config";
+import { replaceRoomIdsWithPills } from "./utils";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -24,12 +25,20 @@ const levelToFn = {
     [LogLevel.ERROR.toString()]: LogService.error,
 };
 
-export async function logMessage(level: LogLevel, module: string, message: string | any) {
+export async function logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string = null) {
+    if (!additionalRoomIds) additionalRoomIds = [];
+    if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
+
     if (config.RUNTIME.client && (config.verboseLogging || LogLevel.INFO.includes(level))) {
         let clientMessage = message;
         if (level === LogLevel.WARN) clientMessage = `⚠ | ${message}`;
         if (level === LogLevel.ERROR) clientMessage = `‼ | ${message}`;
-        await config.RUNTIME.client.sendNotice(config.managementRoom, clientMessage);
+
+        const roomIds = [config.managementRoom, ...additionalRoomIds];
+        const client = config.RUNTIME.client;
+
+        const evContent = await replaceRoomIdsWithPills(client, clientMessage, roomIds, "m.notice");
+        await client.sendMessage(config.managementRoom, evContent);
     }
 
     levelToFn[level.toString()](module, message);
