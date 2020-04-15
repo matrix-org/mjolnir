@@ -45,15 +45,15 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
     }
     if (!reason) reason = "<none supplied>";
 
-    for (const roomId of rooms) {
-        const joinedUsers = await mjolnir.client.getJoinedRoomMembers(roomId);
+    for (const targetRoomId of rooms) {
+        const joinedUsers = await mjolnir.client.getJoinedRoomMembers(targetRoomId);
         if (!joinedUsers.includes(userId)) continue; // skip
 
-        await logMessage(LogLevel.INFO, "KickCommand", `Kicking ${userId} in ${roomId} for ${reason}`, roomId);
+        await logMessage(LogLevel.INFO, "KickCommand", `Kicking ${userId} in ${targetRoomId} for ${reason}`, targetRoomId);
         if (!config.noop) {
-            await mjolnir.client.kickUser(userId, roomId, reason);
+            await mjolnir.client.kickUser(userId, targetRoomId, reason);
         } else {
-            await logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${roomId} but the bot is running in no-op mode.`, roomId);
+            await logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
         }
     }
 
