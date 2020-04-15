@@ -195,7 +195,7 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
 }
 
 // TODO: Merge this function into js-bot-sdk
-async function getRoomAlias(client: MatrixClient, roomId: string): Promise<string> {
+export async function getRoomAlias(client: MatrixClient, roomId: string): Promise<string> {
     try {
         const event = await client.getRoomStateEvent(roomId, "m.room.canonical_alias", "");
         if (!event) return null;
