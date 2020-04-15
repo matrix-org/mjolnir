@@ -35,6 +35,7 @@ import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } fro
 import { execSetPowerLevelCommand } from "./SetPowerLevelCommand";
 import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
+import { execKickCommand } from "./KickCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -97,6 +98,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execSetPowerLevelCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'shutdown' && parts[2] === 'room' && parts.length > 3) {
             return await execShutdownRoomCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'kick' && parts.length > 2) {
+            return await execKickCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -106,6 +109,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]   - Removes an entity from the ban list. If apply is 'true', the users matching the glob will actually be unbanned\n" +
                 "!mjolnir redact <user ID> [room alias/ID] [limit]                   - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
                 "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
+                "!mjolnir kick <user ID> [room alias/ID] [reason]                    - Kicks a user in a particular room or all protected rooms\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
