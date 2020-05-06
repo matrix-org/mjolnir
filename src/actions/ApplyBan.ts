@@ -91,7 +91,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
             errors.push({
                 roomId,
                 errorMessage: message,
-                errorKind: message.includes("You don't have permission to ban") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL,
+                errorKind: message && message.includes("You don't have permission to ban") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL,
             });
         }
     }

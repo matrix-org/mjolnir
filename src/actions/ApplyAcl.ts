@@ -71,7 +71,7 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
             }
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');
-            const kind = message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
+            const kind = message && message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
             errors.push({roomId, errorMessage: message, errorKind: kind});
         }
     }
