@@ -41,7 +41,7 @@ export const COMMAND_PREFIX = "!mjolnir";
 
 export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     const cmd = event['content']['body'];
-    const parts = cmd.trim().split(' ');
+    const parts = cmd.trim().split(' ').filter(p => p.trim().length > 0);
 
     try {
         if (parts.length === 1 || parts[1] === 'status') {
