@@ -39,11 +39,6 @@ interface IConfig {
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
     protectAllJoinedRooms: boolean;
-    banListServer: {
-        enabled: boolean;
-        bind: string;
-        port: number;
-    };
     commands: {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
@@ -80,11 +75,6 @@ const defaultConfig: IConfig = {
     fasterMembershipChecks: false,
     automaticallyRedactForReasons: ["spam", "advertising"],
     protectAllJoinedRooms: false,
-    banListServer: {
-        enabled: false,
-        bind: "0.0.0.0",
-        port: 5186,
-    },
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],
