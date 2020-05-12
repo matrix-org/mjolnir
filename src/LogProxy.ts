@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService } from "matrix-bot-sdk";
+import { LogLevel, LogService, TextualMessageEventContent } from "matrix-bot-sdk";
 import config from "./config";
 import { replaceRoomIdsWithPills } from "./utils";
+import * as htmlEscape from "escape-html";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -25,7 +26,7 @@ const levelToFn = {
     [LogLevel.ERROR.toString()]: LogService.error,
 };
 
-export async function logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string = null) {
+export async function logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string = null, isRecursive=false) {
     if (!additionalRoomIds) additionalRoomIds = [];
     if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
 
@@ -37,7 +38,16 @@ export async function logMessage(level: LogLevel, module: string, message: strin
         const roomIds = [config.managementRoom, ...additionalRoomIds];
         const client = config.RUNTIME.client;
 
-        const evContent = await replaceRoomIdsWithPills(client, clientMessage, roomIds, "m.notice");
+        let evContent: TextualMessageEventContent = {
+            body: message,
+            formatted_body: htmlEscape(message),
+            msgtype: "m.notice",
+            format: "org.matrix.custom.html",
+        };
+        if (!isRecursive) {
+            evContent = await replaceRoomIdsWithPills(client, clientMessage, roomIds, "m.notice");
+        }
+
         await client.sendMessage(config.managementRoom, evContent);
     }
 
