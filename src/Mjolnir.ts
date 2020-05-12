@@ -26,7 +26,6 @@ import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCach
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
 import { AutomaticRedactionQueue } from "./queues/AutomaticRedactionQueue";
-import { getRoomAlias } from "./utils";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -596,7 +595,7 @@ export class Mjolnir {
         text += `${textTitle}${errors.length} errors updating protected rooms!\n`;
         const viaServers = [(new UserID(await this.client.getUserId())).domain];
         for (const error of errors) {
-            const alias = (await getRoomAlias(this.client, error.roomId)) || error.roomId;
+            const alias = (await this.client.getPublishedAlias(error.roomId)) || error.roomId;
             const url = Permalinks.forRoom(alias, viaServers);
             html += `<li><a href="${url}">${alias}</a> - ${error.errorMessage}</li>`;
             text += `${url} - ${error.errorMessage}\n`;
