@@ -187,7 +187,7 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
     for (const roomId of roomIds) {
         let alias = roomId;
         try {
-            alias = (await getRoomAlias(client, roomId)) || roomId;
+            alias = (await client.getPublishedAlias(roomId)) || roomId;
         } catch (e) {
             // This is a recursive call, so tell the function not to try and call us
             await logMessage(LogLevel.WARN, "utils", `Failed to resolve room alias for ${roomId} - see console for details`, null, true);
@@ -199,19 +199,4 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
     }
 
     return content;
-}
-
-// TODO: Merge this function into js-bot-sdk
-export async function getRoomAlias(client: MatrixClient, roomId: string): Promise<string> {
-    try {
-        const event = await client.getRoomStateEvent(roomId, "m.room.canonical_alias", "");
-        if (!event) return null;
-
-        const canonical = event['alias'];
-        const alt = event['alt_aliases'] || [];
-
-        return canonical || alt[0];
-    } catch (e) {
-        return null; // assume none
-    }
 }

@@ -1704,10 +1704,10 @@ map-visit@^1.0.0:
   dependencies:
     object-visit "^1.0.0"
 
-matrix-bot-sdk@^0.5.3:
-  version "0.5.3"
-  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.5.3.tgz#ec01a76a9ec9d120cee4461dda3b0db01e8a32de"
-  integrity sha512-jmoU55HbJpvTopZrjMca5u7jmfW3j/Fc3vPExs+5RRqFNCChT/TYQxr7PXD9Ho96YbL7zJ3zynOZ3fXvHg4hYA==
+matrix-bot-sdk@^0.5.4:
+  version "0.5.4"
+  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.5.4.tgz#8c26bef826bd0b3fc9b693c8d07b52c30d843fd7"
+  integrity sha512-nUAE1WW7ast+Xsfux1+qBPmKSY6OG0RoZfeh0WfMP42JW6GRnNiY3hq7aiifomnJAMASZ6EwkdHS3ChWpIRYzg==
   dependencies:
     "@types/express" "^4.17.2"
     chalk "^3.0.0"
