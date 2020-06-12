@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ import { Mjolnir } from "./Mjolnir";
 import { logMessage } from "./LogProxy";
 import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEvent";
 import * as htmlEscape from "escape-html";
+import { Healthz } from "./health/healthz";
 
 config.RUNTIME = {client: null};
 
@@ -37,6 +38,11 @@ LogService.setLogger(new RichConsoleLogger());
 LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
 
 LogService.info("index", "Starting bot...");
+
+Healthz.isHealthy = false; // start off unhealthy
+if (config.health.healthz.enabled) {
+    Healthz.listen();
+}
 
 (async function () {
     const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));

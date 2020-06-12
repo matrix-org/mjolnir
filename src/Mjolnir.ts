@@ -26,6 +26,7 @@ import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCach
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
 import { AutomaticRedactionQueue } from "./queues/AutomaticRedactionQueue";
+import { Healthz } from "./health/healthz";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -169,7 +170,18 @@ export class Mjolnir {
             }
         }).then(async () => {
             this.currentState = STATE_RUNNING;
+            Healthz.isHealthy = true;
             await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
+        }).catch(async err => {
+            try {
+                LogService.error("Mjolnir", "Error during startup:");
+                LogService.error("Mjolnir", err);
+                await logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
+            } catch (e) {
+                // If we failed to handle the error, just crash
+                console.error(e);
+                process.exit(1);
+            }
         });
     }
 

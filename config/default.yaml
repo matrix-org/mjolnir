@@ -106,3 +106,34 @@ commands:
   # as display names or prefixed with exclamation points.
   additionalPrefixes:
     - "mjolnir_bot"
+
+# Options for monitoring the health of the bot
+health:
+  # healthz options. These options are best for use in container environments
+  # like Kubernetes to detect how healthy the service is. The bot will report
+  # that it is unhealthy until it is able to process user requests. Typically
+  # this means that it'll flag itself as unhealthy for a number of minutes
+  # before saying "Now monitoring rooms" and flagging itself healthy.
+  #
+  # Health is flagged through HTTP status codes, defined below.
+  healthz:
+    # Whether the healthz integration should be enabled (default false)
+    enabled: false
+
+    # The port to expose the webserver on. Defaults to 8080.
+    port: 8080
+
+    # The address to listen for requests on. Defaults to all addresses.
+    address: "0.0.0.0"
+
+    # The path to expose the monitoring endpoint at. Defaults to `/healthz`
+    endpoint: "/healthz"
+
+    # The HTTP status code which reports that the bot is healthy/ready to
+    # process requests. Typically this should not be changed. Defaults to
+    # 200.
+    healthyStatus: 200
+
+    # The HTTP status code which reports that the bot is not healthy/ready.
+    # Defaults to 418.
+    unhealthyStatus: 418

@@ -43,6 +43,16 @@ interface IConfig {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
     };
+    health: {
+        healthz: {
+            enabled: boolean;
+            port: number;
+            address: string;
+            endpoint: string;
+            healthyStatus: number;
+            unhealthyStatus: number;
+        };
+    };
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
@@ -78,6 +88,16 @@ const defaultConfig: IConfig = {
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],
+    },
+    health: {
+        healthz: {
+            enabled: false,
+            port: 8080,
+            address: "0.0.0.0",
+            endpoint: "/healthz",
+            healthyStatus: 200,
+            unhealthyStatus: 418,
+        },
     },
 
     // Needed to make the interface happy.
