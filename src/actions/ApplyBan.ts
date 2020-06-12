@@ -68,12 +68,10 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                             await logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
 
                             if (!config.noop) {
-                                // Always prioritize redactions above bans
+                                await mjolnir.client.banUser(member.userId, roomId, userRule.reason);
                                 if (mjolnir.automaticRedactGlobs.find(g => g.test(userRule.reason.toLowerCase()))) {
                                     await redactUserMessagesIn(mjolnir.client, member.userId, [roomId]);
                                 }
-
-                                await mjolnir.client.banUser(member.userId, roomId, userRule.reason);
                             } else {
                                 await logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                             }

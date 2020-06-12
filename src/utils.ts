@@ -51,15 +51,16 @@ export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: s
     for (const targetRoomId of targetRoomIds) {
         await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
 
-        const eventsToRedact = await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit);
-        for (const victimEvent of eventsToRedact) {
-            await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
-            if (!config.noop) {
-                await client.redactEvent(targetRoomId, victimEvent['event_id']);
-            } else {
-                await logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
+        await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
+            for (const victimEvent of eventsToRedact) {
+                await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
+                if (!config.noop) {
+                    await client.redactEvent(targetRoomId, victimEvent['event_id']);
+                } else {
+                    await logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
+                }
             }
-        }
+        });
     }
 }
 
@@ -70,9 +71,10 @@ export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: s
  * @param {string} sender The sender. Can include wildcards to match multiple people.
  * @param {string} roomId The room ID to search in.
  * @param {number} limit The maximum number of messages to search. Defaults to 1000.
- * @returns {Promise<any>} Resolves to the events sent by the user(s) prior to join.
+ * @param {function} cb Callback function to handle the events as they are received.
+ * @returns {Promise<any>} Resolves when complete.
  */
-export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number): Promise<any[]> {
+export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<any> {
     const filter = {
         room: {
             rooms: [roomId],
@@ -140,7 +142,6 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     const response = await initialSync();
     if (!response) return [];
 
-    const messages = [];
     let processed = 0;
 
     const timeline = (((response['rooms'] || {})['join'] || {})[roomId] || {})['timeline'] || {};
@@ -148,8 +149,9 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     let token = timeline['prev_batch'] || response['next_batch'];
     let bfMessages = {chunk: syncedMessages, end: token};
     do {
+        const messages = [];
         for (const event of (bfMessages['chunk'] || [])) {
-            if (processed >= limit) return messages; // we're done even if we don't want to be
+            if (processed >= limit) return; // we're done even if we don't want to be
             processed++;
 
             if (testUser(event['sender'])) messages.push(event);
@@ -161,12 +163,13 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
             token = bfMessages['end'];
             if (lastToken === token) {
                 LogService.warn("utils", "Backfill returned same end token - returning");
-                return messages;
+                cb(messages);
+                return;
             }
         }
-    } while (token);
 
-    return messages;
+        cb(messages);
+    } while (token);
 }
 
 export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
