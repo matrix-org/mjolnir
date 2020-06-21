@@ -31,7 +31,7 @@ export const PROTECTIONS: PossibleProtections = {
         factory: () => new BasicFlooding(),
     },
     [new WordList().name]: {
-        description: "If a user posts a monitored word within 20 minutes of joining, they " +
+        description: "If a user posts a monitored word a set amount of time after joining, they " +
             "will be banned from that room.  This will not publish the ban to a ban list.",
         factory: () => new WordList(),
     }
