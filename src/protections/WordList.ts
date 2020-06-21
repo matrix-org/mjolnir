@@ -24,9 +24,14 @@ import { isTrueJoinEvent } from "../utils";
 export class WordList implements IProtection {
 
     private justJoined: { [roomId: string]: { [username: string]: Date} } = {};
-    private badWords: RegExp = new RegExp(/.*(poopyhead).*/i)
+    private badWords: RegExp;
 
     constructor() {
+        // Create a mega-regex from all the tiny baby regexs
+        this.badWords = new RegExp(
+            "(" + config.protections.wordlist.words.join(")|(")+ ")",
+            "i"
+        )
     }
 
     public get name(): string {
@@ -34,53 +39,66 @@ export class WordList implements IProtection {
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-        if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
 
         const content = event['content'] || {};
+        const mbt = config.protections.wordlist.minutesBeforeTrusting;
 
-        // When a new member logs in, store the time they joined.  This will be useful
-        // when we need to check if a message was sent within 20 minutes of joining
-        if (event['type'] === 'm.room.member') {
-            if (isTrueJoinEvent(event)) {
-                const now = new Date();
-                this.justJoined[roomId][event['state_key']] = now;
-                LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
-            } else if (content['membership'] == 'leave' || content['membership'] == 'ban') {
-                delete this.justJoined[roomId][event['sender']]
+        if (mbt > 0) {
+            if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
+
+            // When a new member logs in, store the time they joined.  This will be useful
+            // when we need to check if a message was sent within 20 minutes of joining
+            if (event['type'] === 'm.room.member') {
+                if (isTrueJoinEvent(event)) {
+                    const now = new Date();
+                    this.justJoined[roomId][event['state_key']] = now;
+                    LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
+                } else if (content['membership'] == 'leave' || content['membership'] == 'ban') {
+                    delete this.justJoined[roomId][event['sender']]
+                }
+
+                return;
             }
-
-            return; // stop processing (membership event spam is another problem)
         }
 
         if (event['type'] === 'm.room.message') {
             const message = content['formatted_body'] || content['body'] || null;
 
-            const joinTime = this.justJoined[roomId][event['sender']]
-            if (joinTime) { // Disregard if the user isn't recently joined
+            // Check conditions first
+            if (mbt > 0) {
+                const joinTime = this.justJoined[roomId][event['sender']]
+                if (joinTime) { // Disregard if the user isn't recently joined
 
-                // Check if they did join recently, was it within 20 minutes
-                const now = new Date();
-                if (now.valueOf() - joinTime.valueOf() > 20 * 60 * 1000) {
-                    delete this.justJoined[roomId][event['sender']] // Remove the user
-                    LogService.info("WordList", `${event['sender']} is no longer considered suspect`);
+                    // Check if they did join recently, was it within the timeframe
+                    const now = new Date();
+                    if (now.valueOf() - joinTime.valueOf() > mbt * 60 * 1000) {
+                        delete this.justJoined[roomId][event['sender']] // Remove the user
+                        LogService.info("WordList", `${event['sender']} is no longer considered suspect`);
+                        return
+                    }
+
+                } else {
+                    // The user isn't in the recently joined users list, no need to keep
+                    // looking
                     return
                 }
+            }
 
-                // Perform the test
-                if (message && this.badWords.test(message)) {
-                    await logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
-                    if (!config.noop) {
-                        await mjolnir.client.banUser(event['sender'], roomId, "Word list violation");
-                    } else {
-                        await logMessage(LogLevel.WARN, "WordList", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-                    }
 
-                    // Redact the event
-                    if (!config.noop) {
-                        await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
-                    } else {
-                        await logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-                    }
+            // Perform the test
+            if (message && this.badWords.test(message)) {
+                await logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
+                if (!config.noop) {
+                    await mjolnir.client.banUser(event['sender'], roomId, "Word list violation");
+                } else {
+                    await logMessage(LogLevel.WARN, "WordList", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                }
+
+                // Redact the event
+                if (!config.noop) {
+                    await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
+                } else {
+                    await logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }

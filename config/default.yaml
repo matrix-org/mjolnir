@@ -107,6 +107,24 @@ commands:
   additionalPrefixes:
     - "mjolnir_bot"
 
+# Configuration specific to certain toggleable protections
+protections:
+  # Configuration for the wordlist plugin, which can ban users based if they say certain
+  # blocked words shortly after joining.
+  wordlist:
+    # A list of words which should be monitored by the bot.  These will match if any part
+    # of the word is present in the message in any case.  e.g. "poop" also matches
+    # "poOPYHEad".  Additionally, regular expressions can be used.
+    words:
+      - "nigger"
+      - "faggot"
+      - "tranny"
+      - "retard"
+    # How long after a user joins the server should the bot monitor their messages.  After
+    # this time, users can say words from the wordlist without being banned automatically.
+    # Set to zero to disable (users will always be banned if they say a bad word)
+    minutesBeforeTrusting: 20
+
 # Options for monitoring the health of the bot
 health:
   # healthz options. These options are best for use in container environments
