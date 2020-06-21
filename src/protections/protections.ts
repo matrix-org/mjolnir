@@ -17,6 +17,7 @@ limitations under the License.
 import { FirstMessageIsImage } from "./FirstMessageIsImage";
 import { IProtection } from "./IProtection";
 import { BasicFlooding, MAX_PER_MINUTE } from "./BasicFlooding";
+import { WordList } from "./WordList";
 
 export const PROTECTIONS: PossibleProtections = {
     [new FirstMessageIsImage().name]: {
@@ -28,6 +29,11 @@ export const PROTECTIONS: PossibleProtections = {
         description: "If a user posts more than " + MAX_PER_MINUTE + " messages in 60s they'll be " +
             "banned for spam. This does not publish the ban to any of your ban lists.",
         factory: () => new BasicFlooding(),
+    },
+    [new WordList().name]: {
+        description: "If a user posts a monitored word within 20 minutes of joining, they " +
+            "will be banned from that room.  This will not publish the ban to a ban list.",
+        factory: () => new WordList(),
     }
 };
 
