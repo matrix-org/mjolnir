@@ -29,7 +29,7 @@ export class WordList implements IProtection {
     constructor() {
         // Create a mega-regex from all the tiny baby regexs
         this.badWords = new RegExp(
-            "(" + config.protections.wordlist.words.join(")|(")+ ")",
+            "(" + config.protections.wordlist.words.join(")|(") + ")",
             "i"
         )
     }
@@ -53,7 +53,7 @@ export class WordList implements IProtection {
                     const now = new Date();
                     this.justJoined[roomId][event['state_key']] = now;
                     LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
-                } else if (content['membership'] == 'leave' || content['membership'] == 'ban') {
+                } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
                     delete this.justJoined[roomId][event['sender']]
                 }
 
