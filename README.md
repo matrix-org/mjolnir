@@ -13,6 +13,9 @@ accounts for moderation.
 The bot by default includes support for bans, redactions, anti-spam, server ACLs, room
 directory changes, room alias transfers, account deactivation, room shutdown, and more.
 
+A Synapse module is also available to apply the same rulesets the bot uses across an entire
+homeserver.
+
 ## Bot configuration
 
 It is recommended to use [Pantalaimon](https://github.com/matrix-org/pantalaimon) so your
@@ -79,12 +82,12 @@ set up:
 3. Review the [Moderator's Guide](https://github.com/matrix-org/mjolnir/blob/master/docs/moderators.md).
 4. Review `!mjolnir help` to see what else the bot can do.
 
-## Synapse Antispam Module
+## Synapse Module
 
 Using the bot to manage your rooms is great, however if you want to use your ban lists
-(or someone else's) on your server to affect all of your users then an antispam module
+(or someone else's) on your server to affect all of your users then a Synapse module
 is needed. Primarily meant to block invites from undesired homeservers/users, Mjolnir's
-antispam module is a way to interpret ban lists and apply them to your entire homeserver.
+Synapse module is a way to interpret ban lists and apply them to your entire homeserver.
 
 First, install the module to your Synapse python environment:
 ```
@@ -116,6 +119,9 @@ spam_checker:
     ban_lists:
       - "!roomid:example.org"
 ```
+
+*Note*: Although this is described as a "spam checker", it does much more than fight
+spam.
 
 Be sure to change the configuration to match your setup. Your server is expected to
 already be participating in the ban lists - if it is not, you will need to have a user
