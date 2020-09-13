@@ -3,6 +3,9 @@
 Moderating a community shouldn't be difficult - Mjolnir gives you the tools to make moderation simple and 
 impersonal.
 
+**Note**: This guide does not apply to the Synapse module, which applies rules at the homeserver level. More
+information about the Synapse module can be found in the README.
+
 ## Quick usage
 
 If you're actively dealing with an incident, here's what you need to know:
