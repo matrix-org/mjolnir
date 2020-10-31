@@ -120,6 +120,7 @@ protections:
       - "InSeNsAtIve"
       - "WoRd"
       - "LiSt"
+
     # How long after a user joins the server should the bot monitor their messages.  After
     # this time, users can say words from the wordlist without being banned automatically.
     # Set to zero to disable (users will always be banned if they say a bad word)
