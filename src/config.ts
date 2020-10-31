@@ -97,7 +97,7 @@ const defaultConfig: IConfig = {
     },
     protections: {
         wordlist: {
-            words: ["nigger", "faggot", "tranny", "retard"],
+            words: [],
             minutesBeforeTrusting: 20
         }
     },

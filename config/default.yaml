@@ -116,10 +116,10 @@ protections:
     # of the word is present in the message in any case.  e.g. "poop" also matches
     # "poOPYHEad".  Additionally, regular expressions can be used.
     words:
-      - "nigger"
-      - "faggot"
-      - "tranny"
-      - "retard"
+      - "CaSe"
+      - "InSeNsAtIve"
+      - "WoRd"
+      - "LiSt"
     # How long after a user joins the server should the bot monitor their messages.  After
     # this time, users can say words from the wordlist without being banned automatically.
     # Set to zero to disable (users will always be banned if they say a bad word)
