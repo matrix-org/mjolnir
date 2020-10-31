@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2020 Emi Tatsuo Simpson et al.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,9 +41,9 @@ export class WordList implements IProtection {
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
 
         const content = event['content'] || {};
-        const mbt = config.protections.wordlist.minutesBeforeTrusting;
+        const minsBeforeTrusting = config.protections.wordlist.minutesBeforeTrusting;
 
-        if (mbt > 0) {
+        if (minsBeforeTrusting > 0) {
             if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
 
             // When a new member logs in, store the time they joined.  This will be useful
@@ -65,13 +65,13 @@ export class WordList implements IProtection {
             const message = content['formatted_body'] || content['body'] || null;
 
             // Check conditions first
-            if (mbt > 0) {
+            if (minsBeforeTrusting > 0) {
                 const joinTime = this.justJoined[roomId][event['sender']]
                 if (joinTime) { // Disregard if the user isn't recently joined
 
                     // Check if they did join recently, was it within the timeframe
                     const now = new Date();
-                    if (now.valueOf() - joinTime.valueOf() > mbt * 60 * 1000) {
+                    if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
                         delete this.justJoined[roomId][event['sender']] // Remove the user
                         LogService.info("WordList", `${event['sender']} is no longer considered suspect`);
                         return
