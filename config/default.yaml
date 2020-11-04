@@ -113,8 +113,8 @@ protections:
   # blocked words shortly after joining.
   wordlist:
     # A list of words which should be monitored by the bot.  These will match if any part
-    # of the word is present in the message in any case.  e.g. "poop" also matches
-    # "poOPYHEad".  Additionally, regular expressions can be used.
+    # of the word is present in the message in any case.  e.g. "hello" also matches
+    # "HEllO".  Additionally, regular expressions can be used.
     words:
       - "CaSe"
       - "InSeNsAtIve"
