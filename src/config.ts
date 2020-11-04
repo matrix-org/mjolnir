@@ -43,6 +43,12 @@ interface IConfig {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
     };
+    protections: {
+        wordlist: {
+            words: string[];
+            minutesBeforeTrusting: number;
+        };
+    };
     health: {
         healthz: {
             enabled: boolean;
@@ -88,6 +94,12 @@ const defaultConfig: IConfig = {
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],
+    },
+    protections: {
+        wordlist: {
+            words: [],
+            minutesBeforeTrusting: 20
+        }
     },
     health: {
         healthz: {
