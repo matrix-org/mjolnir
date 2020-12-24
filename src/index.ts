@@ -70,11 +70,11 @@ if (config.health.healthz.enabled) {
     }
 
     // Switch to using the rule server if we need to
+    const banLists: BanList[] = [];
     if (config.ruleServer?.enabled) {
         await logMessage(LogLevel.INFO, "index", "Rule server is starting up.");
 
         // Resolve all the rule server's watched rooms
-        const banLists: BanList[] = [];
         for (const roomRef of config.ruleServer.listRooms) {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
@@ -121,7 +121,6 @@ if (config.health.healthz.enabled) {
         return client.joinRoom(roomId);
     });
 
-    const banLists: BanList[] = [];
     const protectedRooms: { [roomId: string]: string } = {};
 
     // Ensure we're also joined to the rooms we're protecting

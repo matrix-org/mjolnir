@@ -72,11 +72,13 @@ export class RuleServer {
     }
 
     private async rebuildRules() {
-        const userRules = this.banLists.map(b => b.userRules).reduce((a, c) => {a.push(...c); return a;}, []);
-        const roomRules = this.banLists.map(b => b.roomRules).reduce((a, c) => {a.push(...c); return a;}, []);
-        const serverRules = this.banLists.map(b => b.serverRules).reduce((a, c) => {a.push(...c); return a;}, []);
-
-        console.log({userRules, roomRules, serverRules});
+        const doReduce = (a, c) => {
+            a.push(...c);
+            return a;
+        };
+        const userRules = this.banLists.map(b => b.userRules).reduce(doReduce, []);
+        const roomRules = this.banLists.map(b => b.roomRules).reduce(doReduce, []);
+        const serverRules = this.banLists.map(b => b.serverRules).reduce(doReduce, []);
 
         this.pyRules = {
             checks: {
