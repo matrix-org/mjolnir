@@ -156,3 +156,73 @@ health:
     # The HTTP status code which reports that the bot is not healthy/ready.
     # Defaults to 418.
     unhealthyStatus: 418
+
+# Optional configuration for the built-in rule server
+ruleServer:
+  # When enabled, all bot functionality will be disabled. This means that if you
+  # want to run a bot alongside a rule server then you'll need two instances of
+  # this config: one for the bot and one for the rule server. The rule server is
+  # disabled by default.
+  #
+  # Note that the config above should be as complete as possible, though the rule
+  # server will ignore many options not applicable to it (protections, commands, etc)
+  enabled: false
+
+  # The port to run the rule server on. Defaults to 8080. Note that if you're using
+  # the healthz options then this port must be different. For health monitoring
+  # without a healthz endpoint, use /api/v1/py_rules and look for a 200 OK response.
+  port: 8080
+
+  # The address to listen for requests on. Defaults to all addresses. Typically for
+  # Docker containers this will be 0.0.0.0 so the port mapping can function correctly.
+  address: '0.0.0.0'
+
+  # The policy rooms (matrix.to URLs) to expose on the rule server. These should be
+  # trusted rooms to avoid potential security risks with the Synapse module.
+  listRooms:
+    - "https://matrix.to/#/#yourroom:example.org"
+
+  # Restrictions that can be applied to users, servers, and whole rooms. These are
+  # split into categories (eg: 'messages') which describe the sort of action the
+  # entity will be taking. Under that are the kinds of entities that can be affected.
+  # When the flag for an entity is `true`, it means that if a rule applies to that
+  # kind of entity (eg: users) then it will be given to the antispam module to
+  # process. When false, rules which apply to that entity will not be considered for
+  # that action.
+  blocks:
+    # Whether or not to block messages (events) sent by an entity.
+    messages:
+      users: true
+      rooms: true
+      servers: true
+    # Whether or not to block invites from the given entities
+    invites:
+      users: true
+      rooms: true
+      servers: true
+    # Whether or not check a given user's username/displayname against the list rules.
+    usernames:
+      users: true
+      rooms: false # rooms don't have usernames and can't be blocked.
+      servers: false # the only rule which would apply is one for the local server.
+    # Whether or not rooms to block rooms from being created by given entities. Rooms are
+    # only created on the local server - this does not trigger for rooms which have been
+    # 'discovered' by federation.
+    roomCreate:
+      users: true
+      rooms: false # rooms don't create rooms
+      servers: false # room creation only happens on the local server, which means banning yourself.
+    # Whether or not a given entity should be blocked from creating an alias pointing at a room.
+    # Like room creation, this only happens on the local server - remote aliases do not trigger these.
+    makeAlias:
+      users: true
+      rooms: true # this would block rooms from receiving aliases on the local server
+      servers: false # room aliases can only be created on the local server, so blocking yourself is not recommended
+    # Whether or not to block rooms from being published by a given entity. Like other aspects of room
+    # aliases and creation, this is only triggered for local attempts to publish a room to the server's
+    # own directory - federated directories do not trigger this.
+    publishRoom:
+      users: true
+      rooms: true # this would block the rooms from entering the directory
+      servers: false # publishing happens locally, and it's not recommended to ban yourself
+

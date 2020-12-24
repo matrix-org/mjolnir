@@ -17,6 +17,21 @@ limitations under the License.
 import * as config from "config";
 import { MatrixClient } from "matrix-bot-sdk";
 
+export interface IBlock {
+    users: boolean;
+    rooms: boolean;
+    servers: boolean;
+}
+
+export interface IRuleServerBlocks {
+    messages: IBlock;
+    invites: IBlock;
+    usernames: IBlock;
+    roomCreate: IBlock;
+    makeAlias: IBlock;
+    publishRoom: IBlock;
+}
+
 interface IConfig {
     homeserverUrl: string;
     accessToken: string;
@@ -58,6 +73,13 @@ interface IConfig {
             healthyStatus: number;
             unhealthyStatus: number;
         };
+    };
+    ruleServer: {
+        enabled: boolean;
+        port: number;
+        address: string;
+        listRooms: string[];
+        blocks: IRuleServerBlocks;
     };
 
     /**
@@ -110,6 +132,44 @@ const defaultConfig: IConfig = {
             healthyStatus: 200,
             unhealthyStatus: 418,
         },
+    },
+    ruleServer: {
+        enabled: false,
+        port: 8080,
+        address: '0.0.0.0',
+        listRooms: [],
+        blocks: {
+            messages: {
+                users: false,
+                rooms: false,
+                servers: false,
+            },
+            invites: {
+                users: false,
+                rooms: false,
+                servers: false,
+            },
+            usernames: {
+                users: false,
+                rooms: false,
+                servers: false,
+            },
+            roomCreate: {
+                users: false,
+                rooms: false,
+                servers: false,
+            },
+            makeAlias: {
+                users: false,
+                rooms: false,
+                servers: false,
+            },
+            publishRoom: {
+                users: false,
+                rooms: false,
+                servers: false,
+            },
+        }
     },
 
     // Needed to make the interface happy.

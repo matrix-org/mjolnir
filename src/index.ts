@@ -31,6 +31,7 @@ import { logMessage } from "./LogProxy";
 import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEvent";
 import * as htmlEscape from "escape-html";
 import { Healthz } from "./health/healthz";
+import { RuleServer } from "./modules/RuleServer";
 
 config.RUNTIME = {client: null};
 
@@ -56,6 +57,40 @@ if (config.health.healthz.enabled) {
     }
 
     config.RUNTIME.client = client;
+
+    const joinedRooms = await client.getJoinedRooms();
+
+    // Ensure we're in the management room
+    LogService.info("index", "Resolving management room...");
+    const managementRoomId = await client.resolveRoom(config.managementRoom);
+    if (!joinedRooms.includes(managementRoomId)) {
+        config.managementRoom = await client.joinRoom(config.managementRoom);
+    } else {
+        config.managementRoom = managementRoomId;
+    }
+
+    // Switch to using the rule server if we need to
+    if (config.ruleServer?.enabled) {
+        await logMessage(LogLevel.INFO, "index", "Rule server is starting up.");
+
+        // Resolve all the rule server's watched rooms
+        const banLists: BanList[] = [];
+        for (const roomRef of config.ruleServer.listRooms) {
+            const permalink = Permalinks.parseUrl(roomRef);
+            if (!permalink.roomIdOrAlias) continue;
+
+            let roomId = await client.resolveRoom(permalink.roomIdOrAlias);
+            if (!joinedRooms.includes(roomId)) {
+                roomId = await client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+            }
+
+            banLists.push(new BanList(roomId, roomRef, client));
+        }
+
+        const ruleServer = new RuleServer(client, banLists);
+        await ruleServer.start();
+        return;
+    }
 
     client.on("room.invite", async (roomId: string, inviteEvent: any) => {
         const membershipEvent = new MembershipEvent(inviteEvent);
@@ -89,8 +124,6 @@ if (config.health.healthz.enabled) {
     const banLists: BanList[] = [];
     const protectedRooms: { [roomId: string]: string } = {};
 
-    const joinedRooms = await client.getJoinedRooms();
-
     // Ensure we're also joined to the rooms we're protecting
     LogService.info("index", "Resolving protected rooms...");
     for (const roomRef of config.protectedRooms) {
@@ -105,14 +138,6 @@ if (config.health.healthz.enabled) {
         protectedRooms[roomId] = roomRef;
     }
 
-    // Ensure we're also in the management room
-    LogService.info("index", "Resolving management room...");
-    const managementRoomId = await client.resolveRoom(config.managementRoom);
-    if (!joinedRooms.includes(managementRoomId)) {
-        config.managementRoom = await client.joinRoom(config.managementRoom);
-    } else {
-        config.managementRoom = managementRoomId;
-    }
     await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
     const bot = new Mjolnir(client, protectedRooms, banLists);
