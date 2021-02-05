@@ -42,6 +42,7 @@ interface IConfig {
     commands: {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
+        confirmWildcardBan: boolean;
     };
     protections: {
         wordlist: {
@@ -94,6 +95,7 @@ const defaultConfig: IConfig = {
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],
+        confirmWildcardBan: true,
     },
     protections: {
         wordlist: {
