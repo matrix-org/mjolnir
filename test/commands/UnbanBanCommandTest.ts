@@ -86,7 +86,7 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test *.example.org";
+            const command = "!mjolnir ban test *.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
@@ -103,7 +103,7 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test server @*.example.org";
+            const command = "!mjolnir ban test server @*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
@@ -154,7 +154,7 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test !*.example.org";
+            const command = "!mjolnir ban test !*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
@@ -205,7 +205,7 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test #*.example.org";
+            const command = "!mjolnir ban test #*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
@@ -222,7 +222,7 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test room @*.example.org";
+            const command = "!mjolnir ban test room @*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
@@ -273,7 +273,7 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test @*.example.org";
+            const command = "!mjolnir ban test @*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
@@ -290,10 +290,41 @@ describe("UnbanBanCommand", () => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
 
-            const command = "!mjolnir ban test user #*.example.org";
+            const command = "!mjolnir ban test user #*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
             expect(bits.reason).toBeFalsy();
+            expect(bits.ruleType).toBe(RULE_USER);
+            expect(bits.entity).toBe("#*.example.org");
+            expect(bits.list).toBeDefined();
+            expect(bits.list.listShortcode).toBe("test");
+        });
+
+        it("should error if wildcards used without --force", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).lists = [{listShortcode: "test"}];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                expect(content).toBeDefined();
+                expect(content['body']).toContain("Wildcard bans require an additional `--force` argument to confirm");
+                return Promise.resolve("$fake");
+            };
+
+            const command = "!mjolnir ban test *.example.org";
+            const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
+            expect(bits).toBeFalsy();
+        });
+
+        it("should have correct ban reason with --force after", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).lists = [{listShortcode: "test"}];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
+            };
+
+            const command = "!mjolnir ban test user #*.example.org reason here --force";
+            const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
+            expect(bits).toBeTruthy();
+            expect(bits.reason).toBe("reason here");
             expect(bits.ruleType).toBe(RULE_USER);
             expect(bits.entity).toBe("#*.example.org");
             expect(bits.list).toBeDefined();

@@ -46,7 +46,8 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     let ruleType = null;
     let entity = null;
     let list = null;
-    while (argumentIndex < 6 && argumentIndex < parts.length) {
+    let force = false;
+    while (argumentIndex < 7 && argumentIndex < parts.length) {
         const arg = parts[argumentIndex++];
         if (!arg) break;
         if (["user", "room", "server"].includes(arg.toLowerCase())) {
@@ -69,6 +70,12 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
         if (entity) break;
     }
 
+    if (parts[parts.length - 1] === "--force") {
+        force = true;
+        // Remove from parts to ease reason handling
+        parts.pop();
+    }
+
     if (!entity) {
         // It'll be a server at this point - figure out which positional argument is the server
         // name and where the reason starts.
@@ -89,10 +96,8 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
     else if (!entity) replyMessage = "No entity found";
 
-    if (config.commands.confirmWildcardBan && /[*?]/.test(entity)) {
-        if (!parts.includes("--force")) {
-            replyMessage = "Wildcard bans require an additional `--force` argument to confirm";
-        }
+    if (config.commands.confirmWildcardBan && /[*?]/.test(entity) && !force) {
+        replyMessage = "Wildcard bans require an additional `--force` argument to confirm";
     }
 
     if (replyMessage) {
@@ -110,7 +115,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     };
 }
 
-// !mjolnir ban <shortcode> <user|server|room> <glob> [reason]
+// !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
 export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
