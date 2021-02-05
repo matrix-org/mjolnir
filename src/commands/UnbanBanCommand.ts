@@ -89,6 +89,12 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
     else if (!entity) replyMessage = "No entity found";
 
+    if (config.commands.confirmWildcardBan && /[*?]/.test(entity)) {
+        if (!parts.includes("--force")) {
+            replyMessage = "Wildcard bans require an additional `--force` argument to confirm";
+        }
+    }
+
     if (replyMessage) {
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
         reply["msgtype"] = "m.notice";

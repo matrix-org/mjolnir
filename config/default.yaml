@@ -107,6 +107,10 @@ commands:
   additionalPrefixes:
     - "mjolnir_bot"
 
+  # If true, ban commands that use wildcard characters require confirmation with
+  # an extra `--force` argument
+  confirmWildcardBan: true
+
 # Configuration specific to certain toggleable protections
 protections:
   # Configuration for the wordlist plugin, which can ban users based if they say certain
