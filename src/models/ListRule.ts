@@ -26,7 +26,7 @@ export function recommendationToStable(recommendation: string, unstable = true):
 
 export class ListRule {
 
-    private glob: MatrixGlob;
+    public readonly glob: MatrixGlob;
 
     constructor(public readonly entity: string, private action: string, public readonly reason: string, public readonly kind: string) {
         this.glob = new MatrixGlob(entity);

@@ -89,7 +89,27 @@ Using the bot to manage your rooms is great, however if you want to use your ban
 is needed. Primarily meant to block invites from undesired homeservers/users, Mjolnir's
 Synapse module is a way to interpret ban lists and apply them to your entire homeserver.
 
-First, install the module to your Synapse python environment:
+**Warning**: This module works by running generated Python code in your homeserver. The code
+is generated based off the rules provided in the ban lists, which may include crafted rules
+which may allow unrestricted access to your server. Only use lists you trust and do not
+use anyone else's infrastructure to get the ruleset from - only use infrastructure that
+you control.
+
+If this is acceptable, the following steps may be performed.
+
+First, run the Docker image for the rule server. This is what will be serving the generated
+Python for the Synapse antispam module to read from. This rule server will serve the Python
+off a webserver at `/api/v1/py_rules` which must be accessible by wherever Synapse is installed.
+It is not recommended to expose this webserver to the outside world.
+
+```
+docker run --rm -d -v /etc/mjolnir/ruleserver.yaml:/data/config/production.yaml -p 127.0.0.0:8080:8080 matrixdotorg/mjolnir
+```
+
+**Note**: the exact same Mjolnir image is used to run the rule server. To configure using the rule
+server instead of the bot function, see the `ruleServer` options in the config.
+
+After that is running, install the module to your Synapse python environment:
 ```
 pip install -e "git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdirectory=synapse_antispam"
 ```
@@ -100,35 +120,18 @@ pip install -e "git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdir
 Then add the following to your `homeserver.yaml`:
 ```yaml
 spam_checker:
-  module: mjolnir.AntiSpam
-  config:
-    # Prevent servers/users in the ban lists from inviting users on this
-    # server to rooms. Default true.
-    block_invites: true
-    # Flag messages sent by servers/users in the ban lists as spam. Currently
-    # this means that spammy messages will appear as empty to users. Default
-    # false.
-    block_messages: false
-    # Remove users from the user directory search by filtering matrix IDs and
-    # display names by the entries in the user ban list. Default false.
-    block_usernames: false
-    # The room IDs of the ban lists to honour. Unlike other parts of Mjolnir,
-    # this list cannot be room aliases or permalinks. This server is expected
-    # to already be joined to the room - Mjolnir will not automatically join
-    # these rooms.
-    ban_lists:
-      - "!roomid:example.org"
+  - module: mjolnir.AntiSpam
+    config:
+      # Where the antispam module should periodically retrieve updated rules from. This
+      # should be pointed at the Mjolnir rule server.
+      rules_url: 'http://localhost:8080/api/v1/py_rules'
 ```
 
 *Note*: Although this is described as a "spam checker", it does much more than fight
 spam.
 
-Be sure to change the configuration to match your setup. Your server is expected to
-already be participating in the ban lists - if it is not, you will need to have a user
-on your homeserver join. The antispam module will not join the rooms for you.
-
-If you change the configuration, you will need to restart Synapse. You'll also need
-to restart Synapse to install the plugin.
+Be sure to change the configuration to match your setup. If you change the configuration, 
+you will need to restart Synapse. You'll also need to restart Synapse to install the plugin.
 
 ## Development
 

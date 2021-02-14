@@ -30,6 +30,12 @@ export async function logMessage(level: LogLevel, module: string, message: strin
     if (!additionalRoomIds) additionalRoomIds = [];
     if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
 
+    // Prefix logging if we're running in ruleserver mode
+    if (config.ruleServer?.enabled) {
+        module = `[RuleServer] ${module}`;
+        message = `[RuleServer] ${message}`;
+    }
+
     if (config.RUNTIME.client && (config.verboseLogging || LogLevel.INFO.includes(level))) {
         let clientMessage = message;
         if (level === LogLevel.WARN) clientMessage = `⚠ | ${message}`;
