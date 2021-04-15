@@ -20,18 +20,37 @@ import { ListRule } from "./ListRule";
 export const RULE_USER = "m.room.rule.user";
 export const RULE_ROOM = "m.room.rule.room";
 export const RULE_SERVER = "m.room.rule.server";
+export const RULE_REGISTRATION_EMAIL = "m.room.rule.registration.email";
+export const RULE_REGISTRATION_IP = "m.room.rule.registration.ip";
 
 export const USER_RULE_TYPES = [RULE_USER, "org.matrix.mjolnir.rule.user"];
 export const ROOM_RULE_TYPES = [RULE_ROOM, "org.matrix.mjolnir.rule.room"];
 export const SERVER_RULE_TYPES = [RULE_SERVER, "org.matrix.mjolnir.rule.server"];
-export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
+export const REGISTRATION_EMAIL_RULE_TYPES = [RULE_REGISTRATION_EMAIL, "org.matrix.mjolnir.rule.registration.email"];
+export const REGISTRATION_IP_RULE_TYPES = [RULE_REGISTRATION_IP, "org.matrix.mjolnir.rule.registration.ip"];
+
+export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES, ...REGISTRATION_EMAIL_RULE_TYPES, ...REGISTRATION_IP_RULE_TYPES];
+const LABELED_RULE_TYPES = Object.freeze([
+    {types: USER_RULE_TYPES, key: RULE_USER},
+    {types: ROOM_RULE_TYPES, key: RULE_ROOM},
+    {types: SERVER_RULE_TYPES, key: RULE_SERVER},
+    {types: REGISTRATION_EMAIL_RULE_TYPES, key: RULE_REGISTRATION_EMAIL},
+    {types: REGISTRATION_IP_RULE_TYPES, key: RULE_REGISTRATION_IP},
+]);
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
+
 export function ruleTypeToStable(rule: string, unstable = true): string {
-    if (USER_RULE_TYPES.includes(rule)) return unstable ? USER_RULE_TYPES[USER_RULE_TYPES.length - 1] : RULE_USER;
-    if (ROOM_RULE_TYPES.includes(rule)) return unstable ? ROOM_RULE_TYPES[ROOM_RULE_TYPES.length - 1] : RULE_ROOM;
-    if (SERVER_RULE_TYPES.includes(rule)) return unstable ? SERVER_RULE_TYPES[SERVER_RULE_TYPES.length - 1] : RULE_SERVER;
+    for (let {types, key} of LABELED_RULE_TYPES) {
+        if (types.includes(rule)) {
+            if (unstable) {
+                return types[types.length - 1];
+            } else {
+                return key;
+            }
+        }
+    }
     return null;
 }
 
@@ -86,13 +105,13 @@ export default class BanList {
             }
 
             let kind: string = null;
-            if (USER_RULE_TYPES.includes(event['type'])) {
-                kind = RULE_USER;
-            } else if (ROOM_RULE_TYPES.includes(event['type'])) {
-                kind = RULE_ROOM;
-            } else if (SERVER_RULE_TYPES.includes(event['type'])) {
-                kind = RULE_SERVER;
-            } else {
+            for (let {types, key} of LABELED_RULE_TYPES) {
+                if (types.includes(event['type'])) {
+                    kind = key;
+                    break;
+                }
+            }
+            if (kind == null) {
                 continue; // invalid/unknown
             }
 

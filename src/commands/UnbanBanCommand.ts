@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
+import BanList, { RULE_REGISTRATION_EMAIL, RULE_REGISTRATION_IP, RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
 import { LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 import config from "../config";
@@ -50,10 +50,20 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     while (argumentIndex < 7 && argumentIndex < parts.length) {
         const arg = parts[argumentIndex++];
         if (!arg) break;
-        if (["user", "room", "server"].includes(arg.toLowerCase())) {
-            if (arg.toLowerCase() === 'user') ruleType = RULE_USER;
-            if (arg.toLowerCase() === 'room') ruleType = RULE_ROOM;
-            if (arg.toLowerCase() === 'server') ruleType = RULE_SERVER;
+        if (["user", "room", "server", "registration_ip", "registration_email"].includes(arg.toLowerCase())) {
+            let lowercase = arg.toLowerCase();
+            for (let {value, type} of [
+                    {value: "user", type: RULE_USER},
+                    {value: "room", type: RULE_ROOM},
+                    {value: "server", type: RULE_SERVER},
+                    {value: "registration_ip", type: RULE_REGISTRATION_IP},
+                    {value: "registration_email", type: RULE_REGISTRATION_EMAIL},
+                ]) {
+                if (lowercase === value) {
+                    ruleType = type;
+                    break;
+                }
+            }
         } else if (!entity && (arg[0] === '@' || arg[0] === '!' || arg[0] === '#' || arg.includes("*"))) {
             entity = arg;
             if (arg.startsWith("@") && !ruleType) ruleType = RULE_USER;
@@ -115,7 +125,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     };
 }
 
-// !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
+// !mjolnir ban <shortcode> <user|server|room|email|ip> <glob> [reason] [--force]
 export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
@@ -132,7 +142,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
-// !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
+// !mjolnir unban <shortcode> <user|server|room|email|ip> <glob> [apply:t/f]
 export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
