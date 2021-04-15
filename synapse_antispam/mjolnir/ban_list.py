@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import logging
-from .list_rule import ListRule, ALL_RULE_TYPES, USER_RULE_TYPES, SERVER_RULE_TYPES, ROOM_RULE_TYPES
+from .list_rule import ListRule, ALL_RULE_TYPES, REGISTRATION_EMAIL_RULE_TYPES, REGISTRATION_IP_RULE_TYPES, USER_RULE_TYPES, SERVER_RULE_TYPES, ROOM_RULE_TYPES
 from twisted.internet import defer
 from synapse.metrics.background_process_metrics import run_as_background_process
 
@@ -27,6 +27,8 @@ class BanList(object):
         self.server_rules = []
         self.user_rules = []
         self.room_rules = []
+        self.email_registration_rules = []
+        self.ip_registration_rules = []
         self.build()
 
     def build(self, with_event=None):
@@ -38,6 +40,8 @@ class BanList(object):
             self.server_rules = []
             self.user_rules = []
             self.room_rules = []
+            self.email_registration_rules = []
+            self.ip_registration_rules = []
             for event in events:
                 event_type = event.get("type", "")
                 state_key = event.get("state_key", "")
@@ -69,6 +73,10 @@ class BanList(object):
                     self.room_rules.append(rule)
                 elif event_type in SERVER_RULE_TYPES:
                     self.server_rules.append(rule)
+                elif event_type in REGISTRATION_EMAIL_RULE_TYPES:
+                    self.email_registration_rules.append(rule)
+                elif event_type in REGISTRATION_IP_RULE_TYPES:
+                    self.ip_registration_rules.append(rule)
 
         run_as_background_process("mjolnir_build_ban_list", run, with_event)
 

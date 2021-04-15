@@ -14,6 +14,8 @@
 # limitations under the License.
 
 import logging
+from typing import Any, Collection, Dict, List, Optional, Tuple, Union
+
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
 from synapse.types import UserID
@@ -66,6 +68,22 @@ class AntiSpam(object):
             ban_list = self.rooms_to_lists[room_id]
             for rule in ban_list.server_rules:
                 if rule.matches(server_name):
+                    return rule.action == RECOMMENDATION_BAN
+        return False
+
+    def is_email_banned(self, email):
+        for room_id in self.rooms_to_lists:
+            ban_list = self.rooms_to_lists[room_id]
+            for rule in ban_list.email_registration_rules:
+                if rule.matches(email):
+                    return rule.action == RECOMMENDATION_BAN
+        return False
+
+    def is_ip_banned(self, ip):
+        for room_id in self.rooms_to_lists:
+            ban_list = self.rooms_to_lists[room_id]
+            for rule in ban_list.ip_registration_rules:
+                if rule.matches(ip):
                     return rule.action == RECOMMENDATION_BAN
         return False
 
@@ -123,6 +141,23 @@ class AntiSpam(object):
 
     def user_may_publish_room(self, user_id, room_id):
         return True  # allowed
+
+    def check_registration_for_spam(self,
+        email_threepid: Optional[dict],
+        username: Optional[str],
+        request_info: Collection[Tuple[str, str]],
+        auth_provider_id: Optional[str] = None,
+    ) -> Union["deny", "allow", "shadow_ban"]:
+        if self.is_user_banned(username):
+            return "deny"
+        email = email_threepid.get("address", None)
+        if email and self.is_email_banned(email):
+            return "deny"
+        for [_user_agent, ip] in request_info:
+            if self.is_ip_banned(ip):
+                return "deny"
+        return "allow"
+        
 
     @staticmethod
     def parse_config(config):

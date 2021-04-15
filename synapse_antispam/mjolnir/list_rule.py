@@ -18,13 +18,27 @@ from synapse.util import glob_to_regex
 RECOMMENDATION_BAN = "m.ban"
 RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"]
 
+# Block a group of user ids.
 RULE_USER = "m.room.rule.user"
-RULE_ROOM = "m.room.rule.room"
-RULE_SERVER = "m.room.rule.server"
 USER_RULE_TYPES = [RULE_USER, "org.matrix.mjolnir.rule.user"]
+
+# Block a group of rooms.
+RULE_ROOM = "m.room.rule.room"
 ROOM_RULE_TYPES = [RULE_ROOM, "org.matrix.mjolnir.rule.room"]
+
+# Block a group of servers.
+RULE_SERVER = "m.room.rule.server"
 SERVER_RULE_TYPES = [RULE_SERVER, "org.matrix.mjolnir.rule.server"]
-ALL_RULE_TYPES = [*USER_RULE_TYPES, *ROOM_RULE_TYPES, *SERVER_RULE_TYPES]
+
+# Block from registration a group of emails.
+RULE_REGISTRATION_EMAIL = "m.room.rule.registration.email"
+REGISTRATION_EMAIL_RULE_TYPES = [RULE_REGISTRATION_EMAIL, "org.matrix.mjolnir.rule.registration.email"]
+
+# Block from registration a group of IPs.
+RULE_REGISTRATION_IP = "m.room.rule.registration.ip"
+REGISTRATION_IP_RULE_TYPES = [RULE_REGISTRATION_IP, "org.matrix.mjolnir.rule.registration.ip"]
+
+ALL_RULE_TYPES = [*USER_RULE_TYPES, *ROOM_RULE_TYPES, *SERVER_RULE_TYPES, *REGISTRATION_EMAIL_RULE_TYPES, *REGISTRATION_IP_RULE_TYPES]
 
 def recommendation_to_stable(recommendation):
     if recommendation in RECOMMENDATION_BAN_TYPES:
@@ -38,6 +52,10 @@ def rule_type_to_stable(rule):
         return RULE_ROOM
     if rule in SERVER_RULE_TYPES:
         return RULE_SERVER
+    if rule in REGISTRATION_EMAIL_RULE_TYPES:
+        return RULE_REGISTRATION_EMAIL
+    if rule in REGISTRATION_IP_RULE_TYPES:
+        return RULE_REGISTRATION_IP
     return None
 
 class ListRule(object):
