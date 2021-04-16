@@ -108,19 +108,26 @@ enum CheckRegistrationForSpamContext {
  * All the sources of information available to the antispam
  * when running `check_event_for_spam`.
  */
-enum CheckEventForSpamContext {
+type CheckEventForSpamContext =
     /// The full user id of the sender.
-    sender_user_id,
+    "sender_user_id"
 
     /// The domain of the sender.
-    sender_domain,
+    | "sender_domain"
 
     /// The room id.
-    room_id,
+    | "room_id"
 
-    /// If the message contains a text, the content of the text.
-    maybe_message_text,
-};
+    | {
+        /// A path of fields within the event object.
+        ///
+        /// e.g. `["content", "formatted_body"]` will return `event.content.formatted_body`.
+        ///
+        /// If any of the fields is not present, the rule will **not** match (i.e. the
+        /// message will not be considered spam).
+        path: string[]
+    }
+;
 
 /**
  * A rule served by the Rule Server.
