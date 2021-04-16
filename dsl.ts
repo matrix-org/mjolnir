@@ -127,7 +127,24 @@ type CheckEventForSpamContext =
         /// message will not be considered spam).
         path: string[]
     }
-;
+    ;
+
+/**
+ * A manner of matching strings.
+ *
+ * When possible, prefer `literal` as it is faster and more memory-efficient
+ * than `regexp`.
+ */
+type Matcher =
+    {
+        /// The Python regexp against which to match a string value, as specced
+        /// by https://docs.python.org/3/library/re.html
+        regexp: string
+    }
+    | {
+        /// A literal string against which to match a string value.
+        literal: string
+    };
 
 /**
  * A rule served by the Rule Server.
@@ -146,18 +163,27 @@ type Rule<T> = {
 };
 
 /**
- * A manner of matching strings.
- *
- * When possible, prefer `literal` as it is faster and more memory-efficient
- * than `regexp`.
+ * A batch of rules.
  */
-type Matcher =
-    {
-        /// The Python regexp against which to match a string value, as specced
-        /// by https://docs.python.org/3/library/re.html
-        regexp: string
-    }
-  | {
-        /// A literal string against which to match a string value.
-        literal: string
-    };
+type RuleSet = {
+    user_may_invite: Rule<InviteContext>[],
+    user_may_create_room: Rule<RoomCreateContext>[],
+    user_may_create_room_alias: Rule<AliasCreateContext>[],
+    user_may_publish_room: Rule<PublishRoomContext>[],
+    check_username_for_spam: Rule<CheckUsernameForSpamContext>[],
+    check_registration_for_spam: Rule<CheckRegistrationForSpamContext>[],
+    check_event_for_spam: Rule<CheckEventForSpamContext>[],
+};
+
+/**
+ * An update sent by the rule server to the antispam.
+ */
+type Update = {
+    /// A batch of rules to remove.
+    ///
+    /// Use special value `"*"` to clear out all rules.
+    remove: RuleSet | "*",
+
+    /// A batch of rules to add.
+    add: RuleSet,
+};
