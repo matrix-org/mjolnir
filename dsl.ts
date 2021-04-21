@@ -1,184 +1,222 @@
 /**
- * A format for sending spam-checker rules from a rule server to
- * a synapse spam-checker.
+ * A format of messages designed to allow communication with a configurable
+ * spamchecker designed around the Synapse Spamcheck API.
  * 
- * The intended use is that the spam-checker will regularly
+ * - We call an implementation of the Synapse Spamcheck API that supports this
+ *   protocol a *Checker*.
+ * - The Checker is configured to receive instructions in a set of rooms
+ *   Room1, Room2, ... RoomN. This set of rooms does not change during the
+ *   lifetime of the Checker.
+ * - Any member of Room1, ..., RoomN with authorization to send messages
+ *   (aka a *Controller*) can send instructions to the Checker. We expect
+ *   that the Controller will be an implementation of Mjölnir or Carlotta.
  *
- * GET https://example.org/mjolnir/rules?since=timestamp
- *
- * And receive an update of the rules since timestamp.
+ * A the time of this writing, the Checker supports only simple rules.
+ * 
+ * - A number of string properties are exposed to rules.
+ * - A rule is a string property and a literal/regexp.
+ * - During execution, if the regexp appears in the value of the string
+ *    property, the message/user account creation request is rejected.
+ * - Otherwise, it is accepted.
  */
 
-interface Literal {}
-interface Regexp {}
+/**
+ * ------------------- Messages from controller ----------------------
+ */
 
-/// A list of additions/removal.
-///
-/// Additions are resolved *after* removals.
-///
-/// Type parameter `T` is used as a phantom type to distinguish between
-/// literal strings (`Literal`) or regexp strings (`Regexp`).
-type Patch<T> = {
-    /// Remove some or all items.
-    remove?: "clear" | string[],
+type MessageFromControllerContent = {
+    type: "org.matrix.spamcheck.control",
+    content:
+    /// Update matchers on a single property.
+    StringRuleUpdate | ObjectRuleUpdate
+    /// Reset the Checker to remove all rules.
+    | ClearEverything
+    /// Request a snapshot of the current list of rules from the Checker.
+    | ShowMeTheseRules
+};
 
-    /// Add items.
-    add?: string[],
+/**
+ * ---------------- Properties that the Checker can match against -------
+ */
+
+enum StringProperty {
+    /// The following properties point to strings.
+    "org.matrix.spamcheck.user_may_invite.inviter_user_id",
+    "org.matrix.spamcheck.user_may_invite.new_member_user_id",
+    "org.matrix.spamcheck.user_may_invite.room_id",
+    "org.matrix.spamcheck.user_may_create_room.user_id",
+    "org.matrix.spamcheck.user_may_create_room_alias.user_id",
+    "org.matrix.spamcheck.user_may_create_room_alias.desired_alias",
+    "org.matrix.spamcheck.user_may_publish_room.publisher_user_id",
+    "org.matrix.spamcheck.user_may_publish_room.room_id",
+    "org.matrix.spamcheck.check_username_for_spam.user_id",
+    "org.matrix.spamcheck.check_username_for_spam.display_name",
+    "org.matrix.spamcheck.check_username_for_spam.avatar_url",
+    "org.matrix.spamcheck.check_registration_for_spam_deny.maybe_user_name",
+    "org.matrix.spamcheck.check_registration_for_spam_deny.maybe_email",
+    "org.matrix.spamcheck.check_registration_for_spam_deny.user_agent",
+    "org.matrix.spamcheck.check_registration_for_spam_deny.ip",
+    "org.matrix.spamcheck.check_registration_for_spam_deny.maybe_auth_provider_id",
+    "org.matrix.spamcheck.check_registration_for_spam_shadowban.maybe_user_name",
+    "org.matrix.spamcheck.check_registration_for_spam_shadowban.maybe_email",
+    "org.matrix.spamcheck.check_registration_for_spam_shadowban.user_agent",
+    "org.matrix.spamcheck.check_registration_for_spam_shadowban.ip",
+    "org.matrix.spamcheck.check_registration_for_spam_shadowban.maybe_auth_provider_id",
+}
+
+enum ObjectProperty {
+    /// The following properties point to objects.
+    "org.matrix.spamcheck.check_event_for_spam.event",
 }
 
 /**
- * An update to an elementary spam rule, attempting to match a single value
- * (e.g. a user_id) against a number of regexps.
- * 
- * The rule will **reject** (i.e. consider as spam) if the value **contains**
- * any of the regexps or literals.
- *
- * The rule will **accept** (i.e. let pass) otherwise.
+ * ---------------- Checker Matching primitives  -------
  */
-type Update = {
-        /// Any number of literals to add/remove.
-        ///
-        /// Whenever possible, prefer literals to regexps, as they are both
-        /// more faster and more memory-efficient.
-        literals?: Patch<Literal>,
 
-        /// Any number of regexps to add/remove.
-        ///
-        /// The regexps will be or-ed and compiled spamcheck-side.
-        ///
-        /// These regexps MUST follow the specs of https://docs.python.org/3/library/re.html .
-        regexps?: Patch<Regexp>,
-    };
-
-/**
- * An antispam rule for `user_may_invite`.
- */
-type InviteUpdates = {
-    /// The full user id of the inviter.
-    inviter_user_id: Update,
-
-    /// The full user id if the potential new room member.
-    new_member_user_id: Update,
-
-    /// The room id.
-    room_id: Update,
-};
-
-/**
- * An antispam rule for `user_may_create_room`.
- */
-type RoomCreateUpdates = {
-    /// The full user id of the room creator.
-    user_id: Update,
-};
-
-/**
- * An antispam rule for `user_may_create_room_alias`.
- */
-type AliasCreateUpdates = {
-    /// The full user id of the alias creator.
-    user_id: Update,
-
-    /// The human-readable alias.
-    desired_alias: Update,
-};
-
-/**
- * An antispam rule for `user_may_publish_room`.
- */
-type PublishRoomUpdates = {
-    /// The full user id of the publisher.
-    publisher_user_id: Update,
-
-    /// The room id.
-    room_id: Update,
-};
-
-/**
- * An antispam rule for `check_username_for_spam`.
- */
-type CheckUsernameForSpamUpdates = {
-    /// The full user id of the user.
-    user_id: Update,
-
-    /// The display name of the user.
-    display_name: Update,
-
-    /// The URL towards the avatar of the user.
-    avatar_url: Update,
-};
-
-/**
- * An antispam rule for `check_registration_for_spam`.
- */
-type CheckRegistrationForSpamUpdates = {
-    /// The username, if available.
-    maybe_user_name: Update,
-
-    /// The email used for registration, if available.
-    maybe_email: Update,
-
-    /// The list of user agents used during registration (possibly empty).
-    /// A registration will be considered spammy if any of the
-    /// user agents matches the rule.
-    user_agent: Update,
-
-    /// The list of IPs used during registration (possibly empty).
-    /// A registration will be considered spammy if any of the
-    /// IPs matches the rule.
-    ip: Update,
-
-    /// The auth provider, if available, e.g. "oidc", "saml", ...
-    maybe_auth_provider_id: Update
-};
-
-/**
- * An antispam rule for `check_event_for_spam`.
- */
-type CheckEventForSpamUpdates = {
-    /// A path of fields within the event object.
+type Matcher =
+    /// Matching against a literal string.
     ///
-    /// e.g. `"content.formatted_body"` will return `event.content.formatted_body`.
+    /// If the string property contains this literal string, the rule **matches**
+    /// i.e. the spamcheck will **reject** the operation. Matches are case-insensitive.
     ///
-    /// If any of the fields is not present, the rule will **not** match (i.e. the
-    /// message will not be considered spam).
-    event: { [path: string]: Update },
-};
+    /// # Example
+    ///
+    /// If literal `hailhydra` is a matcher for string property
+    /// `org.matrix.spamcheck.check_registration_for_spam_deny.maybe_user_name`,
+    ///  user won't be able to register an account with the name 'hailHydra'.
+    { literal: string }
+
+    /// Matching against a regexp.
+    ///
+    /// If the string property is matched by this regexp, the rule **matches**
+    /// i.e. the spamcheck will **reject** the operation. Matches are case-insensitive.
+    ///
+    /// # Example
+    ///
+    /// If regexp `h[ae]il.*hydra` is a matcher for string property
+    /// `org.matrix.spamcheck.check_registration_for_spam_deny.maybe_user_name`,
+    /// user won't be able to register an account with the name 'hEil hYdra'.
+    | { regexp: string }
 
 /**
- * The complete list of rules for an instance of the spam-checker.
+ * ------------------- Snapshot of rules ----------------------
  */
-type GlobalUpdate = {
-    /// If the rules match, user cannot invite other user.
-    user_may_invite?: InviteUpdates,
 
-    /// If the rules match, user cannot create room.
-    user_may_create_room?: RoomCreateUpdates,
+/**
+ * The current matchers on a property that points to an object.
+ */
+type StringPropertyMatchers = {
+    property: StringProperty,
+    matchers: Matcher[],
+}
 
-    /// If the rules match, user cannot create an alias for the room.
-    user_may_create_room_alias?: AliasCreateUpdates,
+/**
+ * The current matchers on a property that points to an object.
+ */
+type ObjectPropertyMatchers = {
+    property: ObjectProperty,
+    matchers: {
+        [path: string]: Matcher[]
+    },
+}
 
-    /// If the rules match, user cannot make the room public.
-    user_may_publish_room?: PublishRoomUpdates,
+/**
+ * A list of rules we wish to see.
+ */
+type RuleToShow =
+    /// All the matchers for a StringProperty.
+    StringProperty
+    /// All the matchers for a single path in a ObjectProperty.
+    | {
+        property: ObjectProperty,
+        path: string
+    }
+    /// All the matchers for all the paths in an ObjectProperty.
+    | ObjectProperty;
 
-    /// If the rules match, register user and immediately shadowban them.
-    check_registration_for_spam_shadowban?: CheckRegistrationForSpamUpdates,
+/**
+ * Show current rules.
+ */
+type ShowMeTheseRules = {
+    "org.matrix.spamcheck.action": "snapshot",
 
-    /// If the rules of `check_registration_for_spam_shadowban` do NOT
-    /// match but these rules match, deny registration.
-    check_registration_for_spam_deny?: CheckRegistrationForSpamUpdates,
-
-    /// If the rules match, deny registration, regardless of
-    /// the result of `check_registration_for_spam_shadowban`
-    /// and `check_registration_for_spam_deny`.
-    check_username_for_spam?: CheckUsernameForSpamUpdates,
-
-    /// If the rules match, event will bounce.
-    check_event_for_spam?: CheckEventForSpamUpdates,
-
-    /// The instant of the latest update, in milliseconds since the Unix epoch.
+    /// The list of rules to show:
     ///
-    /// This value is meant to be passed as argument when requesting
-    /// more recent update.
-    latest_update_ts: number,
-};
+    /// `*` for all rules
+    property: RuleToShow[] | "*";
+}
+
+/**
+ * A message with a snapshot of rules, as requested per `ShowMeTheseRules`.
+ */
+type RuleSnapshotMessage = {
+    type: "org.matrix.spamcheck.snapshot",
+    content: {
+        dump: (StringPropertyMatchers | ObjectPropertyMatchers)[]
+    }
+}
+
+
+const MESSAGE_RULE_DUMP_TYPE = "org.matrix.spamcheck.dump";
+/**
+ * ------------------- Updating rules ----------------------
+ */
+
+/// A list of additions/removal.
+///
+/// Resolved in the following order:
+///
+/// 1. remove;
+/// 2. add;
+type Patch = {
+    /// Remove some or all items.
+    remove?: "org.matrix.spamcheck.clear" | Matcher[],
+
+    /// Add items.
+    add?: Matcher[],
+}
+
+
+/**
+ * An update to a single rule, for a property that points to a string.
+ */
+type StringRuleUpdate = {
+    "org.matrix.spamcheck.action": "update",
+
+    /// The property affected by this rule change.
+    property: StringProperty,
+
+    /// Matchers to add/remove.
+    patch: Patch,
+}
+
+/**
+ * An update to a single rule, for a property that points to an object.
+ */
+type ObjectRuleUpdate = {
+    "org.matrix.spamcheck.action": "update",
+
+    /// The property affected by this rule change.
+    ///
+    /// This property points to an object `o`.
+    property: ObjectProperty,
+
+    /// The path to follow within object `o` to access
+    /// a string value.
+    ///
+    /// If the path is not defined or the value is not
+    /// a string, the message is considered a non-match,
+    /// i.e. it can pass.
+    path: string,
+
+    /// Matchers to add/remove.
+    patch: Patch,
+}
+
+
+/**
+ * Remove all the rules.
+ */
+type ClearEverything = {
+    "org.matrix.spamcheck.action": "clear",
+}
