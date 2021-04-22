@@ -642,9 +642,10 @@ export class Mjolnir {
     }
 
     public async shutdownSynapseRoom(roomId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v1/shutdown_room/${roomId}`;
+        const endpoint = `/_synapse/admin/v1/rooms/${roomId}/delete`;
         return await this.client.doRequest("POST", endpoint, null, {
             new_room_user_id: await this.client.getUserId(),
+            block: true,
         });
     }
 }
