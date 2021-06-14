@@ -84,7 +84,7 @@ export class Mjolnir {
                 ];
                 if (config.commands.allowNoPrefix) prefixes.push("!");
 
-                const prefixUsed = prefixes.find(p => content['body'].startsWith(p));
+                const prefixUsed = prefixes.find(p => content['body'].toLowerCase().startsWith(p.toLowerCase()));
                 if (!prefixUsed) return;
 
                 // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
