@@ -84,8 +84,6 @@ export class Mjolnir {
                 ];
                 if (config.commands.allowNoPrefix) prefixes.push("!");
 
-                console.log(content['body'])
-
                 const prefixUsed = prefixes.find(p => content['body'].toLowerCase().startsWith(p.toLowerCase()));
                 if (!prefixUsed) return;
 
