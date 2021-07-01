@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import {
+    extractRequestError,
     LogLevel,
     LogService,
     MatrixClient,
@@ -194,7 +195,7 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
         } catch (e) {
             // This is a recursive call, so tell the function not to try and call us
             await logMessage(LogLevel.WARN, "utils", `Failed to resolve room alias for ${roomId} - see console for details`, null, true);
-            LogService.warn("utils", e);
+            LogService.warn("utils", extractRequestError(e));
         }
         const regexRoomId = new RegExp(escapeRegex(roomId), "g");
         content.body = content.body.replace(regexRoomId, alias);

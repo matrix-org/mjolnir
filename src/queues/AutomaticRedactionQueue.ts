@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 
@@ -44,7 +44,7 @@ export class AutomaticRedactionQueue {
                 }
             } catch (e) {
                 logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
-                LogService.warn("AutomaticRedactionQueue", e);
+                LogService.warn("AutomaticRedactionQueue", extractRequestError(e));
             }
         }
     }

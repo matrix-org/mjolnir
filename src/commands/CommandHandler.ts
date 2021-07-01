@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import { Mjolnir } from "../Mjolnir";
 import { execStatusCommand } from "./StatusCommand";
 import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
 import { execDumpRulesCommand } from "./DumpRulesCommand";
-import { LogService, RichReply } from "matrix-bot-sdk";
+import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
 import * as htmlEscape from "escape-html";
 import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
@@ -141,7 +141,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await mjolnir.client.sendMessage(roomId, reply);
         }
     } catch (e) {
-        LogService.error("CommandHandler", e);
+        LogService.error("CommandHandler", extractRequestError(e));
         const text = "There was an error processing your command - see console/log for details";
         const reply = RichReply.createFor(roomId, event, text, text);
         reply["msgtype"] = "m.notice";

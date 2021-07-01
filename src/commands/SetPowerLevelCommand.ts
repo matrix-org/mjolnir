@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Matrix.org Foundation C.I.C.
+Copyright 2020-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, LogService } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 
 // !mjolnir powerlevel <user ID> <level> [room]
@@ -32,7 +32,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');
             await logMessage(LogLevel.ERROR, "SetPowerLevelCommand", `Failed to set power level of ${victim} to ${level} in ${targetRoomId}: ${message}`, targetRoomId);
-            LogService.error("SetPowerLevelCommand", e);
+            LogService.error("SetPowerLevelCommand", extractRequestError(e));
         }
     }
 

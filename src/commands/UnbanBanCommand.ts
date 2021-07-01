@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
-import { LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 import config from "../config";
 import { logMessage } from "../LogProxy";
@@ -37,7 +37,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
         defaultShortcode = data['shortcode'];
     } catch (e) {
         LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");
-        LogService.warn("UnbanBanCommand", e);
+        LogService.warn("UnbanBanCommand", extractRequestError(e));
 
         // Assume no default.
     }

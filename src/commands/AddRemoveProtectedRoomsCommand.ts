@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Matrix.org Foundation C.I.C.
+Copyright 2020-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, LogService } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 
 // !mjolnir rooms add <room alias/ID>
@@ -32,7 +32,7 @@ export async function execRemoveProtectedRoom(roomId: string, event: any, mjolni
     try {
         await mjolnir.client.leaveRoom(protectedRoomId);
     } catch (e) {
-        LogService.warn("AddRemoveProtectedRoomsCommand", e);
+        LogService.warn("AddRemoveProtectedRoomsCommand", extractRequestError(e));
         await logMessage(LogLevel.WARN, "AddRemoveProtectedRoomsCommand", `Failed to leave ${protectedRoomId} - the room is no longer being protected, but the bot could not leave`, protectedRoomId);
     }
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');

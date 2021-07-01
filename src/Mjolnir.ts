@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { CreateEvent, LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
+import {
+    CreateEvent,
+    extractRequestError,
+    LogLevel,
+    LogService,
+    MatrixClient,
+    MatrixGlob,
+    Permalinks,
+    UserID
+} from "matrix-bot-sdk";
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
@@ -152,7 +161,7 @@ export class Mjolnir {
                     }
                 }
             } catch (e) {
-                LogService.warn("Mjolnir", e);
+                LogService.warn("Mjolnir", extractRequestError(e));
             }
             await this.buildWatchedBanLists();
             this.applyUnprotectedRooms();
@@ -175,7 +184,7 @@ export class Mjolnir {
         }).catch(async err => {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
-                LogService.error("Mjolnir", err);
+                LogService.error("Mjolnir", extractRequestError(err));
                 await logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
             } catch (e) {
                 // If we failed to handle the error, just crash
@@ -196,7 +205,7 @@ export class Mjolnir {
         try {
             additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
         } catch (e) {
-            LogService.warn("Mjolnir", e);
+            LogService.warn("Mjolnir", extractRequestError(e));
         }
         if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
         additionalProtectedRooms.rooms.push(roomId);
@@ -214,7 +223,7 @@ export class Mjolnir {
         try {
             additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
         } catch (e) {
-            LogService.warn("Mjolnir", e);
+            LogService.warn("Mjolnir", extractRequestError(e));
         }
         if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
         additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
@@ -250,7 +259,7 @@ export class Mjolnir {
                 }
             }
         } catch (e) {
-            LogService.warn("Mjolnir", e);
+            LogService.warn("Mjolnir", extractRequestError(e));
         }
 
         return enabled;
@@ -261,7 +270,7 @@ export class Mjolnir {
             try {
                 this.enableProtection(protection, false);
             } catch (e) {
-                LogService.warn("Mjolnir", e);
+                LogService.warn("Mjolnir", extractRequestError(e));
             }
         }
     }
@@ -464,7 +473,7 @@ export class Mjolnir {
 
             // Otherwise OK
         } catch (e) {
-            LogService.error("Mjolnir", e);
+            LogService.error("Mjolnir", extractRequestError(e));
             errors.push({
                 roomId,
                 errorMessage: e.message || (e.body ? e.body.error : '<no message>'),
@@ -559,7 +568,7 @@ export class Mjolnir {
                     const eventPermalink = Permalinks.forEvent(roomId, event['event_id']);
                     LogService.error("Mjolnir", "Error handling protection: " + protection.name);
                     LogService.error("Mjolnir", "Failed event: " + eventPermalink);
-                    LogService.error("Mjolnir", e);
+                    LogService.error("Mjolnir", extractRequestError(e));
                     await this.client.sendNotice(config.managementRoom, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
                 }
             }
@@ -631,7 +640,7 @@ export class Mjolnir {
             return response['admin'];
         } catch (e) {
             LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
-            LogService.error("Mjolnir", e);
+            LogService.error("Mjolnir", extractRequestError(e));
             return false; // assume not
         }
     }

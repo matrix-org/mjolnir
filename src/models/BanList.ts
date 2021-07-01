@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogService, MatrixClient } from "matrix-bot-sdk";
+import { extractRequestError, LogService, MatrixClient } from "matrix-bot-sdk";
 import { ListRule } from "./ListRule";
 
 export const RULE_USER = "m.room.rule.user";
@@ -50,7 +50,7 @@ export default class BanList {
         const currentShortcode = this.shortcode;
         this.shortcode = newShortcode;
         this.client.sendStateEvent(this.roomId, SHORTCODE_EVENT_TYPE, '', {shortcode: this.shortcode}).catch(err => {
-            LogService.error("BanList", err);
+            LogService.error("BanList", extractRequestError(err));
             if (this.shortcode === newShortcode) this.shortcode = currentShortcode;
         });
     }

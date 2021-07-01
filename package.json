@@ -26,6 +26,6 @@
     "config": "^3.3.6",
     "escape-html": "^1.0.3",
     "js-yaml": "^4.1.0",
-    "matrix-bot-sdk": "^0.5.18"
+    "matrix-bot-sdk": "^0.5.19"
   }
 }

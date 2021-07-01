@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2019-2021 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogService, RichReply } from "matrix-bot-sdk";
+import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
 import { PROTECTIONS } from "../protections/protections";
 
 // !mjolnir enable <protection>
@@ -24,7 +24,7 @@ export async function execEnableProtection(roomId: string, event: any, mjolnir: 
         await mjolnir.enableProtection(parts[2]);
         await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
     } catch (e) {
-        LogService.error("ProtectionsCommands", e);
+        LogService.error("ProtectionsCommands", extractRequestError(e));
 
         const message = `Error enabling protection '${parts[0]}' - check the name and try again.`;
         const reply = RichReply.createFor(roomId, event, message, message);
