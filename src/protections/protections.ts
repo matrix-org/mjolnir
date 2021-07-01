@@ -18,6 +18,7 @@ import { FirstMessageIsImage } from "./FirstMessageIsImage";
 import { IProtection } from "./IProtection";
 import { BasicFlooding, MAX_PER_MINUTE } from "./BasicFlooding";
 import { WordList } from "./WordList";
+import { MessageIsMedia } from "./MessageIsMedia";
 
 export const PROTECTIONS: PossibleProtections = {
     [new FirstMessageIsImage().name]: {
@@ -34,6 +35,10 @@ export const PROTECTIONS: PossibleProtections = {
         description: "If a user posts a monitored word a set amount of time after joining, they " +
             "will be banned from that room.  This will not publish the ban to a ban list.",
         factory: () => new WordList(),
+    },
+    [new MessageIsMedia().name]: {
+        description: "Redacts any media (images or videos) published to the channel",
+        factory:() => new MessageIsMedia(),
     }
 };
 
