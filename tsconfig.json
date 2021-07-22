@@ -6,6 +6,7 @@
         "module": "commonjs",
         "moduleResolution": "node",
         "noImplicitReturns": true,
+        "noUnusedLocals": true,
         "target": "es2015",
         "noImplicitAny": false,
         "sourceMap": true,

@@ -15,19 +15,9 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
-import { LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
-import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
+import { LogLevel } from "matrix-bot-sdk";
 import config from "../config";
 import { logMessage } from "../LogProxy";
-import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
-
-interface Arguments {
-    list: BanList;
-    entity: string;
-    ruleType: string;
-    reason: string;
-}
 
 // !mjolnir kick <user> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
