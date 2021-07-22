@@ -32,7 +32,7 @@ import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEven
 import * as htmlEscape from "escape-html";
 import { Healthz } from "./health/healthz";
 
-config.RUNTIME = {client: null};
+config.RUNTIME = {};
 
 LogService.setLogger(new RichConsoleLogger());
 LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));

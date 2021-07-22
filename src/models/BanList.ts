@@ -28,7 +28,7 @@ export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
-export function ruleTypeToStable(rule: string, unstable = true): string {
+export function ruleTypeToStable(rule: string, unstable = true): string|null {
     if (USER_RULE_TYPES.includes(rule)) return unstable ? USER_RULE_TYPES[USER_RULE_TYPES.length - 1] : RULE_USER;
     if (ROOM_RULE_TYPES.includes(rule)) return unstable ? ROOM_RULE_TYPES[ROOM_RULE_TYPES.length - 1] : RULE_ROOM;
     if (SERVER_RULE_TYPES.includes(rule)) return unstable ? SERVER_RULE_TYPES[SERVER_RULE_TYPES.length - 1] : RULE_SERVER;
@@ -37,7 +37,7 @@ export function ruleTypeToStable(rule: string, unstable = true): string {
 
 export default class BanList {
     private rules: ListRule[] = [];
-    private shortcode: string = null;
+    private shortcode: string|null = null;
 
     constructor(public readonly roomId: string, public readonly roomRef, private client: MatrixClient) {
     }
@@ -85,7 +85,7 @@ export default class BanList {
                 continue;
             }
 
-            let kind: string = null;
+            let kind: string|null = null;
             if (USER_RULE_TYPES.includes(event['type'])) {
                 kind = RULE_USER;
             } else if (ROOM_RULE_TYPES.includes(event['type'])) {

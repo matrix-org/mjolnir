@@ -53,7 +53,10 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                await mjolnir.client.sendStateEvent(list.roomId, ruleTypeToStable(RULE_USER), stateKey, ruleContent);
+                let stableRule = ruleTypeToStable(RULE_USER);
+                if (stableRule) {
+                    await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
+                }
                 importedRules++;
             }
         } else if (stateEvent['type'] === 'm.room.server_acl' && stateEvent['state_key'] === '') {
@@ -71,7 +74,10 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                await mjolnir.client.sendStateEvent(list.roomId, ruleTypeToStable(RULE_SERVER), stateKey, ruleContent);
+                let stableRule = ruleTypeToStable(RULE_SERVER);
+                if (stableRule) {
+                    await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
+                }
                 importedRules++;
             }
         }
