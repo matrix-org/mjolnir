@@ -28,7 +28,8 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
         const errMessage = "Unable to find list - check your shortcode.";
         const errReply = RichReply.createFor(roomId, event, errMessage, errMessage);
         errReply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, errReply);
+        mjolnir.client.sendMessage(roomId, errReply);
+        return;
     }
 
     let importedRules = 0;

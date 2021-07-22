@@ -27,7 +27,8 @@ export async function execSetDefaultListCommand(roomId: string, event: any, mjol
         const replyText = "No ban list with that shortcode was found.";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
         reply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.sendMessage(roomId, reply);
+        return;
     }
 
     await mjolnir.client.setAccountData(DEFAULT_LIST_EVENT_TYPE, {shortcode});

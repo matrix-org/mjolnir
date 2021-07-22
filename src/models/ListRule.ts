@@ -32,8 +32,12 @@ export class ListRule {
         this.glob = new MatrixGlob(entity);
     }
 
-    public get recommendation(): string {
+    /**
+     * The recommendation for this rule, or `null` if there is no recommendation or the recommendation is invalid.
+     */
+    public get recommendation(): string|null {
         if (RECOMMENDATION_BAN_TYPES.includes(this.action)) return RECOMMENDATION_BAN;
+        return null;
     }
 
     public isMatch(entity: string): boolean {

@@ -28,7 +28,8 @@ export async function execMoveAliasCommand(roomId: string, event: any, mjolnir: 
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.sendMessage(roomId, reply);
+        return;
     }
 
     await mjolnir.client.deleteRoomAlias(movingAlias);
@@ -48,7 +49,8 @@ export async function execAddAliasCommand(roomId: string, event: any, mjolnir: M
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.sendMessage(roomId, reply);
+        return;
     }
 
     const newRoomId = await mjolnir.client.resolveRoom(targetRoom);
@@ -66,7 +68,8 @@ export async function execRemoveAliasCommand(roomId: string, event: any, mjolnir
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.sendMessage(roomId, reply);
+        return;
     }
 
     await mjolnir.client.deleteRoomAlias(aliasToRemove);
