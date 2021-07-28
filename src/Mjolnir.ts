@@ -650,10 +650,12 @@ export class Mjolnir {
         return await this.client.doRequest("POST", endpoint);
     }
 
-    public async shutdownSynapseRoom(roomId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v1/shutdown_room/${roomId}`;
-        return await this.client.doRequest("POST", endpoint, null, {
+    public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
+        return await this.client.doRequest("DELETE", endpoint, null, {
             new_room_user_id: await this.client.getUserId(),
+            block: true,
+            message: message || "This room was shutdown by a moderator"
         });
     }
 }
