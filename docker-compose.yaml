@@ -1,0 +1,30 @@
+# THIS IS TO BE USED FOR DEVELOPMENT AND TESTING PURPOSES ONLY
+version: '3.8'
+services:
+  synapse_release:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.synapse.latest
+    ports:
+      - "9999:9999"
+    volumes:
+      - ./docker/synapse-data:/data
+  synapse_registration:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.synapse.registration
+    volumes:
+      - ./docker/synapse-data:/data
+    depends_on: [synapse_release]
+  mjolnir:
+    environment:
+      NODE_ENV: development
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8005/tcp"
+    volumes:
+      - ./config:/data/config
+      - ./lib:/mjolnir/lib
+    depends_on: [synapse_registration]

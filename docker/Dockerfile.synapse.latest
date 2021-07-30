@@ -1,0 +1,12 @@
+# A custom Dockerfile to rebuild synapse from the official release + plugins
+
+FROM matrixdotorg/synapse:latest
+
+RUN pip show matrix-synapse
+
+COPY synapse_antispam /synapse_antispam
+RUN /usr/local/bin/python -m pip install /synapse_antispam
+
+VOLUME ["/data"]
+
+EXPOSE 8008/tcp 8009/tcp 8448/tcp
