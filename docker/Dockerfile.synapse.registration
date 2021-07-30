@@ -1,0 +1,6 @@
+# Only exists to register a user, temporary solution
+
+FROM matrixdotorg/synapse:latest
+VOLUME ["/data"]
+CMD ["-c", "/data/homeserver.yaml", "-u", "mjolnir", "-p", "mjolnir", "--admin", "http://synapse_release:9999"]
+ENTRYPOINT ["register_new_matrix_user"]

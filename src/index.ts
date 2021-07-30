@@ -44,6 +44,11 @@ if (config.health.healthz.enabled) {
     Healthz.listen();
 }
 
+async function createManagementRoom(client: MatrixClient, alias: string) {
+    let roomId = await client.createRoom();
+    await client.createRoomAlias(alias, roomId);
+}
+
 (async function () {
     const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));
 
@@ -56,6 +61,13 @@ if (config.health.healthz.enabled) {
     }
 
     config.RUNTIME.client = client;
+    // probably better to change to a config value
+    if (process.env.NODE_ENV === "development") {
+        // expects the config value to be an alias
+        // don't know what to do about that for now
+        // probably should validate it so someone doesn't have a huge headache
+        await createManagementRoom(client, config.managementRoom);
+    }
 
     client.on("room.invite", async (roomId: string, inviteEvent: any) => {
         const membershipEvent = new MembershipEvent(inviteEvent);

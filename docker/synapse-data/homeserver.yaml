@@ -1,0 +1,70 @@
+server_name: localhost:9999
+pid_file: /data/homeserver.pid
+public_baseurl: http://localhost:9999
+listeners:
+  - port: 9999
+    tls: false
+    type: http
+    x_forwarded: true
+
+    resources:
+      - names: [client, federation]
+        compress: false
+federation_ip_range_blacklist:
+  - '127.0.0.0/8'
+  - '10.0.0.0/8'
+  - '172.16.0.0/12'
+  - '192.168.0.0/16'
+  - '100.64.0.0/10'
+  - '169.254.0.0/16'
+  - '::1/128'
+  - 'fe80::/64'
+  - 'fc00::/7'
+# can not figure out how to exclude the db from the /data volume
+database:
+  name: sqlite3
+  args:
+    database: /data/homeserver.db
+media_store_path: "/data/media_store"
+enable_registration: true
+
+report_stats: false
+registration_shared_secret: "REGISTRATION_SHARED_SECRET"
+macaroon_secret_key: "MACROON_SECRET_KEY"
+#form_secret: ""
+signing_key_path: "/data/localhost:9999.signing.key"
+trusted_key_servers:
+  - server_name: "matrix.org"
+suppress_key_server_warning: true
+
+
+rc_message:
+  per_second: 10000
+  burst_count: 10000
+
+rc_registration:
+  per_second: 10000
+  burst_count: 10000
+
+rc_login:
+  address:
+    per_second: 10000
+    burst_count: 10000
+  account:
+    per_second: 10000
+    burst_count: 10000
+  failed_attempts:
+    per_second: 10000
+    burst_count: 10000
+
+rc_admin_redaction:
+  per_second: 10000
+  burst_count: 10000
+
+rc_joins:
+  local:
+    per_second: 10000
+    burst_count: 10000
+  remote:
+    per_second: 10000
+    burst_count: 10000
