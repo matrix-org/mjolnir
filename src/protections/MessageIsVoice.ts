@@ -38,7 +38,7 @@ export class MessageIsVoice implements IProtection {
             if (!config.noop) {
                 await mjolnir.client.redactEvent(roomId, event['event_id'], "Voice messages are not permitted here");
             } else {
-                await logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                await logMessage(LogLevel.WARN, "MessageIsVoice", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }
         }
     }
