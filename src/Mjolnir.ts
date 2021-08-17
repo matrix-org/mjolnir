@@ -655,7 +655,7 @@ export class Mjolnir {
         return await this.client.doRequest("DELETE", endpoint, null, {
             new_room_user_id: await this.client.getUserId(),
             block: true,
-            message: message || "This room was shutdown by a moderator"
+            message: message /* If `undefined`, we'll use Synapse's default message. */
         });
     }
 }
