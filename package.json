@@ -14,7 +14,7 @@
     "test": "ts-mocha --project ./tsconfig.json test/**/*.ts"
   },
   "devDependencies": {
-    "@types/mocha": "^8.2.2",
+    "@types/mocha": "^9.0.0",
     "@types/node": "11",
     "expect": "^27.0.6",
     "mocha": "^9.0.1",

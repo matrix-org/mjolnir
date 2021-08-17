@@ -131,7 +131,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
-                "!mjolnir shutdown room <room alias/ID>                              - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
+                "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
