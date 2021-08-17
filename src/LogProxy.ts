@@ -26,7 +26,7 @@ const levelToFn = {
     [LogLevel.ERROR.toString()]: LogService.error,
 };
 
-export async function logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string = null, isRecursive = false) {
+export async function logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false) {
     if (!additionalRoomIds) additionalRoomIds = [];
     if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
 

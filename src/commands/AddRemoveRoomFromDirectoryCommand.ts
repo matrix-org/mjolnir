@@ -23,7 +23,8 @@ async function addRemoveFromDirectory(inRoomId: string, event: any, mjolnir: Mjo
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(inRoomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        return mjolnir.client.sendMessage(inRoomId, reply);
+        mjolnir.client.sendMessage(inRoomId, reply);
+        return;
     }
 
     const targetRoomId = await mjolnir.client.resolveRoom(roomRef);

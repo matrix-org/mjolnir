@@ -33,7 +33,6 @@ import { redactUserMessagesIn } from "../utils";
 export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // We can only ban people who are not already banned, and who match the rules.
     const errors: RoomUpdateError[] = [];
-    let bansApplied = 0;
     for (const roomId of roomIds) {
         try {
             // We specifically use sendNotice to avoid having to escape HTML
@@ -76,7 +75,6 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                                 await logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                             }
 
-                            bansApplied++;
                             banned = true;
                             break;
                         }

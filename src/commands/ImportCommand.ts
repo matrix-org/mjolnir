@@ -28,7 +28,8 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
         const errMessage = "Unable to find list - check your shortcode.";
         const errReply = RichReply.createFor(roomId, event, errMessage, errMessage);
         errReply["msgtype"] = "m.notice";
-        return mjolnir.client.sendMessage(roomId, errReply);
+        mjolnir.client.sendMessage(roomId, errReply);
+        return;
     }
 
     let importedRules = 0;
@@ -52,7 +53,10 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                await mjolnir.client.sendStateEvent(list.roomId, ruleTypeToStable(RULE_USER), stateKey, ruleContent);
+                let stableRule = ruleTypeToStable(RULE_USER);
+                if (stableRule) {
+                    await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
+                }
                 importedRules++;
             }
         } else if (stateEvent['type'] === 'm.room.server_acl' && stateEvent['state_key'] === '') {
@@ -70,7 +74,10 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                await mjolnir.client.sendStateEvent(list.roomId, ruleTypeToStable(RULE_SERVER), stateKey, ruleContent);
+                let stableRule = ruleTypeToStable(RULE_SERVER);
+                if (stableRule) {
+                    await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
+                }
                 importedRules++;
             }
         }

@@ -150,7 +150,7 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     let token = timeline['prev_batch'] || response['next_batch'];
     let bfMessages = {chunk: syncedMessages, end: token};
     do {
-        const messages = [];
+        const messages: any[] = [];
         for (const event of (bfMessages['chunk'] || [])) {
             if (processed >= limit) return; // we're done even if we don't want to be
             processed++;
@@ -199,7 +199,9 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
         }
         const regexRoomId = new RegExp(escapeRegex(roomId), "g");
         content.body = content.body.replace(regexRoomId, alias);
-        content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${Permalinks.forRoom(alias, viaServers)}">${alias}</a>`);
+        if (content.formatted_body) {
+            content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${Permalinks.forRoom(alias, viaServers)}">${alias}</a>`);
+        }
     }
 
     return content;

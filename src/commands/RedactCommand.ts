@@ -21,8 +21,8 @@ import { Permalinks } from "matrix-bot-sdk";
 // !mjolnir redact <user ID> [room alias] [limit]
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const userId = parts[2];
-    let roomAlias = null;
-    let limit = Number.parseInt(parts.length > 3 ? parts[3] : null, 10); // default to NaN for later
+    let roomAlias: string|null = null;
+    let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later
     if (parts.length > 3 && isNaN(limit)) {
         roomAlias = await mjolnir.client.resolveRoom(parts[3]);
         if (parts.length > 4) {

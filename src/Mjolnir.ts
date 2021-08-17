@@ -153,7 +153,7 @@ export class Mjolnir {
             await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
-                const data = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                const data: Object|null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
                 if (data && data['rooms']) {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -252,7 +252,7 @@ export class Mjolnir {
     private async getEnabledProtections() {
         let enabled: string[] = [];
         try {
-            const protections = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            const protections: Object|null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
             if (protections && protections['enabled']) {
                 for (const protection of protections['enabled']) {
                     enabled.push(protection);
@@ -296,7 +296,7 @@ export class Mjolnir {
         await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
     }
 
-    public async watchList(roomRef: string): Promise<BanList> {
+    public async watchList(roomRef: string): Promise<BanList|null> {
         const joinedRooms = await this.client.getJoinedRooms();
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
@@ -321,12 +321,12 @@ export class Mjolnir {
         return list;
     }
 
-    public async unwatchList(roomRef: string): Promise<BanList> {
+    public async unwatchList(roomRef: string): Promise<BanList|null> {
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
         const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
-        const list = this.banLists.find(b => b.roomId === roomId);
+        const list = this.banLists.find(b => b.roomId === roomId) || null;
         if (list) this.banLists.splice(this.banLists.indexOf(list), 1);
 
         await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
@@ -347,7 +347,7 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         try {
-            const accountData = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            const accountData: Object|null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
             if (accountData && accountData['warned']) return; // already warned
         } catch (e) {
             // Ignore - probably haven't warned about it yet
@@ -595,7 +595,7 @@ export class Mjolnir {
         }
     }
 
-    private async printActionResult(errors: RoomUpdateError[], title: string = null, logAnyways = false) {
+    private async printActionResult(errors: RoomUpdateError[], title: string|null = null, logAnyways = false) {
         if (errors.length <= 0) return false;
 
         if (!logAnyways) {

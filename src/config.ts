@@ -66,7 +66,7 @@ interface IConfig {
      * here as much as possible.
      */
     RUNTIME: {
-        client: MatrixClient;
+        client?: MatrixClient;
     };
 }
 
@@ -116,7 +116,6 @@ const defaultConfig: IConfig = {
 
     // Needed to make the interface happy.
     RUNTIME: {
-        client: null,
     },
 };
 

@@ -23,17 +23,17 @@ import { logMessage } from "../LogProxy";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 
 interface Arguments {
-    list: BanList;
+    list: BanList | null;
     entity: string;
-    ruleType: string;
+    ruleType: string | null;
     reason: string;
 }
 
 // Exported for tests
-export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments> {
+export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments|null> {
     let defaultShortcode = null;
     try {
-        const data = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
+        const data: Object = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
         defaultShortcode = data['shortcode'];
     } catch (e) {
         LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");
@@ -43,9 +43,9 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     }
 
     let argumentIndex = 2;
-    let ruleType = null;
-    let entity = null;
-    let list = null;
+    let ruleType: string | null = null;
+    let entity: string | null = null;
+    let list: BanList | null = null;
     let force = false;
     while (argumentIndex < 7 && argumentIndex < parts.length) {
         const arg = parts[argumentIndex++];
@@ -62,7 +62,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
             else if (!ruleType) ruleType = RULE_SERVER;
         } else if (!list) {
             const foundList = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === arg.toLowerCase());
-            if (foundList) {
+            if (foundList !== undefined) {
                 list = foundList;
             }
         }
@@ -88,10 +88,10 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     }
 
     if (!list) {
-        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode);
+        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode) || null;
     }
 
-    let replyMessage = null;
+    let replyMessage: string | null = null;
     if (!list) replyMessage = "No ban list matching that shortcode was found";
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
     else if (!entity) replyMessage = "No entity found";
@@ -128,7 +128,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     };
     const stateKey = `rule:${bits.entity}`;
 
-    await mjolnir.client.sendStateEvent(bits.list.roomId, bits.ruleType, stateKey, ruleContent);
+    await mjolnir.client.sendStateEvent(bits.list!.roomId, bits.ruleType!, stateKey, ruleContent);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
@@ -140,14 +140,14 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
     const ruleContent = {}; // empty == clear/unban
     const stateKey = `rule:${bits.entity}`;
 
-    await mjolnir.client.sendStateEvent(bits.list.roomId, bits.ruleType, stateKey, ruleContent);
+    await mjolnir.client.sendStateEvent(bits.list!.roomId, bits.ruleType!, stateKey, ruleContent);
 
-    if (USER_RULE_TYPES.includes(bits.ruleType) && bits.reason === 'true') {
+    if (USER_RULE_TYPES.includes(bits.ruleType!) && bits.reason === 'true') {
         const rule = new MatrixGlob(bits.entity);
         await logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
         for (const protectedRoomId of Object.keys(mjolnir.protectedRooms)) {
-            const members = await mjolnir.client.getRoomMembers(protectedRoomId, null, ['ban'], null);
+            const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
             await logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Found ${members.length} banned user(s)`);
             for (const member of members) {
                 const victim = member.membershipFor;
