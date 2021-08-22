@@ -36,6 +36,7 @@ import { execSetPowerLevelCommand } from "./SetPowerLevelCommand";
 import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
 import { execKickCommand } from "./KickCommand";
+import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -100,6 +101,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execShutdownRoomCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'kick' && parts.length > 2) {
             return await execKickCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'make' && parts[2] === 'admin' && parts.length > 3) {
+            return await execMakeRoomAdminCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu = "" +
@@ -133,6 +136,7 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
+                "!mjolnir make admin <room alias> [room alias/ID]                    - Make the specified user or the bot itself admin of the room\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;

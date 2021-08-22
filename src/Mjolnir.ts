@@ -658,4 +658,11 @@ export class Mjolnir {
             message: message /* If `undefined`, we'll use Synapse's default message. */
         });
     }
+
+    public async makeUserRoomAdmin(roomId: string, userId?: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v1/rooms/${roomId}/make_room_admin`;
+        return await this.client.doRequest("POST", endpoint, null, {
+            user_id: userId || await this.client.getUserId(), /* if not specified make the bot administrator */
+        });
+    }
 }
