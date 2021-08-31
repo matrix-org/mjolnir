@@ -117,4 +117,7 @@ if (config.health.healthz.enabled) {
 
     const bot = new Mjolnir(client, protectedRooms, banLists);
     await bot.start();
-})();
+})().catch(err => {
+    logMessage(LogLevel.ERROR, "index", err);
+    process.exit(1);
+});
