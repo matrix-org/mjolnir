@@ -99,7 +99,7 @@ pip install -e "git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdir
 
 Then add the following to your `homeserver.yaml`:
 ```yaml
-modules:
+spam_checker:
   module: mjolnir.AntiSpam
   config:
     # Prevent servers/users in the ban lists from inviting users on this
