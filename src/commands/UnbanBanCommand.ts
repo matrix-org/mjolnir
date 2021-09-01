@@ -50,7 +50,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     while (argumentIndex < 7 && argumentIndex < parts.length) {
         const arg = parts[argumentIndex++];
         if (!arg) break;
-        if (["user", "room", "server"].includes(arg.toLowerCase())) {
+        if (["user", "room", "server", "recentusers"].includes(arg.toLowerCase())) {
             if (arg.toLowerCase() === 'user') ruleType = RULE_USER;
             if (arg.toLowerCase() === 'room') ruleType = RULE_ROOM;
             if (arg.toLowerCase() === 'server') ruleType = RULE_SERVER;
