@@ -4,17 +4,19 @@ services:
   synapse_release:
     build:
       context: .
-      dockerfile: docker/Dockerfile.synapse.latest
+      dockerfile: test/harness/config/docker/Dockerfile.synapse.latest
     ports:
       - "9999:9999"
     volumes:
-      - ./docker/synapse-data:/data
+      - ./test/harness/synapse-data:/data
+    env_file:
+      - ./test/harness/config/synapse/synapse.env
   synapse_registration:
     build:
       context: .
-      dockerfile: docker/Dockerfile.synapse.registration
+      dockerfile: test/harness/config/docker/Dockerfile.synapse.registration
     volumes:
-      - ./docker/synapse-data:/data
+      - ./test/harness/synapse-data:/data
     depends_on: [synapse_release]
   mjolnir:
     environment:
