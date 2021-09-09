@@ -45,7 +45,8 @@ if (config.health.healthz.enabled) {
 }
 
 (async function () {
-    const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));
+    const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath)
+    const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
 
     let client: MatrixClient;
     if (config.pantalaimon.use) {
