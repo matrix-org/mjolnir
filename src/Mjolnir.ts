@@ -36,6 +36,7 @@ import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
 import { AutomaticRedactionQueue } from "./queues/AutomaticRedactionQueue";
 import { Healthz } from "./health/healthz";
+import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -53,7 +54,8 @@ export class Mjolnir {
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     private protections: IProtection[] = [];
-    private redactionQueue = new AutomaticRedactionQueue();
+    private spamRedactionQueue = new AutomaticRedactionQueue();
+    private eventRedactionQueue = new EventRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
     private protectedJoinedRoomIds: string[] = [];
     private explicitlyProtectedRoomIds: string[] = [];
@@ -139,7 +141,7 @@ export class Mjolnir {
     }
 
     public get redactionHandler(): AutomaticRedactionQueue {
-        return this.redactionQueue;
+        return this.spamRedactionQueue;
     }
 
     public get automaticRedactGlobs(): MatrixGlob[] {
@@ -493,8 +495,10 @@ export class Mjolnir {
 
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
+        hadErrors = hadErrors || await this.printActionResult(redactionErrors, "Error updating redactions:");
 
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
@@ -521,8 +525,10 @@ export class Mjolnir {
 
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
+        hadErrors = hadErrors || await this.printActionResult(redactionErrors, "Error updating redactions:");
 
         if (!hadErrors) {
             const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
@@ -575,7 +581,7 @@ export class Mjolnir {
 
             // Run the event handlers - we always run this after protections so that the protections
             // can flag the event for redaction.
-            await this.redactionQueue.handleEvent(roomId, event, this.client);
+            await this.spamRedactionQueue.handleEvent(roomId, event, this.client);
 
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
@@ -590,6 +596,8 @@ export class Mjolnir {
             } else if (event['type'] === "m.room.member") {
                 // Only apply bans in the room we're looking at.
                 const errors = await applyUserBans(this.banLists, [roomId], this);
+                // do we need room scoped redaction here? yes...
+                // I want to get an inital review before i check this bit.
                 await this.printActionResult(errors);
             }
         }
@@ -657,5 +665,16 @@ export class Mjolnir {
             block: true,
             message: message /* If `undefined`, we'll use Synapse's default message. */
         });
+    }
+
+    // This naming is horrible and clashes with the other redaction queue which isn't
+    // really the same thing. The old one is more about an ongoing user who we haven't
+    // banned, whereas this one is about redaction of users who aren't active.
+    public queueRedactUserMessagesIn(userId: string, roomId: string) {
+        this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
+    }
+
+    public async processRedactionQueue() {
+        return await this.eventRedactionQueue.process(this.client);
     }
 }
