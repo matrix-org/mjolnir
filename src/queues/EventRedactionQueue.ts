@@ -13,8 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-//// NOTE: This is a queue for events so that other protections can happen first (bans and ACL)
-
 import { LogLevel, MatrixClient } from "matrix-bot-sdk"
 import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { logMessage } from "../LogProxy";
@@ -22,9 +20,10 @@ import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
 
 export interface QueuedRedaction {
+    roomId: string; // The room which the redaction will take place in.
     redact(client: MatrixClient): Promise<any>
     redactionEqual(redaction: QueuedRedaction): boolean
-    report(e): RoomUpdateError
+    report(e: any): RoomUpdateError
 }
 
 export class RedactUserInRoom implements QueuedRedaction {
@@ -43,7 +42,7 @@ export class RedactUserInRoom implements QueuedRedaction {
 
     public redactionEqual(redaction: QueuedRedaction): boolean {
         if (redaction instanceof RedactUserInRoom) {
-            return redaction.userId === this.userId && redaction.roomId === this.roomId; 
+            return redaction.userId === this.userId && redaction.roomId === this.roomId;
         } else {
             return false;
         }
@@ -58,7 +57,9 @@ export class RedactUserInRoom implements QueuedRedaction {
         };
     }
 }
-
+/**
+ * This is a queue for events so that other protections can happen first (e.g. applying room bans to every room).
+ */
 export class EventRedactionQueue {
     private toRedact: Array<QueuedRedaction> = new Array<QueuedRedaction>();
 
@@ -78,20 +79,25 @@ export class EventRedactionQueue {
         this.toRedact = this.toRedact.filter(r => r.redactionEqual(redaction));
     }
 
-    public async process(client: MatrixClient): Promise<RoomUpdateError[]> {
-        const errors: RoomUpdateError[]= [];
-        // need to change this so it pops the array until empty
-        // otherwise this will be cringe.
-        for (const redaction of this.toRedact) {
+    /**
+     * Process the redaction queue, carrying out the action of each QueuedRedaction in sequence.
+     * @param client The matrix client to use for processing redactions.
+     * @param roomId If the roomId is provided, only redactions for that room will be processed.
+     * @returns A description of any errors encountered by each QueuedRedaction that was processed.
+     */
+    public async process(client: MatrixClient, roomId?: string): Promise<RoomUpdateError[]> {
+        const errors: RoomUpdateError[] = [];
+        const currentBatch = roomId ? this.toRedact.filter(r => r.roomId === roomId) : this.toRedact;
+        for (const redaction of currentBatch) {
             try {
                 await redaction.redact(client);
             } catch (e) {
                 errors.push(redaction.report(e));
             } finally {
-                // FIXME: Need to figure out in which circumstances we want to retry.
+                // We need to figure out in which circumstances we want to retry here.
                 this.delete(redaction);
             }
         }
         return errors;
-    } 
+    }
 }

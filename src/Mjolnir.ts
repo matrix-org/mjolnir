@@ -595,10 +595,10 @@ export class Mjolnir {
                 return;
             } else if (event['type'] === "m.room.member") {
                 // Only apply bans in the room we're looking at.
-                const errors = await applyUserBans(this.banLists, [roomId], this);
-                // do we need room scoped redaction here? yes...
-                // I want to get an inital review before i check this bit.
-                await this.printActionResult(errors);
+                const banErrors = await applyUserBans(this.banLists, [roomId], this);
+                const redactionErrors = await this.processRedactionQueue(roomId);
+                await this.printActionResult(banErrors);
+                await this.printActionResult(redactionErrors);
             }
         }
     }
@@ -674,7 +674,7 @@ export class Mjolnir {
         this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
     }
 
-    public async processRedactionQueue() {
-        return await this.eventRedactionQueue.process(this.client);
+    public async processRedactionQueue(roomId?: string) {
+        return await this.eventRedactionQueue.process(this.client, roomId);
     }
 }
