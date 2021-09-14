@@ -13,15 +13,15 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-//// NOTE: This is a queue of users whose events should be redacted
-////////// Not a queue of events to be redacted.
-////////// This is also unrelated to the AutomaticRedactionReasons. 
-////////// It is as of writing only used by the flood/spam protections.
 import { extractRequestError, LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 
-export class AutomaticRedactionQueue {
+/**
+ * This is used to redact new events from users who are not banned from a watched list, but have been flagged
+ * for redaction by the flooding or image protection.
+ */
+export class UnlistedUserRedactionQueue {
     private usersToRedact: Set<string> = new Set<string>();
 
     constructor() {

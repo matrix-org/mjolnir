@@ -34,7 +34,7 @@ import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
-import { AutomaticRedactionQueue } from "./queues/AutomaticRedactionQueue";
+import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 
@@ -54,7 +54,7 @@ export class Mjolnir {
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     private protections: IProtection[] = [];
-    private spamRedactionQueue = new AutomaticRedactionQueue();
+    private unlistedUserRedactionQueue = new UnlistedUserRedactionQueue();
     private eventRedactionQueue = new EventRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
     private protectedJoinedRoomIds: string[] = [];
@@ -140,8 +140,8 @@ export class Mjolnir {
         return this.protections;
     }
 
-    public get redactionHandler(): AutomaticRedactionQueue {
-        return this.spamRedactionQueue;
+    public get unlistedUserRedactionHandler(): UnlistedUserRedactionQueue {
+        return this.unlistedUserRedactionQueue;
     }
 
     public get automaticRedactGlobs(): MatrixGlob[] {
@@ -581,7 +581,7 @@ export class Mjolnir {
 
             // Run the event handlers - we always run this after protections so that the protections
             // can flag the event for redaction.
-            await this.spamRedactionQueue.handleEvent(roomId, event, this.client);
+            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this.client);
 
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
@@ -667,9 +667,6 @@ export class Mjolnir {
         });
     }
 
-    // This naming is horrible and clashes with the other redaction queue which isn't
-    // really the same thing. The old one is more about an ongoing user who we haven't
-    // banned, whereas this one is about redaction of users who aren't active.
     public queueRedactUserMessagesIn(userId: string, roomId: string) {
         this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
     }

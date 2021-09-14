@@ -59,7 +59,7 @@ export class FirstMessageIsImage implements IProtection {
                 }
 
                 if (this.recentlyBanned.includes(event['sender'])) return; // already handled (will be redacted)
-                mjolnir.redactionHandler.addUser(event['sender']);
+                mjolnir.unlistedUserRedactionHandler.addUser(event['sender']);
                 this.recentlyBanned.push(event['sender']); // flag to reduce spam
 
                 // Redact the event
