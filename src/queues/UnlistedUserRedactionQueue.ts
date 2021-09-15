@@ -18,8 +18,12 @@ import { logMessage } from "../LogProxy";
 import config from "../config";
 
 /**
- * This is used to redact new events from users who are not banned from a watched list, but have been flagged
+ * This class is a queue of users who have been flagged
  * for redaction by the flooding or image protection.
+ * Specifically any new events sent by a queued user will be redacted.
+ * This does not handle previously sent events, for that see the EventRedactionQueue.
+ * These users are not listed as banned in any watch list and so may continue
+ * to view a room until a moderator can investigate.
  */
 export class UnlistedUserRedactionQueue {
     private usersToRedact: Set<string> = new Set<string>();

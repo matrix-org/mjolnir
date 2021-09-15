@@ -20,12 +20,24 @@ import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
 
 export interface QueuedRedaction {
-    roomId: string; // The room which the redaction will take place in.
+    /** The room which the redaction will take place in. */
+    readonly roomId: string;
+    /**
+     * Carries out the redaction task and is called by the EventRedactionQueue
+     * when processing this redaction.
+     * @param client A MatrixClient to use to carry out the redaction.
+     */
     redact(client: MatrixClient): Promise<any>
+    /**
+     * Used to test whether the redaction is the equivalent to another redaction.
+     * @param redaction Another QueuedRedaction to test if this redaction is an equivalent to.
+     */
     redactionEqual(redaction: QueuedRedaction): boolean
-    report(e: any): RoomUpdateError
 }
 
+/**
+ * Redacts all of the messages a user has sent to one room.
+ */
 export class RedactUserInRoom implements QueuedRedaction {
     userId: string;
     roomId: string;
@@ -47,55 +59,79 @@ export class RedactUserInRoom implements QueuedRedaction {
             return false;
         }
     }
-
-    public report(e): RoomUpdateError {
-        const message = e.message || (e.body ? e.body.error : '<no message>');
-        return {
-            roomId: this.roomId,
-            errorMessage: message,
-            errorKind: ERROR_KIND_FATAL,
-        };
-    }
 }
 /**
  * This is a queue for events so that other protections can happen first (e.g. applying room bans to every room).
  */
 export class EventRedactionQueue {
-    private toRedact: Array<QueuedRedaction> = new Array<QueuedRedaction>();
+    private toRedact: Map<string, QueuedRedaction[]> = new Map<string, QueuedRedaction[]>();
 
-    public has(redaction: QueuedRedaction) {
-        return this.toRedact.find(r => r.redactionEqual(redaction));
+    /**
+     * Test whether the redaction is already present in the queue.
+     * @param redaction a QueuedRedaction.
+     * @returns True if the queue already has the redaction, false otherwise.
+     */
+    public has(redaction: QueuedRedaction): boolean {
+        return !!this.toRedact.get(redaction.roomId)?.find(r => r.redactionEqual(redaction));
     }
 
-    public add(redaction: QueuedRedaction) {
+    /**
+     * Adds a QueuedRedaction to the queue to be processed when process is called.
+     * @param redaction A QueuedRedaction to await processing
+     * @returns A boolean that is true if the redaction was added to the queue and false if it was duplicated.
+     */
+    public add(redaction: QueuedRedaction): boolean {
         if (this.has(redaction)) {
-            return;
+            return false;
         } else {
-            this.toRedact.push(redaction);
+            let entry = this.toRedact.get(redaction.roomId);
+            if (entry) {
+                entry.push(redaction);
+            } else {
+                this.toRedact.set(redaction.roomId, [redaction]);
+            }return true;
         }
-    }
-
-    public delete(redaction: QueuedRedaction) {
-        this.toRedact = this.toRedact.filter(r => r.redactionEqual(redaction));
     }
 
     /**
      * Process the redaction queue, carrying out the action of each QueuedRedaction in sequence.
      * @param client The matrix client to use for processing redactions.
-     * @param roomId If the roomId is provided, only redactions for that room will be processed.
+     * @param limitToRoomId If the roomId is provided, only redactions for that room will be processed.
      * @returns A description of any errors encountered by each QueuedRedaction that was processed.
      */
-    public async process(client: MatrixClient, roomId?: string): Promise<RoomUpdateError[]> {
+    public async process(client: MatrixClient, limitToRoomId?: string): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
-        const currentBatch = roomId ? this.toRedact.filter(r => r.roomId === roomId) : this.toRedact;
-        for (const redaction of currentBatch) {
-            try {
-                await redaction.redact(client);
-            } catch (e) {
-                errors.push(redaction.report(e));
-            } finally {
-                // We need to figure out in which circumstances we want to retry here.
-                this.delete(redaction);
+        const redact = async (currentBatch: QueuedRedaction[]) => {
+            for (const redaction of currentBatch) {
+                try {
+                    await redaction.redact(client);
+                } catch (e) {
+                    let roomError: RoomUpdateError;
+                    if (e.roomId && e.errorMessage && e.errorKind) {
+                        roomError = e;
+                    } else {
+                        const message = e.message || (e.body ? e.body.error : '<no message>');
+                        roomError = {
+                            roomId: redaction.roomId,
+                            errorMessage: message,
+                            errorKind: ERROR_KIND_FATAL,
+                        };
+                    }
+                    errors.push(roomError);
+                }
+            }
+        }
+        if (limitToRoomId) {
+            // There might not actually be any queued redactions for this room.
+            let queuedRedactions = this.toRedact.get(limitToRoomId);
+            if (queuedRedactions) {
+                await redact(queuedRedactions);
+                this.toRedact.delete(limitToRoomId);
+            }
+        } else {
+            for (const [roomId, redactions] of this.toRedact) {
+                await redact(redactions);
+                this.toRedact.delete(roomId);
             }
         }
         return errors;
