@@ -122,11 +122,14 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
         }
     }
 
-    function initialSync() {
-        const qs = {
-            filter: JSON.stringify(filter),
-        };
-        return client.doRequest("GET", "/_matrix/client/r0/sync", qs);
+    /**
+     * Note: `rooms/initialSync` is deprecated. However, there is no replacement for this API for the time being.
+     * While previous versions of this function used `/sync`, experience shows that it can grow extremely
+     * slow (4-5 minutes long) when we need to sync many large rooms, which leads to timeouts and
+     * breakage in Mjolnir, see https://github.com/matrix-org/synapse/issues/10842.
+     */
+    function roomInitialSync() {
+        return client.doRequest("GET", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/initialSync`);
     }
 
     function backfill(from: string) {
@@ -140,14 +143,15 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     }
 
     // Do an initial sync first to get the batch token
-    const response = await initialSync();
+    const response = await roomInitialSync();
     if (!response) return [];
 
     let processed = 0;
 
-    const timeline = (((response['rooms'] || {})['join'] || {})[roomId] || {})['timeline'] || {};
-    const syncedMessages = timeline['events'] || [];
-    let token = timeline['prev_batch'] || response['next_batch'];
+    const timeline = (response['messages'] || {})
+    const syncedMessages = timeline['chunk'] || [];
+    // The start of the chunk has the oldest events.
+    let token = timeline['start'];
     let bfMessages = {chunk: syncedMessages, end: token};
     do {
         const messages: any[] = [];
