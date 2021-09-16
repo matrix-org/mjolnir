@@ -34,8 +34,9 @@ import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
-import { AutomaticRedactionQueue } from "./queues/AutomaticRedactionQueue";
+import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
+import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -53,7 +54,16 @@ export class Mjolnir {
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     private protections: IProtection[] = [];
-    private redactionQueue = new AutomaticRedactionQueue();
+    /**
+     * This is for users who are not listed on a watchlist,
+     * but have been flagged by the automatic spam detection as suispicous
+     */
+    private unlistedUserRedactionQueue = new UnlistedUserRedactionQueue();
+    /**
+     * This is a queue for redactions to process after mjolnir
+     * has finished applying ACL and bans when syncing.
+     */
+    private eventRedactionQueue = new EventRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
     private protectedJoinedRoomIds: string[] = [];
     private explicitlyProtectedRoomIds: string[] = [];
@@ -138,8 +148,13 @@ export class Mjolnir {
         return this.protections;
     }
 
-    public get redactionHandler(): AutomaticRedactionQueue {
-        return this.redactionQueue;
+    /**
+     * Returns the handler to flag a user for redaction, removing any future messages that they send.
+     * Typically this is used by the flooding or image protection on users that have not been banned from a list yet.
+     * It cannot used to redact any previous messages the user has sent, in that cas you should use the `EventRedactionQueue`.
+     */
+    public get unlistedUserRedactionHandler(): UnlistedUserRedactionQueue {
+        return this.unlistedUserRedactionQueue;
     }
 
     public get automaticRedactGlobs(): MatrixGlob[] {
@@ -484,6 +499,10 @@ export class Mjolnir {
         return errors;
     }
 
+    /**
+     * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
+     * @param verbose Whether to report any errors to the management room.
+     */
     public async syncLists(verbose = true) {
         for (const list of this.banLists) {
             await list.updateList();
@@ -493,8 +512,10 @@ export class Mjolnir {
 
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
+        hadErrors = hadErrors || await this.printActionResult(redactionErrors, "Error updating redactions:");
 
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
@@ -521,8 +542,10 @@ export class Mjolnir {
 
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
+        hadErrors = hadErrors || await this.printActionResult(redactionErrors, "Error updating redactions:");
 
         if (!hadErrors) {
             const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
@@ -575,7 +598,7 @@ export class Mjolnir {
 
             // Run the event handlers - we always run this after protections so that the protections
             // can flag the event for redaction.
-            await this.redactionQueue.handleEvent(roomId, event, this.client);
+            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this.client);
 
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
@@ -588,9 +611,14 @@ export class Mjolnir {
                 }
                 return;
             } else if (event['type'] === "m.room.member") {
-                // Only apply bans in the room we're looking at.
-                const errors = await applyUserBans(this.banLists, [roomId], this);
-                await this.printActionResult(errors);
+                // The reason we have to apply bans on each member change is because
+                // we cannot eagerly ban users (that is to ban them when they have never been a member)
+                // as they can be force joined to a room they might not have known existed.
+                // Only apply bans and then redactions in the room we are currently looking at.
+                const banErrors = await applyUserBans(this.banLists, [roomId], this);
+                const redactionErrors = await this.processRedactionQueue(roomId);
+                await this.printActionResult(banErrors);
+                await this.printActionResult(redactionErrors);
             }
         }
     }
@@ -657,5 +685,21 @@ export class Mjolnir {
             block: true,
             message: message /* If `undefined`, we'll use Synapse's default message. */
         });
+    }
+
+    public queueRedactUserMessagesIn(userId: string, roomId: string) {
+        this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
+    }
+
+    /**
+     * Process all queued redactions, this is usually called at the end of the sync process,
+     * after all users have been banned and ACLs applied.
+     * If a redaction cannot be processed, the redaction is skipped and removed from the queue.
+     * We then carry on processing the next redactions.
+     * @param roomId Limit processing to one room only, otherwise process redactions for all rooms.
+     * @returns The list of errors encountered, for reporting to the management room.
+     */
+    public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
+        return await this.eventRedactionQueue.process(this.client, roomId);
     }
 }
