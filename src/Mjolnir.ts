@@ -149,8 +149,9 @@ export class Mjolnir {
     }
 
     /**
-     * Retruns the handler to flag a user that is not listed on a watchlist
-     * for redaction, removing any future messages that they send.
+     * Returns the handler to flag a user for redaction, removing any future messages that they send.
+     * Typically this is used by the flooding or image protection on users that have not been banned from a list yet.
+     * It cannot used to redact any previous messages the user has sent, in that cas you should use the `EventRedactionQueue`.
      */
     public get unlistedUserRedactionHandler(): UnlistedUserRedactionQueue {
         return this.unlistedUserRedactionQueue;
@@ -499,7 +500,7 @@ export class Mjolnir {
     }
 
     /**
-     * Sync all the rooms with all the watched lists, banning and applying any changes ACLS.
+     * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
      * @param verbose Whether to report any errors to the management room.
      */
     public async syncLists(verbose = true) {
@@ -610,7 +611,10 @@ export class Mjolnir {
                 }
                 return;
             } else if (event['type'] === "m.room.member") {
-                // Only apply bans and then redactions in the room we're looking at.
+                // The reason we have to apply bans on each member change is because
+                // we cannot eagerly ban users (that is to ban them when they have never been a member)
+                // as they can be force joined to a room they might not have known existed.
+                // Only apply bans and then redactions in the room we are currently looking at.
                 const banErrors = await applyUserBans(this.banLists, [roomId], this);
                 const redactionErrors = await this.processRedactionQueue(roomId);
                 await this.printActionResult(banErrors);
@@ -690,8 +694,10 @@ export class Mjolnir {
     /**
      * Process all queued redactions, this is usually called at the end of the sync process,
      * after all users have been banned and ACLs applied.
+     * If a redaction cannot be processed, the redaction is skipped and removed from the queue.
+     * We then carry on processing the next redactions.
      * @param roomId Limit processing to one room only, otherwise process redactions for all rooms.
-     * @returns An array of descriptive errors if any were encountered that can be reported to a management room.
+     * @returns The list of errors encountered, for reporting to the management room.
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
         return await this.eventRedactionQueue.process(this.client, roomId);

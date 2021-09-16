@@ -18,10 +18,9 @@ import { logMessage } from "../LogProxy";
 import config from "../config";
 
 /**
- * This class is a queue of users who have been flagged
- * for redaction by the flooding or image protection.
+ * A queue of users who have been flagged for redaction typically by the flooding or image protection.
  * Specifically any new events sent by a queued user will be redacted.
- * This does not handle previously sent events, for that see the EventRedactionQueue.
+ * This does not handle previously sent events, for that see the `EventRedactionQueue`.
  * These users are not listed as banned in any watch list and so may continue
  * to view a room until a moderator can investigate.
  */

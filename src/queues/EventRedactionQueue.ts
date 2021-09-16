@@ -23,11 +23,11 @@ export interface QueuedRedaction {
     /** The room which the redaction will take place in. */
     readonly roomId: string;
     /**
-     * Carries out the redaction task and is called by the EventRedactionQueue
-     * when processing this redaction.
+     * Carry out the redaction.
+     * Called by the EventRedactionQueue.
      * @param client A MatrixClient to use to carry out the redaction.
      */
-    redact(client: MatrixClient): Promise<any>
+    redact(client: MatrixClient): Promise<void>
     /**
      * Used to test whether the redaction is the equivalent to another redaction.
      * @param redaction Another QueuedRedaction to test if this redaction is an equivalent to.
@@ -64,6 +64,9 @@ export class RedactUserInRoom implements QueuedRedaction {
  * This is a queue for events so that other protections can happen first (e.g. applying room bans to every room).
  */
 export class EventRedactionQueue {
+    /**
+     * This map is indexed by roomId and its values are a list of redactions waiting to be processed for that room.
+     */
     private toRedact: Map<string, QueuedRedaction[]> = new Map<string, QueuedRedaction[]>();
 
     /**
@@ -76,9 +79,9 @@ export class EventRedactionQueue {
     }
 
     /**
-     * Adds a QueuedRedaction to the queue to be processed when process is called.
-     * @param redaction A QueuedRedaction to await processing
-     * @returns A boolean that is true if the redaction was added to the queue and false if it was duplicated.
+     * Adds a `QueuedRedaction` to the queue. It will be processed when `process` is called.
+     * @param redaction A `QueuedRedaction` to await processing
+     * @returns `true` if the redaction was added to the queue, `false` if it is a duplicate of a redaction already present in the queue.
      */
     public add(redaction: QueuedRedaction): boolean {
         if (this.has(redaction)) {
@@ -89,12 +92,17 @@ export class EventRedactionQueue {
                 entry.push(redaction);
             } else {
                 this.toRedact.set(redaction.roomId, [redaction]);
-            }return true;
+            }
+            return true;
         }
     }
 
     /**
-     * Process the redaction queue, carrying out the action of each QueuedRedaction in sequence.
+     * Process the redaction queue, carrying out the action of each `QueuedRedaction` in sequence.
+     * If a redaction cannot be processed, the redaction is skipped and removed from the queue.
+     * We then carry on processing the next redactions.
+     * The reason we skip is at the moment is that we would have to think about all of the situations
+     * where we would not want failures to try again (e.g. messages were already redacted) and handle them explicitly.
      * @param client The matrix client to use for processing redactions.
      * @param limitToRoomId If the roomId is provided, only redactions for that room will be processed.
      * @returns A description of any errors encountered by each QueuedRedaction that was processed.
@@ -125,13 +133,13 @@ export class EventRedactionQueue {
             // There might not actually be any queued redactions for this room.
             let queuedRedactions = this.toRedact.get(limitToRoomId);
             if (queuedRedactions) {
-                await redact(queuedRedactions);
                 this.toRedact.delete(limitToRoomId);
+                await redact(queuedRedactions);
             }
         } else {
             for (const [roomId, redactions] of this.toRedact) {
-                await redact(redactions);
                 this.toRedact.delete(roomId);
+                await redact(redactions);
             }
         }
         return errors;
