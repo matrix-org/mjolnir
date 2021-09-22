@@ -16,8 +16,14 @@ limitations under the License.
 import {
     MatrixClient,
     Permalinks,
+    PantalaimonClient,
+    MemoryStorageProvider
 } from "matrix-bot-sdk";
 import config from "../../src/config";
+import * as HmacSHA1 from 'crypto-js/hmac-sha1';
+import axios from 'axios';
+import * as path from 'path';
+import * as fs from 'fs/promises';
 
 export async function createManagementRoom(client: MatrixClient) {
     let roomId = await client.createRoom();
@@ -44,3 +50,41 @@ export async function ensureLobbyRoomExists(client: MatrixClient): Promise<strin
         throw e;
     });
 }
+
+async function configureMjolnir() {
+    await fs.copyFile(path.join(__dirname, 'config', 'mjolnir', 'harness.yaml'), path.join(__dirname, '../../config/harness.yaml'));
+    await fs.rm(path.join(__dirname, 'mjolnir-data'), {recursive: true, force: true});
+    await registerUser('mjolnir', 'mjolnir', 'mjolnir', true);
+    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    await ensureManagementRoomExists(client);
+    return await ensureLobbyRoomExists(client);
+}
+
+async function startMjolnir() {
+    await configureMjolnir();
+    console.info('starting mjolnir');
+    await import('../../src/index');
+}
+
+async function registerUser(username: string, displayname: string, password: string, admin: boolean) {
+    let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
+    let { data } = await axios.get(registerUrl);
+    let nonce = data.nonce!;
+    let mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
+    return await axios.post(registerUrl, {
+        nonce,
+        username,
+        displayname,
+        password,
+        admin,
+        mac: mac.toString()
+    }).catch(e => {
+        if (e.isAxiosError && e.response.data.errcode === 'M_USER_IN_USE') {
+            console.log(`${username} already registered, skipping`)
+        } else {
+            throw e;
+        }
+    });
+}
+
