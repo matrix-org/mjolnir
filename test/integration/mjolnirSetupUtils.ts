@@ -24,6 +24,8 @@ import * as HmacSHA1 from 'crypto-js/hmac-sha1';
 import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { setupMjolnir } from '../../src/setup';
+import { registerUser } from "./clientHelper";
 
 export async function createManagementRoom(client: MatrixClient) {
     let roomId = await client.createRoom();
@@ -52,39 +54,25 @@ export async function ensureLobbyRoomExists(client: MatrixClient): Promise<strin
 }
 
 async function configureMjolnir() {
-    await fs.copyFile(path.join(__dirname, 'config', 'mjolnir', 'harness.yaml'), path.join(__dirname, '../../config/harness.yaml'));
-    await fs.rm(path.join(__dirname, 'mjolnir-data'), {recursive: true, force: true});
-    await registerUser('mjolnir', 'mjolnir', 'mjolnir', true);
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
-    await ensureManagementRoomExists(client);
-    return await ensureLobbyRoomExists(client);
-}
-
-async function startMjolnir() {
-    await configureMjolnir();
-    console.info('starting mjolnir');
-    await import('../../src/index');
-}
-
-async function registerUser(username: string, displayname: string, password: string, admin: boolean) {
-    let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
-    let { data } = await axios.get(registerUrl);
-    let nonce = data.nonce!;
-    let mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
-    return await axios.post(registerUrl, {
-        nonce,
-        username,
-        displayname,
-        password,
-        admin,
-        mac: mac.toString()
-    }).catch(e => {
+    await fs.copyFile(path.join(__dirname, 'config', 'harness.yaml'), path.join(__dirname, '../../config/harness.yaml'));
+    await registerUser('mjolnir', 'mjolnir', 'mjolnir', true).catch(e => {
         if (e.isAxiosError && e.response.data.errcode === 'M_USER_IN_USE') {
-            console.log(`${username} already registered, skipping`)
+            console.log('mjolnir already registered, skipping');
         } else {
             throw e;
         }
     });
 }
 
+// it actually might make sense to give mjolnir a clean plate each time we setup and teardown a test.
+// the only issues with this might be e.g. if we need to delete a community or something
+// that mjolnir sets up each time, but tbh we should probably just avoid setting things like that and tearing it down.
+// One thing that probably should not be persisted between tests is the management room, subscribed lists and protected rooms.
+export async function makeMjolnir() {
+    await configureMjolnir();
+    console.info('starting mjolnir');
+    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    await ensureManagementRoomExists(client);
+    return await setupMjolnir(client, config);
+}

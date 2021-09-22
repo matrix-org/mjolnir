@@ -209,6 +209,10 @@ export class Mjolnir {
         });
     }
 
+    public stop() {
+        this.client.stop();
+    }
+
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
 

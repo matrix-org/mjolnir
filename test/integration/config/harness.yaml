@@ -73,8 +73,7 @@ automaticallyRedactForReasons:
   - "advertising"
 
 # A list of rooms to protect (matrix.to URLs)
-protectedRooms:
-  - "https://matrix.to/#/#lobby:localhost:9999"
+protectedRooms: []
 
 # Set this option to true to protect every room the bot is joined to. Note that
 # this effectively makes the protectedRooms and associated commands useless because

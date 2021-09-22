@@ -12,6 +12,7 @@
     "lint": "tslint --project ./tsconfig.json -t stylish",
     "start:dev": "yarn build && node lib/index.js",
     "test": "ts-mocha --project ./tsconfig.json test/**/*.ts",
+    "test-integration": "NODE_ENV=harness ts-mocha --require test/integration/fixtures.ts --project ./tsconfig.json test/integration/**/*Test.ts",
     "harness": "NODE_ENV=harness ts-node test/harness/launchScript.ts"
   },
   "devDependencies": {
