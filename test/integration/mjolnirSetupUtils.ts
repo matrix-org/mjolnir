@@ -76,3 +76,8 @@ export async function makeMjolnir() {
     await ensureManagementRoomExists(client);
     return await setupMjolnir(client, config);
 }
+
+export async function teardownManagementRoom(client: MatrixClient, roomId: string, alias: string) {
+    await client.deleteRoomAlias(alias);
+    await client.leaveRoom(roomId);
+}

@@ -12,6 +12,7 @@ describe("help command", () => {
     })
     it('Mjolnir responded to !mjolnir help', async function() {
         this.timeout(30000);
+        console.log(`management room ${config.managementRoom}`);
         // send a messgage
         await client.joinRoom(config.managementRoom);
         // listener for getting the event reply
@@ -23,6 +24,7 @@ describe("help command", () => {
                 }
             }))});
         // check we get one back
+        console.log(config);
         await client.sendMessage(config.managementRoom, {msgtype: "m.text", body: "!mjolnir help"})
         await reply
     })
