@@ -15,13 +15,10 @@ limitations under the License.
 */
 import {
     MatrixClient,
-    Permalinks,
     PantalaimonClient,
     MemoryStorageProvider
 } from "matrix-bot-sdk";
 import config from "../../src/config";
-import * as HmacSHA1 from 'crypto-js/hmac-sha1';
-import axios from 'axios';
 import * as path from 'path';
 import * as fs from 'fs/promises';
 import { setupMjolnir } from '../../src/setup';
