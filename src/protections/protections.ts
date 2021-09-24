@@ -19,6 +19,7 @@ import { IProtection } from "./IProtection";
 import { BasicFlooding, MAX_PER_MINUTE } from "./BasicFlooding";
 import { WordList } from "./WordList";
 import { MessageIsVoice } from "./MessageIsVoice";
+import { MessageIsMedia } from "./MessageIsMedia";
 
 export const PROTECTIONS: PossibleProtections = {
     [new FirstMessageIsImage().name]: {
@@ -40,6 +41,10 @@ export const PROTECTIONS: PossibleProtections = {
         description: "If a user posts a voice message, that message will be redacted. No bans are issued.",
         factory: () => new MessageIsVoice(),
     },
+    [new MessageIsMedia().name]: {
+        description: "If a user posts an image or video, that message will be redacted. No bans are issued.",
+        factory: () => new MessageIsMedia(),
+    }
 };
 
 export interface PossibleProtections {
