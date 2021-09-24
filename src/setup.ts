@@ -23,14 +23,14 @@ import { Mjolnir } from "./Mjolnir";
 
 /**
  * Adds a listener to the client that will automatically accept invitations.
- * @param {MatrixClient} client 
+ * @param {MatrixClient} client
  * @param options By default accepts invites from anyone.
  * @param {string} options.managementRoom The room to report ignored invitations to if `recordIgnoredInvites` is true.
  * @param {boolean} options.recordIgnoredInvites Whether to report invites that will be ignored to the `managementRoom`.
  * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
  * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
  */
-export function addJoinOnInviteListener(client: MatrixClient, options) {
+function addJoinOnInviteListener(client: MatrixClient, options) {
     client.on("room.invite", async (roomId: string, inviteEvent: any) => {
         const membershipEvent = new MembershipEvent(inviteEvent);
 

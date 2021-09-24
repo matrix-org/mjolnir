@@ -1,9 +1,11 @@
 import config from "../../src/config";
-import { Mjolnir } from "../../src/Mjolnir";
 import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 
-// when mjolnir starts it clobbers the config, which is cached between runs,
-// by resolving the alias and setting it to a roomid.
+// When Mjolnir starts (src/index.ts) it clobbers the config by resolving the management room
+// alias specified in the config (config.managementRoom) and overwriting that with the room ID.
+// Unfortunately every piece of code importing that config imports the same instance, including
+// testing code, which is problematic when we want to create a fresh management room for each test.
+// So there is some code in here to "undo" the mutation after we stop Mjolnir syncing.
 export const mochaHooks = {
     beforeEach: [
       async function() {
@@ -16,8 +18,8 @@ export const mochaHooks = {
         async function() {
             console.log("stopping mjolnir");
             await this.mjolnir.stop();
-            // unclobber mjolnir's dirty work, i thought the config was being cached
-            // and was global, but that might have just been supersitiion, needs confirming.
+            // Mjolnir resolves config.managementRoom and overwrites it, so we undo this here
+            // after stopping Mjolnir for the next time we setup a Mjolnir and a management room.
             let managementRoomId = config.managementRoom;
             config.managementRoom = this.managementRoomAlias;
             // remove alias from management room and leave it.

@@ -3,7 +3,6 @@ import { assert } from "console";
 import config from "../../src/config";
 import { newTestUser, noticeListener } from "./clientHelper"
 
-// need the start and newTestUser and then the stop call to be in setup and tear down.
 describe("help command", () => {
     let client;
     before(async function () {

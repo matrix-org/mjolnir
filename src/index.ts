@@ -41,7 +41,7 @@ if (config.health.healthz.enabled) {
 }
 
 (async function () {
-    const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath)
+    const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
     const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
 
     let client: MatrixClient;

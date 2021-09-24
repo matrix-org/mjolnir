@@ -27,27 +27,20 @@ import * as fs from 'fs/promises';
 import { setupMjolnir } from '../../src/setup';
 import { registerUser } from "./clientHelper";
 
-export async function createManagementRoom(client: MatrixClient) {
-    let roomId = await client.createRoom();
-    return await client.createRoomAlias(config.managementRoom, roomId);
-}
-
-export async function ensureManagementRoomExists(client: MatrixClient): Promise<string> {
-    return await client.resolveRoom(config.managementRoom).catch(async e => {
-        if (e?.body?.errcode === 'M_NOT_FOUND') {
-            console.info("moderation room hasn't been created yet, so we're making it now.")
-            return await createManagementRoom(client);
-        }
-        throw e;
-    });
-}
-
-export async function ensureLobbyRoomExists(client: MatrixClient): Promise<string> {
-    const alias = Permalinks.parseUrl(config.protectedRooms[0]).roomIdOrAlias;
-    return await client.resolveRoom(alias).catch(async e => {
+/**
+ * Ensures that a room exists with the alias, if it does not exist we create it.
+ * @param client The MatrixClient to use to resolve or create the aliased room.
+ * @param alias The alias of the room.
+ * @returns The room ID of the aliased room.
+ */
+export async function ensureAliasedRoomExists(client: MatrixClient, alias: string): Promise<string> {
+    return await client.resolveRoom(alias)
+    .catch(async e => {
         if (e?.body?.errcode === 'M_NOT_FOUND') {
             console.info(`${alias} hasn't been created yet, so we're making it now.`)
-            return await client.createRoomAlias(alias, await client.createRoom());
+            let roomId = await client.createRoom();
+            await client.createRoomAlias(config.managementRoom, roomId);
+            return roomId
         }
         throw e;
     });
@@ -64,19 +57,22 @@ async function configureMjolnir() {
     });
 }
 
-// it actually might make sense to give mjolnir a clean plate each time we setup and teardown a test.
-// the only issues with this might be e.g. if we need to delete a community or something
-// that mjolnir sets up each time, but tbh we should probably just avoid setting things like that and tearing it down.
-// One thing that probably should not be persisted between tests is the management room, subscribed lists and protected rooms.
+
 export async function makeMjolnir() {
     await configureMjolnir();
     console.info('starting mjolnir');
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
-    await ensureManagementRoomExists(client);
+    await ensureAliasedRoomExists(client, config.managementRoom);
     return await setupMjolnir(client, config);
 }
 
+/**
+ * Remove the alias and leave the room, can't be implicitly provided from the config because Mjolnir currently mutates it.
+ * @param client The client to use to leave the room.
+ * @param roomId The roomId of the room to leave.
+ * @param alias The alias to remove from the room.
+ */
 export async function teardownManagementRoom(client: MatrixClient, roomId: string, alias: string) {
     await client.deleteRoomAlias(alias);
     await client.leaveRoom(roomId);

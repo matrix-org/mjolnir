@@ -3,6 +3,16 @@ import { HmacSHA1 } from "crypto-js";
 import { MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
 
+/**
+ * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
+ * This should only be used by test code and should not be included from any file in the source directory
+ * either by explicit imports or copy pasting.
+ * @param username The username to give the user.
+ * @param displayname The displayname to give the user.
+ * @param password The password to use.
+ * @param admin True to make the user an admin, false otherwise.
+ * @returns The response from synapse.
+ */
 export async function registerUser(username: string, displayname: string, password: string, admin: boolean) {
     let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
     let { data } = await axios.get(registerUrl);
@@ -27,9 +37,9 @@ export async function registerNewTestUser(isAdmin: boolean) {
     let isUserValid = false;
     let username;
     do {
-        username = `test-user-${Math.floor(Math.random() * 100000)}`
+        username = `mjolnir-test-user-${Math.floor(Math.random() * 100000)}`
         await registerUser(username, username, username, isAdmin).then(_ => isUserValid = true).catch(e => {
-            if (e.isAxiosError && e.response.data.errcode === 'M_USER_IN_USE') {
+            if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
                 // FIXME: Replace with the real logging service.
                 console.log(`${username} already registered, trying another`);
                 false // continue and try again
@@ -42,12 +52,23 @@ export async function registerNewTestUser(isAdmin: boolean) {
     return username;
 } 
 
-export async function newTestUser(isAdmin?: boolean): Promise<MatrixClient> {
+/**
+ * Registers a unique test user and returns a `MatrixClient` logged in and ready to use.
+ * @param isAdmin Whether to make the user an admin.
+ * @returns A new `MatrixClient` session for a unique test user.
+ */
+export async function newTestUser(isAdmin : boolean = false): Promise<MatrixClient> {
     const username = await registerNewTestUser(isAdmin);
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     return await pantalaimon.createClientWithCredentials(username, username);
 }
 
+/**
+ * Utility to create an event listener for m.notice msgtype m.room.messages.
+ * @param targetRoomdId The roomId to listen into.
+ * @param cb The callback when a m.notice event is found in targetRoomId.
+ * @returns The callback to pass to `MatrixClient.on('room.message', cb)`
+ */
 export function noticeListener(targetRoomdId: string, cb) {
     return (roomId, event) => {
         if (roomId !== targetRoomdId) return;
