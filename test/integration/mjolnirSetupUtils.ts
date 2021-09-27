@@ -18,10 +18,10 @@ import {
     PantalaimonClient,
     MemoryStorageProvider
 } from "matrix-bot-sdk";
+import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import { setupMjolnir } from '../../src/setup';
 import { registerUser } from "./clientHelper";
 
 /**
@@ -61,7 +61,7 @@ export async function makeMjolnir() {
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
     await ensureAliasedRoomExists(client, config.managementRoom);
-    return await setupMjolnir(client, config);
+    return await Mjolnir.setupMjolnirFromConfig(client);
 }
 
 /**

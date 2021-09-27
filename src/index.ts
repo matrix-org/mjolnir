@@ -26,7 +26,7 @@ import {
 import config from "./config";
 import { logMessage } from "./LogProxy";
 import { Healthz } from "./health/healthz";
-import { setupMjolnir } from "./setup";
+import { Mjolnir } from "./Mjolnir";
 
 config.RUNTIME = {};
 
@@ -54,7 +54,7 @@ if (config.health.healthz.enabled) {
 
     config.RUNTIME.client = client;
 
-    let bot = await setupMjolnir(client, config);
+    let bot = await Mjolnir.setupMjolnirFromConfig(client);
     await bot.start();
 })().catch(err => {
     logMessage(LogLevel.ERROR, "index", err);
