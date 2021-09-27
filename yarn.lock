@@ -185,13 +185,6 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-16.7.10.tgz#7aa732cc47341c12a16b7d562f519c2383b6d4fc"
   integrity sha512-S63Dlv4zIPb8x6MMTgDq5WWRJQe56iBEY0O3SOFA9JrRienkOVDXSXBjjJw6HTNQYSE2JI6GMCR6LVbIMHJVvA==
 
-"@types/promise-fs@^2.1.2":
-  version "2.1.2"
-  resolved "https://registry.yarnpkg.com/@types/promise-fs/-/promise-fs-2.1.2.tgz#7ef6ab00c7fbc68081e34e560d2f008d3dd27fd2"
-  integrity sha512-s3YON1LmplAUVrvTT2d1I0m2Rk0hSgc/1l5/krnU96YpP4NG9VEN/qopaFv8yk5a2Z+AgYzafS1LCP+kQH0MYw==
-  dependencies:
-    "@types/node" "*"
-
 "@types/qs@*":
   version "6.9.6"
   resolved "https://registry.npmjs.org/@types/qs/-/qs-6.9.6.tgz"
@@ -671,13 +664,6 @@ diff@^4.0.1:
   version "4.0.1"
   resolved "https://registry.npmjs.org/diff/-/diff-4.0.1.tgz"
   integrity sha512-s2+XdvhPCOF01LRQBC8hf4vhbVmI2CGS5aZnxLJlT5FtdhPCDFq80q++zK2KlrVorVDdL5BOGZ/VfLrVtYNF+Q==
-
-docker-compose@^0.23.13:
-  version "0.23.13"
-  resolved "https://registry.npmjs.org/docker-compose/-/docker-compose-0.23.13.tgz"
-  integrity sha512-/9fYC4g3AO+qsqxIZhmbVnFvJJPcYEV2yJbAPPXH+6AytU3urIY8lUAXOlvY8sl4u25pdKu1JrOfAmWC7lJDJg==
-  dependencies:
-    yaml "^1.10.2"
 
 dom-serializer@^1.0.1:
   version "1.3.2"
@@ -2181,11 +2167,6 @@ yallist@^4.0.0:
   version "4.0.0"
   resolved "https://registry.npmjs.org/yallist/-/yallist-4.0.0.tgz"
   integrity sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==
-
-yaml@^1.10.2:
-  version "1.10.2"
-  resolved "https://registry.npmjs.org/yaml/-/yaml-1.10.2.tgz"
-  integrity sha512-r3vXyErRCYJ7wg28yvBY5VSoAF8ZvlcW9/BwUzEtUsjvX/DKs24dIkuwjtuprwJJHsbyUbLApepYTR1BN4uHrg==
 
 yargs-parser@20.2.4:
   version "20.2.4"
