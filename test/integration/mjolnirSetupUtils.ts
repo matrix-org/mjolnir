@@ -45,17 +45,33 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 }
 
 async function configureMjolnir() {
-    await registerUser('mjolnir', 'mjolnir', 'mjolnir', true).catch(e => {
-        if (e.isAxiosError && e.response.data.errcode === 'M_USER_IN_USE') {
-            console.log('mjolnir already registered, skipping');
-        } else {
-            throw e;
+    try {
+        await registerUser('mjolnir', 'mjolnir', 'mjolnir', true)
+    } catch (e) {
+        if (e.isAxiosError) {
+            console.log('Received error while registering', e);
+            if (e.response.data && e.response.data.errcode === 'M_USER_IN_USE') {
+                console.log('mjolnir already registered, skipping');
+                return;
+            }
         }
-    });
+        throw e;
+    };
 }
 
+export function mjolnir(): Mjolnir | null {
+    return globalMjolnir;
+}
+export function matrixClient(): MatrixClient | null {
+    return globalClient;
+}
+let globalClient: MatrixClient | null
+let globalMjolnir: Mjolnir | null;
 
-export async function makeMjolnir() {
+/**
+ * Return a test instance of Mjolnir.
+ */
+export async function makeMjolnir(): Promise<Mjolnir> {
     await configureMjolnir();
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
@@ -63,7 +79,10 @@ export async function makeMjolnir() {
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
     await ensureAliasedRoomExists(client, config.managementRoom);
-    return await Mjolnir.setupMjolnirFromConfig(client);
+    let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);
+    globalClient = client;
+    globalMjolnir = mjolnir;
+    return mjolnir;
 }
 
 /**

@@ -130,6 +130,18 @@ on your homeserver join. The antispam module will not join the rooms for you.
 If you change the configuration, you will need to restart Synapse. You'll also need
 to restart Synapse to install the plugin.
 
+## Enabling readable abuse reports
+
+Since version 1.2, Mjölnir offers the ability to replace the Matrix endpoint used
+to report abuse and display it into a room, instead of requiring you to request
+this data from an admin API.
+
+This requires two configuration steps:
+
+1. In your Mjölnir configuration file, typically `/etc/mjolnir/config/production.yaml`, copy and paste the `web` section from `default.yaml`, if you don't have it yet (it appears with version 1.20) and set `enabled: true` for both `web` and
+`abuseReporting`. You may wish to look at other options while you're there.
+2. Setup a reverse proxy that will redirect requests from `^/_matrix/client/r0/rooms/([^/]*)/report/(.*)$` to `http://host:port/api/1/report/$1/$2`, where `host` is the host where you run Mjölnir, and `port` is the port you configured in `production.yaml`. For an example nginx configuration, see `test/nginx.conf`. It's the confirmation we use during runtime testing.
+
 ## Development
 
 TODO. It's a TypeScript project with a linter.
