@@ -1,6 +1,6 @@
 import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
-import { MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
 
 /**
@@ -40,8 +40,7 @@ export async function registerNewTestUser(isAdmin: boolean) {
         username = `mjolnir-test-user-${Math.floor(Math.random() * 100000)}`
         await registerUser(username, username, username, isAdmin).then(_ => isUserValid = true).catch(e => {
             if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
-                // FIXME: Replace with the real logging service.
-                console.log(`${username} already registered, trying another`);
+                LogService.debug("test/clientHelper", `${username} already registered, trying another`);
                 false // continue and try again
             } else {
                 console.error(`failed to register user ${e}`);

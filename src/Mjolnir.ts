@@ -293,6 +293,7 @@ export class Mjolnir {
      * Stop Mjolnir from syncing and processing commands.
      */
     public stop() {
+        LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
     }
 

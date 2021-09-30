@@ -1,5 +1,3 @@
-import { doesNotMatch } from "assert";
-import { assert } from "console";
 import config from "../../src/config";
 import { newTestUser, noticeListener } from "./clientHelper"
 
@@ -17,7 +15,6 @@ describe("help command", () => {
         // listener for getting the event reply
         let reply = new Promise((resolve, reject) => {
             client.on('room.message', noticeListener(config.managementRoom, (event) => {
-                console.log(event.event_id)
                 if (event.content.body.includes("Print status information")) {
                     resolve(event);
                 }

@@ -16,7 +16,10 @@ limitations under the License.
 import {
     MatrixClient,
     PantalaimonClient,
-    MemoryStorageProvider
+    MemoryStorageProvider,
+    LogService,
+    LogLevel,
+    RichConsoleLogger
 } from "matrix-bot-sdk";
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
@@ -57,7 +60,9 @@ async function configureMjolnir() {
 
 export async function makeMjolnir() {
     await configureMjolnir();
-    console.info('starting mjolnir');
+    LogService.setLogger(new RichConsoleLogger());
+    LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
+    LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
     await ensureAliasedRoomExists(client, config.managementRoom);

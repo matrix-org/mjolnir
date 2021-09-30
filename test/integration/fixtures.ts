@@ -16,7 +16,6 @@ export const mochaHooks = {
     ],
     afterEach: [
         async function() {
-            console.log("stopping mjolnir");
             await this.mjolnir.stop();
             // Mjolnir resolves config.managementRoom and overwrites it, so we undo this here
             // after stopping Mjolnir for the next time we setup a Mjolnir and a management room.
