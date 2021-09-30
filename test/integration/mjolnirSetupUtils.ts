@@ -23,8 +23,6 @@ import {
 } from "matrix-bot-sdk";
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
-import * as path from 'path';
-import * as fs from 'fs/promises';
 import { registerUser } from "./clientHelper";
 
 /**
@@ -47,7 +45,6 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 }
 
 async function configureMjolnir() {
-    await fs.copyFile(path.join(__dirname, 'config', 'harness.yaml'), path.join(__dirname, '../../config/harness.yaml'));
     await registerUser('mjolnir', 'mjolnir', 'mjolnir', true).catch(e => {
         if (e.isAxiosError && e.response.data.errcode === 'M_USER_IN_USE') {
             console.log('mjolnir already registered, skipping');

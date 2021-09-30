@@ -1,3 +1,6 @@
+# This configuration file is for the integration tests run by yarn:integration.
+# Editing this will do nothing and you shouldn't use it as a template.
+# For a template use default.yaml
 # Where the homeserver is located (client-server URL). This should point at
 # pantalaimon if you're using that.
 homeserverUrl: "http://localhost:9999"

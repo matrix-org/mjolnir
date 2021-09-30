@@ -182,6 +182,6 @@ mx-tester down
 ### Running integration tests
 
 The integration tests can be run with `yarn test:integration`.
-The config that the tests use is in `test/integration/config/harness.yaml`
+The config that the tests use is in `config/harness.yaml`
 and by default this is configured to work with the server specified in `mx-tester.yml`,
 but you can configure it however you like to run against your own setup. 
