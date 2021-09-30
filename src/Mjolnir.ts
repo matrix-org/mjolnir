@@ -21,6 +21,7 @@ import {
     LogService,
     MatrixClient,
     MatrixGlob,
+    MembershipEvent,
     Permalinks,
     UserID
 } from "matrix-bot-sdk";
@@ -37,6 +38,7 @@ import { PROTECTIONS } from "./protections/protections";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
+import * as htmlEscape from "escape-html";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -68,6 +70,84 @@ export class Mjolnir {
     private protectedJoinedRoomIds: string[] = [];
     private explicitlyProtectedRoomIds: string[] = [];
     private knownUnprotectedRooms: string[] = [];
+
+    /**
+     * Adds a listener to the client that will automatically accept invitations.
+     * @param {MatrixClient} client
+     * @param options By default accepts invites from anyone.
+     * @param {string} options.managementRoom The room to report ignored invitations to if `recordIgnoredInvites` is true.
+     * @param {boolean} options.recordIgnoredInvites Whether to report invites that will be ignored to the `managementRoom`.
+     * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
+     * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
+     */
+    private static addJoinOnInviteListener(client: MatrixClient, options) {
+        client.on("room.invite", async (roomId: string, inviteEvent: any) => {
+            const membershipEvent = new MembershipEvent(inviteEvent);
+
+            const reportInvite = async () => {
+                if (!options.recordIgnoredInvites) return; // Nothing to do
+
+                await client.sendMessage(options.managementRoom, {
+                    msgtype: "m.text",
+                    body: `${membershipEvent.sender} has invited me to ${roomId} but the config prevents me from accepting the invitation. `
+                        + `If you would like this room protected, use "!mjolnir rooms add ${roomId}" so I can accept the invite.`,
+                    format: "org.matrix.custom.html",
+                    formatted_body: `${htmlEscape(membershipEvent.sender)} has invited me to ${htmlEscape(roomId)} but the config prevents me from `
+                        + `accepting the invitation. If you would like this room protected, use <code>!mjolnir rooms add ${htmlEscape(roomId)}</code> `
+                        + `so I can accept the invite.`,
+                });
+            };
+
+            if (options.autojoinOnlyIfManager) {
+                const managers = await client.getJoinedRoomMembers(options.managementRoom);
+                if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
+            } else {
+                const groupMembers = await client.unstableApis.getGroupUsers(options.acceptInvitesFromGroup);
+                const userIds = groupMembers.map(m => m.user_id);
+                if (!userIds.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
+            }
+
+            return client.joinRoom(roomId);
+        });
+    }
+
+    /**
+     * Create a new Mjolnir instance from a client and the options in the configuration file, ready to be started.
+     * @param {MatrixClient} client The client for Mjolnir to use.
+     * @returns A new Mjolnir instance that can be started without further setup.
+     */
+    static async setupMjolnirFromConfig(client: MatrixClient): Promise<Mjolnir> {
+        Mjolnir.addJoinOnInviteListener(client, config);
+
+        const banLists: BanList[] = [];
+        const protectedRooms: { [roomId: string]: string } = {};
+        const joinedRooms = await client.getJoinedRooms();
+        // Ensure we're also joined to the rooms we're protecting
+        LogService.info("index", "Resolving protected rooms...");
+        for (const roomRef of config.protectedRooms) {
+            const permalink = Permalinks.parseUrl(roomRef);
+            if (!permalink.roomIdOrAlias) continue;
+
+            let roomId = await client.resolveRoom(permalink.roomIdOrAlias);
+            if (!joinedRooms.includes(roomId)) {
+                roomId = await client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+            }
+
+            protectedRooms[roomId] = roomRef;
+        }
+
+        // Ensure we're also in the management room
+        LogService.info("index", "Resolving management room...");
+        const managementRoomId = await client.resolveRoom(config.managementRoom);
+        if (!joinedRooms.includes(managementRoomId)) {
+            config.managementRoom = await client.joinRoom(config.managementRoom);
+        } else {
+            config.managementRoom = managementRoomId;
+        }
+        await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
+
+        return new Mjolnir(client, protectedRooms, banLists);
+    }
 
     constructor(
         public readonly client: MatrixClient,
@@ -207,6 +287,14 @@ export class Mjolnir {
                 process.exit(1);
             }
         });
+    }
+
+    /**
+     * Stop Mjolnir from syncing and processing commands.
+     */
+    public stop() {
+        LogService.info("Mjolnir", "Stopping Mjolnir...");
+        this.client.stop();
     }
 
     public async addProtectedRoom(roomId: string) {

@@ -133,3 +133,55 @@ to restart Synapse to install the plugin.
 ## Development
 
 TODO. It's a TypeScript project with a linter.
+
+### Development and testing with mx-tester
+
+WARNING: mx-tester is currently work in progress, but it can still save you some time and is better than struggling with nothing.
+
+If you have docker installed you can quickly get setup with a development environment by using
+[mx-tester](https://github.com/matrix-org/mx-tester).
+
+To use mx-tester you will need to have rust installed. You can do that at [rustup](https://rustup.rs/) or [here](https://rust-lang.github.io/rustup/installation/other.html), you should probably also check your distro's documentation first to see if they have specific instructions for installing rust.
+
+Once rust is installed you can install mx-tester like so.
+
+```
+$ cargo install mx-tester
+```
+
+Once you have mx-tester installed you we will want to build a synapse image with synapse_antispam from the mjolnir project root.
+
+```
+$ mx-tester build
+```
+
+Then we can start a container that uses that image and the config in `mx-tester.yml`.
+
+```
+$ mx-tester up
+```
+
+Once you have called `mx-tester up` you can run the integration tests.
+```
+$ yarn test:integration
+```
+
+After calling `mx-tester up`, if we want to play with mojlnir locally we can run the following and then point a matrix client to http://localhost:9999.
+You should then be able to join the management room at `#moderators:localhost:9999`.
+
+```
+yarn test:manual
+```
+
+Once we are finished developing we can stop the synapse container.
+
+```
+mx-tester down
+```
+
+### Running integration tests
+
+The integration tests can be run with `yarn test:integration`.
+The config that the tests use is in `config/harness.yaml`
+and by default this is configured to work with the server specified in `mx-tester.yml`,
+but you can configure it however you like to run against your own setup. 
