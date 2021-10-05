@@ -85,50 +85,75 @@ export class WebAPIs {
         // 3. The content of the event **if the room is unencrypted**.
 
         try {
-            // -- Create a client on behalf of the reporter.
-            // We'll use it to confirm the authenticity of the report.
-            let accessToken;
+            let reporterId;
+            let event;
+            {
+                // -- Create a client on behalf of the reporter.
+                // We'll use it to confirm the authenticity of the report.
+                let accessToken;
 
-            // Authentication mechanism 1: Request header.
-            let authorization = request.get('Authorization');
+                // Authentication mechanism 1: Request header.
+                let authorization = request.get('Authorization');
 
-            if (authorization) {
-                [, accessToken] = AUTHORIZATION.exec(authorization)!;
-            } else {
-                // Authentication mechanism 2: Access token as query parameter.
-                accessToken = request.query["access_token"];
+                if (authorization) {
+                    [, accessToken] = AUTHORIZATION.exec(authorization)!;
+                } else {
+                    // Authentication mechanism 2: Access token as query parameter.
+                    accessToken = request.query["access_token"];
+                }
+
+                // Create a client dedicated to this report.
+                //
+                // VERY IMPORTANT NOTES
+                //
+                // We're impersonating the user to get the context of the report.
+                //
+                // For privacy's sake, we MUST ensure that:
+                //
+                // - we DO NOT sync with this client, as this would let us
+                //    snoop on messages other than the context of the report;
+                // - we DO NOT associate a crypto store (e.g. Pantalaimon),
+                //    as this would let us read encrypted messages;
+                // - this client is torn down as soon as possible to avoid
+                //    any case in which it could somehow be abused if a
+                //    malicious third-party gains access to Mjölnir.
+                //
+                // Rationales for using this mechanism:
+                //
+                // 1. This /report interception feature can only be setup by someone
+                //    who already controls the server. In other words, if they wish
+                //    to snoop on unencrypted messages, they can already do it more
+                //    easily at the level of the proxy.
+                // 2. The `reporterClient` is used only to provide
+                //    - identity-checking; and
+                //    - features that are already available in the Synapse Admin API
+                //      (possibly in the Admin APIs of other homeservers, I haven't checked)
+                //    so we are not extending the abilities of Mjölnir
+                // 3. We are avoiding the use of the Synapse Admin API to ensure that
+                //    this feature can work with all homeservers, not just Synapse.
+                let reporterClient = new MatrixClient(config.rawHomeserverUrl, accessToken);
+                reporterClient.start = () => {
+                    throw new Error("We MUST NEVER call start on the reporter client");
+                };
+
+                let whoami: any = await reporterClient.doRequest("GET", "/_matrix/client/r0/account/whoami");
+                reporterId = whoami["user_id"];
+
+                /*
+                Past this point, the following invariants hold:
+
+                - The report was sent by a Matrix user.
+                - The identity of the Matrix user who sent the report is stored in `reporterId`.
+                */
+
+                // Now, let's gather more info on the event.
+                // IMPORTANT: The following call will return the event without decyphering it, so we're
+                // not obtaining anything that we couldn't also obtain through a homeserver's Admin API.
+                //
+                // By doing this with the reporterClient, we ensure that this feature of Mjölnir can work
+                // with all Matrix homeservers, rather than just Synapse.
+                event = await reporterClient.doRequest("GET", `/_matrix/client/r0/rooms/${roomId}/event/${eventId}`);
             }
-
-            // Create a client dedicated to this report.
-            //
-            // VERY IMPORTANT NOTES
-            //
-            // We're impersonating the user to get the context of the report.
-            //
-            // For privacy's sake, we MUST ensure that:
-            //
-            // - we DO NOT sync with this client;
-            // - we DO NOT associate a crypto store (e.g. Pantalaimon),
-            //    as this would let us read encrypted messages.
-            let reporterClient = new MatrixClient(config.rawHomeserverUrl, accessToken);
-            reporterClient.start = () => {
-                throw new Error("We MUST NEVER call start on the reporter client");
-            };
-
-            let whoami: any = await reporterClient.doRequest("GET", "/_matrix/client/r0/account/whoami");
-            let reporterId = whoami["user_id"];
-
-            /*
-             Past this point, the following invariants hold:
-
-             - The report was sent by a Matrix user.
-             - The identity of the Matrix user who sent the report is stored in `reporterId`.
-             */
-
-            // Now, let's gather more info on the event.
-            // IMPORTANT: The following call will return the event without decyphering it, so we're
-            // not obtaining anything that we couldn't also obtain through a homeserver's Admin API.
-            let event: any = await reporterClient.doRequest("GET", `/_matrix/client/r0/rooms/${roomId}/event/${eventId}`);
             let accusedId: string = event["sender"];
 
             /*
@@ -140,11 +165,11 @@ export class WebAPIs {
             - Event `eventId` was reported by user `accusedId`.
             */
 
-            let { displayname: reporterDisplayName }: { displayname: string } = await reporterClient.doRequest("GET", `/_matrix/client/r0/profile/${encodeURIComponent(reporterId)}/displayname`);
-            let { displayname: accusedDisplayName }: { displayname: string } = await reporterClient.doRequest("GET", `/_matrix/client/r0/profile/${encodeURIComponent(accusedId)}/displayname`);
+            let { displayname: reporterDisplayName }: { displayname: string } = await this.client.doRequest("GET", `/_matrix/client/r0/profile/${encodeURIComponent(reporterId)}/displayname`);
+            let { displayname: accusedDisplayName }: { displayname: string } = await this.client.doRequest("GET", `/_matrix/client/r0/profile/${encodeURIComponent(accusedId)}/displayname`);
             let roomAliasOrID = roomId;
             try {
-                roomAliasOrID = await reporterClient.getPublishedAlias(roomId);
+                roomAliasOrID = await this.client.getPublishedAlias(roomId);
             } catch (ex) {
                 // Ignore.
             }

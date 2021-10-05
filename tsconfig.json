@@ -5,6 +5,7 @@
         "emitDecoratorMetadata": true,
         "module": "commonjs",
         "moduleResolution": "node",
+        "newLine": "LF",
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "target": "es2015",

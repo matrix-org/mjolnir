@@ -175,7 +175,7 @@ web:
   # The address to listen for requests on. Defaults to all addresses.
   # Be careful with this setting, as opening to the wide web will increase
   # your security perimeter.
-  address: "0.0.0.0"
+  address: localhost
 
   # A web API designed to intercept Matrix API
   # POST /_matrix/client/r0/rooms/{roomId}/report/{eventId}

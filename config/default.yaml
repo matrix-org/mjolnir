@@ -174,10 +174,14 @@ web:
   # The port to expose the webserver on. Defaults to 8080.
   port: 8080
 
-  # The address to listen for requests on. Defaults to all addresses.
-  # Be careful with this setting, as opening to the wide web will increase
-  # your security perimeter.
-  address: "0.0.0.0"
+  # The address to listen for requests on. Defaults to only the current
+  # computer.
+  address: localhost
+
+  # Alternative setting to open to the entire web. Be careful,
+  # as this will increase your security perimeter:
+  #
+  #  address: "0.0.0.0"
 
   # A web API designed to intercept Matrix API
   # POST /_matrix/client/r0/rooms/{roomId}/report/{eventId}
