@@ -252,8 +252,8 @@ export class Mjolnir {
     /**
      * Start Mjölnir.
      */
-    public start() {
-        return this.client.start().then(async () => {
+    public async start() {
+        try {
             // Start the bot.
             await this.client.start();
 
@@ -267,7 +267,7 @@ export class Mjolnir {
             await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
-                const data: Object|null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                const data: Object | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
                 if (data && data['rooms']) {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -284,18 +284,18 @@ export class Mjolnir {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
                 await this.verifyPermissions(config.verboseLogging);
             }
-        }).then(async () => {
+
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.syncLists(config.verboseLogging);
                 await this.enableProtections();
             }
-        }).then(async () => {
+
             this.currentState = STATE_RUNNING;
             Healthz.isHealthy = true;
             await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
-        }).catch(async err => {
+        } catch (err) {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
@@ -305,7 +305,7 @@ export class Mjolnir {
                 console.error(e);
                 process.exit(1);
             }
-        });
+        }
     }
 
     /**
@@ -330,7 +330,7 @@ export class Mjolnir {
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
+        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
         additionalProtectedRooms.rooms.push(roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
         await this.syncLists(config.verboseLogging);
@@ -348,7 +348,7 @@ export class Mjolnir {
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
+        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
         additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
     }
@@ -375,7 +375,7 @@ export class Mjolnir {
     private async getEnabledProtections() {
         let enabled: string[] = [];
         try {
-            const protections: Object|null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            const protections: Object | null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
             if (protections && protections['enabled']) {
                 for (const protection of protections['enabled']) {
                     enabled.push(protection);
@@ -407,7 +407,7 @@ export class Mjolnir {
 
         if (persist) {
             const existing = this.protections.map(p => p.name);
-            await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
+            await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: existing });
         }
     }
 
@@ -416,10 +416,10 @@ export class Mjolnir {
         if (idx >= 0) this.protections.splice(idx, 1);
 
         const existing = this.protections.map(p => p.name);
-        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
+        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: existing });
     }
 
-    public async watchList(roomRef: string): Promise<BanList|null> {
+    public async watchList(roomRef: string): Promise<BanList | null> {
         const joinedRooms = await this.client.getJoinedRooms();
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
@@ -444,7 +444,7 @@ export class Mjolnir {
         return list;
     }
 
-    public async unwatchList(roomRef: string): Promise<BanList|null> {
+    public async unwatchList(roomRef: string): Promise<BanList | null> {
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
@@ -470,14 +470,14 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         try {
-            const accountData: Object|null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            const accountData: Object | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
             if (accountData && accountData['warned']) return; // already warned
         } catch (e) {
             // Ignore - probably haven't warned about it yet
         }
 
         await logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
-        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, {warned: true});
+        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
     }
 
     private applyUnprotectedRooms() {
@@ -731,7 +731,7 @@ export class Mjolnir {
         }
     }
 
-    private async printActionResult(errors: RoomUpdateError[], title: string|null = null, logAnyways = false) {
+    private async printActionResult(errors: RoomUpdateError[], title: string | null = null, logAnyways = false) {
         if (errors.length <= 0) return false;
 
         if (!logAnyways) {
