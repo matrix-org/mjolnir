@@ -775,6 +775,12 @@ export class Mjolnir {
         });
     }
 
+    /**
+     * Make a user administrator via the Synapse Admin API
+     * @param roomId the room where the user (or the bot) shall be made administrator.
+     * @param userId optionally specify the user mxID to be made administrator, if not specified the bot mxID will be used.
+     * @returns The list of errors encountered, for reporting to the management room.
+     */
     public async makeUserRoomAdmin(roomId: string, userId?: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/rooms/${roomId}/make_room_admin`;
         return await this.client.doRequest("POST", endpoint, null, {
