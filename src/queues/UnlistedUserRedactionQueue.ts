@@ -13,12 +13,18 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-
 import { extractRequestError, LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 
-export class AutomaticRedactionQueue {
+/**
+ * A queue of users who have been flagged for redaction typically by the flooding or image protection.
+ * Specifically any new events sent by a queued user will be redacted.
+ * This does not handle previously sent events, for that see the `EventRedactionQueue`.
+ * These users are not listed as banned in any watch list and so may continue
+ * to view a room until a moderator can investigate.
+ */
+export class UnlistedUserRedactionQueue {
     private usersToRedact: Set<string> = new Set<string>();
 
     constructor() {

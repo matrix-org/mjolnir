@@ -1,0 +1,63 @@
+name: Mjolnir Testing
+modules: 
+  - name: synapse_antispam
+    build:
+      - cp -r synapse_antispam $MX_TEST_SYNAPSE_DIR
+run:
+  - yarn test-integration
+homeserver_config:
+  server_name: localhost:9999
+  pid_file: /data/homeserver.pid
+  public_baseurl: http://localhost:9999
+  listeners:
+    - port: 9999
+      tls: false
+      type: http
+      x_forwarded: true
+      resources:
+        - names: [client, federation]
+          compress: false
+  database:
+    name: sqlite3
+    args:
+      database: /data/homeserver.db
+  media_store_path: "/data/media_store"
+  enable_registration: true
+  report_stats: false
+  registration_shared_secret: "REGISTRATION_SHARED_SECRET"
+  macaroon_secret_key: "MACROON_SECRET_KEY"
+  signing_key_path: "/data/localhost:9999.signing.key"
+  trusted_key_servers:
+    - server_name: "matrix.org"
+  suppress_key_server_warning: true
+
+  rc_message:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_registration:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_login:
+    address:
+      per_second: 10000
+      burst_count: 10000
+    account:
+      per_second: 10000
+      burst_count: 10000
+    failed_attempts:
+      per_second: 10000
+      burst_count: 10000
+
+  rc_admin_redaction:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_joins:
+    local:
+      per_second: 10000
+      burst_count: 10000
+    remote:
+      per_second: 10000
+      burst_count: 10000

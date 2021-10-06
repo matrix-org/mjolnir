@@ -1,6 +1,6 @@
 {
   "name": "mjolnir",
-  "version": "0.1.19",
+  "version": "1.1.20",
   "description": "A moderation tool for Matrix",
   "main": "lib/index.js",
   "repository": "git@github.com:matrix-org/mjolnir.git",
@@ -11,14 +11,21 @@
     "build": "tsc",
     "lint": "tslint --project ./tsconfig.json -t stylish",
     "start:dev": "yarn build && node lib/index.js",
-    "test": "ts-mocha --project ./tsconfig.json test/**/*.ts"
+    "test": "ts-mocha --project ./tsconfig.json test/commands/**/*.ts",
+    "test:integration": "NODE_ENV=harness ts-mocha --require test/integration/fixtures.ts --project ./tsconfig.json test/integration/**/*Test.ts",
+    "test:manual": "NODE_ENV=harness ts-node test/integration/manualLaunchScript.ts"
   },
   "devDependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/crypto-js": "^4.0.2",
     "@types/mocha": "^9.0.0",
-    "@types/node": "11",
+    "@types/node": "^16.7.10",
+    "axios": "^0.21.4",
+    "crypto-js": "^4.1.1",
     "expect": "^27.0.6",
     "mocha": "^9.0.1",
     "ts-mocha": "^8.0.0",
+    "ts-node": "^10.2.1",
     "tslint": "^6.1.3",
     "typescript": "^4.3.5"
   },

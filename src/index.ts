@@ -20,17 +20,13 @@ import {
     LogService,
     MatrixClient,
     PantalaimonClient,
-    Permalinks,
     RichConsoleLogger,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 import config from "./config";
-import BanList from "./models/BanList";
-import { Mjolnir } from "./Mjolnir";
 import { logMessage } from "./LogProxy";
-import { MembershipEvent } from "matrix-bot-sdk/lib/models/events/MembershipEvent";
-import * as htmlEscape from "escape-html";
 import { Healthz } from "./health/healthz";
+import { Mjolnir } from "./Mjolnir";
 
 config.RUNTIME = {};
 
@@ -45,7 +41,8 @@ if (config.health.healthz.enabled) {
 }
 
 (async function () {
-    const storage = new SimpleFsStorageProvider(path.join(config.dataPath, "bot.json"));
+    const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
+    const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
 
     let client: MatrixClient;
     if (config.pantalaimon.use) {
@@ -57,64 +54,9 @@ if (config.health.healthz.enabled) {
 
     config.RUNTIME.client = client;
 
-    client.on("room.invite", async (roomId: string, inviteEvent: any) => {
-        const membershipEvent = new MembershipEvent(inviteEvent);
-
-        const reportInvite = async () => {
-            if (!config.recordIgnoredInvites) return; // Nothing to do
-
-            await client.sendMessage(config.managementRoom, {
-                msgtype: "m.text",
-                body: `${membershipEvent.sender} has invited me to ${roomId} but the config prevents me from accepting the invitation. `
-                    + `If you would like this room protected, use "!mjolnir rooms add ${roomId}" so I can accept the invite.`,
-                format: "org.matrix.custom.html",
-                formatted_body: `${htmlEscape(membershipEvent.sender)} has invited me to ${htmlEscape(roomId)} but the config prevents me from `
-                    + `accepting the invitation. If you would like this room protected, use <code>!mjolnir rooms add ${htmlEscape(roomId)}</code> `
-                    + `so I can accept the invite.`,
-            });
-        };
-
-        if (config.autojoinOnlyIfManager) {
-            const managers = await client.getJoinedRoomMembers(config.managementRoom);
-            if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
-        } else {
-            const groupMembers = await client.unstableApis.getGroupUsers(config.acceptInvitesFromGroup);
-            const userIds = groupMembers.map(m => m.user_id);
-            if (!userIds.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
-        }
-
-        return client.joinRoom(roomId);
-    });
-
-    const banLists: BanList[] = [];
-    const protectedRooms: { [roomId: string]: string } = {};
-
-    const joinedRooms = await client.getJoinedRooms();
-
-    // Ensure we're also joined to the rooms we're protecting
-    LogService.info("index", "Resolving protected rooms...");
-    for (const roomRef of config.protectedRooms) {
-        const permalink = Permalinks.parseUrl(roomRef);
-        if (!permalink.roomIdOrAlias) continue;
-
-        let roomId = await client.resolveRoom(permalink.roomIdOrAlias);
-        if (!joinedRooms.includes(roomId)) {
-            roomId = await client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
-        }
-
-        protectedRooms[roomId] = roomRef;
-    }
-
-    // Ensure we're also in the management room
-    LogService.info("index", "Resolving management room...");
-    const managementRoomId = await client.resolveRoom(config.managementRoom);
-    if (!joinedRooms.includes(managementRoomId)) {
-        config.managementRoom = await client.joinRoom(config.managementRoom);
-    } else {
-        config.managementRoom = managementRoomId;
-    }
-    await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
-
-    const bot = new Mjolnir(client, protectedRooms, banLists);
+    let bot = await Mjolnir.setupMjolnirFromConfig(client);
     await bot.start();
-})();
+})().catch(err => {
+    logMessage(LogLevel.ERROR, "index", err);
+    process.exit(1);
+});
