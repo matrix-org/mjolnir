@@ -25,6 +25,7 @@ import {
     Permalinks,
     UserID
 } from "matrix-bot-sdk";
+
 import BanList, { ALL_RULE_TYPES } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
@@ -39,6 +40,7 @@ import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue"
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import * as htmlEscape from "escape-html";
+import { WebAPIs } from "./webapis/WebAPIs";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -70,7 +72,7 @@ export class Mjolnir {
     private protectedJoinedRoomIds: string[] = [];
     private explicitlyProtectedRoomIds: string[] = [];
     private knownUnprotectedRooms: string[] = [];
-
+    private webapis: WebAPIs;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -160,6 +162,8 @@ export class Mjolnir {
             this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
         }
 
+        // Setup bot.
+
         client.on("room.event", this.handleEvent.bind(this));
 
         client.on("room.message", async (roomId, event) => {
@@ -214,6 +218,10 @@ export class Mjolnir {
                 this.displayName = profile['displayname'];
             }
         });
+
+        // Setup Web APIs
+        console.log("Creating Web APIs");
+        this.webapis = new WebAPIs(this.client);
     }
 
     public get lists(): BanList[] {
@@ -241,14 +249,25 @@ export class Mjolnir {
         return this.automaticRedactionReasons;
     }
 
-    public start() {
-        return this.client.start().then(async () => {
+    /**
+     * Start Mjölnir.
+     */
+    public async start() {
+        try {
+            // Start the bot.
+            await this.client.start();
+
+            // Start the web server.
+            console.log("Starting web server");
+            await this.webapis.start();
+
+            // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
 
             await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
-                const data: Object|null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                const data: Object | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
                 if (data && data['rooms']) {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -265,18 +284,18 @@ export class Mjolnir {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
                 await this.verifyPermissions(config.verboseLogging);
             }
-        }).then(async () => {
+
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.syncLists(config.verboseLogging);
                 await this.enableProtections();
             }
-        }).then(async () => {
+
             this.currentState = STATE_RUNNING;
             Healthz.isHealthy = true;
             await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
-        }).catch(async err => {
+        } catch (err) {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
@@ -286,7 +305,7 @@ export class Mjolnir {
                 console.error(e);
                 process.exit(1);
             }
-        });
+        }
     }
 
     /**
@@ -295,6 +314,7 @@ export class Mjolnir {
     public stop() {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
+        this.webapis.stop();
     }
 
     public async addProtectedRoom(roomId: string) {
@@ -310,7 +330,7 @@ export class Mjolnir {
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
+        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
         additionalProtectedRooms.rooms.push(roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
         await this.syncLists(config.verboseLogging);
@@ -328,7 +348,7 @@ export class Mjolnir {
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = {rooms: []};
+        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
         additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
     }
@@ -355,7 +375,7 @@ export class Mjolnir {
     private async getEnabledProtections() {
         let enabled: string[] = [];
         try {
-            const protections: Object|null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            const protections: Object | null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
             if (protections && protections['enabled']) {
                 for (const protection of protections['enabled']) {
                     enabled.push(protection);
@@ -387,7 +407,7 @@ export class Mjolnir {
 
         if (persist) {
             const existing = this.protections.map(p => p.name);
-            await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
+            await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: existing });
         }
     }
 
@@ -396,10 +416,10 @@ export class Mjolnir {
         if (idx >= 0) this.protections.splice(idx, 1);
 
         const existing = this.protections.map(p => p.name);
-        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, {enabled: existing});
+        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: existing });
     }
 
-    public async watchList(roomRef: string): Promise<BanList|null> {
+    public async watchList(roomRef: string): Promise<BanList | null> {
         const joinedRooms = await this.client.getJoinedRooms();
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
@@ -424,7 +444,7 @@ export class Mjolnir {
         return list;
     }
 
-    public async unwatchList(roomRef: string): Promise<BanList|null> {
+    public async unwatchList(roomRef: string): Promise<BanList | null> {
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
@@ -450,14 +470,14 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         try {
-            const accountData: Object|null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            const accountData: Object | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
             if (accountData && accountData['warned']) return; // already warned
         } catch (e) {
             // Ignore - probably haven't warned about it yet
         }
 
         await logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
-        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, {warned: true});
+        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
     }
 
     private applyUnprotectedRooms() {
@@ -711,7 +731,7 @@ export class Mjolnir {
         }
     }
 
-    private async printActionResult(errors: RoomUpdateError[], title: string|null = null, logAnyways = false) {
+    private async printActionResult(errors: RoomUpdateError[], title: string | null = null, logAnyways = false) {
         if (errors.length <= 0) return false;
 
         if (!logAnyways) {

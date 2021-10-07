@@ -9,9 +9,11 @@ import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 export const mochaHooks = {
     beforeEach: [
       async function() {
-        this.managementRoomAlias = config.managementRoom
-        this.mjolnir = await makeMjolnir()
-        this.mjolnir.start()
+        console.log("mochaHooks.beforeEach");
+        this.managementRoomAlias = config.managementRoom;
+        this.mjolnir = await makeMjolnir();
+        this.mjolnir.start();
+        console.log("mochaHooks.beforeEach DONE");
       }
     ],
     afterEach: [

@@ -1,6 +1,6 @@
 {
   "name": "mjolnir",
-  "version": "1.1.20",
+  "version": "1.2",
   "description": "A moderation tool for Matrix",
   "main": "lib/index.js",
   "repository": "git@github.com:matrix-org/mjolnir.git",
@@ -18,21 +18,25 @@
   "devDependencies": {
     "@types/axios": "^0.14.0",
     "@types/crypto-js": "^4.0.2",
+    "@types/jsdom": "^16.2.11",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.7.10",
     "axios": "^0.21.4",
     "crypto-js": "^4.1.1",
+    "eslint": "^7.32",
     "expect": "^27.0.6",
     "mocha": "^9.0.1",
     "ts-mocha": "^8.0.0",
-    "ts-node": "^10.2.1",
     "tslint": "^6.1.3",
-    "typescript": "^4.3.5"
+    "typescript": "^4.3.5",
+    "typescript-formatter": "^7.2"
   },
   "dependencies": {
     "config": "^3.3.6",
     "escape-html": "^1.0.3",
+    "express": "^4.17",
     "js-yaml": "^4.1.0",
+    "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^0.5.19"
   }
 }

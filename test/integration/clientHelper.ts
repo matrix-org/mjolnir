@@ -7,6 +7,7 @@ import config from "../../src/config";
  * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
  * This should only be used by test code and should not be included from any file in the source directory
  * either by explicit imports or copy pasting.
+ * 
  * @param username The username to give the user.
  * @param displayname The displayname to give the user.
  * @param password The password to use.
@@ -30,14 +31,19 @@ export async function registerUser(username: string, displayname: string, passwo
 
 /**
  * Register a new test user with a unique username.
+ *
  * @param isAdmin Whether to make the new user an admin.
+ * @param label If specified, a string to place somewhere within the username.
  * @returns A string that is the username and password of a new user. 
  */
-export async function registerNewTestUser(isAdmin: boolean) {
+export async function registerNewTestUser(isAdmin: boolean, label: string = "") {
     let isUserValid = false;
     let username;
+    if (label != "") {
+        label += "-";
+    }
     do {
-        username = `mjolnir-test-user-${Math.floor(Math.random() * 100000)}`
+        username = `mjolnir-test-user-${label}${Math.floor(Math.random() * 100000)}`
         await registerUser(username, username, username, isAdmin).then(_ => isUserValid = true).catch(e => {
             if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
                 LogService.debug("test/clientHelper", `${username} already registered, trying another`);
@@ -53,11 +59,13 @@ export async function registerNewTestUser(isAdmin: boolean) {
 
 /**
  * Registers a unique test user and returns a `MatrixClient` logged in and ready to use.
+ *
  * @param isAdmin Whether to make the user an admin.
+ * @param label If specified, a string to place somewhere within the username.
  * @returns A new `MatrixClient` session for a unique test user.
  */
-export async function newTestUser(isAdmin : boolean = false): Promise<MatrixClient> {
-    const username = await registerNewTestUser(isAdmin);
+export async function newTestUser(isAdmin: boolean = false, label: string = ""): Promise<MatrixClient> {
+    const username = await registerNewTestUser(isAdmin, label);
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     return await pantalaimon.createClientWithCredentials(username, username);
 }

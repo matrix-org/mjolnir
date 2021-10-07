@@ -1,7 +1,7 @@
 import config from "../../src/config";
 import { newTestUser, noticeListener } from "./clientHelper"
 
-describe("help command", () => {
+describe("Test: !help command", () => {
     let client;
     before(async function () {
         client = await newTestUser(true);

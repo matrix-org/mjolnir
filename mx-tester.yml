@@ -3,8 +3,14 @@ modules:
   - name: synapse_antispam
     build:
       - cp -r synapse_antispam $MX_TEST_SYNAPSE_DIR
+up:
+  # Launch the reverse proxy, listening for connections *only* on the local host.
+  - docker run --rm --network host --name mjolnir-test-reverse-proxy -p 127.0.0.1:8081:80 -v $MX_TEST_CWD/test/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx 
 run:
-  - yarn test-integration
+  - yarn test:integration
+down:
+  finally:
+    - docker stop mjolnir-test-reverse-proxy
 homeserver_config:
   server_name: localhost:9999
   pid_file: /data/homeserver.pid
