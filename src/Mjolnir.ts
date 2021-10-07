@@ -40,6 +40,7 @@ import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue"
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import * as htmlEscape from "escape-html";
+import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
 
 export const STATE_NOT_STARTED = "not_started";
@@ -221,7 +222,7 @@ export class Mjolnir {
 
         // Setup Web APIs
         console.log("Creating Web APIs");
-        this.webapis = new WebAPIs(this.client);
+        this.webapis = new WebAPIs(new ReportManager(this));
     }
 
     public get lists(): BanList[] {

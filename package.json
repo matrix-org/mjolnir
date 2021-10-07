@@ -37,6 +37,7 @@
     "express": "^4.17",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
-    "matrix-bot-sdk": "^0.5.19"
+    "matrix-bot-sdk": "^0.5.19",
+    "html-to-text": "^8.0.0"
   }
 }
