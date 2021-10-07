@@ -136,8 +136,7 @@ export class WebAPIs {
                     throw new Error("We MUST NEVER call start on the reporter client");
                 };
 
-                let whoami: any = await reporterClient.doRequest("GET", "/_matrix/client/r0/account/whoami");
-                reporterId = whoami["user_id"];
+                reporterId = await reporterClient.getUserId();
 
                 /*
                 Past this point, the following invariants hold:
@@ -152,7 +151,7 @@ export class WebAPIs {
                 //
                 // By doing this with the reporterClient, we ensure that this feature of Mjölnir can work
                 // with all Matrix homeservers, rather than just Synapse.
-                event = await reporterClient.doRequest("GET", `/_matrix/client/r0/rooms/${roomId}/event/${eventId}`);
+                event = await reporterClient.getEvent(roomId, eventId);
             }
             let accusedId: string = event["sender"];
 
@@ -165,8 +164,8 @@ export class WebAPIs {
             - Event `eventId` was reported by user `accusedId`.
             */
 
-            let { displayname: reporterDisplayName }: { displayname: string } = await this.client.doRequest("GET", `/_matrix/client/r0/profile/${encodeURIComponent(reporterId)}/displayname`);
-            let { displayname: accusedDisplayName }: { displayname: string } = await this.client.doRequest("GET", `/_matrix/client/r0/profile/${encodeURIComponent(accusedId)}/displayname`);
+            let { displayname: reporterDisplayName }: { displayname: string } = await this.client.getUserProfile(reporterId);
+            let { displayname: accusedDisplayName }: { displayname: string } = await this.client.getUserProfile(accusedId);
             let roomAliasOrID = roomId;
             try {
                 roomAliasOrID = await this.client.getPublishedAlias(roomId);
@@ -189,7 +188,17 @@ export class WebAPIs {
             // We need to send the report as html to be able to use spoiler markings.
             // We build this as dom to be absolutely certain that we're not introducing
             // any kind of injection within the report.
-            const document = new JSDOM("<body>User <code id='reporter-display-name'></code> (<code id='reporter-id'></code>) reported <a id='event-shortcut'>event <span id='event-id'></span></a> sent by user <b><span id='accused-display-name'></span> (<span id='accused-id'></span>)</b> in <a id='room-shortcut'>room <span id='room-alias-or-id'></span></a>.<div>Event content <span id='event-container'><code id='event-content'></code><span></div><div>Reporter commented: <code id='reason-content'></code></body></div>").window.document;
+            const document = new JSDOM(
+                "<body>" +
+                "User <code id='reporter-display-name'></code> (<code id='reporter-id'></code>) " +
+                "reported <a id='event-shortcut'>event <span id='event-id'></span></a> " +
+                "sent by user <b><span id='accused-display-name'></span> (<span id='accused-id'></span>)</b> " +
+                "in <a id='room-shortcut'>room <span id='room-alias-or-id'></span></a>." +
+                "<div>Event content <span id='event-container'><code id='event-content'></code><span></div>" +
+                "<div>Reporter commented: <code id='reason-content'></code></div>" +
+                "</body>")
+                .window
+                .document;
             // ...insert text content
             for (let [key, value] of [
                 ['reporter-display-name', reporterDisplayName],
