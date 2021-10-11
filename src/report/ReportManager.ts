@@ -84,15 +84,15 @@ export class ReportManager {
 
         let { displayname: reporterDisplayName }: { displayname: string } = await this.mjolnir.client.getUserProfile(reporterId);
         let { displayname: accusedDisplayName }: { displayname: string } = await this.mjolnir.client.getUserProfile(accusedId);
-        let roomAliasOrID = roomId;
+        let roomAliasOrId = roomId;
         try {
-            roomAliasOrID = await this.mjolnir.client.getPublishedAlias(roomId) || roomId;
+            roomAliasOrId = await this.mjolnir.client.getPublishedAlias(roomId) || roomId;
         } catch (ex) {
             // Ignore.
         }
-        console.debug("Room is", roomAliasOrID, roomId);
+        console.debug("Room is", roomAliasOrId, roomId);
         let eventShortcut = `https://matrix.to/#/${encodeURIComponent(roomId)}/${encodeURIComponent(eventId)}`;
-        let roomShortcut = `https://matrix.to/#/${encodeURIComponent(roomAliasOrID)}`;
+        let roomShortcut = `https://matrix.to/#/${encodeURIComponent(roomAliasOrId)}`;
         let eventContent;
         if (event["type"] === "m.room.encrypted") {
             eventContent = "<encrypted content>";
@@ -123,7 +123,7 @@ export class ReportManager {
             ['accused-display-name', accusedDisplayName],
             ['accused-id', accusedId],
             ['event-id', eventId],
-            ['room-alias-or-id', roomAliasOrID],
+            ['room-alias-or-id', roomAliasOrId],
             ['event-content', eventContent],
             ['reason-content', reason || "<no reason given>"]
         ]) {
@@ -143,27 +143,23 @@ export class ReportManager {
                 setAttribute("data-mx-spoiler", "");
         }
 
+        let report: IReport = {
+            accusedId,
+            reporterId,
+            eventId,
+            roomId,
+            roomAliasOrId
+        };
         let notice = {
             msgtype: "m.notice",
             body: htmlToText(document.body.outerHTML, { wordwrap: false }),
             format: "org.matrix.custom.html",
             formatted_body: document.body.outerHTML,
         };
-        notice[REPORT_KEY] = {
-            accusedId,
-            reporterId,
-            roomId,
-            eventId,
-        };
+        notice[REPORT_KEY] = report;
         console.debug("Sending notice", notice);
 
         let noticeEventId = await this.mjolnir.client.sendMessage(config.managementRoom, notice);
-        let report: IReport = {
-            accusedId,
-            reporterId,
-            eventId,
-            roomId,
-        };
         for (let [label, action] of ACTIONS) {
             if (!await action.canExecute(this.mjolnir.client, report)) {
                 continue;
@@ -402,6 +398,7 @@ interface IReport {
      * The room in which `eventId` took place.
      */
     readonly roomId: string,
+    readonly roomAliasOrId: string,
 
     /**
      * The event reported as abuse.
@@ -532,7 +529,7 @@ class KickAccused implements IUIAction {
         }
     }
     public title(report: IReport): string {
-        return `Kick ${report.accusedId} from room`;
+        return `Kick ${report.accusedId} from room ${report.roomAliasOrId}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
         await mjolnir.client.kickUser(report.accusedId, report.roomId)
@@ -554,7 +551,7 @@ class MuteAccused implements IUIAction {
         }
     }
     public title(report: IReport): string {
-        return `Mute ${report.accusedId} in room`;
+        return `Mute ${report.accusedId} in room ${report.roomAliasOrId}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
         await mjolnir.client.setUserPowerLevel(report.accusedId, report.roomId, -1);
@@ -576,7 +573,7 @@ class BanAccused implements IUIAction {
         }
     }
     public title(report: IReport): string {
-        return `Ban ${report.accusedId} from room`;
+        return `Ban ${report.accusedId} from room ${report.roomAliasOrId}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
         await mjolnir.client.banUser(report.accusedId, report.roomId);
