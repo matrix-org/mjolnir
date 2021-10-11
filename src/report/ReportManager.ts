@@ -62,7 +62,7 @@ export class ReportManager {
 
     /**
      * Display an incoming report received, e.g. from the /report Matrix API.
-     * 
+     *
      * @param roomId The room in which the abuse took place.
      * @param eventId The ID of the event reported as abuse.
      * @param reporterId The user who reported the event.
@@ -75,7 +75,7 @@ export class ReportManager {
 
         /*
         Past this point, the following invariants hold:
-    
+
         - The reporter is a member of `roomId`.
         - Event `eventId` did take place in room `roomId`.
         - The reporter could witness event `eventId` in room `roomId`.
@@ -178,18 +178,18 @@ export class ReportManager {
 
     /**
      * Handle a reaction to an abuse report.
-     * 
+     *
      * @param roomId The room in which the reaction took place.
      * @param event The reaction.
      */
     public async handleReaction({ roomId, event }: { roomId: string, event: any }) {
         console.debug("handleReaction", roomId, event);
-        if (roomId != config.managementRoom) {
+        if (roomId !== config.managementRoom) {
             // Let's not accept commands in rooms other than the management room.
             console.debug("handleReaction", "wrong room");
             return;
         }
-        if (event.sender == await this.mjolnir.client.getUserId()) {
+        if (event.sender === await this.mjolnir.client.getUserId()) {
             // Let's not react to our own reactions.
             console.debug("handleReaction", "our own reaction");
             return;
@@ -279,13 +279,13 @@ export class ReportManager {
                 console.debug("Not one of our actions");
                 return;
             }
-            let confirmationReport: any = {};
+            let newConfirmationReport: any = {};
             for (let k of Object.keys(initialReport)) {
-                confirmationReport[k] = initialReport[k];
+                newConfirmationReport[k] = initialReport[k];
             }
-            confirmationReport.action = label;
-            confirmationReport.notificationEventId = relation.event_id;
-            confirmationReport = confirmationReport as IConfirmationReport;
+            newConfirmationReport.action = label;
+            newConfirmationReport.notificationEventId = relation.event_id;
+            confirmationReport = newConfirmationReport as IConfirmationReport;
             if (action.needsConfirmation) {
                 // Send a confirmation request.
                 console.debug("Action needs confirmation, labeling", initialReport, confirmationReport);
@@ -329,7 +329,7 @@ export class ReportManager {
      * This is executed when the user clicks on an action to execute (if the action
      * does not need confirmation) or when the user clicks on "confirm" in a confirmation
      * (otherwise).
-     * 
+     *
      * @param label The type of action to execute, e.g. `kick-user`.
      * @param report The abuse report on which to take action.
      * @param successEventId The event to annotate with a "OK" in case of success.
@@ -426,15 +426,15 @@ interface IConfirmationReport extends IReport {
  */
 interface IUIAction {
     /**
-* A unique label.
-* 
-* Used by Mjölnir to differentiate the actions, e.g. `kick-user`.
-*/
+     * A unique label.
+     *
+     * Used by Mjölnir to differentiate the actions, e.g. `kick-user`.
+     */
     readonly label: string;
 
     /**
      * A unique Emoji.
-     * 
+     *
      * Used to help users avoid making errors when clicking on a button.
      */
     readonly emoji: string;
@@ -448,7 +448,7 @@ interface IUIAction {
     /**
      * Detect whether the action may be executed, e.g. whether Mjölnir has
      * sufficient powerlevel to execute this action.
-     * 
+     *
      * @param client A Matrix Client used to check powerlevels.
      * @param report Details on the abuse report.
      */
