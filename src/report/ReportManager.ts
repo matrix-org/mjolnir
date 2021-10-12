@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient } from "matrix-bot-sdk";
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { htmlToText } from "html-to-text";
 import { JSDOM } from 'jsdom';
@@ -50,7 +50,6 @@ export class ReportManager {
     constructor(private mjolnir: Mjolnir) {
         // Configure bot interactions.
         mjolnir.client.on("room.event", async (roomId, event) => {
-            console.debug("room.event", roomId, event);
             switch (event["type"]) {
                 case "m.reaction": {
                     await this.handleReaction({ roomId, event });
@@ -144,11 +143,11 @@ export class ReportManager {
         }
 
         let report: IReport = {
-            accusedId,
-            reporterId,
-            eventId,
-            roomId,
-            roomAliasOrId
+            accused_id: accusedId,
+            reporter_id: reporterId,
+            event_id: eventId,
+            room_id: roomId,
+            room_alias_or_id: roomAliasOrId
         };
         let notice = {
             msgtype: "m.notice",
@@ -160,7 +159,7 @@ export class ReportManager {
         console.debug("Sending notice", notice);
 
         let noticeEventId = await this.mjolnir.client.sendMessage(config.managementRoom, notice);
-        for (let [label, action] of ACTIONS) {
+        for (let [label, action] of REPORT_ACTIONS) {
             if (!await action.canExecute(this.mjolnir.client, report)) {
                 continue;
             }
@@ -260,7 +259,7 @@ export class ReportManager {
                 await this.executeAction({
                     label: matches[1],
                     report: confirmationReport,
-                    successEventId: confirmationReport.notificationEventId,
+                    successEventId: confirmationReport.notification_event_id,
                     failureEventId: relation.event_id,
                     onSuccessRemoveEventId: relation.event_id
                 })
@@ -274,7 +273,7 @@ export class ReportManager {
             let matches = relation.key.match(REACTION_ACTION);
             let label: string = matches[1]!;
             console.debug("relation", relation, relation.event_id, label);
-            let action: IUIAction | undefined = ACTIONS.get(label);
+            let action: IUIAction | undefined = REPORT_ACTIONS.get(label);
             if (!action) {
                 console.debug("Not one of our actions");
                 return;
@@ -337,17 +336,16 @@ export class ReportManager {
      * @param onSuccessRemoveEventId Optionally, an event to remove in case of success (e.g. the confirmation dialog).
      */
     async executeAction({ label, report, successEventId, failureEventId, onSuccessRemoveEventId }: { label: string, report: IConfirmationReport, successEventId: string, failureEventId: string, onSuccessRemoveEventId?: string }) {
-        let action: IUIAction | undefined = ACTIONS.get(label);
+        let action: IUIAction | undefined = REPORT_ACTIONS.get(label);
         if (!action) {
-            console.debug("Not one of our actions", label);
+            // Not one of our actions.
             return;
         }
         let error: any = null;
         try {
-            console.debug("executeAction", action.label, report);
             await action.execute(this.mjolnir, report);
         } catch (ex) {
-            console.debug("Error executing action", label, ex);
+            LogService.error("ReportManager", "Error while executing action", label, report, ex);
             error = ex;
         }
         if (error) {
@@ -382,28 +380,31 @@ export class ReportManager {
 
 /**
  * An abuse report received from a user.
+ *
+ * Note: These reports end up embedded in Matrix messages, so we're using Matrix
+ * naming conventions rather than JS/TS naming conventions.
  */
 interface IReport {
     /**
      * The user who sent the abuse report.
      */
-    readonly accusedId: string,
+    readonly accused_id: string,
 
     /**
      * The user who sent the message reported as abuse.
      */
-    readonly reporterId: string,
+    readonly reporter_id: string,
 
     /**
      * The room in which `eventId` took place.
      */
-    readonly roomId: string,
-    readonly roomAliasOrId: string,
+    readonly room_id: string,
+    readonly room_alias_or_id: string,
 
     /**
      * The event reported as abuse.
      */
-    readonly eventId: string,
+    readonly event_id: string,
 }
 
 /**
@@ -418,7 +419,7 @@ interface IConfirmationReport extends IReport {
     /**
      * The event in which we originally notified of the abuse.
      */
-    readonly notificationEventId: string,
+    readonly notification_event_id: string,
 }
 
 /**
@@ -481,7 +482,7 @@ class IgnoreBadReport implements IUIAction {
         return "Ignore bad report";
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
-        await mjolnir.client.redactEvent(config.managementRoom, report.notificationEventId, "Report marked as invalid");
+        await mjolnir.client.redactEvent(config.managementRoom, report.notification_event_id, "Report marked as invalid");
     }
 }
 
@@ -494,23 +495,23 @@ class RedactMessage implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(client: MatrixClient, report: IReport): Promise<boolean> {
         try {
-            return await client.userHasPowerLevelForAction(await client.getUserId(), report.roomId, PowerLevelAction.RedactEvents);
+            return await client.userHasPowerLevelForAction(await client.getUserId(), report.room_id, PowerLevelAction.RedactEvents);
         } catch (ex) {
             return false;
         }
     }
     public title(report: IReport): string {
-        return `Redact event ${report.eventId}`;
+        return `Redact event ${report.event_id}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
         /*
         Ideally, we'd use the following:
         However, for some reason, this doesn't seem to work.
 
-            mjolnir.queueRedactUserMessagesIn(report.accusedId, report.roomId);
-            await mjolnir.syncListForRoom(report.roomId);
+            mjolnir.queueRedactUserMessagesIn(report.accused_id, report.room_id);
+            await mjolnir.syncListForRoom(report.room_id);
         */
-        await mjolnir.client.redactEvent(report.roomId, report.eventId);
+        await mjolnir.client.redactEvent(report.room_id, report.event_id);
     }
 }
 
@@ -523,16 +524,16 @@ class KickAccused implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(client: MatrixClient, report: IReport): Promise<boolean> {
         try {
-            return await client.userHasPowerLevelForAction(await client.getUserId(), report.roomId, PowerLevelAction.Kick);
+            return await client.userHasPowerLevelForAction(await client.getUserId(), report.room_id, PowerLevelAction.Kick);
         } catch (ex) {
             return false;
         }
     }
     public title(report: IReport): string {
-        return `Kick ${report.accusedId} from room ${report.roomAliasOrId}`;
+        return `Kick ${report.accused_id} from room ${report.room_alias_or_id}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
-        await mjolnir.client.kickUser(report.accusedId, report.roomId)
+        await mjolnir.client.kickUser(report.accused_id, report.room_id)
     }
 }
 
@@ -545,16 +546,16 @@ class MuteAccused implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(client: MatrixClient, report: IReport): Promise<boolean> {
         try {
-            return await client.userHasPowerLevelFor(await client.getUserId(), report.roomId, "m.room.power_levels", true);
+            return await client.userHasPowerLevelFor(await client.getUserId(), report.room_id, "m.room.power_levels", true);
         } catch (ex) {
             return false;
         }
     }
     public title(report: IReport): string {
-        return `Mute ${report.accusedId} in room ${report.roomAliasOrId}`;
+        return `Mute ${report.accused_id} in room ${report.room_alias_or_id}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
-        await mjolnir.client.setUserPowerLevel(report.accusedId, report.roomId, -1);
+        await mjolnir.client.setUserPowerLevel(report.accused_id, report.room_id, -1);
     }
 }
 
@@ -567,20 +568,28 @@ class BanAccused implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(client: MatrixClient, report: IReport): Promise<boolean> {
         try {
-            return await client.userHasPowerLevelForAction(await client.getUserId(), report.roomId, PowerLevelAction.Ban);
+            return await client.userHasPowerLevelForAction(await client.getUserId(), report.room_id, PowerLevelAction.Ban);
         } catch (ex) {
             return false;
         }
     }
     public title(report: IReport): string {
-        return `Ban ${report.accusedId} from room ${report.roomAliasOrId}`;
+        return `Ban ${report.accused_id} from room ${report.room_alias_or_id}`;
     }
     public async execute(mjolnir: Mjolnir, report: IConfirmationReport): Promise<void> {
-        await mjolnir.client.banUser(report.accusedId, report.roomId);
+        await mjolnir.client.banUser(report.accused_id, report.room_id);
     }
 }
 
 /**
+ * The actions we may be able to undertake in reaction to a report.
+ *
  * A map of labels => actions.
  */
-const ACTIONS = new Map([new KickAccused(), new RedactMessage(), new MuteAccused(), new BanAccused(), new IgnoreBadReport()].map(action => [action.label, action]));
+const REPORT_ACTIONS = new Map([
+    new KickAccused(),
+    new RedactMessage(),
+    new MuteAccused(),
+    new BanAccused(),
+    new IgnoreBadReport()
+].map(action => [action.label, action]));
