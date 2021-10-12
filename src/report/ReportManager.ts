@@ -203,7 +203,7 @@ export class ReportManager {
         console.debug("relation", relation);
 
         // Get the original event.
-        let initialReport: IReport | undefined, confirmationReport: IConfirmationReport | undefined;
+        let initialNoticeReport: IReport | undefined, confirmationRequestReport: IConfirmationReport | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
             console.debug("originalEvent", originalEvent);
@@ -212,17 +212,17 @@ export class ReportManager {
             }
             let content = originalEvent["content"];
             if (REPORT_KEY in content) {
-                initialReport = content[REPORT_KEY]!;
-                console.debug("Initial report", initialReport);
+                initialNoticeReport = content[REPORT_KEY]!;
+                console.debug("Initial report", initialNoticeReport);
             } else if (CONFIRMATION_KEY in content) {
-                confirmationReport = content[CONFIRMATION_KEY]!;
-                console.debug("Confirmation report", confirmationReport);
+                confirmationRequestReport = content[CONFIRMATION_KEY]!;
+                console.debug("Confirmation report", confirmationRequestReport);
             }
         } catch (ex) {
             console.debug("Not a reaction to one of our reports", ex);
             return;
         }
-        if (!initialReport && !confirmationReport) {
+        if (!initialNoticeReport && !confirmationRequestReport) {
             console.debug!("Not a reaction to one of our reports")
             return;
         }
@@ -232,12 +232,12 @@ export class ReportManager {
 
         - We're in the management room;
         - Either
-          - `initialReport` is defined and we're reacting to one of our reports; or
-          - `confirmationReport` is defined and we're reacting to a confirmation request.
+          - `initialNoticeReport` is defined and we're reacting to one of our reports; or
+          - `confirmationRequestReport` is defined and we're reacting to a confirmation request.
         */
 
-        console.debug("handleReport ready to act", confirmationReport || initialReport);
-        if (confirmationReport) {
+        console.debug("handleReport ready to act", confirmationRequestReport || initialNoticeReport);
+        if (confirmationRequestReport) {
             console.debug("This is a confirmation report");
             // Extract the action and the decision.
             let matches = relation.key.match(REACTION_CONFIRMATION);
@@ -258,8 +258,8 @@ export class ReportManager {
             if (decision) {
                 await this.executeAction({
                     label: matches[1],
-                    report: confirmationReport,
-                    successEventId: confirmationReport.notification_event_id,
+                    report: confirmationRequestReport,
+                    successEventId: confirmationRequestReport.notification_event_id,
                     failureEventId: relation.event_id,
                     onSuccessRemoveEventId: relation.event_id
                 })
@@ -268,7 +268,7 @@ export class ReportManager {
             }
 
             return;
-        } else if (initialReport) {
+        } else if (initialNoticeReport) {
             console.debug("This is an initial report", relation.key);
             let matches = relation.key.match(REACTION_ACTION);
             let label: string = matches[1]!;
@@ -279,27 +279,27 @@ export class ReportManager {
                 return;
             }
             let newConfirmationReport: any = {};
-            for (let k of Object.keys(initialReport)) {
-                newConfirmationReport[k] = initialReport[k];
+            for (let k of Object.keys(initialNoticeReport)) {
+                newConfirmationReport[k] = initialNoticeReport[k];
             }
             newConfirmationReport.action = label;
             newConfirmationReport.notificationEventId = relation.event_id;
-            confirmationReport = newConfirmationReport as IConfirmationReport;
+            confirmationRequestReport = newConfirmationReport as IConfirmationReport;
             if (action.needsConfirmation) {
                 // Send a confirmation request.
-                console.debug("Action needs confirmation, labeling", initialReport, confirmationReport);
+                console.debug("Action needs confirmation, labeling", initialNoticeReport, confirmationRequestReport);
                 let confirmation = {
                     msgtype: "m.notice",
-                    body: `${action.emoji} ${action.title(initialReport)}?`,
+                    body: `${action.emoji} ${action.title(initialNoticeReport)}?`,
                 };
-                confirmation[CONFIRMATION_KEY] = confirmationReport;
+                confirmation[CONFIRMATION_KEY] = confirmationRequestReport;
 
                 let requestConfirmationEventId = await this.mjolnir.client.sendMessage(config.managementRoom, confirmation);
                 await this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": requestConfirmationEventId,
-                        "key": `🆗 ${action.emoji} ${action.title(initialReport)} [${action.label}][${CONFIRM}]`
+                        "key": `🆗 ${action.emoji} ${action.title(initialNoticeReport)} [${action.label}][${CONFIRM}]`
                     }
                 });
                 await this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
@@ -314,7 +314,7 @@ export class ReportManager {
                 // Execute immediately.
                 this.executeAction({
                     label,
-                    report: confirmationReport,
+                    report: confirmationRequestReport,
                     successEventId: relation.event_id,
                     failureEventId: relation.eventId,
                 })
