@@ -76,41 +76,11 @@ export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: s
  * @returns {Promise<any>} Resolves when complete.
  */
 export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<any> {
-    const filter = {
-        room: {
-            rooms: [roomId],
-            state: {
-                // types: ["m.room.member"], // We'll redact all types of events
-                rooms: [roomId],
-            },
-            timeline: {
-                rooms: [roomId],
-                // types: ["m.room.message"], // We'll redact all types of events
-            },
-            ephemeral: {
-                limit: 0,
-                types: [],
-            },
-            account_data: {
-                limit: 0,
-                types: [],
-            },
-        },
-        presence: {
-            limit: 0,
-            types: [],
-        },
-        account_data: {
-            limit: 0,
-            types: [],
-        },
+    const isGlob = sender.includes("*");
+    const roomEventFilter = {
+        rooms: [roomId],
+        ... isGlob ? {} : {senders: [sender]}
     };
-
-    let isGlob = true;
-    if (!sender.includes("*")) {
-        isGlob = false;
-        filter.room.timeline['senders'] = [sender];
-    }
 
     const matcher = new MatrixGlob(sender);
 
@@ -134,7 +104,7 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
 
     function backfill(from: string) {
         const qs = {
-            filter: JSON.stringify(filter),
+            filter: JSON.stringify(roomEventFilter),
             from: from,
             dir: "b",
         };
