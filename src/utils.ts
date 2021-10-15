@@ -159,7 +159,9 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
             }
             const events = filterEvents(bfMessages['chunk'] || []);
             // If we are using a glob, there may be no relevant events in this chunk.
-            if (events.length > 0) cb(events);
+            if (events.length > 0) {
+                await cb(events);
+            }
         }
     } else {
         throw new Error(`Internal Error: rooms/initialSync did not return a pagination chunk for ${roomId}, this is not normal and if it is we need to stop using it. See roomInitialSync() for why we are using it.`);
