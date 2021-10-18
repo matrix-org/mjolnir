@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
-import { UserID } from "matrix-bot-sdk";
+import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
 import { JSDOM } from 'jsdom';
 
@@ -72,6 +72,15 @@ export class ReportManager {
 
     /**
      * Display an incoming abuse report received, e.g. from the /report Matrix API.
+     * 
+     * # Pre-requisites
+     * 
+     * The following MUST hold true:
+     * - the reporter's id is `reporterId`;
+     * - the reporter is a member of `roomId`;
+     * - `eventId` did take place in room `roomId`;
+     * - the reporter could witness event `eventId` in room `roomId`;
+     * - the event being reported is `event`;
      *
      * @param roomId The room in which the abuse took place.
      * @param eventId The ID of the event reported as abuse.
@@ -80,18 +89,6 @@ export class ReportManager {
      * @param reason A reason provided by the reporter.
      */
     public async handleServerAbuseReport({ reporterId, event, reason }: { roomId: string, eventId: string, reporterId: string, event: any, reason?: string }) {
-        let accusedId: string = event["sender"];
-        console.debug("Accused", accusedId);
-
-        /*
-        Past this point, the following invariants hold:
-
-        - The reporter is a member of `roomId`.
-        - Event `eventId` did take place in room `roomId`.
-        - The reporter could witness event `eventId` in room `roomId`.
-        - Event `eventId` was reported by user `accusedId`.
-        */
-        // We now have all the information we need to produce an abuse report.
         return this.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: config.managementRoom });
     }
 
@@ -102,54 +99,39 @@ export class ReportManager {
      * @param event The reaction.
      */
     public async handleReaction({ roomId, event }: { roomId: string, event: any }) {
-        console.debug("handleReaction", roomId, event);
         if (event.sender === await this.mjolnir.client.getUserId()) {
             // Let's not react to our own reactions.
-            console.debug("handleReaction", "our own reaction");
             return;
         }
 
-        // We should only accept reactions if:
-        // - this is the management room;
-        // -
-
         if (roomId !== config.managementRoom) {
             // Let's not accept commands in rooms other than the management room.
-            // FIXME: That's not true anymore!
-            console.debug("handleReaction", "wrong room");
             return;
         }
         let relation;
         try {
             relation = event["content"]["m.relates_to"]!;
         } catch (ex) {
-            console.debug("Not a reaction", ex);
             return;
         }
-        console.debug("relation", relation);
 
         // Get the original event.
         let initialReport: IReport | undefined, confirmationReport: IConfirmationReport | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
-            console.debug("originalEvent", originalEvent);
             if (!("content" in originalEvent)) {
                 return;
             }
             let content = originalEvent["content"];
             if (ABUSE_REPORT_KEY in content) {
                 initialReport = content[ABUSE_REPORT_KEY]!;
-                console.debug("Initial report", initialReport);
             } else if (ABUSE_ACTION_CONFIRMATION_KEY in content) {
                 confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]!;
-                console.debug("Confirmation report", confirmationReport);
             }
         } catch (ex) {
-            console.debug("Not a reaction to one of our reports", ex);
             return;
         }
         if (!initialReport && !confirmationReport) {
-            console.debug!("Not a reaction to one of our reports")
             return;
         }
 
@@ -162,9 +144,7 @@ export class ReportManager {
           - `confirmationReport != undefined` and we're reacting to a confirmation request.
         */
 
-        console.debug("handleReport ready to act", confirmationReport || initialReport);
         if (confirmationReport) {
-            console.debug("This is a confirmation report");
             // Extract the action and the decision.
             let matches = relation.key.match(REACTION_CONFIRMATION);
 
@@ -178,10 +158,11 @@ export class ReportManager {
                     decision = false;
                     break;
                 default:
-                    console.debug("Unknown decision", matches[2]);
+                    LogService.debug("ReportManager::handleReaction", "Unknown decision", matches[2]);
                     return;
             }
             if (decision) {
+                LogService.info("ReportManager::handleReaction", "User", event["sender"], "confirmed action", matches[1]);
                 await this.executeAction({
                     label: matches[1],
                     report: confirmationReport,
@@ -191,18 +172,16 @@ export class ReportManager {
                     moderationRoomId: roomId
                 })
             } else {
+                LogService.info("ReportManager::handleReaction", "User", event["sender"], "canceled action", matches[1]);
                 this.mjolnir.client.redactEvent(config.managementRoom, relation.event_id, "Action canceled");
             }
 
             return;
         } else if (initialReport) {
-            console.debug("This is an initial report", relation.key);
             let matches = relation.key.match(REACTION_ACTION);
             let label: string = matches[1]!;
-            console.debug("relation", relation, relation.event_id, label);
             let action: IUIAction | undefined = ACTIONS.get(label);
             if (!action) {
-                console.debug("Not one of our actions");
                 return;
             }
             let confirmationReport: IConfirmationReport = {
@@ -210,9 +189,9 @@ export class ReportManager {
                 notification_event_id: relation.event_id,
                 ...initialReport
             };
+            LogService.info("ReportManager::handleReaction", "User", event["sender"], "picked action", label, initialReport);
             if (action.needsConfirmation) {
                 // Send a confirmation request.
-                console.debug("Action needs confirmation, labeling", initialReport, confirmationReport);
                 let confirmation = {
                     msgtype: "m.notice",
                     body: `${action.emoji} ${await action.title(this, initialReport)}?`,
@@ -220,7 +199,6 @@ export class ReportManager {
                         "rel_type": "m.reference",
                         "event_id": relation.event_id,
                     }
-
                 };
                 confirmation[ABUSE_ACTION_CONFIRMATION_KEY] = confirmationReport;
 
@@ -240,8 +218,8 @@ export class ReportManager {
                     }
                 });
             } else {
-                console.debug("Action does not need confirmation");
                 // Execute immediately.
+                LogService.info("ReportManager::handleReaction", "User", event["sender"], "executed (no confirmation needed) action", matches[1]);
                 this.executeAction({
                     label,
                     report: confirmationReport,
@@ -270,7 +248,6 @@ export class ReportManager {
     async executeAction({ label, report, successEventId, failureEventId, onSuccessRemoveEventId, moderationRoomId }: { label: string, report: IConfirmationReport, successEventId: string, failureEventId: string, onSuccessRemoveEventId?: string, moderationRoomId: string }) {
         let action: IUIAction | undefined = ACTIONS.get(label);
         if (!action) {
-            console.debug("Not one of our actions", label);
             return;
         }
         let error: any = null;
@@ -278,14 +255,11 @@ export class ReportManager {
             // Check security.
             if (moderationRoomId == config.managementRoom) {
                 // Always accept actions executed from the management room.
-                console.debug("executeAction from the server management room");
             } else {
                 throw new Error("Security error: Cannot execute this action.");
             }
-            console.debug("executeAction", action.label, report);
             await action.execute(this, report, moderationRoomId);
         } catch (ex) {
-            console.debug("Error executing action", label, ex);
             error = ex;
         }
         if (error) {
@@ -319,19 +293,19 @@ export class ReportManager {
 
     /**
      * Display the report and any UI button.
+     *
      * 
      * # Security
      * 
      * This method DOES NOT PERFORM ANY SECURITY CHECKS.
      * 
      * @param kind The kind of report (server-wide abuse report / room moderation request). Low security.
-     * @param event The offending event. MUST be checked.
+     * @param event The offending event. The fact that it's the offending event MUST be checked. No assumptions are made on the content.
      * @param reporterId The user who reported the event. MUST be checked.
      * @param reason A user-provided comment. Low-security.
      * @param moderationRoomId The room in which the report and ui will be displayed. MUST be checked.
      */
     async displayReportAndUI(args: { kind: Kind, event: any, reporterId: string, reason?: string, nature?: string, moderationRoomId: string, error?: string }) {
-        console.debug("displayReportAndUI", args);
         let { kind, event, reporterId, reason, nature, moderationRoomId, error } = args;
 
         let roomId = event["room_id"]!;
@@ -350,9 +324,9 @@ export class ReportManager {
                 eventContent = { msg: "<encrypted content>" };
             } else if ("content" in event) {
                 if ("formatted_body" in event.content) {
-                    event.content = { html: event.content.formatted_body };
+                    eventContent = { html: event.content.formatted_body };
                 } else if ("body" in event.content) {
-                    event.content = { text: event.content.body };
+                    eventContent = { text: event.content.body };
                 } else {
                     eventContent = { text: JSON.stringify(event["content"], null, 2) };
                 }
@@ -374,7 +348,6 @@ export class ReportManager {
         } catch (ex) {
             accusedDisplayName = "<Error: Cannot extract accused display name>";
         }
-        console.debug("Room is", roomAliasOrId, roomId);
 
         let eventShortcut = `https://matrix.to/#/${encodeURIComponent(roomId)}/${encodeURIComponent(eventId)}`;
         let roomShortcut = `https://matrix.to/#/${encodeURIComponent(roomAliasOrId)}`;
@@ -450,7 +423,6 @@ export class ReportManager {
                 readableNature = "unspecified";
                 break;
         }
-        console.debug("readableNature", readableNature);
 
         // We need to send the report as html to be able to use spoiler markings.
         // We build this as dom to be absolutely certain that we're not introducing
@@ -471,7 +443,7 @@ export class ReportManager {
             <b>Nature</b> <span id='nature-display'></span> (<code id='nature-source'></code>)
         </div>
         <div>
-            <b>Room</b> <a id='room-shortcut'>room <span id='room-alias-or-id'></span></a>
+            <b>Room</b> <a id='room-shortcut'><span id='room-alias-or-id'></span></a>
         </div>
         <hr />
         <div id='details-or-error'>
@@ -562,7 +534,6 @@ export class ReportManager {
             formatted_body: document.body.outerHTML,
         };
         notice[ABUSE_REPORT_KEY] = report;
-        console.debug("Sending notice", notice);
 
         let noticeEventId = await this.mjolnir.client.sendMessage(config.managementRoom, notice);
         if (kind != Kind.ERROR) {
@@ -581,8 +552,6 @@ export class ReportManager {
                 });
             }
         }
-
-        console.debug("Formatted abuse report sent");
     }
 }
 

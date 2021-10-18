@@ -136,7 +136,6 @@ export class WebAPIs {
                 };
 
                 reporterId = await reporterClient.getUserId();
-                console.debug("Reporter id confirmed as", reporterId);
 
                 /*
                 Past this point, the following invariants hold:
@@ -152,11 +151,10 @@ export class WebAPIs {
                 // By doing this with the reporterClient, we ensure that this feature of Mjölnir can work
                 // with all Matrix homeservers, rather than just Synapse.
                 event = await reporterClient.getEvent(roomId, eventId);
-                console.debug("Event confirmed as", event);
             }
 
             let reason = request.body["reason"];
-            await this.reportManager.handleIncomingReport({ roomId, eventId, reporterId, event, reason });
+            await this.reportManager.handleServerAbuseReport({ roomId, eventId, reporterId, event, reason });
 
             // Match the spec behavior of `/report`: return 200 and an empty JSON.
             response.status(200).json({});

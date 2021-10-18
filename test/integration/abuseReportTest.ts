@@ -78,34 +78,55 @@ describe("Test: Reporting abuse", async () => {
         console.log("Test: Reporting abuse - wait");
         await new Promise(resolve => setTimeout(resolve, 1000));
         let found = [];
-        let regexp = /^User ([^ ]*) \(([^ ]*)\) reported event ([^ ]*).*sent by user ([^ ]*) \(([^ ]*)\).*\n.*\nReporter commented: (.*)/m;
+        const REGEXPS = {
+            reporter: /Filed by (?<reporterDisplay>[^ ]*) \((?<reporterId>[^ ]*)\)/,
+            accused: /Against (?<accusedDisplay>[^ ]*) \((?<accusedId>[^ ]*)\)/,
+            room: /Room (?<roomAliasOrId>[^ ]*)/,
+            event: /Event (?<eventId>[^ ]*) Go to event/,
+            content: /Content (?<eventContent>.*)/,
+            comments: /Comments (?<comments>.*)/
+        };
         for (let toFind of reportsToFind) {
             for (let event of notices) {
                 if ("content" in event && "body" in event.content) {
                     let body = event.content.body as string;
-                    let match = body.match(regexp);
-                    if (!match) {
+                    console.debug("Is this a report?", body);
+                    let matches = new Map();
+                    for (let key of Object.keys(REGEXPS)) {
+                        let match = body.match(REGEXPS[key]);
+                        if (match) {
+                            console.debug("We have a match", key, REGEXPS[key], match.groups);
+                        } else {
+                            console.debug("Not a match", key, REGEXPS[key]);
+                            // Not a report, skipping.
+                            matches = null;
+                            break;
+                        }
+                        matches.set(key, match);
+                    }
+                    if (!matches) {
                         // Not a report, skipping.
                         continue;
                     }
-                    let [, reporterDisplay, reporterId, eventId, accusedDisplay, accusedId, reason] = match;
-                    if (eventId != toFind.eventId) {
+
+                    if (matches.get("event")!.groups.eventId != toFind.eventId) {
                         // Different event id, skipping.
+                        console.debug("Different event id, skipping", matches.get("event")!.groups.eventId, toFind.eventId);
                         continue;
                     }
-                    assert.equal(reporterId, toFind.reporterId, "The report should specify the correct reporter");
-                    assert.ok(toFind.reporterId.includes(reporterDisplay), "The report should display the correct reporter");
-                    assert.equal(accusedId, toFind.accusedId, "The report should specify the correct accused");
-                    assert.ok(toFind.accusedId.includes(accusedDisplay), "The report should display the correct reporter");
-                    assert.ok(body.includes(toFind.text), "The report should contain the text we inserted in the event");
+                    assert.equal(matches.get("reporter")!.groups.reporterId, toFind.reporterId, "The report should specify the correct reporter");
+                    assert.equal(matches.get("accused")!.groups.accusedId, toFind.accusedId, "The report should specify the correct accused");
+                    assert.ok(toFind.reporterId.includes(matches.get("reporter")!.groups.reporterDisplay), "The report should display the correct reporter");
+                    assert.ok(toFind.accusedId.includes(matches.get("accused")!.groups.accusedDisplay), "The report should display the correct reporter");
+                    assert.equal(matches.get("content")!.groups.eventContent, toFind.text, "The report should contain the text we inserted in the event");
                     if (toFind.comment) {
-                        assert.equal(reason, toFind.comment, "The report should contain the comment we added");
+                        assert.equal(matches.get("comments")!.groups.comments, toFind.comment, "The report should contain the comment we added");
                     }
                     found.push(toFind);
                     break;
                 }
             }
         }
-        assert.deepEqual(reportsToFind, found);
+        assert.deepEqual(found, reportsToFind);
     })
 });
