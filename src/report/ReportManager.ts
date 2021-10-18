@@ -37,11 +37,11 @@ const CANCEL = "cancel";
 
 /// Custom field embedded as part of notifications to embed abuse reports
 /// (see `IReport` for the content).
-const ABUSE_REPORT_KEY = "org.matrix.mjolnir.abuse.report";
+export const ABUSE_REPORT_KEY = "org.matrix.mjolnir.abuse.report";
 
 /// Custom field embedded as part of confirmation reactions to embed abuse
 /// reports (see `IConfirmationReport` for the content).
-const ABUSE_ACTION_CONFIRMATION_KEY = "org.matrix.mjolnir.abuse.action.confirmation";
+export const ABUSE_ACTION_CONFIRMATION_KEY = "org.matrix.mjolnir.abuse.action.confirmation";
 
 enum Kind {
     //! A MSC3215-style moderation request
@@ -251,6 +251,7 @@ export class ReportManager {
             return;
         }
         let error: any = null;
+        let response;
         try {
             // Check security.
             if (moderationRoomId == config.managementRoom) {
@@ -258,7 +259,7 @@ export class ReportManager {
             } else {
                 throw new Error("Security error: Cannot execute this action.");
             }
-            await action.execute(this, report, moderationRoomId);
+            response = await action.execute(this, report, moderationRoomId);
         } catch (ex) {
             error = ex;
         }
@@ -287,6 +288,18 @@ export class ReportManager {
             });
             if (onSuccessRemoveEventId) {
                 this.mjolnir.client.redactEvent(config.managementRoom, onSuccessRemoveEventId, "Action complete");
+            }
+            if (response) {
+                this.mjolnir.client.sendMessage(config.managementRoom, {
+                    msgtype: "m.notice",
+                    "formatted_body": response,
+                    format: "org.matrix.custom.html",
+                    "body": htmlToText(response),
+                    "m.relationship": {
+                        "rel_type": "m.reference",
+                        "event_id": successEventId
+                    }
+                })
             }
         }
     }
@@ -647,7 +660,7 @@ interface IUIAction {
     /**
      * Attempt to execute the action.
      */
-    execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<void>;
+    execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<string | undefined>;
 }
 
 /**
@@ -663,8 +676,9 @@ class IgnoreBadReport implements IUIAction {
     public async title(_manager: ReportManager, _report: IReport): Promise<string> {
         return "Ignore bad report";
     }
-    public async execute(manager: ReportManager, report: IConfirmationReport): Promise<void> {
+    public async execute(manager: ReportManager, report: IConfirmationReport): Promise<string | undefined> {
         await manager.mjolnir.client.redactEvent(config.managementRoom, report.notification_event_id, "Report marked as invalid");
+        return;
     }
 }
 
@@ -685,7 +699,7 @@ class RedactMessage implements IUIAction {
     public async title(_manager: ReportManager, report: IReport): Promise<string> {
         return `Redact event ${report.event_id}`;
     }
-    public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string): Promise<void> {
+    public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string): Promise<string | undefined> {
         /*
         Ideally, we'd use the following:
         However, for some reason, this doesn't seem to work.
@@ -694,6 +708,7 @@ class RedactMessage implements IUIAction {
             await mjolnir.syncListForRoom(report.room_id);
         */
         await manager.mjolnir.client.redactEvent(report.room_id, report.event_id);
+        return;
     }
 }
 
@@ -714,8 +729,9 @@ class KickAccused implements IUIAction {
     public async title(_manager: ReportManager, report: IReport): Promise<string> {
         return `Kick ${report.accused_id} from room ${report.room_alias_or_id}`;
     }
-    public async execute(manager: ReportManager, report: IReport): Promise<void> {
-        await manager.mjolnir.client.kickUser(report.accused_id, report.room_id)
+    public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
+        await manager.mjolnir.client.kickUser(report.accused_id, report.room_id);
+        return;
     }
 }
 
@@ -736,8 +752,9 @@ class MuteAccused implements IUIAction {
     public async title(_manager: ReportManager, report: IReport): Promise<string> {
         return `Mute ${report.accused_id} in room ${report.room_alias_or_id}`;
     }
-    public async execute(manager: ReportManager, report: IReport): Promise<void> {
+    public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.setUserPowerLevel(report.accused_id, report.room_id, -1);
+        return;
     }
 }
 
@@ -758,8 +775,29 @@ class BanAccused implements IUIAction {
     public async title(_manager: ReportManager, report: IReport): Promise<string> {
         return `Ban ${report.accused_id} from room ${report.room_alias_or_id}`;
     }
-    public async execute(manager: ReportManager, report: IReport): Promise<void> {
+    public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.banUser(report.accused_id, report.room_id);
+        return;
+    }
+}
+
+/**
+ * UI action: Help.
+ */
+class Help implements IUIAction {
+    public label = "help";
+    public emoji = "❓";
+    public needsConfirmation = false;
+    public async canExecute(_manager: ReportManager, _report: IReport): Promise<boolean> {
+        return true;
+    }
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Help";
+    }
+    public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
+        let list = ACTION_LIST.map(action => `<li>${action.emoji} ${action.title(manager, report)}</li>`).join("\n");
+        let body = `<ul>${list}</ul`;
+        return body;
     }
 }
 
@@ -786,7 +824,7 @@ class EscalateToServerModerationRoom implements IUIAction {
     public async title(manager: ReportManager, _report: IReport): Promise<string> {
         return `Escalate report to ${getHomeserver(await manager.mjolnir.client.getUserId())} server moderators`;
     }
-    public async execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<void> {
+    public async execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<string | undefined> {
         let event = await manager.mjolnir.client.getEvent(report.room_id, report.event_id);
 
         // Display the report and UI directly in the management room, as if it had been
@@ -797,23 +835,31 @@ class EscalateToServerModerationRoom implements IUIAction {
         // - `moderationRoomId`: statically known good;
         // - `reporterId`: we trust `report`, could be forged by a moderator, low impact;
         // - `event`: checked just before.
-        await manager.displayReportAndUI({ kind: Kind.ESCALATED_REPORT, reporterId: report.reporter_id, moderationRoomId: config.managementRoom, event })
+        await manager.displayReportAndUI({ kind: Kind.ESCALATED_REPORT, reporterId: report.reporter_id, moderationRoomId: config.managementRoom, event });
+        return;
     }
 }
 
 /**
  * The actions we may be able to undertake in reaction to a report.
  *
- * A map of labels => actions.
+ * As a list, ordered for displayed when users click on "Help".
  */
-const ACTIONS = new Map([
+const ACTION_LIST = [
     new KickAccused(),
     new RedactMessage(),
     new MuteAccused(),
     new BanAccused(),
     new EscalateToServerModerationRoom(),
-    new IgnoreBadReport()
-].map(action => [action.label, action]));
+    new IgnoreBadReport(),
+    new Help()
+];
+/**
+ * The actions we may be able to undertake in reaction to a report.
+ *
+ * As a map of labels => actions.
+ */
+const ACTIONS = new Map(ACTION_LIST.map(action => [action.label, action]));
 
 function getHomeserver(userId: string): string {
     return new UserID(userId).domain
