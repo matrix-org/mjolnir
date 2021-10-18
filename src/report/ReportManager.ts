@@ -795,8 +795,9 @@ class Help implements IUIAction {
         return "Help";
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
+        // Produce a html list of actions, in the order specified by ACTION_LIST.
         let list = ACTION_LIST.map(action => `<li>${action.emoji} ${action.title(manager, report)}</li>`).join("\n");
-        let body = `<ul>${list}</ul`;
+        let body = `<ul>${list}</ul>`;
         return body;
     }
 }
