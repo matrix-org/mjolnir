@@ -36,7 +36,9 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
     .catch(async e => {
         if (e?.body?.errcode === 'M_NOT_FOUND') {
             console.info(`${alias} hasn't been created yet, so we're making it now.`)
-            let roomId = await client.createRoom();
+            let roomId = await client.createRoom({
+                visibility: "public",
+            });
             await client.createRoomAlias(config.managementRoom, roomId);
             return roomId
         }

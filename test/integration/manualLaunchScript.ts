@@ -6,5 +6,5 @@ import { makeMjolnir } from "./mjolnirSetupUtils";
 
 (async () => {
     let mjolnir = await makeMjolnir();
-    await mjolnir.start()
+    await mjolnir.start();
 })();

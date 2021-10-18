@@ -3,10 +3,21 @@ import { strict as assert } from "assert";
 import config from "../../src/config";
 import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
 import { newTestUser } from "./clientHelper";
+import { ReportManager, ABUSE_ACTION_CONFIRMATION_KEY, ABUSE_REPORT_KEY } from "../../src/report/ReportManager";
 
 /**
  * Test the ability to turn abuse reports into room messages.
  */
+
+const REPORT_NOTICE_REGEXPS = {
+    reporter: /Filed by (?<reporterDisplay>[^ ]*) \((?<reporterId>[^ ]*)\)/,
+    accused: /Against (?<accusedDisplay>[^ ]*) \((?<accusedId>[^ ]*)\)/,
+    room: /Room (?<roomAliasOrId>[^ ]*)/,
+    event: /Event (?<eventId>[^ ]*) Go to event/,
+    content: /Content (?<eventContent>.*)/,
+    comments: /Comments (?<comments>.*)/
+};
+
 
 describe("Test: Reporting abuse", async () => {
     it('Mjölnir intercepts abuse reports', async function() {
@@ -35,9 +46,11 @@ describe("Test: Reporting abuse", async () => {
         let goodText = `GOOD: ${Math.random()}`; // Will NOT be reported.
         let badText = `BAD: ${Math.random()}`;   // Will be reported as abuse.
         let badText2 = `BAD: ${Math.random()}`;   // Will be reported as abuse.
+        let badText3 = `<b>BAD</b>: ${Math.random()}`; // Will be reported as abuse.
         let goodEventId = await goodUser.sendText(roomId, goodText);
         let badEventId = await badUser.sendText(roomId, badText);
         let badEventId2 = await badUser.sendText(roomId, badText2);
+        let badEventId3 = await badUser.sendText(roomId, badText3);
         let badEvent2Comment = `COMMENT: ${Math.random()}`;
 
         console.log("Test: Reporting abuse - send reports");
@@ -73,31 +86,40 @@ describe("Test: Reporting abuse", async () => {
             console.error("Could not send second report", e.body || e);
             throw e;
         }
-        // FIXME: Also test with embedded HTML.
+
+        try {
+            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId3)}`, "");
+            reportsToFind.push({
+                reporterId: goodUserId,
+                accusedId: badUserId,
+                eventId: badEventId3,
+                text: badText3,
+                comment: null,
+            });
+        } catch (e) {
+            console.error("Could not send second report", e.body || e);
+            throw e;
+        }
 
         console.log("Test: Reporting abuse - wait");
         await new Promise(resolve => setTimeout(resolve, 1000));
         let found = [];
-        const REGEXPS = {
-            reporter: /Filed by (?<reporterDisplay>[^ ]*) \((?<reporterId>[^ ]*)\)/,
-            accused: /Against (?<accusedDisplay>[^ ]*) \((?<accusedId>[^ ]*)\)/,
-            room: /Room (?<roomAliasOrId>[^ ]*)/,
-            event: /Event (?<eventId>[^ ]*) Go to event/,
-            content: /Content (?<eventContent>.*)/,
-            comments: /Comments (?<comments>.*)/
-        };
         for (let toFind of reportsToFind) {
             for (let event of notices) {
                 if ("content" in event && "body" in event.content) {
+                    if (!(ABUSE_REPORT_KEY in event.content) || event.content[ABUSE_REPORT_KEY].event_id != toFind.eventId) {
+                        // Not a report or not our report.
+                        continue;
+                    }
+                    let report = event.content[ABUSE_REPORT_KEY];
                     let body = event.content.body as string;
-                    console.debug("Is this a report?", body);
                     let matches = new Map();
-                    for (let key of Object.keys(REGEXPS)) {
-                        let match = body.match(REGEXPS[key]);
+                    for (let key of Object.keys(REPORT_NOTICE_REGEXPS)) {
+                        let match = body.match(REPORT_NOTICE_REGEXPS[key]);
                         if (match) {
-                            console.debug("We have a match", key, REGEXPS[key], match.groups);
+                            console.debug("We have a match", key, REPORT_NOTICE_REGEXPS[key], match.groups);
                         } else {
-                            console.debug("Not a match", key, REGEXPS[key]);
+                            console.debug("Not a match", key, REPORT_NOTICE_REGEXPS[key]);
                             // Not a report, skipping.
                             matches = null;
                             break;
@@ -109,24 +131,181 @@ describe("Test: Reporting abuse", async () => {
                         continue;
                     }
 
-                    if (matches.get("event")!.groups.eventId != toFind.eventId) {
-                        // Different event id, skipping.
-                        console.debug("Different event id, skipping", matches.get("event")!.groups.eventId, toFind.eventId);
-                        continue;
-                    }
+                    assert.equal(matches.get("event")!.groups.eventId, toFind.eventId, "The report should specify the correct event id");;
+
                     assert.equal(matches.get("reporter")!.groups.reporterId, toFind.reporterId, "The report should specify the correct reporter");
-                    assert.equal(matches.get("accused")!.groups.accusedId, toFind.accusedId, "The report should specify the correct accused");
+                    assert.equal(report.reporter_id, toFind.reporterId, "The embedded report should specify the correct reporter");
                     assert.ok(toFind.reporterId.includes(matches.get("reporter")!.groups.reporterDisplay), "The report should display the correct reporter");
+
+                    assert.equal(matches.get("accused")!.groups.accusedId, toFind.accusedId, "The report should specify the correct accused");
+                    assert.equal(report.accused_id, toFind.accusedId, "The embedded report should specify the correct accused");
                     assert.ok(toFind.accusedId.includes(matches.get("accused")!.groups.accusedDisplay), "The report should display the correct reporter");
+
                     assert.equal(matches.get("content")!.groups.eventContent, toFind.text, "The report should contain the text we inserted in the event");
                     if (toFind.comment) {
                         assert.equal(matches.get("comments")!.groups.comments, toFind.comment, "The report should contain the comment we added");
                     }
+                    assert.equal(matches.get("room")!.groups.roomAliasOrId, roomId, "The report should specify the correct room");
+                    assert.equal(report.room_id, roomId, "The embedded report should specify the correct room");
                     found.push(toFind);
                     break;
                 }
             }
         }
         assert.deepEqual(found, reportsToFind);
-    })
+
+        // Since Mjölnir is not a member of the room, the only buttons we should find
+        // are `help` and `ignore`.
+        for (let event of notices) {
+            if (event.content && event.content["m.relates_to"] && event.content["m.relates_to"]["key"]) {
+                let regexp = /\/([[^]]*)\]/;
+                let matches = event.content["m.relates_to"]["key"].match(regexp);
+                if (!matches) {
+                    continue;
+                }
+                switch (matches[1]) {
+                    case "bad-report":
+                    case "help":
+                        continue;
+                    default:
+                        throw new Error(`Didn't expect label ${matches[1]}`);
+                }
+            }
+        }
+    });
+    it('The redact action works', async function() {
+        this.timeout(10000);
+
+        // Listen for any notices that show up.
+        let notices = [];
+        matrixClient().on("room.event", (roomId, event) => {
+            if (roomId = config.managementRoom) {
+                notices.push(event);
+            }
+        });
+
+        // Create a moderator.
+        let moderatorUser = await newTestUser(false, "reacting-abuse-moderator-user");
+        matrixClient().inviteUser(await moderatorUser.getUserId(), config.managementRoom);
+        await moderatorUser.joinRoom(config.managementRoom);
+
+        // Create a few users and a room.
+        let goodUser = await newTestUser(false, "reacting-abuse-good-user");
+        let badUser = await newTestUser(false, "reacting-abuse-bad-user");
+        let goodUserId = await goodUser.getUserId();
+        let badUserId = await badUser.getUserId();
+
+        let roomId = await moderatorUser.createRoom({ invite: [await badUser.getUserId()] });
+        await moderatorUser.inviteUser(await goodUser.getUserId(), roomId);
+        await moderatorUser.inviteUser(await badUser.getUserId(), roomId);
+        await badUser.joinRoom(roomId);
+        await goodUser.joinRoom(roomId);
+
+        // Setup Mjölnir as moderator for our room.
+        await moderatorUser.inviteUser(await matrixClient().getUserId(), roomId);
+        await moderatorUser.setUserPowerLevel(await matrixClient().getUserId(), roomId, 100);
+
+        console.log("Test: Reporting abuse - send messages");
+        // Exchange a few messages.
+        let goodText = `GOOD: ${Math.random()}`; // Will NOT be reported.
+        let badText = `BAD: ${Math.random()}`;   // Will be reported as abuse.
+        let goodEventId = await goodUser.sendText(roomId, goodText);
+        let badEventId = await badUser.sendText(roomId, badText);
+        let goodEventId2 = await goodUser.sendText(roomId, goodText);
+
+        console.log("Test: Reporting abuse - send reports");
+
+        // Time to report.
+        let reportToFind = {
+            reporterId: goodUserId,
+            accusedId: badUserId,
+            eventId: badEventId,
+            text: badText,
+            comment: null,
+        };
+        try {
+            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`);
+        } catch (e) {
+            console.error("Could not send first report", e.body || e);
+            throw e;
+        }
+
+        console.log("Test: Reporting abuse - wait");
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        let mjolnirRooms = new Set(await matrixClient().getJoinedRooms());
+        assert.ok(mjolnirRooms.has(roomId), "Mjölnir should be a member of the room");
+
+        // Find the notice
+        let noticeId;
+        for (let event of notices) {
+            if ("content" in event && ABUSE_REPORT_KEY in event.content) {
+                if (!(ABUSE_REPORT_KEY in event.content) || event.content[ABUSE_REPORT_KEY].event_id != badEventId) {
+                    // Not a report or not our report.
+                    continue;
+                }
+                noticeId = event.event_id;
+                break;
+            }
+        }
+        assert.ok(noticeId, "We should have found our notice");
+
+        // Find the buttons.
+        let buttons = [];
+        for (let event of notices) {
+            if (event["type"] != "m.reaction") {
+                continue;
+            }
+            if (event["content"]["m.relates_to"]["rel_type"] != "m.annotation") {
+                continue;
+            }
+            if (event["content"]["m.relates_to"]["event_id"] != noticeId) {
+                continue;
+            }
+            buttons.push(event);
+        }
+
+        // Find the redact button... and click it.
+        let redactButtonId = null;
+        for (let button of buttons) {
+            if (button["content"]["m.relates_to"]["key"].includes("[redact-message]")) {
+                redactButtonId = button["event_id"];
+                await moderatorUser.sendEvent(config.managementRoom, "m.reaction", button["content"]);
+                break;
+            }
+        }
+        assert.ok(redactButtonId, "We should have found the redact button");
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // This should have triggered a confirmation request, with more buttons!
+        let confirmEventId = null;
+        for (let event of notices) {
+            console.debug("Is this the confirm button?", event);
+            if (!event["content"]["m.relates_to"]) {
+                console.debug("Not a reaction");
+                continue;
+            }
+            if (!event["content"]["m.relates_to"]["key"].includes("[confirm]")) {
+                console.debug("Not confirm");
+                continue;
+            }
+            if (!event["content"]["m.relates_to"]["event_id"] == redactButtonId) {
+                console.debug("Not reaction to redact button");
+                continue;
+            }
+
+            // It's the confirm button, click it!
+            confirmEventId = event["event_id"];
+            await moderatorUser.sendEvent(config.managementRoom, "m.reaction", event["content"]);
+            break;
+        }
+        assert.ok(confirmEventId, "We should have found the confirm button");
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // This should have redacted the message.
+        let newBadEvent = await matrixClient().getEvent(roomId, badEventId);
+        assert.deepEqual(Object.keys(newBadEvent.content), [], "Redaction should have removed the content of the offending event");
+    });
 });
