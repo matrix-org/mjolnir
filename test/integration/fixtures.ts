@@ -8,14 +8,14 @@ import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 // So there is some code in here to "undo" the mutation after we stop Mjolnir syncing.
 export const mochaHooks = {
     beforeEach: [
-      async function() {
-        console.log("mochaHooks.beforeEach");
-        this.managementRoomAlias = config.managementRoom;
-        this.mjolnir = await makeMjolnir();
-        config.RUNTIME.client = this.mjolnir.client;
-        this.mjolnir.start();
-        console.log("mochaHooks.beforeEach DONE");
-      }
+        async function() {
+            console.log("mochaHooks.beforeEach");
+            this.managementRoomAlias = config.managementRoom;
+            this.mjolnir = await makeMjolnir();
+            config.RUNTIME.client = this.mjolnir.client;
+            this.mjolnir.start();
+            console.log("mochaHooks.beforeEach DONE");
+        }
     ],
     afterEach: [
         async function() {
@@ -25,7 +25,7 @@ export const mochaHooks = {
             let managementRoomId = config.managementRoom;
             config.managementRoom = this.managementRoomAlias;
             // remove alias from management room and leave it.
-          await teardownManagementRoom(this.mjolnir.client, managementRoomId, this.managementRoomAlias);
+            await teardownManagementRoom(this.mjolnir.client, managementRoomId, this.managementRoomAlias);
         }
     ]
-  };
+};
