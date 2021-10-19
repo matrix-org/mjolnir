@@ -72,9 +72,9 @@ export class ReportManager {
 
     /**
      * Display an incoming abuse report received, e.g. from the /report Matrix API.
-     * 
+     *
      * # Pre-requisites
-     * 
+     *
      * The following MUST hold true:
      * - the reporter's id is `reporterId`;
      * - the reporter is a member of `roomId`;
@@ -184,7 +184,7 @@ export class ReportManager {
             if (!action) {
                 return;
             }
-            let confirmationReport: IConfirmationReport = {
+            confirmationReport = {
                 action: label,
                 notification_event_id: relation.event_id,
                 ...initialReport
@@ -254,7 +254,7 @@ export class ReportManager {
         let response;
         try {
             // Check security.
-            if (moderationRoomId == config.managementRoom) {
+            if (moderationRoomId === config.managementRoom) {
                 // Always accept actions executed from the management room.
             } else {
                 throw new Error("Security error: Cannot execute this action.");
@@ -307,11 +307,11 @@ export class ReportManager {
     /**
      * Display the report and any UI button.
      *
-     * 
+     *
      * # Security
-     * 
+     *
      * This method DOES NOT PERFORM ANY SECURITY CHECKS.
-     * 
+     *
      * @param kind The kind of report (server-wide abuse report / room moderation request). Low security.
      * @param event The offending event. The fact that it's the offending event MUST be checked. No assumptions are made on the content.
      * @param reporterId The user who reported the event. MUST be checked.
@@ -490,7 +490,7 @@ export class ReportManager {
             ['nature-display', readableNature],
             ['nature-source', nature || "<no nature provided>"],
             ['event-timestamp', eventTimestamp],
-            ['details-or-error', kind == Kind.ERROR ? error : null]
+            ['details-or-error', kind === Kind.ERROR ? error : null]
         ]) {
             let node = document.getElementById(key);
             if (node && value) {
@@ -549,7 +549,7 @@ export class ReportManager {
         notice[ABUSE_REPORT_KEY] = report;
 
         let noticeEventId = await this.mjolnir.client.sendMessage(config.managementRoom, notice);
-        if (kind != Kind.ERROR) {
+        if (kind !== Kind.ERROR) {
             // Now let's display buttons.
             for (let [label, action] of ACTIONS) {
                 // Display buttons for actions that can be executed.
@@ -639,10 +639,10 @@ interface IUIAction {
     /**
      * Detect whether the action may be executed, e.g. whether Mjölnir has
      * sufficient powerlevel to execute this action.
-     * 
+     *
      * **Security caveat** This assumes that the security policy on whether
      * the operation can be executed is:
-     * 
+     *
      * > *Anyone* in the moderation room and who isn't muted can execute
      * > an operation iff Mjölnir has the rights to execute it.
      *
@@ -813,7 +813,7 @@ class EscalateToServerModerationRoom implements IUIAction {
     public emoji = "⏫";
     public needsConfirmation = true;
     public async canExecute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<boolean> {
-        if (moderationRoomId == config.managementRoom) {
+        if (moderationRoomId === config.managementRoom) {
             // We're already at the top of the chain.
             return false;
         }
