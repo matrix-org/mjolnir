@@ -1,11 +1,14 @@
 import config from "../../src/config";
 import { newTestUser, noticeListener } from "./clientHelper"
 
-describe("Test: !help command", () => {
+describe("Test: !help command", function() {
     let client;
-    before(async function () {
+    this.beforeEach(async function () {
         client = await newTestUser(true);
         await client.start();
+    })
+    this.afterEach(async function () {
+        await client.stop();
     })
     it('Mjolnir responded to !mjolnir help', async function() {
         this.timeout(30000);
@@ -23,8 +26,5 @@ describe("Test: !help command", () => {
         console.log(config);
         await client.sendMessage(config.managementRoom, {msgtype: "m.text", body: "!mjolnir help"})
         await reply
-    })
-    after(async function () {
-        await client.stop();
     })
 }) 
