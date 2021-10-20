@@ -140,8 +140,8 @@ export class ReportManager {
 
         - We're in the management room;
         - Either
-          - `initialReport != undefined` and we're reacting to one of our reports; or
-          - `confirmationReport != undefined` and we're reacting to a confirmation request.
+          - `initialReport` is defined and we're reacting to one of our reports; or
+          - `confirmationReport` is defined and we're reacting to a confirmation request.
         */
 
         if (confirmationReport) {
