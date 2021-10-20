@@ -40,7 +40,7 @@ const CANCEL = "cancel";
 export const ABUSE_REPORT_KEY = "org.matrix.mjolnir.abuse.report";
 
 /// Custom field embedded as part of confirmation reactions to embed abuse
-/// reports (see `IConfirmationReport` for the content).
+/// reports (see `IReportWithAction` for the content).
 export const ABUSE_ACTION_CONFIRMATION_KEY = "org.matrix.mjolnir.abuse.action.confirmation";
 
 enum Kind {
@@ -58,6 +58,7 @@ enum Kind {
  * A class designed to respond to abuse reports.
  */
 export class ReportManager {
+    private displayManager: DisplayManager;
     constructor(public mjolnir: Mjolnir) {
         // Configure bot interactions.
         mjolnir.client.on("room.event", async (roomId, event) => {
@@ -68,6 +69,7 @@ export class ReportManager {
                 }
             }
         });
+        this.displayManager = new DisplayManager(this);
     }
 
     /**
@@ -89,7 +91,7 @@ export class ReportManager {
      * @param reason A reason provided by the reporter.
      */
     public async handleServerAbuseReport({ reporterId, event, reason }: { roomId: string, eventId: string, reporterId: string, event: any, reason?: string }) {
-        return this.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: config.managementRoom });
+        return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: config.managementRoom });
     }
 
     /**
@@ -116,7 +118,7 @@ export class ReportManager {
         }
 
         // Get the original event.
-        let initialReport: IReport | undefined, confirmationReport: IConfirmationReport | undefined;
+        let initialReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
             if (!("content" in originalEvent)) {
@@ -172,8 +174,8 @@ export class ReportManager {
                     moderationRoomId: roomId
                 })
             } else {
-                LogService.info("ReportManager::handleReaction", "User", event["sender"], "canceled action", matches[1]);
-                this.mjolnir.client.redactEvent(config.managementRoom, relation.event_id, "Action canceled");
+                LogService.info("ReportManager::handleReaction", "User", event["sender"], "cancelled action", matches[1]);
+                this.mjolnir.client.redactEvent(config.managementRoom, relation.event_id, "Action cancelled");
             }
 
             return;
@@ -245,7 +247,7 @@ export class ReportManager {
       * @param failureEventId The event to annotate with a "FAIL" in case of failure.
       * @param onSuccessRemoveEventId Optionally, an event to remove in case of success (e.g. the confirmation dialog).
       */
-    async executeAction({ label, report, successEventId, failureEventId, onSuccessRemoveEventId, moderationRoomId }: { label: string, report: IConfirmationReport, successEventId: string, failureEventId: string, onSuccessRemoveEventId?: string, moderationRoomId: string }) {
+    private async executeAction({ label, report, successEventId, failureEventId, onSuccessRemoveEventId, moderationRoomId }: { label: string, report: IReportWithAction, successEventId: string, failureEventId: string, onSuccessRemoveEventId?: string, moderationRoomId: string }) {
         let action: IUIAction | undefined = ACTIONS.get(label);
         if (!action) {
             return;
@@ -259,7 +261,7 @@ export class ReportManager {
             } else {
                 throw new Error("Security error: Cannot execute this action.");
             }
-            response = await action.execute(this, report, moderationRoomId);
+            response = await action.execute(this, report, moderationRoomId, this.displayManager);
         } catch (ex) {
             error = ex;
         }
@@ -303,269 +305,6 @@ export class ReportManager {
             }
         }
     }
-
-    /**
-     * Display the report and any UI button.
-     *
-     *
-     * # Security
-     *
-     * This method DOES NOT PERFORM ANY SECURITY CHECKS.
-     *
-     * @param kind The kind of report (server-wide abuse report / room moderation request). Low security.
-     * @param event The offending event. The fact that it's the offending event MUST be checked. No assumptions are made on the content.
-     * @param reporterId The user who reported the event. MUST be checked.
-     * @param reason A user-provided comment. Low-security.
-     * @param moderationRoomId The room in which the report and ui will be displayed. MUST be checked.
-     */
-    async displayReportAndUI(args: { kind: Kind, event: any, reporterId: string, reason?: string, nature?: string, moderationRoomId: string, error?: string }) {
-        let { kind, event, reporterId, reason, nature, moderationRoomId, error } = args;
-
-        let roomId = event["room_id"]!;
-        let eventId = event["event_id"]!;
-
-        let roomAliasOrId = roomId;
-        try {
-            roomAliasOrId = await this.mjolnir.client.getPublishedAlias(roomId) || roomId;
-        } catch (ex) {
-            // Ignore.
-        }
-
-        let eventContent;
-        try {
-            if (event["type"] === "m.room.encrypted") {
-                eventContent = { msg: "<encrypted content>" };
-            } else if ("content" in event) {
-                if ("formatted_body" in event.content) {
-                    eventContent = { html: event.content.formatted_body };
-                } else if ("body" in event.content) {
-                    eventContent = { text: event.content.body };
-                } else {
-                    eventContent = { text: JSON.stringify(event["content"], null, 2) };
-                }
-            }
-        } catch (ex) {
-            eventContent = { msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.` };
-        }
-
-        let accusedId = event["sender"];
-
-        let reporterDisplayName: string, accusedDisplayName: string;
-        try {
-            reporterDisplayName = await this.mjolnir.client.getUserProfile(reporterId)["displayname"] || reporterId;
-        } catch (ex) {
-            reporterDisplayName = "<Error: Cannot extract reporter display name>";
-        }
-        try {
-            accusedDisplayName = await this.mjolnir.client.getUserProfile(accusedId)["displayname"] || accusedId;
-        } catch (ex) {
-            accusedDisplayName = "<Error: Cannot extract accused display name>";
-        }
-
-        let eventShortcut = `https://matrix.to/#/${encodeURIComponent(roomId)}/${encodeURIComponent(eventId)}`;
-        let roomShortcut = `https://matrix.to/#/${encodeURIComponent(roomAliasOrId)}`;
-
-        let eventTimestamp;
-        try {
-            eventTimestamp = new Date(event["origin_server_ts"]).toUTCString();
-        } catch (ex) {
-            eventTimestamp = `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.`;
-        }
-
-        let title;
-        switch (kind) {
-            case Kind.MODERATION_REQUEST:
-                title = "Moderation request";
-                break;
-            case Kind.SERVER_ABUSE_REPORT:
-                title = "Abuse report";
-                break;
-            case Kind.ESCALATED_REPORT:
-                title = "Moderation request escalated by moderators";
-                break;
-            case Kind.ERROR:
-                title = "Error";
-                break;
-        }
-
-        let readableNature;
-        switch (nature) {
-            case "org.matrix.msc3215.abuse.nature.disagreement":
-                readableNature = "disagreement";
-                break;
-            case "org.matrix.msc3215.abuse.nature.harassment":
-                readableNature = "harassment/bullying";
-                break;
-            case "org.matrix.msc3215.abuse.nature.csam":
-                readableNature = "child sexual abuse material [illegal, consider warning authorities]";
-                break;
-            case "org.matrix.msc3215.abuse.nature.hate_speech":
-                readableNature = "spam";
-                break;
-            case "org.matrix.msc3215.abuse.nature.spam":
-                readableNature = "impersonation";
-                break;
-            case "org.matrix.msc3215.abuse.nature.impersonation":
-                readableNature = "impersonation";
-                break;
-            case "org.matrix.msc3215.abuse.nature.doxxing":
-                readableNature = "non-consensual sharing of identifiable private information of a third party (doxxing)";
-                break;
-            case "org.matrix.msc3215.abuse.nature.violence":
-                readableNature = "threats of violence or death, either to self or others";
-                break;
-            case "org.matrix.msc3215.abuse.nature.terrorism":
-                readableNature = "terrorism [illegal, consider warning authorities]";
-                break;
-            case "org.matrix.msc3215.abuse.nature.unwanted_sexual_advances":
-                readableNature = "unwanted sexual advances, sextortion, ... [possibly illegal, consider warning authorities]"
-                break;
-            case "org.matrix.msc3215.abuse.nature.ncii":
-                readableNature = "non consensual intimate imagery, including revenge porn"
-                break;
-            case "org.matrix.msc3215.abuse.nature.nsfw":
-                readableNature = "NSFW content (pornography, gore...) in a SFW room";
-                break;
-            case "org.matrix.msc3215.abuse.nature.disinformation":
-                readableNature = "disinformation"
-                break;
-            case null:
-            case undefined:
-            case "org.matrix.msc3215.abuse.nature.other":
-            default:
-                readableNature = "unspecified";
-                break;
-        }
-
-        // We need to send the report as html to be able to use spoiler markings.
-        // We build this as dom to be absolutely certain that we're not introducing
-        // any kind of injection within the report.
-
-        // Please do NOT insert any `${}` in the following backticks, to avoid
-        // any XSS attack.
-        const document = new JSDOM(`
-        <body>
-        <div>
-            <b><span id="title"></span></b>
-        </div>
-        <div>
-            <b>Filed by</b> <span id='reporter-display-name'></span> (<code id='reporter-id'></code>)
-        </div>
-        <b>Against</b> <span id='accused-display-name'></span> (<code id='accused-id'></code>)
-        <div>
-            <b>Nature</b> <span id='nature-display'></span> (<code id='nature-source'></code>)
-        </div>
-        <div>
-            <b>Room</b> <a id='room-shortcut'><span id='room-alias-or-id'></span></a>
-        </div>
-        <hr />
-        <div id='details-or-error'>
-        <details>
-            <summary>Event details</summary>
-            <div>
-            <b>Event</b> <span id='event-id'></span> <a id='event-shortcut'>Go to event</a>
-            </div>
-            <div>
-            <b>When</b> <span id='event-timestamp'></span>
-            </div>
-            <div>
-            <b>Content</b> <span id='event-container'><code id='event-content'></code><span>
-            </div>
-        </details>
-        </div>
-        <hr />
-        <b>Comments</b> <code id='reason-content'></code></div>
-        </body>`).window.document;
-
-        // ...insert text content
-        for (let [key, value] of [
-            ['title', title],
-            ['reporter-display-name', reporterDisplayName],
-            ['reporter-id', reporterId],
-            ['accused-display-name', accusedDisplayName],
-            ['accused-id', accusedId],
-            ['event-id', eventId],
-            ['room-alias-or-id', roomAliasOrId],
-            ['reason-content', reason || "<no reason given>"],
-            ['nature-display', readableNature],
-            ['nature-source', nature || "<no nature provided>"],
-            ['event-timestamp', eventTimestamp],
-            ['details-or-error', kind === Kind.ERROR ? error : null]
-        ]) {
-            let node = document.getElementById(key);
-            if (node && value) {
-                node.textContent = value;
-            }
-        }
-        // ...insert links
-        for (let [key, value] of [
-            ['event-shortcut', eventShortcut],
-            ['room-shortcut', roomShortcut],
-        ]) {
-            let node = document.getElementById(key) as HTMLAnchorElement;
-            if (node) {
-                node.href = value;
-            }
-        }
-
-        // ...insert HTML content
-        for (let [key, value] of [
-            ['event-content', eventContent],
-        ]) {
-            let node = document.getElementById(key);
-            if (node) {
-                if ("msg" in value) {
-                    node.textContent = value.msg;
-                } else if ("text" in value) {
-                    node.textContent = value.text;
-                } else if ("html" in value) {
-                    node.innerHTML = value.html;
-                }
-            }
-        }
-
-        // ...set presentation
-        if (!("msg" in eventContent)) {
-            // If there's some event content, mark it as a spoiler.
-            document.getElementById('event-container')!.
-                setAttribute("data-mx-spoiler", "");
-        }
-
-        // Embed additional information in the notice, for use by the
-        // action buttons.
-        let report: IReport = {
-            accused_id: accusedId,
-            reporter_id: reporterId,
-            event_id: eventId,
-            room_id: roomId,
-            room_alias_or_id: roomAliasOrId,
-        };
-        let notice = {
-            msgtype: "m.notice",
-            body: htmlToText(document.body.outerHTML, { wordwrap: false }),
-            format: "org.matrix.custom.html",
-            formatted_body: document.body.outerHTML,
-        };
-        notice[ABUSE_REPORT_KEY] = report;
-
-        let noticeEventId = await this.mjolnir.client.sendMessage(config.managementRoom, notice);
-        if (kind !== Kind.ERROR) {
-            // Now let's display buttons.
-            for (let [label, action] of ACTIONS) {
-                // Display buttons for actions that can be executed.
-                if (!await action.canExecute(this, report, moderationRoomId)) {
-                    continue;
-                }
-                await this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
-                    "m.relates_to": {
-                        "rel_type": "m.annotation",
-                        "event_id": noticeEventId,
-                        "key": `${action.emoji} ${await action.title(this, report)} [${label}]`
-                    }
-                });
-            }
-        }
-    }
 }
 
 /**
@@ -600,7 +339,7 @@ interface IReport {
 /**
  * An abuse report, extended with the information we need for a confirmation report.
  */
-interface IConfirmationReport extends IReport {
+interface IReportWithAction extends IReport {
     /**
      * The label of the action we're confirming, e.g. `kick-user`.
      */
@@ -660,7 +399,7 @@ interface IUIAction {
     /**
      * Attempt to execute the action.
      */
-    execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<string | undefined>;
+    execute(manager: ReportManager, report: IReport, moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined>;
 }
 
 /**
@@ -676,8 +415,22 @@ class IgnoreBadReport implements IUIAction {
     public async title(_manager: ReportManager, _report: IReport): Promise<string> {
         return "Ignore bad report";
     }
-    public async execute(manager: ReportManager, report: IConfirmationReport): Promise<string | undefined> {
-        await manager.mjolnir.client.redactEvent(config.managementRoom, report.notification_event_id, "Report marked as invalid");
+    public async execute(manager: ReportManager, report: IReportWithAction): Promise<string | undefined> {
+        //await manager.mjolnir.client.redactEvent(config.managementRoom, report.notification_event_id, "Report marked as invalid");
+        await manager.mjolnir.client.sendEvent(config.managementRoom, "m.room.message",
+            {
+                msgtype: "m.notice",
+                body: "Report classified as invalid",
+                "m.new_content": {
+                    "body": `Report by user ${report.reporter_id} has been classified as invalid`,
+                    "msgtype": "m.text"
+                },
+                "m.relates_to": {
+                    "rel_type": "m.replace",
+                    "event_id": report.notification_event_id
+                }
+            }
+        );
         return;
     }
 }
@@ -828,7 +581,7 @@ class EscalateToServerModerationRoom implements IUIAction {
     public async title(manager: ReportManager, _report: IReport): Promise<string> {
         return `Escalate report to ${getHomeserver(await manager.mjolnir.client.getUserId())} server moderators`;
     }
-    public async execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<string | undefined> {
+    public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined> {
         let event = await manager.mjolnir.client.getEvent(report.room_id, report.event_id);
 
         // Display the report and UI directly in the management room, as if it had been
@@ -839,8 +592,278 @@ class EscalateToServerModerationRoom implements IUIAction {
         // - `moderationRoomId`: statically known good;
         // - `reporterId`: we trust `report`, could be forged by a moderator, low impact;
         // - `event`: checked just before.
-        await manager.displayReportAndUI({ kind: Kind.ESCALATED_REPORT, reporterId: report.reporter_id, moderationRoomId: config.managementRoom, event });
+        await displayManager.displayReportAndUI({ kind: Kind.ESCALATED_REPORT, reporterId: report.reporter_id, moderationRoomId: config.managementRoom, event });
         return;
+    }
+}
+
+class DisplayManager {
+
+    constructor(private owner: ReportManager) {
+
+    }
+
+    /**
+     * Display the report and any UI button.
+     *
+     *
+     * # Security
+     *
+     * This method DOES NOT PERFORM ANY SECURITY CHECKS.
+     *
+     * @param kind The kind of report (server-wide abuse report / room moderation request). Low security.
+     * @param event The offending event. The fact that it's the offending event MUST be checked. No assumptions are made on the content.
+     * @param reporterId The user who reported the event. MUST be checked.
+     * @param reason A user-provided comment. Low-security.
+     * @param moderationRoomId The room in which the report and ui will be displayed. MUST be checked.
+     */
+    public async displayReportAndUI(args: { kind: Kind, event: any, reporterId: string, reason?: string, nature?: string, moderationRoomId: string, error?: string }) {
+        let { kind, event, reporterId, reason, nature, moderationRoomId, error } = args;
+
+        let roomId = event["room_id"]!;
+        let eventId = event["event_id"]!;
+
+        let roomAliasOrId = roomId;
+        try {
+            roomAliasOrId = await this.owner.mjolnir.client.getPublishedAlias(roomId) || roomId;
+        } catch (ex) {
+            // Ignore.
+        }
+
+        let eventContent;
+        try {
+            if (event["type"] === "m.room.encrypted") {
+                eventContent = { msg: "<encrypted content>" };
+            } else if ("content" in event) {
+                if ("formatted_body" in event.content) {
+                    eventContent = { html: event.content.formatted_body };
+                } else if ("body" in event.content) {
+                    eventContent = { text: event.content.body };
+                } else {
+                    eventContent = { text: JSON.stringify(event["content"], null, 2) };
+                }
+            }
+        } catch (ex) {
+            eventContent = { msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.` };
+        }
+
+        let accusedId = event["sender"];
+
+        let reporterDisplayName: string, accusedDisplayName: string;
+        try {
+            reporterDisplayName = await this.owner.mjolnir.client.getUserProfile(reporterId)["displayname"] || reporterId;
+        } catch (ex) {
+            reporterDisplayName = "<Error: Cannot extract reporter display name>";
+        }
+        try {
+            accusedDisplayName = await this.owner.mjolnir.client.getUserProfile(accusedId)["displayname"] || accusedId;
+        } catch (ex) {
+            accusedDisplayName = "<Error: Cannot extract accused display name>";
+        }
+
+        let eventShortcut = `https://matrix.to/#/${encodeURIComponent(roomId)}/${encodeURIComponent(eventId)}`;
+        let roomShortcut = `https://matrix.to/#/${encodeURIComponent(roomAliasOrId)}`;
+
+        let eventTimestamp;
+        try {
+            eventTimestamp = new Date(event["origin_server_ts"]).toUTCString();
+        } catch (ex) {
+            eventTimestamp = `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.`;
+        }
+
+        let title;
+        switch (kind) {
+            case Kind.MODERATION_REQUEST:
+                title = "Moderation request";
+                break;
+            case Kind.SERVER_ABUSE_REPORT:
+                title = "Abuse report";
+                break;
+            case Kind.ESCALATED_REPORT:
+                title = "Moderation request escalated by moderators";
+                break;
+            case Kind.ERROR:
+                title = "Error";
+                break;
+        }
+
+        let readableNature;
+        switch (nature) {
+            case "org.matrix.msc3215.abuse.nature.disagreement":
+                readableNature = "disagreement";
+                break;
+            case "org.matrix.msc3215.abuse.nature.harassment":
+                readableNature = "harassment/bullying";
+                break;
+            case "org.matrix.msc3215.abuse.nature.csam":
+                readableNature = "child sexual abuse material [likely illegal, consider warning authorities]";
+                break;
+            case "org.matrix.msc3215.abuse.nature.hate_speech":
+                readableNature = "spam";
+                break;
+            case "org.matrix.msc3215.abuse.nature.spam":
+                readableNature = "impersonation";
+                break;
+            case "org.matrix.msc3215.abuse.nature.impersonation":
+                readableNature = "impersonation";
+                break;
+            case "org.matrix.msc3215.abuse.nature.doxxing":
+                readableNature = "non-consensual sharing of identifiable private information of a third party (doxxing)";
+                break;
+            case "org.matrix.msc3215.abuse.nature.violence":
+                readableNature = "threats of violence or death, either to self or others";
+                break;
+            case "org.matrix.msc3215.abuse.nature.terrorism":
+                readableNature = "terrorism [likely illegal, consider warning authorities]";
+                break;
+            case "org.matrix.msc3215.abuse.nature.unwanted_sexual_advances":
+                readableNature = "unwanted sexual advances, sextortion, ... [possibly illegal, consider warning authorities]"
+                break;
+            case "org.matrix.msc3215.abuse.nature.ncii":
+                readableNature = "non consensual intimate imagery, including revenge porn"
+                break;
+            case "org.matrix.msc3215.abuse.nature.nsfw":
+                readableNature = "NSFW content (pornography, gore...) in a SFW room";
+                break;
+            case "org.matrix.msc3215.abuse.nature.disinformation":
+                readableNature = "disinformation"
+                break;
+            case null:
+            case undefined:
+            case "org.matrix.msc3215.abuse.nature.other":
+            default:
+                readableNature = "unspecified";
+                break;
+        }
+
+        // We need to send the report as html to be able to use spoiler markings.
+        // We build this as dom to be absolutely certain that we're not introducing
+        // any kind of injection within the report.
+
+        // Please do NOT insert any `${}` in the following backticks, to avoid
+        // any XSS attack.
+        const document = new JSDOM(`
+        <body>
+        <div>
+            <b><span id="title"></span></b>
+        </div>
+        <div>
+            <b>Filed by</b> <span id='reporter-display-name'></span> (<code id='reporter-id'></code>)
+        </div>
+        <b>Against</b> <span id='accused-display-name'></span> (<code id='accused-id'></code>)
+        <div>
+            <b>Nature</b> <span id='nature-display'></span> (<code id='nature-source'></code>)
+        </div>
+        <div>
+            <b>Room</b> <a id='room-shortcut'><span id='room-alias-or-id'></span></a>
+        </div>
+        <hr />
+        <div id='details-or-error'>
+        <details>
+            <summary>Event details</summary>
+            <div>
+            <b>Event</b> <span id='event-id'></span> <a id='event-shortcut'>Go to event</a>
+            </div>
+            <div>
+            <b>When</b> <span id='event-timestamp'></span>
+            </div>
+            <div>
+            <b>Content</b> <span id='event-container'><code id='event-content'></code><span>
+            </div>
+        </details>
+        </div>
+        <hr />
+        <b>Comments</b> <code id='reason-content'></code></div>
+        </body>`).window.document;
+
+        // ...insert text content
+        for (let [key, value] of [
+            ['title', title],
+            ['reporter-display-name', reporterDisplayName],
+            ['reporter-id', reporterId],
+            ['accused-display-name', accusedDisplayName],
+            ['accused-id', accusedId],
+            ['event-id', eventId],
+            ['room-alias-or-id', roomAliasOrId],
+            ['reason-content', reason || "<no reason given>"],
+            ['nature-display', readableNature],
+            ['nature-source', nature || "<no nature provided>"],
+            ['event-timestamp', eventTimestamp],
+            ['details-or-error', kind === Kind.ERROR ? error : null]
+        ]) {
+            let node = document.getElementById(key);
+            if (node && value) {
+                node.textContent = value;
+            }
+        }
+        // ...insert links
+        for (let [key, value] of [
+            ['event-shortcut', eventShortcut],
+            ['room-shortcut', roomShortcut],
+        ]) {
+            let node = document.getElementById(key) as HTMLAnchorElement;
+            if (node) {
+                node.href = value;
+            }
+        }
+
+        // ...insert HTML content
+        for (let [key, value] of [
+            ['event-content', eventContent],
+        ]) {
+            let node = document.getElementById(key);
+            if (node) {
+                if ("msg" in value) {
+                    node.textContent = value.msg;
+                } else if ("text" in value) {
+                    node.textContent = value.text;
+                } else if ("html" in value) {
+                    node.innerHTML = value.html;
+                }
+            }
+        }
+
+        // ...set presentation
+        if (!("msg" in eventContent)) {
+            // If there's some event content, mark it as a spoiler.
+            document.getElementById('event-container')!.
+                setAttribute("data-mx-spoiler", "");
+        }
+
+        // Embed additional information in the notice, for use by the
+        // action buttons.
+        let report: IReport = {
+            accused_id: accusedId,
+            reporter_id: reporterId,
+            event_id: eventId,
+            room_id: roomId,
+            room_alias_or_id: roomAliasOrId,
+        };
+        let notice = {
+            msgtype: "m.notice",
+            body: htmlToText(document.body.outerHTML, { wordwrap: false }),
+            format: "org.matrix.custom.html",
+            formatted_body: document.body.outerHTML,
+        };
+        notice[ABUSE_REPORT_KEY] = report;
+
+        let noticeEventId = await this.owner.mjolnir.client.sendMessage(config.managementRoom, notice);
+        if (kind !== Kind.ERROR) {
+            // Now let's display buttons.
+            for (let [label, action] of ACTIONS) {
+                // Display buttons for actions that can be executed.
+                if (!await action.canExecute(this.owner, report, moderationRoomId)) {
+                    continue;
+                }
+                await this.owner.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
+                    "m.relates_to": {
+                        "rel_type": "m.annotation",
+                        "event_id": noticeEventId,
+                        "key": `${action.emoji} ${await action.title(this.owner, report)} [${label}]`
+                    }
+                });
+            }
+        }
     }
 }
 
