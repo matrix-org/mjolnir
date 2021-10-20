@@ -69,48 +69,24 @@ export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: s
  * Gets all the events sent by a user (or users if using wildcards) in a given room ID, since
  * the time they joined.
  * @param {MatrixClient} client The client to use.
- * @param {string} sender The sender. Can include wildcards to match multiple people.
+ * @param {string} sender The sender. A matrix user id or a wildcard to match multiple senders e.g. *.example.com.
+ * Can also be used to generically search the sender field e.g. *bob* for all events from senders with "bob" in them.
+ * See `MatrixGlob` in matrix-bot-sdk.
  * @param {string} roomId The room ID to search in.
- * @param {number} limit The maximum number of messages to search. Defaults to 1000.
+ * @param {number} limit The maximum number of messages to search. Defaults to 1000. This will be a greater or equal
+ * number of events that are provided to the callback if a wildcard is used, as not all events paginated
+ * will match the glob. The reason the limit is calculated this way is so that a caller cannot accidentally
+ * traverse the entire room history.
  * @param {function} cb Callback function to handle the events as they are received.
- * @returns {Promise<any>} Resolves when complete.
+ * The callback will only be called if there are any relevant events.
+ * @returns {Promise<void>} Resolves when either: the limit has been reached, no relevant events could be found or there is no more timeline to paginate.
  */
-export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<any> {
-    const filter = {
-        room: {
-            rooms: [roomId],
-            state: {
-                // types: ["m.room.member"], // We'll redact all types of events
-                rooms: [roomId],
-            },
-            timeline: {
-                rooms: [roomId],
-                // types: ["m.room.message"], // We'll redact all types of events
-            },
-            ephemeral: {
-                limit: 0,
-                types: [],
-            },
-            account_data: {
-                limit: 0,
-                types: [],
-            },
-        },
-        presence: {
-            limit: 0,
-            types: [],
-        },
-        account_data: {
-            limit: 0,
-            types: [],
-        },
+export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<void> {
+    const isGlob = sender.includes("*");
+    const roomEventFilter = {
+        rooms: [roomId],
+        ... isGlob ? {} : {senders: [sender]}
     };
-
-    let isGlob = true;
-    if (!sender.includes("*")) {
-        isGlob = false;
-        filter.room.timeline['senders'] = [sender];
-    }
 
     const matcher = new MatrixGlob(sender);
 
@@ -134,47 +110,62 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
 
     function backfill(from: string) {
         const qs = {
-            filter: JSON.stringify(filter),
+            filter: JSON.stringify(roomEventFilter),
             from: from,
             dir: "b",
         };
-        LogService.info("utils", "Backfilling with token: " + token);
+        LogService.info("utils", "Backfilling with token: " + from);
         return client.doRequest("GET", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/messages`, qs);
     }
 
     // Do an initial sync first to get the batch token
     const response = await roomInitialSync();
-    if (!response) return [];
 
     let processed = 0;
-
-    const timeline = (response['messages'] || {})
-    const syncedMessages = timeline['chunk'] || [];
-    // The start of the chunk has the oldest events.
-    let token = timeline['start'];
-    let bfMessages = {chunk: syncedMessages, end: token};
-    do {
+    /**
+     * Filter events from the timeline to events that are from a matching sender and under the limit that can be processed by the callback.
+     * @param events Events from the room timeline.
+     * @returns Events that can safely be processed by the callback.
+     */
+    function filterEvents(events: any[]) {
         const messages: any[] = [];
-        for (const event of (bfMessages['chunk'] || [])) {
-            if (processed >= limit) return; // we're done even if we don't want to be
+        for (const event of events) {
+            if (processed >= limit) return messages; // we have provided enough events.
             processed++;
 
             if (testUser(event['sender'])) messages.push(event);
         }
+        return messages;
+    }
 
-        if (token) {
-            bfMessages = await backfill(token);
+    // The recommended APIs for fetching events from a room is to use both rooms/initialSync then /messages.
+    // Unfortunately, this results in code that is rather hard to read, as these two APIs employ very different data structures.
+    // We prefer discarding the results from rooms/initialSync and reading only from /messages,
+    // even if it's a little slower, for the sake of code maintenance.
+    const timeline = response['messages']
+    if (timeline) {
+        // The end of the PaginationChunk has the most recent events from rooms/initialSync.
+        // This token is required be present in the PagintionChunk from rooms/initialSync.
+        let token = timeline['end']!;
+        // We check that we have the token because rooms/messages is not required to provide one
+        // and will not provide one when there is no more history to paginate.
+        while (token && processed < limit) {
+            const bfMessages = await backfill(token);
             let lastToken = token;
             token = bfMessages['end'];
             if (lastToken === token) {
-                LogService.warn("utils", "Backfill returned same end token - returning");
-                cb(messages);
+                LogService.debug("utils", "Backfill returned same end token - returning early.");
                 return;
             }
+            const events = filterEvents(bfMessages['chunk'] || []);
+            // If we are using a glob, there may be no relevant events in this chunk.
+            if (events.length > 0) {
+                await cb(events);
+            }
         }
-
-        cb(messages);
-    } while (token);
+    } else {
+        throw new Error(`Internal Error: rooms/initialSync did not return a pagination chunk for ${roomId}, this is not normal and if it is we need to stop using it. See roomInitialSync() for why we are using it.`);
+    }
 }
 
 export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
