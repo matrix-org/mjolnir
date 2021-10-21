@@ -118,7 +118,7 @@ export class ReportManager {
         }
 
         // Get the original event.
-        let initialReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
+        let initialNoticeReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
             if (!("content" in originalEvent)) {
@@ -126,14 +126,14 @@ export class ReportManager {
             }
             let content = originalEvent["content"];
             if (ABUSE_REPORT_KEY in content) {
-                initialReport = content[ABUSE_REPORT_KEY]!;
+                initialNoticeReport = content[ABUSE_REPORT_KEY]!;
             } else if (ABUSE_ACTION_CONFIRMATION_KEY in content) {
                 confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]!;
             }
         } catch (ex) {
             return;
         }
-        if (!initialReport && !confirmationReport) {
+        if (!initialNoticeReport && !confirmationReport) {
             return;
         }
 
@@ -142,7 +142,7 @@ export class ReportManager {
 
         - We're in the management room;
         - Either
-          - `initialReport` is defined and we're reacting to one of our reports; or
+          - `initialNoticeReport` is defined and we're reacting to one of our reports; or
           - `confirmationReport` is defined and we're reacting to a confirmation request.
         */
 
@@ -179,7 +179,7 @@ export class ReportManager {
             }
 
             return;
-        } else if (initialReport) {
+        } else if (initialNoticeReport) {
             let matches = relation.key.match(REACTION_ACTION);
             let label: string = matches[1]!;
             let action: IUIAction | undefined = ACTIONS.get(label);
@@ -189,14 +189,14 @@ export class ReportManager {
             confirmationReport = {
                 action: label,
                 notification_event_id: relation.event_id,
-                ...initialReport
+                ...initialNoticeReport
             };
-            LogService.info("ReportManager::handleReaction", "User", event["sender"], "picked action", label, initialReport);
+            LogService.info("ReportManager::handleReaction", "User", event["sender"], "picked action", label, initialNoticeReport);
             if (action.needsConfirmation) {
                 // Send a confirmation request.
                 let confirmation = {
                     msgtype: "m.notice",
-                    body: `${action.emoji} ${await action.title(this, initialReport)}?`,
+                    body: `${action.emoji} ${await action.title(this, initialNoticeReport)}?`,
                     "m.relationship": {
                         "rel_type": "m.reference",
                         "event_id": relation.event_id,
@@ -209,7 +209,7 @@ export class ReportManager {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": requestConfirmationEventId,
-                        "key": `🆗 ${action.emoji} ${await action.title(this, initialReport)} [${action.label}][${CONFIRM}]`
+                        "key": `🆗 ${action.emoji} ${await action.title(this, initialNoticeReport)} [${action.label}][${CONFIRM}]`
                     }
                 });
                 await this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
@@ -310,8 +310,8 @@ export class ReportManager {
 /**
  * An abuse report received from a user.
  *
- * Note: These reports end up embedded in Matrix messages, so we're using Matrix
- * naming conventions rather than JS/TS naming conventions.
+ * Note: These reports end up embedded in Matrix messages, behind key `ABUSE_REPORT_KEY`,
+ * so we're using Matrix naming conventions rather than JS/TS naming conventions.
  */
 interface IReport {
     /**
@@ -338,7 +338,10 @@ interface IReport {
 
 /**
  * An abuse report, extended with the information we need for a confirmation report.
- */
+ *
+ * Note: These reports end up embedded in Matrix messages, behind key `ABUSE_ACTION_CONFIRMATION_KEY`,
+ * so we're using Matrix naming conventions rather than JS/TS naming conventions.
+*/
 interface IReportWithAction extends IReport {
     /**
      * The label of the action we're confirming, e.g. `kick-user`.
@@ -416,7 +419,6 @@ class IgnoreBadReport implements IUIAction {
         return "Ignore bad report";
     }
     public async execute(manager: ReportManager, report: IReportWithAction): Promise<string | undefined> {
-        //await manager.mjolnir.client.redactEvent(config.managementRoom, report.notification_event_id, "Report marked as invalid");
         await manager.mjolnir.client.sendEvent(config.managementRoom, "m.room.message",
             {
                 msgtype: "m.notice",
