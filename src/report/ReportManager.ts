@@ -43,6 +43,23 @@ export const ABUSE_REPORT_KEY = "org.matrix.mjolnir.abuse.report";
 /// reports (see `IReportWithAction` for the content).
 export const ABUSE_ACTION_CONFIRMATION_KEY = "org.matrix.mjolnir.abuse.action.confirmation";
 
+const NATURE_DESCRIPTIONS_LIST: [string, string][] = [
+    ["org.matrix.msc3215.abuse.nature.disagreement", "disagreement"],
+    ["org.matrix.msc3215.abuse.nature.harassment", "harassment/bullying"],
+    ["org.matrix.msc3215.abuse.nature.csam", "child sexual abuse material [likely illegal, consider warning authorities]"],
+    ["org.matrix.msc3215.abuse.nature.hate_speech", "spam"],
+    ["org.matrix.msc3215.abuse.nature.spam", "impersonation"],
+    ["org.matrix.msc3215.abuse.nature.impersonation", "impersonation"],
+    ["org.matrix.msc3215.abuse.nature.doxxing", "non-consensual sharing of identifiable private information of a third party (doxxing)"],
+    ["org.matrix.msc3215.abuse.nature.violence", "threats of violence or death, either to self or others"],
+    ["org.matrix.msc3215.abuse.nature.terrorism", "terrorism [likely illegal, consider warning authorities]"],
+    ["org.matrix.msc3215.abuse.nature.unwanted_sexual_advances", "unwanted sexual advances, sextortion, ... [possibly illegal, consider warning authorities]"],
+    ["org.matrix.msc3215.abuse.nature.ncii", "non consensual intimate imagery, including revenge porn"],
+    ["org.matrix.msc3215.abuse.nature.nsfw", "NSFW content (pornography, gore...) in a SFW room"],
+    ["org.matrix.msc3215.abuse.nature.disinformation", "disinformation"],
+];
+const NATURE_DESCRIPTIONS = new Map(NATURE_DESCRIPTIONS_LIST);
+
 enum Kind {
     //! A MSC3215-style moderation request
     MODERATION_REQUEST,
@@ -62,11 +79,15 @@ export class ReportManager {
     constructor(public mjolnir: Mjolnir) {
         // Configure bot interactions.
         mjolnir.client.on("room.event", async (roomId, event) => {
-            switch (event["type"]) {
-                case "m.reaction": {
-                    await this.handleReaction({ roomId, event });
-                    break;
+            try {
+                switch (event["type"]) {
+                    case "m.reaction": {
+                        await this.handleReaction({ roomId, event });
+                        break;
+                    }
                 }
+            } catch (ex) {
+                LogService.error("ReportManager", "Uncaught error while handling an event", ex);
             }
         });
         this.displayManager = new DisplayManager(this);
@@ -149,6 +170,10 @@ export class ReportManager {
         if (confirmationReport) {
             // Extract the action and the decision.
             let matches = relation.key.match(REACTION_CONFIRMATION);
+            if (!matches) {
+                // Invalid key.
+                return;
+            }
 
             // Is it a yes or a no?
             let decision;
@@ -181,6 +206,11 @@ export class ReportManager {
             return;
         } else if (initialNoticeReport) {
             let matches = relation.key.match(REACTION_ACTION);
+            if (!matches) {
+                // Invalid key.
+                return;
+            }
+
             let label: string = matches[1]!;
             let action: IUIAction | undefined = ACTIONS.get(label);
             if (!action) {
@@ -455,13 +485,6 @@ class RedactMessage implements IUIAction {
         return `Redact event ${report.event_id}`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string): Promise<string | undefined> {
-        /*
-        Ideally, we'd use the following:
-        However, for some reason, this doesn't seem to work.
-
-            mjolnir.queueRedactUserMessagesIn(report.accused_id, report.room_id);
-            await mjolnir.syncListForRoom(report.room_id);
-        */
         await manager.mjolnir.client.redactEvent(report.room_id, report.event_id);
         return;
     }
@@ -689,53 +712,9 @@ class DisplayManager {
                 break;
         }
 
-        let readableNature;
-        switch (nature) {
-            case "org.matrix.msc3215.abuse.nature.disagreement":
-                readableNature = "disagreement";
-                break;
-            case "org.matrix.msc3215.abuse.nature.harassment":
-                readableNature = "harassment/bullying";
-                break;
-            case "org.matrix.msc3215.abuse.nature.csam":
-                readableNature = "child sexual abuse material [likely illegal, consider warning authorities]";
-                break;
-            case "org.matrix.msc3215.abuse.nature.hate_speech":
-                readableNature = "spam";
-                break;
-            case "org.matrix.msc3215.abuse.nature.spam":
-                readableNature = "impersonation";
-                break;
-            case "org.matrix.msc3215.abuse.nature.impersonation":
-                readableNature = "impersonation";
-                break;
-            case "org.matrix.msc3215.abuse.nature.doxxing":
-                readableNature = "non-consensual sharing of identifiable private information of a third party (doxxing)";
-                break;
-            case "org.matrix.msc3215.abuse.nature.violence":
-                readableNature = "threats of violence or death, either to self or others";
-                break;
-            case "org.matrix.msc3215.abuse.nature.terrorism":
-                readableNature = "terrorism [likely illegal, consider warning authorities]";
-                break;
-            case "org.matrix.msc3215.abuse.nature.unwanted_sexual_advances":
-                readableNature = "unwanted sexual advances, sextortion, ... [possibly illegal, consider warning authorities]"
-                break;
-            case "org.matrix.msc3215.abuse.nature.ncii":
-                readableNature = "non consensual intimate imagery, including revenge porn"
-                break;
-            case "org.matrix.msc3215.abuse.nature.nsfw":
-                readableNature = "NSFW content (pornography, gore...) in a SFW room";
-                break;
-            case "org.matrix.msc3215.abuse.nature.disinformation":
-                readableNature = "disinformation"
-                break;
-            case null:
-            case undefined:
-            case "org.matrix.msc3215.abuse.nature.other":
-            default:
-                readableNature = "unspecified";
-                break;
+        let readableNature = "unspecified";
+        if (nature) {
+            readableNature = NATURE_DESCRIPTIONS.get(nature) || readableNature;
         }
 
         // We need to send the report as html to be able to use spoiler markings.
