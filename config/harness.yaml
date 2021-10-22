@@ -178,11 +178,16 @@ web:
   # The address to listen for requests on. Defaults to all addresses.
   # Be careful with this setting, as opening to the wide web will increase
   # your security perimeter.
-  address: localhost
+  # We listen on all in harness because we might be getting requests through the docker gateway.
+  address: "0.0.0.0"
 
   # A web API designed to intercept Matrix API
   # POST /_matrix/client/r0/rooms/{roomId}/report/{eventId}
   # and display readable abuse reports in the moderation room.
   abuseReporting:
     # Whether to enable this feature.
+    enabled: true
+  # A web API for a description of all the combined rules from watched banlists.
+  # GET /api/1/ruleserver/updates
+  ruleServer:
     enabled: true
