@@ -47,10 +47,14 @@ describe("Test: Reporting abuse", async () => {
         let badText = `BAD: ${Math.random()}`;   // Will be reported as abuse.
         let badText2 = `BAD: ${Math.random()}`;   // Will be reported as abuse.
         let badText3 = `<b>BAD</b>: ${Math.random()}`; // Will be reported as abuse.
+        let badText4 = [...Array(1024)].map(_ => `${Math.random()}`).join(""); // Text is too long.
+        let badText5 = [...Array(1024)].map(_ => "ABC").join("\n"); // Text has too many lines.
         let goodEventId = await goodUser.sendText(roomId, goodText);
         let badEventId = await badUser.sendText(roomId, badText);
         let badEventId2 = await badUser.sendText(roomId, badText2);
         let badEventId3 = await badUser.sendText(roomId, badText3);
+        let badEventId4 = await badUser.sendText(roomId, badText4);
+        let badEventId5 = await badUser.sendText(roomId, badText5);
         let badEvent2Comment = `COMMENT: ${Math.random()}`;
 
         console.log("Test: Reporting abuse - send reports");
@@ -97,7 +101,35 @@ describe("Test: Reporting abuse", async () => {
                 comment: null,
             });
         } catch (e) {
-            console.error("Could not send second report", e.body || e);
+            console.error("Could not send third report", e.body || e);
+            throw e;
+        }
+
+        try {
+            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId4)}`, "");
+            reportsToFind.push({
+                reporterId: goodUserId,
+                accusedId: badUserId,
+                eventId: badEventId4,
+                text: badText4,
+                comment: null,
+            });
+        } catch (e) {
+            console.error("Could not send fourth report", e.body || e);
+            throw e;
+        }
+
+        try {
+            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId5)}`, "");
+            reportsToFind.push({
+                reporterId: goodUserId,
+                accusedId: badUserId,
+                eventId: badEventId5,
+                text: badText5,
+                comment: null,
+            });
+        } catch (e) {
+            console.error("Could not send fifth report", e.body || e);
             throw e;
         }
 
@@ -130,6 +162,9 @@ describe("Test: Reporting abuse", async () => {
                         // Not a report, skipping.
                         continue;
                     }
+
+                    assert(body.length < 2048, "The report shouldn't be too long.");
+                    assert(body.split("\n").length < 200, "The report shouldn't have too many newlines.");
 
                     assert.equal(matches.get("event")!.groups.eventId, toFind.eventId, "The report should specify the correct event id");;
 

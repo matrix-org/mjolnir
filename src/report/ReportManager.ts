@@ -660,12 +660,14 @@ class DisplayManager {
             if (event["type"] === "m.room.encrypted") {
                 eventContent = { msg: "<encrypted content>" };
             } else if ("content" in event) {
+                const MAX_EVENT_CONTENT_LENGTH = 2048;
+                const MAX_NEWLINES = 64;
                 if ("formatted_body" in event.content) {
-                    eventContent = { html: event.content.formatted_body };
+                    eventContent = { html: this.limitLength(event.content.formatted_body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 } else if ("body" in event.content) {
-                    eventContent = { text: event.content.body };
+                    eventContent = { text: this.limitLength(event.content.body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 } else {
-                    eventContent = { text: JSON.stringify(event["content"], null, 2) };
+                    eventContent = { text: this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 }
             }
         } catch (ex) {
@@ -754,7 +756,10 @@ class DisplayManager {
         </details>
         </div>
         <hr />
+        <details>
+        <summary>Comments</summary>
         <b>Comments</b> <code id='reason-content'></code></div>
+        </details>
         </body>`).window.document;
 
         // ...insert text content
@@ -844,6 +849,34 @@ class DisplayManager {
                     }
                 });
             }
+        }
+    }
+
+    private limitLength(text: string, maxLength: number, maxNewlines: number): string {
+        let originalLength = text.length
+        // Shorten text if it is too long.
+        if (text.length > maxLength) {
+            text = text.substr(0, maxLength);//... [total: ${originalLength} characters]`;
+        }
+        // Shorten text if there are too many newlines.
+        // Note: This only looks for text newlines, not `<div>`, `<li>` or any other HTML box.
+        let index = -1;
+        let newLines = 0;
+        while (true) {
+            index = text.indexOf("\n", index);
+            if (index == -1) {
+                break;
+            }
+            newLines += 1;
+            if (newLines > maxNewlines) {
+                text = text.substr(0, index);
+                break;
+            }
+        };
+        if (text.length < originalLength) {
+            return `${text}... [total: ${originalLength} characters]`;
+        } else {
+            return text;
         }
     }
 }
