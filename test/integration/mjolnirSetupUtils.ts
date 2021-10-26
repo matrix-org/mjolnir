@@ -51,11 +51,11 @@ async function configureMjolnir() {
         await registerUser('mjolnir', 'mjolnir', 'mjolnir', true)
     } catch (e) {
         if (e.isAxiosError) {
-            console.log('Received error while registering', e);
             if (e.response.data && e.response.data.errcode === 'M_USER_IN_USE') {
                 console.log('mjolnir already registered, skipping');
                 return;
             }
+            console.log('Received error while registering', e);
         }
         throw e;
     };

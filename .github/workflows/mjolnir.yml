@@ -1,0 +1,25 @@
+name: Mjolnir
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: install mx-tester
+      run: cargo install mx-tester
+    - name: Setup image
+      run: RUST_LOG=debug mx-tester build up
+    - name: Setup dependencies
+      run: yarn install
+    - name: Run tests
+      run: RUST_LOG=debug mx-tester run

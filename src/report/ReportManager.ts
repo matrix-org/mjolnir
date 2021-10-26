@@ -856,7 +856,7 @@ class DisplayManager {
         let originalLength = text.length
         // Shorten text if it is too long.
         if (text.length > maxLength) {
-            text = text.substr(0, maxLength);//... [total: ${originalLength} characters]`;
+            text = text.substr(0, maxLength); //... [total: ${originalLength} characters]`;
         }
         // Shorten text if there are too many newlines.
         // Note: This only looks for text newlines, not `<div>`, `<li>` or any other HTML box.
@@ -864,7 +864,7 @@ class DisplayManager {
         let newLines = 0;
         while (true) {
             index = text.indexOf("\n", index);
-            if (index == -1) {
+            if (index === -1) {
                 break;
             }
             newLines += 1;
