@@ -15,7 +15,7 @@ const REPORT_NOTICE_REGEXPS = {
     room: /Room (?<roomAliasOrId>[^ ]*)/,
     event: /Event (?<eventId>[^ ]*) Go to event/,
     content: /Content (?<eventContent>.*)/,
-    comments: /Comments (?<comments>.*)/
+    comments: /Comments Comments (?<comments>.*)/
 };
 
 
@@ -111,7 +111,8 @@ describe("Test: Reporting abuse", async () => {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId4,
-                text: badText4,
+                text: null,
+                textPrefix: badText4.substring(0, 256),
                 comment: null,
             });
         } catch (e) {
@@ -125,7 +126,8 @@ describe("Test: Reporting abuse", async () => {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId5,
-                text: badText5,
+                text: null,
+                textPrefix: badText5.substring(0, 256).split("\n").join(" "),
                 comment: null,
             });
         } catch (e) {
@@ -163,7 +165,7 @@ describe("Test: Reporting abuse", async () => {
                         continue;
                     }
 
-                    assert(body.length < 2048, "The report shouldn't be too long.");
+                    assert(body.length < 3000, `The report shouldn't be too long ${body.length}`);
                     assert(body.split("\n").length < 200, "The report shouldn't have too many newlines.");
 
                     assert.equal(matches.get("event")!.groups.eventId, toFind.eventId, "The report should specify the correct event id");;
@@ -176,7 +178,12 @@ describe("Test: Reporting abuse", async () => {
                     assert.equal(report.accused_id, toFind.accusedId, "The embedded report should specify the correct accused");
                     assert.ok(toFind.accusedId.includes(matches.get("accused")!.groups.accusedDisplay), "The report should display the correct reporter");
 
-                    assert.equal(matches.get("content")!.groups.eventContent, toFind.text, "The report should contain the text we inserted in the event");
+                    if (toFind.text) {
+                        assert.equal(matches.get("content")!.groups.eventContent, toFind.text, "The report should contain the text we inserted in the event");
+                    }
+                    if (toFind.textPrefix) {
+                        assert.ok(matches.get("content")!.groups.eventContent.startsWith(toFind.textPrefix), `The report should contain a prefix of the long text we inserted in the event: ${toFind.textPrefix} in? ${matches.get("content")!.groups.eventContent}`);
+                    }
                     if (toFind.comment) {
                         assert.equal(matches.get("comments")!.groups.comments, toFind.comment, "The report should contain the comment we added");
                     }
