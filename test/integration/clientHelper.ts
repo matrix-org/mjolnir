@@ -7,7 +7,7 @@ import config from "../../src/config";
  * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
  * This should only be used by test code and should not be included from any file in the source directory
  * either by explicit imports or copy pasting.
- * 
+ *
  * @param username The username to give the user.
  * @param displayname The displayname to give the user.
  * @param password The password to use.
@@ -55,7 +55,7 @@ export async function registerNewTestUser(isAdmin: boolean, label: string = "") 
         })
     } while (!isUserValid);
     return username;
-} 
+}
 
 /**
  * Registers a unique test user and returns a `MatrixClient` logged in and ready to use.
@@ -81,5 +81,5 @@ export function noticeListener(targetRoomdId: string, cb) {
         if (roomId !== targetRoomdId) return;
         if (event?.content?.msgtype !== "m.notice") return;
             cb(event);
-    } 
+    }
 }

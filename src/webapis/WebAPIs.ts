@@ -17,11 +17,10 @@ limitations under the License.
 import { Server } from "http";
 
 import * as express from "express";
-import { JSDOM } from 'jsdom';
 import { MatrixClient } from "matrix-bot-sdk";
 
 import config from "../config";
-
+import { ReportManager } from "../report/ReportManager";
 
 /**
  * A common prefix for all web-exposed APIs.
@@ -34,7 +33,7 @@ export class WebAPIs {
     private webController: express.Express = express();
     private httpServer?: Server;
 
-    constructor(private client: MatrixClient) {
+    constructor(private reportManager: ReportManager) {
         // Setup JSON parsing.
         this.webController.use(express.json());
     }
@@ -153,91 +152,15 @@ export class WebAPIs {
                 // with all Matrix homeservers, rather than just Synapse.
                 event = await reporterClient.getEvent(roomId, eventId);
             }
-            let accusedId: string = event["sender"];
-
-            /*
-            Past this point, the following invariants hold:
-
-            - The reporter is a member of `roomId`.
-            - Event `eventId` did take place in room `roomId`.
-            - The reporter could witness event `eventId` in room `roomId`.
-            - Event `eventId` was reported by user `accusedId`.
-            */
-
-            let { displayname: reporterDisplayName }: { displayname: string } = await this.client.getUserProfile(reporterId);
-            let { displayname: accusedDisplayName }: { displayname: string } = await this.client.getUserProfile(accusedId);
-            let roomAliasOrID = roomId;
-            try {
-                roomAliasOrID = await this.client.getPublishedAlias(roomId);
-            } catch (ex) {
-                // Ignore.
-            }
-            let eventShortcut = `https://matrix.to/#/${encodeURIComponent(roomId)}/${encodeURIComponent(eventId)}`;
-            let roomShortcut = `https://matrix.to/#/${encodeURIComponent(roomAliasOrID)}`;
-            let eventContent;
-            if (event["type"] === "m.room.encrypted") {
-                eventContent = "<encrypted content>";
-            } else {
-                eventContent = JSON.stringify(event["content"], null, 2);
-            }
 
             let reason = request.body["reason"];
-
-            // We now have all the information we need to produce an abuse report.
-
-            // We need to send the report as html to be able to use spoiler markings.
-            // We build this as dom to be absolutely certain that we're not introducing
-            // any kind of injection within the report.
-            const document = new JSDOM(
-                "<body>" +
-                "User <code id='reporter-display-name'></code> (<code id='reporter-id'></code>) " +
-                "reported <a id='event-shortcut'>event <span id='event-id'></span></a> " +
-                "sent by user <b><span id='accused-display-name'></span> (<span id='accused-id'></span>)</b> " +
-                "in <a id='room-shortcut'>room <span id='room-alias-or-id'></span></a>." +
-                "<div>Event content <span id='event-container'><code id='event-content'></code><span></div>" +
-                "<div>Reporter commented: <code id='reason-content'></code></div>" +
-                "</body>")
-                .window
-                .document;
-            // ...insert text content
-            for (let [key, value] of [
-                ['reporter-display-name', reporterDisplayName],
-                ['reporter-id', reporterId],
-                ['accused-display-name', accusedDisplayName],
-                ['accused-id', accusedId],
-                ['event-id', eventId],
-                ['room-alias-or-id', roomAliasOrID],
-                ['event-content', eventContent],
-                ['reason-content', reason || "<no reason given>"]
-            ]) {
-                document.getElementById(key)!.textContent = value;
-            }
-            // ...insert attributes
-            for (let [key, value] of [
-                ['event-shortcut', eventShortcut],
-                ['room-shortcut', roomShortcut],
-            ]) {
-                (document.getElementById(key)! as HTMLAnchorElement).href = value;
-            }
-            // ...set presentation
-            if (event["type"] !== "m.room.encrypted") {
-                // If there's some event content, mark it as a spoiler.
-                document.getElementById('event-container')!.
-                    setAttribute("data-mx-spoiler", "");
-            }
-
-            // Possible evolutions: in future versions, we could add the ability to one-click discard, kick, ban.
-
-            // Send the report and we're done!
-            // We MUST send this report with the regular Mjölnir client.
-            await this.client.sendHtmlNotice(config.managementRoom, document.body.outerHTML);
-
-            console.debug("Formatted abuse report sent");
+            await this.reportManager.handleServerAbuseReport({ roomId, eventId, reporterId, event, reason });
 
             // Match the spec behavior of `/report`: return 200 and an empty JSON.
             response.status(200).json({});
         } catch (ex) {
             console.warn("Error responding to an abuse report", roomId, eventId, ex);
+            response.status(503);
         }
     }
 }
