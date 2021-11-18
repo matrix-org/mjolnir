@@ -430,6 +430,13 @@ interface IUIAction {
     title(manager: ReportManager, report: IReport): Promise<string>;
 
     /**
+     * A human-readable help message to display for the end-user.
+     *
+     * @param report Details on the abuse report.
+     */
+    help(manager: ReportManager, report: IReport): Promise<string>;
+
+    /**
      * Attempt to execute the action.
      */
     execute(manager: ReportManager, report: IReport, moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined>;
@@ -446,6 +453,9 @@ class IgnoreBadReport implements IUIAction {
         return true;
     }
     public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Ignore";
+    }
+    public async help(_manager: ReportManager, _report: IReport): Promise<string> {
         return "Ignore bad report";
     }
     public async execute(manager: ReportManager, report: IReportWithAction): Promise<string | undefined> {
@@ -481,7 +491,10 @@ class RedactMessage implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Redact";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
         return `Redact event ${report.event_id}`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string): Promise<string | undefined> {
@@ -504,7 +517,10 @@ class KickAccused implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Kick";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
         return `Kick ${report.accused_id} from room ${report.room_alias_or_id}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
@@ -527,7 +543,10 @@ class MuteAccused implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Mute";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
         return `Mute ${report.accused_id} in room ${report.room_alias_or_id}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
@@ -550,7 +569,10 @@ class BanAccused implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Ban";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
         return `Ban ${report.accused_id} from room ${report.room_alias_or_id}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
@@ -572,11 +594,14 @@ class Help implements IUIAction {
     public async title(_manager: ReportManager, _report: IReport): Promise<string> {
         return "Help";
     }
+    public async help(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "This help";
+    }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         // Produce a html list of actions, in the order specified by ACTION_LIST.
         let list: string[] = [];
         for (let action of ACTION_LIST) {
-            list.push(`<li>${action.emoji} ${await action.title(manager, report)}</li>`);
+            list.push(`<li>${action.emoji} ${await action.help(manager, report)}</li>`);
         }
         let body = `<ul>${list.join("\n")}</ul>`;
         return body;
@@ -603,7 +628,10 @@ class EscalateToServerModerationRoom implements IUIAction {
         }
         return true;
     }
-    public async title(manager: ReportManager, _report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Escalate";
+    }
+    public async help(manager: ReportManager, _report: IReport): Promise<string> {
         return `Escalate report to ${getHomeserver(await manager.mjolnir.client.getUserId())} server moderators`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined> {
