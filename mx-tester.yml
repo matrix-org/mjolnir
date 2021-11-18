@@ -1,8 +1,9 @@
 name: mjolnir
 
 up:
-  # Launch the reverse proxy, listening for connections *only* on the local host.
-  - docker run --rm --network host --name mjolnir-test-reverse-proxy -p 127.0.0.1:8081:80 -v $MX_TEST_CWD/test/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx
+  before:
+    # Launch the reverse proxy, listening for connections *only* on the local host.
+    - docker run --rm --network host --name mjolnir-test-reverse-proxy -p 127.0.0.1:8081:80 -v $MX_TEST_CWD/test/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx
 run:
   - yarn test:integration
 down:
