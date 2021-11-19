@@ -39,7 +39,7 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
             let roomId = await client.createRoom({
                 visibility: "public",
             });
-            await client.createRoomAlias(config.managementRoom, roomId);
+            await client.createRoomAlias(alias, roomId);
             return roomId
         }
         throw e;
