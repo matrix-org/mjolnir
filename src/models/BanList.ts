@@ -17,13 +17,17 @@ limitations under the License.
 import { extractRequestError, LogService, MatrixClient } from "matrix-bot-sdk";
 import { ListRule } from "./ListRule";
 
-export const RULE_USER = "m.room.rule.user";
-export const RULE_ROOM = "m.room.rule.room";
-export const RULE_SERVER = "m.room.rule.server";
+export const RULE_USER = "m.policy.rule.user";
+export const RULE_ROOM = "m.policy.rule.room";
+export const RULE_SERVER = "m.policy.rule.server";
 
-export const USER_RULE_TYPES = [RULE_USER, "org.matrix.mjolnir.rule.user"];
-export const ROOM_RULE_TYPES = [RULE_ROOM, "org.matrix.mjolnir.rule.room"];
-export const SERVER_RULE_TYPES = [RULE_SERVER, "org.matrix.mjolnir.rule.server"];
+// README! The order here matters for determining whether a type is obsolete, most recent should be first.
+// These are the current and historical types for each type of rule which were used while MSC2313 was being developed
+// and were left as an artifact for some time afterwards.
+// Most rules (as of writing) will have the prefix `m.room.rule.*` as this has been in use for roughly 2 years.
+export const USER_RULE_TYPES = [RULE_USER, "m.room.rule.user", "org.matrix.mjolnir.rule.user"];
+export const ROOM_RULE_TYPES = [RULE_ROOM, "m.room.rule.room", "org.matrix.mjolnir.rule.room"];
+export const SERVER_RULE_TYPES = [RULE_SERVER, "m.room.rule.server", "org.matrix.mjolnir.rule.server"];
 export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
@@ -94,8 +98,8 @@ export default class BanList {
 
     /**
      * Lookup the current rules cached for the list.
-     * @param stateType The event type e.g. m.room.rule.user.
-     * @param stateKey The state key e.g. entity:@bad:matrix.org
+     * @param stateType The event type e.g. m.policy.rule.user.
+     * @param stateKey The state key e.g. rule:@bad:matrix.org
      * @returns A state event if present or null.
      */
     private getState(stateType: string, stateKey: string) {
@@ -104,8 +108,9 @@ export default class BanList {
 
     /**
      * Store this state event as part of the active room state for this BanList (used to cache rules).
-     * @param stateType The event type e.g. m.room.rule.user.
-     * @param stateKey The state key e.g. entity:@bad:matrix.org
+     * The state type should be normalised if it is obsolete e.g. m.room.rule.user should be stored as m.policy.rule.user.
+     * @param stateType The event type e.g. m.room.policy.user.
+     * @param stateKey The state key e.g. rule:@bad:matrix.org
      * @param event A state event to store.
      */
     private setState(stateType: string, stateKey: string, event: any): void {
@@ -173,8 +178,33 @@ export default class BanList {
                 continue; // invalid/unknown
             }
 
-            const previousState = this.getState(event['type'], event['state_key']);
-            this.setState(event['type'], event['state_key'], event);
+            const previousState = this.getState(kind, event['state_key']);
+
+            // Now we need to figure out if the current event is of an obsolete type
+            // (e.g. org.matrix.mjolnir.rule.user) when compared to the previousState (which might be m.policy.rule.user).
+            // We do not want to overwrite a rule of a newer type with an older type even if the event itself is supposedly more recent
+            // as it may be someone deleting the older versions of the rules.
+            if (previousState) {
+                const logObsoleteRule = () => {
+                    LogService.info('BanList', `In BanList ${this.roomRef}, conflict between rules ${event['event_id']} (with obsolete type ${event['type']}) ` +
+                        `and ${previousState['event_id']} (with standard type ${previousState['type']}). Ignoring rule with obsolete type.`);
+                }
+                if (kind === RULE_USER && USER_RULE_TYPES.indexOf(event['type']) > USER_RULE_TYPES.indexOf(previousState['type'])) {
+                    logObsoleteRule();
+                    continue;
+                } else if (kind === RULE_ROOM && ROOM_RULE_TYPES.indexOf(event['type']) > ROOM_RULE_TYPES.indexOf(previousState['type'])) {
+                    logObsoleteRule();
+                    continue;
+                } else if (kind === RULE_SERVER && SERVER_RULE_TYPES.indexOf(event['type']) > SERVER_RULE_TYPES.indexOf(previousState['type'])) {
+                    logObsoleteRule();
+                    continue;
+                }
+            }
+
+            // The reason we set the state at this point is because it is valid to want to set the state to an invalid rule
+            // in order to mark a rule as deleted.
+            // We always set state with the normalised state type via `kind` to de-duplicate rules.
+            this.setState(kind, event['state_key'], event);
             const changeType: null|ChangeType = (() => {
                 if (!previousState) {
                     return ChangeType.Added;
