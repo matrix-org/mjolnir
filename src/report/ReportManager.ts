@@ -600,16 +600,10 @@ class Help implements IUIAction {
     public async execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<string | undefined> {
         // Produce a html list of actions, in the order specified by ACTION_LIST.
         let list: string[] = [];
-        let hasDisabled = false;
         for (let action of ACTION_LIST) {
             if (await action.canExecute(manager, report, moderationRoomId)) {
                 list.push(`<li>${action.emoji} ${await action.help(manager, report)}</li>`);
-            } else {
-                hasDisabled = true;
             }
-        }
-        if (hasDisabled) {
-            list.push("<li>Some actions were disabled, usually because the event took place in a room where Mjölnir is not moderator.</li>");
         }
         let body = `<ul>${list.join("\n")}</ul>`;
         return body;
