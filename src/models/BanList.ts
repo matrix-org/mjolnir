@@ -75,7 +75,6 @@ export interface ListRuleChange {
  * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
  */
 export default class BanList {
-    private rules: ListRule[] = [];
     private shortcode: string|null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
@@ -122,6 +121,25 @@ export default class BanList {
         }
     }
 
+    /**
+     * Return all the active rules of a given kind.
+     * @param kind e.g. RULE_SERVER (m.policy.rule.server)
+     * @returns The active ListRules for the ban list of that kind.
+     */
+    private rulesOfKind(kind: string): ListRule[] {
+        const rules: ListRule[] = []
+        const stateKeyMap = this.state.get(kind);
+        if (stateKeyMap) {
+            for (const event of stateKeyMap.values()) {
+                const rule = event?.unsigned?.rule;
+                if (rule && rule.kind === kind) {
+                    rules.push(rule);
+                }
+            }
+        }
+        return rules;
+    }
+
     public set listShortcode(newShortcode: string) {
         const currentShortcode = this.shortcode;
         this.shortcode = newShortcode;
@@ -132,15 +150,15 @@ export default class BanList {
     }
 
     public get serverRules(): ListRule[] {
-        return this.rules.filter(r => r.kind === RULE_SERVER);
+        return this.rulesOfKind(RULE_SERVER);
     }
 
     public get userRules(): ListRule[] {
-        return this.rules.filter(r => r.kind === RULE_USER);
+        return this.rulesOfKind(RULE_USER);
     }
 
     public get roomRules(): ListRule[] {
-        return this.rules.filter(r => r.kind === RULE_ROOM);
+        return this.rulesOfKind(RULE_ROOM);
     }
 
     public get allRules(): ListRule[] {
@@ -153,7 +171,6 @@ export default class BanList {
      * @returns A description of any rules that were added, modified or removed from the list as a result of this update.
      */
     public async updateList(): Promise<ListRuleChange[]> {
-        this.rules = [];
         let changes: ListRuleChange[] = [];
 
         const state = await this.client.getRoomState(this.roomId);
@@ -250,7 +267,6 @@ export default class BanList {
             if (changeType) {
                 changes.push({rule, changeType, event, sender: event.sender, ... previousState ? {previousState} : {} });
             }
-            this.rules.push(rule);
         }
         return changes;
     }
