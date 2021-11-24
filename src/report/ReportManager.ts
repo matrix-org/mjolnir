@@ -17,6 +17,7 @@ limitations under the License.
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
+import * as htmlEscape from "escape-html";
 import { JSDOM } from 'jsdom';
 
 import config from "../config";
@@ -521,7 +522,7 @@ class KickAccused implements IUIAction {
         return "Kick";
     }
     public async help(_manager: ReportManager, report: IReport): Promise<string> {
-        return `Kick ${report.accused_id} from room ${report.room_alias_or_id}`;
+        return `Kick ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.kickUser(report.accused_id, report.room_id);
@@ -547,7 +548,7 @@ class MuteAccused implements IUIAction {
         return "Mute";
     }
     public async help(_manager: ReportManager, report: IReport): Promise<string> {
-        return `Mute ${report.accused_id} in room ${report.room_alias_or_id}`;
+        return `Mute ${htmlEscape(report.accused_id)} in room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.setUserPowerLevel(report.accused_id, report.room_id, -1);
@@ -573,7 +574,7 @@ class BanAccused implements IUIAction {
         return "Ban";
     }
     public async help(_manager: ReportManager, report: IReport): Promise<string> {
-        return `Ban ${report.accused_id} from room ${report.room_alias_or_id}`;
+        return `Ban ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.banUser(report.accused_id, report.room_id);
@@ -604,6 +605,9 @@ class Help implements IUIAction {
             if (await action.canExecute(manager, report, moderationRoomId)) {
                 list.push(`<li>${action.emoji} ${await action.help(manager, report)}</li>`);
             }
+        }
+        if (!ACTIONS.get("ban-accused")!.canExecute(manager, report, moderationRoomId)) {
+            list.push(`<li>Some actions were disabled because Mjölnir is not moderator in room ${htmlEscape(report.room_alias_or_id)}</li>`)
         }
         let body = `<ul>${list.join("\n")}</ul>`;
         return body;
