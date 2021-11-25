@@ -606,7 +606,7 @@ class Help implements IUIAction {
                 list.push(`<li>${action.emoji} ${await action.help(manager, report)}</li>`);
             }
         }
-        if (!ACTIONS.get("ban-accused")!.canExecute(manager, report, moderationRoomId)) {
+        if (!await ACTIONS.get("ban-accused")!.canExecute(manager, report, moderationRoomId)) {
             list.push(`<li>Some actions were disabled because Mjölnir is not moderator in room ${htmlEscape(report.room_alias_or_id)}</li>`)
         }
         let body = `<ul>${list.join("\n")}</ul>`;
