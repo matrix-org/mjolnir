@@ -26,7 +26,7 @@ import {
     UserID
 } from "matrix-bot-sdk";
 
-import BanList, { ALL_RULE_TYPES } from "./models/BanList";
+import BanList, { ALL_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -614,7 +614,8 @@ export class Mjolnir {
      */
     public async syncLists(verbose = true) {
         for (const list of this.banLists) {
-            await list.updateList();
+            const changes = await list.updateList();
+            await this.printBanlistChanges(changes, list, true);
         }
 
         let hadErrors = false;
@@ -638,17 +639,19 @@ export class Mjolnir {
         }
     }
 
-    public async syncListForRoom(roomId: string) {
-        let updated = false;
-        for (const list of this.banLists) {
-            if (list.roomId !== roomId) continue;
-            await list.updateList();
-            updated = true;
-        }
-        if (!updated) return;
+    /**
+     * Pulls any changes to the rules that are in a policy room and updates all protected rooms
+     * with those changes. Does not fail if there are errors updating the room, these are reported to the management room.
+     * @param policyRoomId The room with a policy list which we will check for changes and apply them to all protected rooms.
+     * @returns When all of the protected rooms have been updated.
+     */
+    public async syncWithPolicyRoom(policyRoomId: string): Promise<void> {
+        const banList = this.banLists.find(list => list.roomId === policyRoomId);
+        if (banList === undefined) return;
+        const changes = await banList.updateList();
+        await this.printBanlistChanges(changes, banList, true);
 
         let hadErrors = false;
-
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
         const redactionErrors = await this.processRedactionQueue();
@@ -685,7 +688,7 @@ export class Mjolnir {
         // themselves.
         if (this.banLists.map(b => b.roomId).includes(roomId)) {
             if (ALL_RULE_TYPES.includes(event['type'])) {
-                await this.syncListForRoom(roomId);
+                await this.syncWithPolicyRoom(roomId);
             }
         }
 
@@ -730,6 +733,52 @@ export class Mjolnir {
                 await this.printActionResult(redactionErrors);
             }
         }
+    }
+
+    /**
+     * Print the changes to a banlist to the management room.
+     * @param changes A list of changes that have been made to a particular ban list.
+     * @param ignoreSelf Whether to exclude changes that have been made by Mjolnir.
+     * @returns true if the message was sent, false if it wasn't (because there there were no changes to report).
+     */
+    private async printBanlistChanges(changes: ListRuleChange[], list: BanList, ignoreSelf = false): Promise<boolean> {
+        if (ignoreSelf) {
+            const sender = await this.client.getUserId();
+            changes = changes.filter(change => change.sender !== sender);
+        }
+        if (changes.length <= 0) return false;
+
+        let html = "";
+        let text = "";
+
+        const changesInfo = `updated with ${changes.length} ` + (changes.length === 1 ? 'change:' : 'changes:');
+        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : '';
+
+        html += `<a href="${htmlEscape(list.roomRef)}">${htmlEscape(list.roomId)}</a>${shortcodeInfo} ${changesInfo}<br/><ul>`;
+        text += `${list.roomRef}${shortcodeInfo} ${changesInfo}:\n`;
+
+        for (const change of changes) {
+            const rule = change.rule;
+            let ruleKind: string = rule.kind;
+            if (ruleKind === RULE_USER) {
+                ruleKind = 'user';
+            } else if (ruleKind === RULE_SERVER) {
+                ruleKind = 'server';
+            } else if (ruleKind === RULE_ROOM) {
+                ruleKind = 'room';
+            }
+            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation)}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
+            text += `* ${change.changeType} ${ruleKind} (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
+        }
+
+        const message = {
+            msgtype: "m.notice",
+            body: text,
+            format: "org.matrix.custom.html",
+            formatted_body: html,
+        };
+        await this.client.sendMessage(config.managementRoom, message);
+        return true;
     }
 
     private async printActionResult(errors: RoomUpdateError[], title: string | null = null, logAnyways = false) {
