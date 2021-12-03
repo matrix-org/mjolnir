@@ -9,7 +9,7 @@ import { MatrixClient } from "matrix-bot-sdk";
  * @param targetEventThunk A function that produces an event ID when called. This event ID is then used to listen for a reaction.
  * @returns The reaction event.
  */
-export async function onReactionTo(client: MatrixClient, targetRoom: string, reactionKey: string, targetEventThunk: () => Promise<string>): Promise<any> {
+export async function getFirstReaction(client: MatrixClient, targetRoom: string, reactionKey: string, targetEventThunk: () => Promise<string>): Promise<any> {
     let reactionEvents = [];
     const addEvent = function (roomId, event) {
         if (roomId !== targetRoom) return;
