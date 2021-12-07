@@ -28,7 +28,7 @@ import { execRedactCommand } from "./RedactCommand";
 import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
-import { execDisableProtection, execEnableProtection, execListProtections } from "./ProtectionsCommands";
+import { execDisableProtection, execEnableProtection, execListProtections, execGetProtection, execSetProtection } from "./ProtectionsCommands";
 import { execListProtectedRooms } from "./ListProtectedRoomsCommand";
 import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtectedRoomsCommand";
 import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";
@@ -76,6 +76,10 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execEnableProtection(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'disable' && parts.length > 1) {
             return await execDisableProtection(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'set' && parts.length > 2) {
+            return await execSetProtection(roomId, event, mjolnir, parts)
+        } else if (parts[1] === 'get') {
+            return await execGetProtection(roomId, event, mjolnir, parts)
         } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'add') {
             return await execAddProtectedRoom(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'remove') {
@@ -122,6 +126,8 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
                 "!mjolnir protections                                                - List all available protections\n" +
                 "!mjolnir enable <protection>                                        - Enables a particular protection\n" +
                 "!mjolnir disable <protection>                                       - Disables a particular protection\n" +
+                "!mjolnir set <protection>.<setting> [value]                         - Change a projection setting\n" +
+                "!mjolnir get [protection]                                           - List protection settings\n" +
                 "!mjolnir rooms                                                      - Lists all the protected rooms\n" +
                 "!mjolnir rooms add <room alias/ID>                                  - Adds a protected room (may cause high server load)\n" +
                 "!mjolnir rooms remove <room alias/ID>                               - Removes a protected room\n" +
