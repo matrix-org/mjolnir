@@ -620,8 +620,8 @@ export class Mjolnir {
 
         let hadErrors = false;
 
-        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
