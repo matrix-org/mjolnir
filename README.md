@@ -79,7 +79,7 @@ set up:
    as the visibility of the room.
 2. `!mjolnir default COC` - This sets the default ban list to the list we just created to
    help with the ban commands later on.
-3. Review the [Moderator's Guide](https://github.com/matrix-org/mjolnir/blob/master/docs/moderators.md).
+3. Review the [Moderator's Guide](https://github.com/matrix-org/mjolnir/blob/main/docs/moderators.md).
 4. Review `!mjolnir help` to see what else the bot can do.
 
 ## Synapse Module
