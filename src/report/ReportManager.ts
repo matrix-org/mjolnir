@@ -17,6 +17,7 @@ limitations under the License.
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
+import * as htmlEscape from "escape-html";
 import { JSDOM } from 'jsdom';
 
 import config from "../config";
@@ -430,6 +431,13 @@ interface IUIAction {
     title(manager: ReportManager, report: IReport): Promise<string>;
 
     /**
+     * A human-readable help message to display for the end-user.
+     *
+     * @param report Details on the abuse report.
+     */
+    help(manager: ReportManager, report: IReport): Promise<string>;
+
+    /**
      * Attempt to execute the action.
      */
     execute(manager: ReportManager, report: IReport, moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined>;
@@ -446,6 +454,9 @@ class IgnoreBadReport implements IUIAction {
         return true;
     }
     public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Ignore";
+    }
+    public async help(_manager: ReportManager, _report: IReport): Promise<string> {
         return "Ignore bad report";
     }
     public async execute(manager: ReportManager, report: IReportWithAction): Promise<string | undefined> {
@@ -481,7 +492,10 @@ class RedactMessage implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Redact";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
         return `Redact event ${report.event_id}`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string): Promise<string | undefined> {
@@ -504,8 +518,11 @@ class KickAccused implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
-        return `Kick ${report.accused_id} from room ${report.room_alias_or_id}`;
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Kick";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
+        return `Kick ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.kickUser(report.accused_id, report.room_id);
@@ -527,8 +544,11 @@ class MuteAccused implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
-        return `Mute ${report.accused_id} in room ${report.room_alias_or_id}`;
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Mute";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
+        return `Mute ${htmlEscape(report.accused_id)} in room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.setUserPowerLevel(report.accused_id, report.room_id, -1);
@@ -550,8 +570,11 @@ class BanAccused implements IUIAction {
             return false;
         }
     }
-    public async title(_manager: ReportManager, report: IReport): Promise<string> {
-        return `Ban ${report.accused_id} from room ${report.room_alias_or_id}`;
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Ban";
+    }
+    public async help(_manager: ReportManager, report: IReport): Promise<string> {
+        return `Ban ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         await manager.mjolnir.client.banUser(report.accused_id, report.room_id);
@@ -572,11 +595,19 @@ class Help implements IUIAction {
     public async title(_manager: ReportManager, _report: IReport): Promise<string> {
         return "Help";
     }
-    public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
+    public async help(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "This help";
+    }
+    public async execute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<string | undefined> {
         // Produce a html list of actions, in the order specified by ACTION_LIST.
         let list: string[] = [];
         for (let action of ACTION_LIST) {
-            list.push(`<li>${action.emoji} ${await action.title(manager, report)}</li>`);
+            if (await action.canExecute(manager, report, moderationRoomId)) {
+                list.push(`<li>${action.emoji} ${await action.help(manager, report)}</li>`);
+            }
+        }
+        if (!await ACTIONS.get("ban-accused")!.canExecute(manager, report, moderationRoomId)) {
+            list.push(`<li>Some actions were disabled because Mjölnir is not moderator in room ${htmlEscape(report.room_alias_or_id)}</li>`)
         }
         let body = `<ul>${list.join("\n")}</ul>`;
         return body;
@@ -603,7 +634,10 @@ class EscalateToServerModerationRoom implements IUIAction {
         }
         return true;
     }
-    public async title(manager: ReportManager, _report: IReport): Promise<string> {
+    public async title(_manager: ReportManager, _report: IReport): Promise<string> {
+        return "Escalate";
+    }
+    public async help(manager: ReportManager, _report: IReport): Promise<string> {
         return `Escalate report to ${getHomeserver(await manager.mjolnir.client.getUserId())} server moderators`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined> {
