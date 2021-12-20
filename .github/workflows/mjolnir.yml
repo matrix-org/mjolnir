@@ -21,5 +21,8 @@ jobs:
       run: RUST_LOG=debug mx-tester build up
     - name: Setup dependencies
       run: yarn install
+  test:
+    continue-on-error: false
+    steps:
     - name: Run tests
       run: RUST_LOG=debug mx-tester run
