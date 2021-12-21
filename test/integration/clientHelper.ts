@@ -2,6 +2,7 @@ import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
 import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
+import { makeClientWithSanerExceptions } from "../../src/utils";
 
 /**
  * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
@@ -67,7 +68,7 @@ export async function registerNewTestUser(isAdmin: boolean, label: string = "") 
 export async function newTestUser(isAdmin: boolean = false, label: string = ""): Promise<MatrixClient> {
     const username = await registerNewTestUser(isAdmin, label);
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    return await pantalaimon.createClientWithCredentials(username, username);
+    return makeClientWithSanerExceptions(await pantalaimon.createClientWithCredentials(username, username));
 }
 
 /**

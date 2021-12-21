@@ -28,6 +28,7 @@ import {
 import { logMessage } from "./LogProxy";
 import config from "./config";
 import * as htmlEscape from "escape-html";
+import { ClientRequest, IncomingMessage } from "http";
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -200,4 +201,57 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
     }
 
     return content;
+}
+
+export function makeClientWithSanerExceptions(client: MatrixClient): MatrixClient {
+    let result = new Proxy(client, {
+        get: function (obj, key) {
+            let value = obj[key];
+            if (!(typeof value == "function")) {
+                return value;
+            }
+            return function (...args) {
+                let result = value.apply(client, args);
+                if (!(result instanceof Promise)) {
+                    // We're only interested in watching async code.
+                    return result;
+                }
+                return result.catch(reason => {
+                    if (!(reason instanceof IncomingMessage)) {
+                        // In most cases, we're happy with the result.
+                        throw reason;
+                    }
+                    // However, MatrixClient has a tendency of throwing
+                    // instances of `IncomingMessage` instead of instances
+                    // of `Error`. The former take ~800 lines of log and
+                    // provide no stack trace, which makes them typically
+                    // useless.
+                    let method: string | null = null;
+                    let path: string = '';
+                    let body: string | null = null;
+                    if (reason.method) {
+                        method = reason.method;
+                    }
+                    if (reason.url) {
+                        path = reason.url;
+                    }
+                    if ("req" in reason && (reason as any).req instanceof ClientRequest) {
+                        if (!method) {
+                            method = (reason as any).req.method;
+                        }
+                        if (!path) {
+                            path = (reason as any).req.path;
+                        }
+                    }
+                    if ("body" in reason) {
+                        body = JSON.stringify((reason as any).body);
+                    }
+                    let error = new Error(`Error during MatrixClient request ${method} ${path}: ${reason.statusCode} ${reason.statusMessage} -- ${body}`);
+                    //(error as any).message = reason;
+                    throw error;
+                });
+            }
+        }
+    });
+    return result;
 }

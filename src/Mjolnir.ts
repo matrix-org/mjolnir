@@ -42,6 +42,7 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import * as htmlEscape from "escape-html";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
+import { makeClientWithSanerExceptions } from "./utils";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -54,7 +55,7 @@ const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
 export class Mjolnir {
-
+    public readonly client: MatrixClient;
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
@@ -153,11 +154,12 @@ export class Mjolnir {
     }
 
     constructor(
-        public readonly client: MatrixClient,
+        client: MatrixClient,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
     ) {
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
+        this.client = makeClientWithSanerExceptions(client);
 
         for (const reason of config.automaticallyRedactForReasons) {
             this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
