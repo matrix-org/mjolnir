@@ -24,6 +24,7 @@ import {
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
 import { registerUser } from "./clientHelper";
+import { makeClientWithSanerExceptions } from "../../src/utils";
 
 /**
  * Ensures that a room exists with the alias, if it does not exist we create it.
@@ -79,7 +80,8 @@ export async function makeMjolnir(): Promise<Mjolnir> {
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    let client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    client = makeClientWithSanerExceptions(client);
     await ensureAliasedRoomExists(client, config.managementRoom);
     let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);
     globalClient = client;
