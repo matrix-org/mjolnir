@@ -203,54 +203,100 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
     return content;
 }
 
+/**
+ * Utility function: a wrapper for `MatrixClient.doRequest` that makes sure that
+ * we never throw an `IncomingMessage`.
+ *
+ * @param client The client to use for the request.
+ * @param args The args to pass to the client.
+ * @returns As `client.doRequest(...args)` but with `IncomingMessage` errors wrapped
+ * as instances of `Error`.
+ */
+async function doRequestReplacement(client: MatrixClient, args: any[]): Promise<any> {
+    try {
+        return await client.doRequest.apply(client, args);
+    } catch (ex) {
+        if (!(ex instanceof IncomingMessage)) {
+            // In most cases, we're happy with the result.
+            throw ex;
+        }
+        // However, MatrixClient has a tendency of throwing
+        // instances of `IncomingMessage` instead of instances
+        // of `Error`. The former take ~800 lines of log and
+        // provide no stack trace, which makes them typically
+        // useless.
+        let method: string | null = null;
+        let path = '';
+        let body: string | null = null;
+        if (ex.method) {
+            method = ex.method;
+        }
+        if (ex.url) {
+            path = ex.url;
+        }
+        if ("req" in ex && (ex as any).req instanceof ClientRequest) {
+            if (!method) {
+                method = (ex as any).req.method;
+            }
+            if (!path) {
+                path = (ex as any).req.path;
+            }
+        }
+        if ("body" in ex) {
+            body = JSON.stringify((ex as any).body);
+        }
+        let error = new Error(`Error during MatrixClient request ${method} ${path}: ${ex.statusCode} ${ex.statusMessage} -- ${body}`);
+        throw error;
+    }
+}
+
+
+// A key used internally to determine whether a `MatrixClient` has been monkey patched
+// to return saner exceptions.
+const CLIENT_WITH_SANER_EXCEPTION = Symbol("_monkeyPatchmakeClientWithSanerExceptions");
+
+/**
+ * @returns `true` if a `MatrixClient` has been monkey patched to return
+ * saner exceptions.
+ */
+export function isClientWithSanerExceptions(client: MatrixClient): boolean {
+    return CLIENT_WITH_SANER_EXCEPTION in client;
+}
+
+/**
+ * Wrap a `MatrixClient` into something that throws sane exceptions.
+ *
+ * By default, instances of `MatrixClient` throw instances of `IncomingMessage`
+ * in case of many errors. Unfortunately, these instances are unusable:
+ *
+ * - they are logged as ~800 *lines of code*;
+ * - there is no error message;
+ * - they offer no stack.
+ *
+ * This method converts a `MatrixClient` that may throw `IncomingMessage` into
+ * a `MatrixClient` that instead throws more reasonable insetances of `Error`.
+ */
 export function makeClientWithSanerExceptions(client: MatrixClient): MatrixClient {
     let result = new Proxy(client, {
+        has: function (obj, key): boolean {
+            return key === CLIENT_WITH_SANER_EXCEPTION
+                || key in client;
+        },
         get: function (obj, key) {
+            if (key === "doRequest") {
+                // Intercept `doRequest`.
+                return (...args) => doRequestReplacement(client, args);
+            }
+            if (key === "_monkeyPatchmakeClientWithSanerExceptions") {
+                return true;
+            }
             let value = obj[key];
-            if (!(typeof value == "function")) {
+            if (!(typeof value === "function")) {
+                // We're only interested in methods.
                 return value;
             }
-            return function (...args) {
-                let result = value.apply(client, args);
-                if (!(result instanceof Promise)) {
-                    // We're only interested in watching async code.
-                    return result;
-                }
-                return result.catch(reason => {
-                    if (!(reason instanceof IncomingMessage)) {
-                        // In most cases, we're happy with the result.
-                        throw reason;
-                    }
-                    // However, MatrixClient has a tendency of throwing
-                    // instances of `IncomingMessage` instead of instances
-                    // of `Error`. The former take ~800 lines of log and
-                    // provide no stack trace, which makes them typically
-                    // useless.
-                    let method: string | null = null;
-                    let path: string = '';
-                    let body: string | null = null;
-                    if (reason.method) {
-                        method = reason.method;
-                    }
-                    if (reason.url) {
-                        path = reason.url;
-                    }
-                    if ("req" in reason && (reason as any).req instanceof ClientRequest) {
-                        if (!method) {
-                            method = (reason as any).req.method;
-                        }
-                        if (!path) {
-                            path = (reason as any).req.path;
-                        }
-                    }
-                    if ("body" in reason) {
-                        body = JSON.stringify((reason as any).body);
-                    }
-                    let error = new Error(`Error during MatrixClient request ${method} ${path}: ${reason.statusCode} ${reason.statusMessage} -- ${body}`);
-                    //(error as any).message = reason;
-                    throw error;
-                });
-            }
+            // Make sure that methods use our intercepted `doRequestReplacement`.
+            return value.bind(result);
         }
     });
     return result;

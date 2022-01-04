@@ -1,6 +1,6 @@
 import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
-import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import { extractRequestError, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
 import { makeClientWithSanerExceptions } from "../../src/utils";
 
@@ -27,7 +27,7 @@ export async function registerUser(username: string, displayname: string, passwo
         password,
         admin,
         mac: mac.toString()
-    })
+    });
 }
 
 /**

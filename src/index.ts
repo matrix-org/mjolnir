@@ -27,6 +27,7 @@ import config from "./config";
 import { logMessage } from "./LogProxy";
 import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
+import { makeClientWithSanerExceptions } from "./utils";
 
 config.RUNTIME = {};
 
@@ -51,6 +52,7 @@ if (config.health.healthz.enabled) {
     } else {
         client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
     }
+    client = makeClientWithSanerExceptions(client);
 
     config.RUNTIME.client = client;
 
