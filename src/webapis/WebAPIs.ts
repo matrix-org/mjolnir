@@ -21,7 +21,6 @@ import { MatrixClient } from "matrix-bot-sdk";
 
 import config from "../config";
 import { ReportManager } from "../report/ReportManager";
-import { makeClientWithSanerExceptions } from "../utils";
 
 /**
  * A common prefix for all web-exposed APIs.
@@ -131,7 +130,7 @@ export class WebAPIs {
                 //    so we are not extending the abilities of Mjölnir
                 // 3. We are avoiding the use of the Synapse Admin API to ensure that
                 //    this feature can work with all homeservers, not just Synapse.
-                let reporterClient = makeClientWithSanerExceptions(new MatrixClient(config.rawHomeserverUrl, accessToken));
+                let reporterClient = new MatrixClient(config.rawHomeserverUrl, accessToken);
                 reporterClient.start = () => {
                     throw new Error("We MUST NEVER call start on the reporter client");
                 };

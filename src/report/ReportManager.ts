@@ -22,6 +22,7 @@ import { JSDOM } from 'jsdom';
 
 import config from "../config";
 import { Mjolnir } from "../Mjolnir";
+import { patchMatrixClientForConciseExceptions } from "../utils";
 
 /// Regexp, used to extract the action label from an action reaction
 /// such as `⚽ Kick user @foobar:localhost from room [kick-user]`.
@@ -875,6 +876,7 @@ class DisplayManager {
                 if (!await action.canExecute(this.owner, report, moderationRoomId)) {
                     continue;
                 }
+                patchMatrixClientForConciseExceptions();
                 await this.owner.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
