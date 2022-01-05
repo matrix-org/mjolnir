@@ -16,7 +16,7 @@
 import logging
 from .list_rule import ListRule, ALL_RULE_TYPES, USER_RULE_TYPES, SERVER_RULE_TYPES, ROOM_RULE_TYPES
 from twisted.internet import defer
-from synapse.metrics.background_process_metrics import run_as_background_process
+from synapse.module_api import run_as_background_process
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
