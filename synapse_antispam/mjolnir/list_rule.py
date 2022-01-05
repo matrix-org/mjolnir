@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from synapse.util import glob_to_regex
+from matrix_common.regex import glob_to_regex
 
 RECOMMENDATION_BAN = "m.ban"
 RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"]

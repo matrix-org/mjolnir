@@ -7,5 +7,7 @@ setup(
     description="Mjolnir Antispam",
     include_package_data=True,
     zip_safe=True,
-    install_requires=[],
+    install_requires=[
+        "matrix-common >= 1.0.0"
+    ],
 )
