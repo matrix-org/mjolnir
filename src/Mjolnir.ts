@@ -42,7 +42,6 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import * as htmlEscape from "escape-html";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
-import { isClientWithSanerExceptions } from "./utils";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -157,10 +156,6 @@ export class Mjolnir {
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
     ) {
-        if (!isClientWithSanerExceptions(client)) {
-            throw new Error("Internal error: this is a MatrixClient without sane exceptions");
-        }
-
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
 
         for (const reason of config.automaticallyRedactForReasons) {
