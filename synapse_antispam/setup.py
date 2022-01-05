@@ -8,6 +8,6 @@ setup(
     include_package_data=True,
     zip_safe=True,
     install_requires=[
-        "matrix-common >= 1.0.0"
+        "matrix-common ~= 1.0"
     ],
 )
