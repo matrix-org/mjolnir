@@ -220,14 +220,15 @@ let isMatrixClientPatchedForConciseExceptions = false;
  * This method configures `MatrixClient` to ensure that methods that may throw
  * instead throws more reasonable insetances of `Error`.
  */
-export function patchMatrixClientForConciseExceptions() {
+function patchMatrixClientForConciseExceptions() {
     if (isMatrixClientPatchedForConciseExceptions) {
         return;
     }
     let originalRequestFn = getRequestFn();
     setRequestFn((params, cb) => {
+        let stack = new Error().stack;
         originalRequestFn(params, function conciseExceptionRequestFn(err, response, resBody) {
-            if (!err && (response.statusCode < 200 || response.statusCode >= 300)) {
+            if (!err && (response?.statusCode < 200 || response?.statusCode >= 300)) {
                 // Normally, converting HTTP Errors into rejections is done by the caller
                 // of `requestFn` within matrix-bot-sdk. However, this always ends up rejecting
                 // with an `IncomingMessage` - exactly what we wish to avoid here.
@@ -277,12 +278,47 @@ export function patchMatrixClientForConciseExceptions() {
                 }
             }
             if ("body" in err) {
-                body = JSON.stringify((err as any).body);
+                body = (err as any).body;
             }
             let error = new Error(`Error during MatrixClient request ${method} ${path}: ${err.statusCode} ${err.statusMessage} -- ${body}`);
+            error.stack = stack;
+            if (body) {
+                // Calling code may use `body` to check for errors, so let's
+                // make sure that we're providing it.
+                try {
+                    body = JSON.parse(body);
+                } catch (ex) {
+                    // Not JSON.
+                }
+                // Define the property but don't make it visible during logging.
+                Object.defineProperty(error, "body", {
+                    value: body,
+                    enumerable: false,
+                });
+            }
+            // Calling code may use `statusCode` to check for errors, so let's
+            // make sure that we're providing it.
+            if ("statusCode" in err) {
+                Object.defineProperty(error, "statusCode", {
+                    value: err.statusCode,
+                    enumerable: false,
+                });
+            }
             return cb(error, response, resBody);
         })
     });
     isMatrixClientPatchedForConciseExceptions = true;
 }
 
+/**
+ * Perform any patching deemed necessary to MatrixClient.
+ */
+export function patchMatrixClient() {
+    // Note that the order of patches is meaningful.
+    //
+    // - `patchMatrixClientForConciseExceptions` converts all `IncomingMessage`
+    //   errors into instances of `Error` handled as errors;
+    // - `patchMatrixClientForRetry` expects that all errors are returned as
+    //   errors.
+    patchMatrixClientForConciseExceptions();
+}

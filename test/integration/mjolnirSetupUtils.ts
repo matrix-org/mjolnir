@@ -24,7 +24,7 @@ import {
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
 import { registerUser } from "./clientHelper";
-import { patchMatrixClientForConciseExceptions } from "../../src/utils";
+import { patchMatrixClient } from "../../src/utils";
 
 /**
  * Ensures that a room exists with the alias, if it does not exist we create it.
@@ -33,8 +33,9 @@ import { patchMatrixClientForConciseExceptions } from "../../src/utils";
  * @returns The room ID of the aliased room.
  */
 export async function ensureAliasedRoomExists(client: MatrixClient, alias: string): Promise<string> {
-    return await client.resolveRoom(alias)
-    .catch(async e => {
+    try {
+        return await client.resolveRoom(alias);
+    } catch (e) {
         if (e?.body?.errcode === 'M_NOT_FOUND') {
             console.info(`${alias} hasn't been created yet, so we're making it now.`)
             let roomId = await client.createRoom({
@@ -44,7 +45,7 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
             return roomId
         }
         throw e;
-    });
+    }
 }
 
 async function configureMjolnir() {
@@ -81,7 +82,7 @@ export async function makeMjolnir(): Promise<Mjolnir> {
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
-    patchMatrixClientForConciseExceptions();
+    patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
     let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);
     globalClient = client;

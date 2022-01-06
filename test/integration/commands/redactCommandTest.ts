@@ -8,7 +8,7 @@ import { onReactionTo } from "./commandUtils";
 
  describe("Test: The redaction command", function () {
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id and a room id.', async function() {
-        this.timeout(20000);
+        this.timeout(60000);
         // Create a few users and a room.
         let badUser = await newTestUser(false, "spammer-needs-redacting");
         let badUserId = await badUser.getUserId();
@@ -52,7 +52,7 @@ import { onReactionTo } from "./commandUtils";
         });
     })
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id in multiple rooms.', async function() {
-        this.timeout(20000);
+        this.timeout(60000);
         // Create a few users and a room.
         let badUser = await newTestUser(false, "spammer-needs-redacting");
         let badUserId = await badUser.getUserId();
@@ -101,7 +101,7 @@ import { onReactionTo } from "./commandUtils";
         });
     });
     it("Redacts a single event when instructed to.", async function () {
-        this.timeout(20000);
+        this.timeout(60000);
         // Create a few users and a room.
         let badUser = await newTestUser(false, "spammer-needs-redacting");
         const mjolnir = config.RUNTIME.client!
