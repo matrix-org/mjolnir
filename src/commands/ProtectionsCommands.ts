@@ -34,14 +34,14 @@ export async function execEnableProtection(roomId: string, event: any, mjolnir: 
     }
 }
 
-async function _execSetProtection(mjolnir: Mjolnir, parts: string[]): Promise<string> {
-    const [protectionName, ...settingParts] = parts[2].split(".");
+async function _execConfigSetProtection(mjolnir: Mjolnir, parts: string[]): Promise<string> {
+    const [protectionName, ...settingParts] = parts[0].split(".");
     const protection = PROTECTIONS[protectionName];
     if (protection === undefined) return `Unknown protection ${protectionName}`;
 
     const defaultSettings = protection.factory().settings
     const settingName = settingParts[0];
-    const stringValue = parts[3];
+    const stringValue = parts[1];
 
     if (!(settingName in defaultSettings)) return `Unknown setting ${settingName}`;
 
@@ -73,8 +73,8 @@ async function _execSetProtection(mjolnir: Mjolnir, parts: string[]): Promise<st
  *
  * !mjolnir set <protection name>.<setting name> <value>
  */
-export async function execSetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const message = await _execSetProtection(mjolnir, parts);
+export async function execConfigSetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const message = await _execConfigSetProtection(mjolnir, parts);
 
     const reply = RichReply.createFor(roomId, event, message, message);
     reply["msgtype"] = "m.notice";
@@ -86,21 +86,21 @@ export async function execSetProtection(roomId: string, event: any, mjolnir: Mjo
  *
  * !mjolnir get [protection name]
  */
-export async function execGetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+export async function execConfigGetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     let pickProtections = Object.keys(PROTECTIONS);
     // this means the output is sorted by protection name
     pickProtections.sort();
 
     if (parts.length < 3) {
         // no specific protectionName provided, show all of them
-    } else if (!pickProtections.includes(parts[2])) {
-        const errMsg = `Unknown protection: ${parts[2]}`;
+    } else if (!pickProtections.includes(parts[0])) {
+        const errMsg = `Unknown protection: ${parts[0]}`;
         const errReply = RichReply.createFor(roomId, event, errMsg, errMsg);
         errReply["msgtype"] = "m.notice";
         await mjolnir.client.sendMessage(roomId, errReply);
         return;
     } else {
-        pickProtections = [parts[2]];
+        pickProtections = [parts[0]];
     }
 
     let text = "Protection settings\n";
