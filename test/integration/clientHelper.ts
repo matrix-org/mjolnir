@@ -1,7 +1,11 @@
 import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
+import e from "express";
 import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
+
+const REGISTRATION_ATTEMPTS = 10;
+const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
 
 /**
  * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
@@ -19,14 +23,26 @@ export async function registerUser(username: string, displayname: string, passwo
     let { data } = await axios.get(registerUrl);
     let nonce = data.nonce!;
     let mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
-    return await axios.post(registerUrl, {
-        nonce,
-        username,
-        displayname,
-        password,
-        admin,
-        mac: mac.toString()
-    });
+    for (let i = 1; i <= REGISTRATION_ATTEMPTS; ++i) {
+        try {
+            return await axios.post(registerUrl, {
+                nonce,
+                username,
+                displayname,
+                password,
+                admin,
+                mac: mac.toString()
+            });
+        } catch (ex) {
+            // In case of timeout or throttling, backoff and retry.
+            if (ex?.code === 'ESOCKETTIMEDOUT' || ex?.code === 'ETIMEDOUT'
+                || ex?.response?.data?.errcode === 'M_LIMIT_EXCEEDED') {
+                await new Promise(resolve => setTimeout(resolve, REGISTRATION_RETRY_BASE_DELAY_MS * i * i));
+                continue;
+            }
+            throw ex;
+        }
+    }
 }
 
 /**
