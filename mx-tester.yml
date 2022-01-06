@@ -10,6 +10,39 @@ down:
   finally:
     - docker stop mjolnir-test-reverse-proxy || true
 homeserver:
+  # Basic configuration.
   server_name: localhost:9999
   public_baseurl: http://localhost:9999
   registration_shared_secret: REGISTRATION_SHARED_SECRET
+
+  # Getting rid of throttling.
+  rc_message:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_registration:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_login:
+    address:
+      per_second: 10000
+      burst_count: 10000
+    account:
+      per_second: 10000
+      burst_count: 10000
+    failed_attempts:
+      per_second: 10000
+      burst_count: 10000
+
+  rc_admin_redaction:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_joins:
+    local:
+      per_second: 10000
+      burst_count: 10000
+    remote:
+      per_second: 10000
+      burst_count: 10000
