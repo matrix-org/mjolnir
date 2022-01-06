@@ -21,7 +21,7 @@ const REPORT_NOTICE_REGEXPS = {
 
 describe("Test: Reporting abuse", async () => {
     it('Mjölnir intercepts abuse reports', async function() {
-        this.timeout(10000);
+        this.timeout(60000);
 
         // Listen for any notices that show up.
         let notices = [];
@@ -216,7 +216,7 @@ describe("Test: Reporting abuse", async () => {
         }
     });
     it('The redact action works', async function() {
-        this.timeout(10000);
+        this.timeout(60000);
 
         // Listen for any notices that show up.
         let notices = [];

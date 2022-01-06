@@ -8,7 +8,7 @@ import { getMessagesByUserIn } from "../../src/utils";
  */
 describe("Test: timeline pagination", function () {
     it('does not paginate across the entire room history while backfilling.', async function() {
-        this.timeout(20000);
+        this.timeout(60000);
         // Create a few users and a room.
         let badUser = await newTestUser(false, "spammer");
         let badUserId = await badUser.getUserId();
@@ -38,7 +38,7 @@ describe("Test: timeline pagination", function () {
         assert.equal(eventCount, 7, "There shouldn't be any more events (1 member event and 6 messages), and they should all be from the same account.");
     })
     it('does not call the callback with an empty array when there are no relevant events', async function() {
-        this.timeout(20000);
+        this.timeout(60000);
         let badUser = await newTestUser(false, "spammer");
         let badUserId = await badUser.getUserId();
         let moderator = await newTestUser(false, "moderator");
@@ -53,7 +53,7 @@ describe("Test: timeline pagination", function () {
         assert.equal(cbCount, 0, "The callback should never get called");
     })
     it("The limit provided is respected", async function() {
-        this.timeout(20000);
+        this.timeout(60000);
         let badUser = await newTestUser(false, "spammer");
         let badUserId = await badUser.getUserId();
         let moderator = await newTestUser(false, "moderator");
@@ -82,7 +82,7 @@ describe("Test: timeline pagination", function () {
         assert.equal(cbCount, 1, "The callback should be called once with events matching the glob.");
     });
     it("Gives the events to the callback ordered by youngest first (even more important when the limit is reached halfway through a chunk).", async function() {
-        this.timeout(20000);
+        this.timeout(60000);
         let moderator = await newTestUser(false, "moderator");
         let moderatorId = await moderator.getUserId();
         let targetRoom = await moderator.createRoom();

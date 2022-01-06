@@ -1,6 +1,6 @@
 import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
-import { extractRequestError, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
 
 /**
