@@ -226,7 +226,9 @@ function patchMatrixClientForConciseExceptions() {
     }
     let originalRequestFn = getRequestFn();
     setRequestFn((params, cb) => {
-        let stack = new Error().stack;
+        // Store an error early, to maintain *some* semblance of stack.
+        // We'll only throw the error if there is one.
+        let error = new Error("STACK CAPTURE");
         originalRequestFn(params, function conciseExceptionRequestFn(err, response, resBody) {
             if (!err && (response?.statusCode < 200 || response?.statusCode >= 300)) {
                 // Normally, converting HTTP Errors into rejections is done by the caller
@@ -280,8 +282,8 @@ function patchMatrixClientForConciseExceptions() {
             if ("body" in err) {
                 body = (err as any).body;
             }
-            let error = new Error(`Error during MatrixClient request ${method} ${path}: ${err.statusCode} ${err.statusMessage} -- ${body}`);
-            error.stack = stack;
+            let message = `Error during MatrixClient request ${method} ${path}: ${err.statusCode} ${err.statusMessage} -- ${body}`;
+            error.message = message;
             if (body) {
                 // Calling code may use `body` to check for errors, so let's
                 // make sure that we're providing it.
@@ -299,6 +301,7 @@ function patchMatrixClientForConciseExceptions() {
             // Calling code may use `statusCode` to check for errors, so let's
             // make sure that we're providing it.
             if ("statusCode" in err) {
+                // Define the property but don't make it visible during logging.
                 Object.defineProperty(error, "statusCode", {
                     value: err.statusCode,
                     enumerable: false,
