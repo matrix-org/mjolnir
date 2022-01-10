@@ -18,6 +18,7 @@ import * as htmlEscape from "escape-html";
 import { Mjolnir } from "../Mjolnir";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
 import { PROTECTIONS } from "../protections/protections";
+import { isListSetting } from "../protections/ProtectionSettings";
 
 // !mjolnir enable <protection>
 export async function execEnableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -34,7 +35,13 @@ export async function execEnableProtection(roomId: string, event: any, mjolnir: 
     }
 }
 
-async function _execConfigSetProtection(mjolnir: Mjolnir, parts: string[]): Promise<string> {
+enum ConfigAction {
+    Set,
+    Add,
+    Remove
+}
+
+async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], action: ConfigAction): Promise<string> {
     const [protectionName, ...settingParts] = parts[0].split(".");
     const protection = PROTECTIONS[protectionName];
     if (protection === undefined) return `Unknown protection ${protectionName}`;
@@ -48,7 +55,21 @@ async function _execConfigSetProtection(mjolnir: Mjolnir, parts: string[]): Prom
     const parser = defaultSettings[settingName];
     // we don't need to validate `value`, because mjolnir.setProtectionSettings does
     // it for us (and raises an exception if there's a problem)
-    const value = parser.fromString(stringValue);
+    let value = parser.fromString(stringValue);
+
+    if (action === ConfigAction.Add) {
+        if (!isListSetting(parser)) {
+            return `Setting ${settingName} isn't a list`;
+        } else {
+            value = parser.addValue(value);
+        }
+    } else if (action === ConfigAction.Remove) {
+        if (!isListSetting(parser)) {
+            return `Setting ${settingName} isn't a list`;
+        } else {
+            value = parser.removeValue(value);
+        }
+    }
 
     // we need this to show what the value used to be
     const oldSettings = await mjolnir.getProtectionSettings(protectionName);
@@ -74,7 +95,33 @@ async function _execConfigSetProtection(mjolnir: Mjolnir, parts: string[]): Prom
  * !mjolnir set <protection name>.<setting name> <value>
  */
 export async function execConfigSetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const message = await _execConfigSetProtection(mjolnir, parts);
+    const message = await _execConfigChangeProtection(mjolnir, parts, ConfigAction.Set);
+
+    const reply = RichReply.createFor(roomId, event, message, message);
+    reply["msgtype"] = "m.notice";
+    await mjolnir.client.sendMessage(roomId, reply);
+}
+
+/*
+ * Add a value to a protection list setting
+ *
+ * !mjolnir add <protection name>.<setting name> <value>
+ */
+export async function execConfigAddProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const message = await _execConfigChangeProtection(mjolnir, parts, ConfigAction.Add);
+
+    const reply = RichReply.createFor(roomId, event, message, message);
+    reply["msgtype"] = "m.notice";
+    await mjolnir.client.sendMessage(roomId, reply);
+}
+
+/*
+ * Remove a value from a protection list setting
+ *
+ * !mjolnir remove <protection name>.<setting name> <value>
+ */
+export async function execConfigRemoveProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const message = await _execConfigChangeProtection(mjolnir, parts, ConfigAction.Remove);
 
     const reply = RichReply.createFor(roomId, event, message, message);
     reply["msgtype"] = "m.notice";

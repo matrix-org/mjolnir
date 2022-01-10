@@ -16,9 +16,9 @@ limitations under the License.
 
 export class ProtectionSettingValidationError extends Error {};
 
-export interface IProtectionSetting<T> {
+export interface IProtectionSetting<TChange, TValue> {
     // the current value of this setting
-    value: T
+    value: TValue
 
     /*
      * Deserialise a value for this setting type from a string
@@ -26,7 +26,7 @@ export interface IProtectionSetting<T> {
      * @param data Serialised value
      * @returns Deserialised value or undefined if deserialisation failed
      */
-    fromString(data: string): T | undefined;
+    fromString(data: string): TChange | undefined;
 
     /*
      * Check whether a given value is valid for this setting
@@ -34,33 +34,67 @@ export interface IProtectionSetting<T> {
      * @param data Setting value
      * @returns Validity of provided value
      */
-    validate(data: T): boolean;
+    validate(data: TChange): boolean;
 
     /*
      * Store a value in this setting, only to be used after `validate()`
      * @param data Validated setting value
      */
-    setValue(data: T): void;
+    setValue(data: TValue): void;
+}
+export interface IProtectionListSetting<TChange, TValue> extends IProtectionSetting<TChange, TValue> {
+    /*
+     *
+     */
+    addValue(data: TChange): void;
+    /*
+     *
+     */
+    removeValue(data: TChange): void;
+}
+export function isListSetting(object: any): object is IProtectionListSetting<any, any> {
+    return ("addValue" in object && "removeValue" in object);
 }
 
-class ProtectionSetting<T> implements IProtectionSetting<T> {
-    value: T
-    fromString(data: string): T | undefined {
+class ProtectionSetting<TChange, TValue> implements IProtectionSetting<TChange, TValue> {
+    value: TValue
+    fromString(data: string): TChange | undefined {
         throw new Error("not Implemented");
     }
-    validate(data: T): boolean {
+    validate(data: TChange): boolean {
         throw new Error("not Implemented");
     }
-    setValue = (data) => this.value = data;
+    setValue(data: TValue) {
+        this.value = data;
+    }
+}
+class ProtectionListSetting<TChange, TValue> extends ProtectionSetting<TChange, TValue> implements IProtectionListSetting<TChange, TValue> {
+    addValue(data: TChange) {
+        throw new Error("not Implemented");
+    }
+    removeValue(data: TChange) {
+        throw new Error("not Implemented");
+    }
 }
 
-export class StringProtectionSetting extends ProtectionSetting<string> {
+export class StringProtectionSetting extends ProtectionSetting<string, string> {
     value = "";
     fromString = (data) => data;
     validate = (data) => true;
 }
+export class StringListProtectionSetting extends ProtectionListSetting<string, string[]> {
+    value: string[] = [];
+    fromString = (data) => data;
+    validate = (data) => true;
+    addValue(data: string) {
+        this.value.push(data);
+    }
+    removeValue(data: string) {
+        this.value.splice(this.value.indexOf(data), 1);
+    }
+}
 
-export class NumberProtectionSetting extends ProtectionSetting<number> {
+export class NumberProtectionSetting extends ProtectionSetting<number, number> {
     min: number|undefined;
     max: number|undefined;
 

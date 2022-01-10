@@ -28,7 +28,8 @@ import { execRedactCommand } from "./RedactCommand";
 import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
-import { execDisableProtection, execEnableProtection, execListProtections, execConfigGetProtection, execConfigSetProtection } from "./ProtectionsCommands";
+import { execDisableProtection, execEnableProtection, execListProtections, execConfigGetProtection,
+    execConfigSetProtection, execConfigAddProtection, execConfigRemoveProtection } from "./ProtectionsCommands";
 import { execListProtectedRooms } from "./ListProtectedRoomsCommand";
 import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtectedRoomsCommand";
 import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";
@@ -78,6 +79,10 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
             return await execDisableProtection(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'config' && parts[2] === 'set' && parts.length > 3) {
             return await execConfigSetProtection(roomId, event, mjolnir, parts.slice(3))
+        } else if (parts[1] === 'config' && parts[2] === 'add' && parts.length > 3) {
+            return await execConfigAddProtection(roomId, event, mjolnir, parts.slice(3))
+        } else if (parts[1] === 'config' && parts[2] === 'remove' && parts.length > 3) {
+            return await execConfigRemoveProtection(roomId, event, mjolnir, parts.slice(3))
         } else if (parts[1] === 'config' && parts[2] === 'get') {
             return await execConfigGetProtection(roomId, event, mjolnir, parts.slice(3))
         } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'add') {

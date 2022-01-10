@@ -25,6 +25,6 @@ import { IProtectionSetting } from "./ProtectionSettings";
  */
 export interface IProtection {
     readonly name: string;
-    settings: { [setting: string]: IProtectionSetting<any> };
+    settings: { [setting: string]: IProtectionSetting<any, any> };
     handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
 }
