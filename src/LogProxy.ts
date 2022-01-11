@@ -48,7 +48,11 @@ export async function logMessage(level: LogLevel, module: string, message: strin
             evContent = await replaceRoomIdsWithPills(client, clientMessage, roomIds, "m.notice");
         }
 
-        await client.sendMessage(config.managementRoom, evContent);
+        try {
+            await client.sendMessage(config.managementRoom, evContent);
+        } catch (ex) {
+            console.error("LogProxy", "Cannot log message", level, message, ex);
+        }
     }
 
     levelToFn[level.toString()](module, message);

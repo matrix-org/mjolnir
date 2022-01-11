@@ -45,45 +45,89 @@ export async function registerUser(username: string, displayname: string, passwo
     }
 }
 
+export type RegistrationOptions = {
+    /**
+     * If specified and true, make the user an admin.
+     */
+    isAdmin?: boolean,
+    /**
+     * If `exact`, use the account with this exact name, attempting to reuse
+     * an existing account if possible.
+     *
+     * If `contains` create a new account with a name that contains this
+     * specific string.
+     */
+    name: { exact: string } | { contains: string },
+    /**
+     * If specified and true, remove throttling for this user.
+     */
+    isUnthrottled?: boolean
+}
+
+let globalAdminUser: MatrixClient;
+
 /**
- * Register a new test user with a unique username.
+ * Register a new test user.
  *
- * @param isAdmin Whether to make the new user an admin.
- * @param label If specified, a string to place somewhere within the username.
- * @returns A string that is the username and password of a new user. 
+ * @returns A string that is both the username and password of a new user. 
  */
-export async function registerNewTestUser(isAdmin: boolean, label: string = "") {
-    let isUserValid = false;
-    let username;
-    if (label != "") {
-        label += "-";
-    }
-    do {
-        username = `mjolnir-test-user-${label}${Math.floor(Math.random() * 100000)}`
-        await registerUser(username, username, username, isAdmin).then(_ => isUserValid = true).catch(e => {
+async function registerNewTestUser(options: RegistrationOptions) {
+    // Initialize global admin user if needed.
+    if (!globalAdminUser) {
+        const USERNAME = "mjolnir-test-internal-admin-user";
+        try {
+            await registerUser(USERNAME, USERNAME, USERNAME, true);
+        } catch (e) {
             if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
-                LogService.debug("test/clientHelper", `${username} already registered, trying another`);
-                false // continue and try again
+                globalAdminUser = await new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
+            }
+            throw e;
+        }
+    }
+
+    do {
+        let username;
+        if ("exact" in options.name) {
+            username = options.name.exact;
+        } else {
+            username = `mjolnir-test-user-${options.name.contains}${Math.floor(Math.random() * 100000)}`
+        }
+        try {
+            await registerUser(username, username, username, options.isAdmin);
+            return username;
+        } catch (e) {
+            if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
+                if ("exact" in options.name) {
+                    LogService.debug("test/clientHelper", `${username} already registered, reusing`);
+                    return username;
+                } else {
+                    LogService.debug("test/clientHelper", `${username} already registered, trying another`);
+                }
             } else {
                 console.error(`failed to register user ${e}`);
                 throw e;
             }
-        })
-    } while (!isUserValid);
-    return username;
+        }
+    } while (true);
 }
 
 /**
- * Registers a unique test user and returns a `MatrixClient` logged in and ready to use.
+ * Registers a test user and returns a `MatrixClient` logged in and ready to use.
  *
- * @param isAdmin Whether to make the user an admin.
- * @param label If specified, a string to place somewhere within the username.
  * @returns A new `MatrixClient` session for a unique test user.
  */
-export async function newTestUser(isAdmin: boolean = false, label: string = ""): Promise<MatrixClient> {
-    const username = await registerNewTestUser(isAdmin, label);
+export async function newTestUser(options: RegistrationOptions): Promise<MatrixClient> {
+    const username = await registerNewTestUser(options);
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    return await pantalaimon.createClientWithCredentials(username, username);
+    const client = await pantalaimon.createClientWithCredentials(username, username);
+    if (options.isUnthrottled) {
+        let userId = await client.getUserId();
+        await globalAdminUser.doRequest("POST", `/_synapse/admin/v1/users/@${userId}/override_ratelimit`, null, {
+            "messages_per_second": 0,
+            "burst_count": 0
+        });
+    }
+    return client;
 }
 
 /**

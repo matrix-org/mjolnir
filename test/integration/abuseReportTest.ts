@@ -32,8 +32,8 @@ describe("Test: Reporting abuse", async () => {
         });
 
         // Create a few users and a room.
-        let goodUser = await newTestUser(false, "reporting-abuse-good-user");
-        let badUser = await newTestUser(false, "reporting-abuse-bad-user");
+        let goodUser = await newTestUser({ name: { contains: "reporting-abuse-good-user" }, isUnthrottled: true });
+        let badUser = await newTestUser({ name: { contains: "reporting-abuse-bad-user" }, isUnthrottled: true });
         let goodUserId = await goodUser.getUserId();
         let badUserId = await badUser.getUserId();
 
@@ -227,13 +227,13 @@ describe("Test: Reporting abuse", async () => {
         });
 
         // Create a moderator.
-        let moderatorUser = await newTestUser(false, "reacting-abuse-moderator-user");
+        let moderatorUser = await newTestUser({ name: { contains: "reporting-abuse-moderator-user" }, isUnthrottled: true });
         matrixClient().inviteUser(await moderatorUser.getUserId(), config.managementRoom);
         await moderatorUser.joinRoom(config.managementRoom);
 
         // Create a few users and a room.
-        let goodUser = await newTestUser(false, "reacting-abuse-good-user");
-        let badUser = await newTestUser(false, "reacting-abuse-bad-user");
+        let goodUser = await newTestUser({ name: { contains: "reacting-abuse-good-user" }, isUnthrottled: true });
+        let badUser = await newTestUser({ name: { contains: "reacting-abuse-bad-user" }, isUnthrottled: true });
         let goodUserId = await goodUser.getUserId();
         let badUserId = await badUser.getUserId();
 

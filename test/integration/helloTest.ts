@@ -4,7 +4,7 @@ import { newTestUser, noticeListener } from "./clientHelper"
 describe("Test: !help command", function() {
     let client;
     this.beforeEach(async function () {
-        client = await newTestUser(true);
+        client = await newTestUser({ name: { contains: "-" }, isUnthrottled: true });;
         await client.start();
     })
     this.afterEach(async function () {
