@@ -40,13 +40,21 @@ async function waitForRuleChange(thunk): Promise<void> {
 
 describe("Test: that policy lists are consumed by the associated synapse module", function () {
     this.afterEach(async function () {
-        this.timeout(5000)
-        LogService.debug('policyConsumptionTest', `Rules at end of test ${JSON.stringify(await currentRules(), null, 2)}`);
-        const mjolnir = config.RUNTIME.client!;
-        // Clear any state associated with the account.
-        await mjolnir.setAccountData('org.matrix.mjolnir.watched_lists', {
-            references: [],
-        });
+        if(config.web.ruleServer.enabled) {
+            this.timeout(5000)
+            LogService.debug('policyConsumptionTest', `Rules at end of test ${JSON.stringify(await currentRules(), null, 2)}`);
+            const mjolnir = config.RUNTIME.client!;
+            // Clear any state associated with the account.
+            await mjolnir.setAccountData('org.matrix.mjolnir.watched_lists', {
+                references: [],
+            });
+        }
+    })
+    this.beforeAll(async function() {
+        if (!config.web.ruleServer.enabled) {
+            LogService.warn("policyConsumptionTest", "Skipping policy consumption test because the ruleServer is not enabled")
+            this.skip();
+        }
     })
     this.beforeEach(async function () {
         this.timeout(1000);

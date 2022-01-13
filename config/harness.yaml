@@ -190,4 +190,4 @@ web:
   # A web API for a description of all the combined rules from watched banlists.
   # GET /api/1/ruleserver/updates
   ruleServer:
-    enabled: true
+    enabled: false
