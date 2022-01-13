@@ -19,12 +19,11 @@ const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
  * @returns The response from synapse.
  */
 export async function registerUser(username: string, displayname: string, password: string, admin: boolean) {
-    let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
-    let { data } = await axios.get(registerUrl);
-    let nonce = data.nonce!;
-    let mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
+    const registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`;
     for (let i = 1; i <= REGISTRATION_ATTEMPTS; ++i) {
         try {
+            const { data: { nonce } } = await axios.get(registerUrl);
+            const mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
             return await axios.post(registerUrl, {
                 nonce,
                 username,
@@ -122,7 +121,7 @@ export async function newTestUser(options: RegistrationOptions): Promise<MatrixC
     const client = await pantalaimon.createClientWithCredentials(username, username);
     if (options.isUnthrottled) {
         let userId = await client.getUserId();
-        await globalAdminUser.doRequest("POST", `/_synapse/admin/v1/users/@${userId}/override_ratelimit`, null, {
+        await globalAdminUser.doRequest("POST", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null, {
             "messages_per_second": 0,
             "burst_count": 0
         });

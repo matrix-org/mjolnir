@@ -316,6 +316,8 @@ function patchMatrixClientForConciseExceptions() {
 const MAX_REQUEST_ATTEMPTS = 15;
 const REQUEST_RETRY_BASE_DURATION_MS = 100;
 
+const TRACE_CONCURRENT_REQUESTS = false;
+let numberOfConcurrentRequests = 0;
 let isMatrixClientPatchedForRetryWhenThrottled = false;
 /**
  * Patch instances of MatrixClient to make sure that it retries requests
@@ -332,40 +334,48 @@ function patchMatrixClientForRetry() {
     let originalRequestFn = getRequestFn();
     setRequestFn(async (params, cb) => {
         let attempt = 1;
-        while (true) {
-            try {
-                let result: any[] = await new Promise((resolve, reject) => {
-                    originalRequestFn(params, function requestFnWithRetry(err, response, resBody) {
-                        // Note: There is no data race on `attempt` as we `await` before continuing
-                        // to the next iteration of the loop.
-                        if (attempt < MAX_REQUEST_ATTEMPTS && err?.body?.errcode === 'M_LIMIT_EXCEEDED') {
-                            // We need to retry.
-                            reject(err);
-                        } else {
-                            // No need-to-retry error? Lucky us!
-                            // Note that this may very well be an error, just not
-                            // one we need to retry.
-                            resolve([err, response, resBody]);
-                        }
+        numberOfConcurrentRequests += 1;
+        if (TRACE_CONCURRENT_REQUESTS) {
+            console.trace("Current number of concurrent requests", numberOfConcurrentRequests);
+        }
+        try {
+            while (true) {
+                try {
+                    let result: any[] = await new Promise((resolve, reject) => {
+                        originalRequestFn(params, function requestFnWithRetry(err, response, resBody) {
+                            // Note: There is no data race on `attempt` as we `await` before continuing
+                            // to the next iteration of the loop.
+                            if (attempt < MAX_REQUEST_ATTEMPTS && err?.body?.errcode === 'M_LIMIT_EXCEEDED') {
+                                // We need to retry.
+                                reject(err);
+                            } else {
+                                // No need-to-retry error? Lucky us!
+                                // Note that this may very well be an error, just not
+                                // one we need to retry.
+                                resolve([err, response, resBody]);
+                            }
+                        });
                     });
-                });
-                // This is our final result.
-                // Pass result, whether success or error.
-                return cb(...result);
-            } catch (err) {
-                // Need to retry.
-                let retryAfterMs = attempt * attempt * REQUEST_RETRY_BASE_DURATION_MS;
-                if ("retry_after_ms" in err) {
-                    try {
-                        retryAfterMs = Number.parseInt(err.retry_after_ms, 10);
-                    } catch (ex) {
-                        // Use default value.
+                    // This is our final result.
+                    // Pass result, whether success or error.
+                    return cb(...result);
+                } catch (err) {
+                    // Need to retry.
+                    let retryAfterMs = attempt * attempt * REQUEST_RETRY_BASE_DURATION_MS;
+                    if ("retry_after_ms" in err) {
+                        try {
+                            retryAfterMs = Number.parseInt(err.retry_after_ms, 10);
+                        } catch (ex) {
+                            // Use default value.
+                        }
                     }
+                    LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs}ms before retrying`);
+                    await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+                    attempt += 1;
                 }
-                LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs} before retrying`);
-                await new Promise(resolve => setTimeout(resolve, retryAfterMs));
-                attempt += 1;
             }
+        } finally {
+            numberOfConcurrentRequests -= 1;
         }
     });
     isMatrixClientPatchedForRetryWhenThrottled = true;
