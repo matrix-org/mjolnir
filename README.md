@@ -18,14 +18,12 @@ homeserver.
 
 ## Bot configuration
 
-It is recommended to use [Pantalaimon](https://github.com/matrix-org/pantalaimon) so your
-management room can be encrypted. This also applies if you are looking to moderate an encrypted
-room. 
+It is recommended to enable encryption support so your management room can be encrypted.
+This also applies if you are looking to moderate an encrypted room. 
 
-If you aren't using encrypted rooms anywhere, get an access token by opening Riot in an
-incognito/private window and log in as the bot. From the Help & Support tab in settings there
-is an access token field - copy and paste that into your config. Most importantly: do not log
-out and instead just close the window. Logging out will make the token you just copied useless.
+You can get an an access token by opening Element in an incognito/private window and log in as the bot.
+From the Help & Support tab in settings there is an access token field - copy and paste that into your config.
+Most importantly: do not log out and instead just close the window. Logging out will make the token you just copied useless.
 
 **Note**: Mjolnir expects to be free of rate limiting - see [Synapse #6286](https://github.com/matrix-org/synapse/issues/6286)
 for information on how to achieve this.
