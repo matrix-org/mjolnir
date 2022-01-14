@@ -1,16 +1,22 @@
 # Where the homeserver is located (client-server URL). This should point at
-# pantalaimon if you're using that.
+# Pantalaimon if you're using that.
 homeserverUrl: "https://matrix.org"
 
 
-# Where the homeserver is located (client-server URL). NOT panalaimon.
+# Where the homeserver is located (client-server URL). NOT Pantalaimon.
 rawHomeserverUrl: "https://matrix.org"
 
 
 # The access token for the bot to use. Do not populate if using Pantalaimon.
 accessToken: "YOUR_TOKEN_HERE"
 
-# Pantalaimon options (https://github.com/matrix-org/pantalaimon)
+# Enable support for handling encrypted rooms. This cannot be enabled if
+# Pantalaimon is enabled.
+encryption:
+  enabled: false
+
+# Pantalaimon options (https://github.com/matrix-org/pantalaimon). This cannot be
+# enabled if encryption is enabled.
 pantalaimon:
   # If true, accessToken above is ignored and the username/password below will be
   # used instead. The access token of the bot will be stored in the dataPath.

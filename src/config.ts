@@ -34,6 +34,9 @@ interface IConfig {
         username: string;
         password: string;
     };
+    encryption: {
+        enabled: boolean;
+    };
     dataPath: string;
     acceptInvitesFromGroup: string;
     autojoinOnlyIfManager: boolean;
@@ -95,6 +98,9 @@ const defaultConfig: IConfig = {
         use: false,
         username: "",
         password: "",
+    },
+    encryption: {
+        enabled: false,
     },
     dataPath: "/data/storage",
     acceptInvitesFromGroup: '+example:example.org',
