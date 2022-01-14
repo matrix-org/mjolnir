@@ -76,7 +76,15 @@ interface IConfig {
         abuseReporting: {
             enabled: boolean;
         }
-    }
+    };
+    trashcan?: {
+        roomAliasOrId: string;
+        softRedact?: {
+            goodAfterMs: number;
+            badAfterMs: number;
+            retainMs: number;
+        }
+    };
 
     /**
      * Config options only set at runtime. Try to avoid using the objects

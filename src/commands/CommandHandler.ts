@@ -1,5 +1,5 @@
 /*
-Copyright 2019-2021 The Matrix.org Foundation C.I.C.
+Copyright 2019-2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,8 @@ import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
 import { execCreateListCommand } from "./CreateBanListCommand";
 import { execUnwatchCommand, execWatchCommand } from "./WatchUnwatchCommand";
-import { execRedactCommand } from "./RedactCommand";
+import { execHardRedactCommand } from "./HardRedactCommand";
+import { execSoftRedactCommand } from "./SoftRedactCommand";
 import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
@@ -63,7 +64,9 @@ export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir
         } else if (parts[1] === 'unwatch' && parts.length > 1) {
             return await execUnwatchCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'redact' && parts.length > 1) {
-            return await execRedactCommand(roomId, event, mjolnir, parts);
+            return await execHardRedactCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'hide' && parts.length > 1) {
+            return await execSoftRedactCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'import' && parts.length > 2) {
             return await execImportCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'default' && parts.length > 2) {

@@ -192,3 +192,42 @@ web:
   abuseReporting:
     # Whether to enable this feature.
     enabled: false
+
+# Uncomment to enable support for undoable actions.
+#
+# As of this writing, the only undoable action is `softredact`.
+#
+#trashcan:
+#  # The room in which we store undoable actions for review.
+#  # Mjölnir will not create it. This can be the same as the
+#  # management room but it doesn't have to.
+#  roomAliasOrId: "#trashcan:localhost"
+#
+#  # Support for soft redactions, i.e. using Mjölnir to mark
+#  # messages as hidden pending moderation.
+#  #
+#  # As of this writing, this feature only works with develop
+#  # versions of Element Web, with feature
+#  # `feature_msc3531_hide_messages_pending_moderation`
+#  # enabled.
+#  #
+#  # Comment this out if you wish to disable soft redactions.
+#  softRedact:
+#    # After `goodAfterMs` milliseconds, any message hidden
+#    # pending moderation by Mjölnir will revert to visible
+#    # and vanish from the trashcan.
+#    # Ignored if `goodAfterMs` is >= `badAfterMs` or `retainMs`.
+#    goodAfterMs: .inf
+#
+#    # After `badAfterMs` milliseconds, any message hidden
+#    # pending moderation by Mjölnir will be irreversibly
+#    # deleted from homeservers and up-to-date clients and
+#    # vanish from the trashcan.
+#    # Ignored if `badAfterMs` is > `goodAfterMs` or `retainMs`.
+#    badAfterMs: .inf
+#
+#    # After `retainMs` milliseconds, any message hidden
+#    # pending moderation will vanish from the trashcan, without
+#    # further action.
+#    # Ignored if `retainMs` is > `goodAfterMs` or `badAfterMs`.
+#    retainMs: 604800000 # Approximately one week.

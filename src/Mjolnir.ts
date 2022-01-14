@@ -42,6 +42,7 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import * as htmlEscape from "escape-html";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
+import { TrashManager } from "./trashcan/TrashManager";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -73,6 +74,8 @@ export class Mjolnir {
     private explicitlyProtectedRoomIds: string[] = [];
     private knownUnprotectedRooms: string[] = [];
     private webapis: WebAPIs;
+    public trashcanManager?: TrashManager;
+
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -146,15 +149,25 @@ export class Mjolnir {
         } else {
             config.managementRoom = managementRoomId;
         }
-        await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
-        return new Mjolnir(client, protectedRooms, banLists);
+        let trashcanRoomId;
+        if (config.trashcan) {
+            trashcanRoomId = await client.resolveRoom(config.trashcan.roomAliasOrId);
+            const joinedRooms = await client.getJoinedRooms();
+            if (!joinedRooms.includes(trashcanRoomId)) {
+                await client.joinRoom(trashcanRoomId);
+            }
+        }
+
+        await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
+        return new Mjolnir(client, protectedRooms, banLists, trashcanRoomId);
     }
 
     constructor(
         public readonly client: MatrixClient,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
+        trashcanRoomId?: string,
     ) {
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
 
@@ -222,6 +235,12 @@ export class Mjolnir {
         // Setup Web APIs
         console.log("Creating Web APIs");
         this.webapis = new WebAPIs(new ReportManager(this));
+
+        // Setup trashcan.
+        console.log("Creating Trashcan Manager");
+        if (trashcanRoomId) {
+            this.trashcanManager = new TrashManager(this, trashcanRoomId);
+        }
     }
 
     public get lists(): BanList[] {

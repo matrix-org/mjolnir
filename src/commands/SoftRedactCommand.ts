@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,10 +18,23 @@ import { Mjolnir } from "../Mjolnir";
 import { redactUserMessagesIn } from "../utils";
 import { Permalinks } from "matrix-bot-sdk";
 
-// !mjolnir redact <user ID> [room alias] [limit]
-export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const userId = parts[2];
-    let roomAlias: string|null = null;
+/*!
+ * "Soft redaction", aka "undoable redaction".
+ *
+ * 1. Instruct all clients to mark the message as hidden
+ *    pending moderation. Only moderators and the author
+ *    of the message may still see it.
+ * 2. Copy the message to the trashcan room.
+ * 3. In the trashcan room, moderators have the ability
+ *    to either restore the message or trash (i.e. redact)
+ *    it permanently.
+ */
+
+// !mjolnir hide <user ID> [room alias] [limit]
+export async function execSoftRedactCommand(roomId: string, instructionEvent: any, mjolnir: Mjolnir, parts: string[]) {
+    // This could either be an eventId or a userId.
+    const targetId = parts[2];
+    let roomAlias: string | null = null;
     let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later
     if (parts.length > 3 && isNaN(limit)) {
         roomAlias = await mjolnir.client.resolveRoom(parts[3]);
@@ -33,14 +46,14 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     // Make sure we always have a limit set
     if (isNaN(limit)) limit = 1000;
 
-    const processingReactionId = await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], 'In Progress');
+    const processingReactionId = await mjolnir.client.unstableApis.addReactionToEvent(roomId, instructionEvent['event_id'], 'In Progress');
 
     if (userId[0] !== '@') {
         // Assume it's a permalink
         const parsed = Permalinks.parseUrl(parts[2]);
         const targetRoomId = await mjolnir.client.resolveRoom(parsed.roomIdOrAlias);
         await mjolnir.client.redactEvent(targetRoomId, parsed.eventId);
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+        await mjolnir.client.unstableApis.addReactionToEvent(roomId, instructionEvent['event_id'], '✅');
         await mjolnir.client.redactEvent(roomId, processingReactionId, 'done processing command');
         return;
     }
@@ -48,6 +61,6 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     const targetRoomIds = roomAlias ? [roomAlias] : Object.keys(mjolnir.protectedRooms);
     await redactUserMessagesIn(mjolnir.client, userId, targetRoomIds, limit);
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, instructionEvent['event_id'], '✅');
     await mjolnir.client.redactEvent(roomId, processingReactionId, 'done processing');
 }
