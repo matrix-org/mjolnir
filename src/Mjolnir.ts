@@ -82,14 +82,14 @@ export class Mjolnir {
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
      * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
      */
-    private static addJoinOnInviteListener(client: MatrixClient, options) {
+    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options) {
         client.on("room.invite", async (roomId: string, inviteEvent: any) => {
             const membershipEvent = new MembershipEvent(inviteEvent);
 
             const reportInvite = async () => {
                 if (!options.recordIgnoredInvites) return; // Nothing to do
 
-                await client.sendMessage(options.managementRoom, {
+                await client.sendMessage(mjolnir.managementRoomId, {
                     msgtype: "m.text",
                     body: `${membershipEvent.sender} has invited me to ${roomId} but the config prevents me from accepting the invitation. `
                         + `If you would like this room protected, use "!mjolnir rooms add ${roomId}" so I can accept the invite.`,
@@ -101,7 +101,7 @@ export class Mjolnir {
             };
 
             if (options.autojoinOnlyIfManager) {
-                const managers = await client.getJoinedRoomMembers(options.managementRoom);
+                const managers = await client.getJoinedRoomMembers(mjolnir.managementRoomId);
                 if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             } else {
                 const groupMembers = await client.unstableApis.getGroupUsers(options.acceptInvitesFromGroup);
@@ -119,8 +119,6 @@ export class Mjolnir {
      * @returns A new Mjolnir instance that can be started without further setup.
      */
     static async setupMjolnirFromConfig(client: MatrixClient): Promise<Mjolnir> {
-        Mjolnir.addJoinOnInviteListener(client, config);
-
         const banLists: BanList[] = [];
         const protectedRooms: { [roomId: string]: string } = {};
         const joinedRooms = await client.getJoinedRooms();
@@ -142,17 +140,18 @@ export class Mjolnir {
         LogService.info("index", "Resolving management room...");
         const managementRoomId = await client.resolveRoom(config.managementRoom);
         if (!joinedRooms.includes(managementRoomId)) {
-            config.managementRoom = await client.joinRoom(config.managementRoom);
-        } else {
-            config.managementRoom = managementRoomId;
+            await client.joinRoom(config.managementRoom);
         }
         await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
-        return new Mjolnir(client, protectedRooms, banLists);
+        const mjolnir = new Mjolnir(client, managementRoomId, protectedRooms, banLists);
+        Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
+        return mjolnir;
     }
 
     constructor(
         public readonly client: MatrixClient,
+        public readonly managementRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
     ) {
@@ -167,7 +166,7 @@ export class Mjolnir {
         client.on("room.event", this.handleEvent.bind(this));
 
         client.on("room.message", async (roomId, event) => {
-            if (roomId !== config.managementRoom) return;
+            if (roomId !== this.managementRoomId) return;
             if (!event['content']) return;
 
             const content = event['content'];
@@ -356,7 +355,7 @@ export class Mjolnir {
     private async resyncJoinedRooms(withSync = true) {
         if (!config.protectAllJoinedRooms) return;
 
-        const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== config.managementRoom);
+        const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== this.managementRoomId);
         for (const roomId of this.protectedJoinedRoomIds) {
             delete this.protectedRooms[roomId];
         }
@@ -526,7 +525,7 @@ export class Mjolnir {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";
-            await this.client.sendMessage(config.managementRoom, {
+            await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -629,7 +628,7 @@ export class Mjolnir {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(config.managementRoom, {
+            await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -661,7 +660,7 @@ export class Mjolnir {
         if (!hadErrors) {
             const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(config.managementRoom, {
+            await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -672,7 +671,7 @@ export class Mjolnir {
 
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
-        if (roomId === config.managementRoom) {
+        if (roomId === this.managementRoomId) {
             if (event['type'] === 'm.room.message' && event['content'] && event['content']['body']) {
                 if (event['content']['body'] === "** Unable to decrypt: The sender's device has not sent us the keys for this message. **") {
                     // UISI
@@ -703,7 +702,7 @@ export class Mjolnir {
                     LogService.error("Mjolnir", "Error handling protection: " + protection.name);
                     LogService.error("Mjolnir", "Failed event: " + eventPermalink);
                     LogService.error("Mjolnir", extractRequestError(e));
-                    await this.client.sendNotice(config.managementRoom, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
+                    await this.client.sendNotice(this.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
                 }
             }
 
@@ -776,7 +775,7 @@ export class Mjolnir {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(config.managementRoom, message);
+        await this.client.sendMessage(this.managementRoomId, message);
         return true;
     }
 
@@ -814,7 +813,7 @@ export class Mjolnir {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(config.managementRoom, message);
+        await this.client.sendMessage(this.managementRoomId, message);
         return true;
     }
 
