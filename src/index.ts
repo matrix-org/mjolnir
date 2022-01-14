@@ -21,6 +21,7 @@ import {
     MatrixClient,
     PantalaimonClient,
     RichConsoleLogger,
+    RustSdkCryptoStorageProvider,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 import config from "./config";
@@ -44,13 +45,26 @@ if (config.health.healthz.enabled) {
 (async function () {
     const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
     const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
+    let cryptoStorage: RustSdkCryptoStorageProvider|undefined;
+
+    if (config.encryption.enabled && config.pantalaimon.use) {
+        throw Error('Cannot enable both pantalaimon and encryption at the same time. Remove one from the config.');
+    }
+
+    if (config.encryption.enabled) {
+        cryptoStorage = new RustSdkCryptoStorageProvider(storagePath);
+    }
 
     let client: MatrixClient;
     if (config.pantalaimon.use) {
         const pantalaimon = new PantalaimonClient(config.homeserverUrl, storage);
         client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
     } else {
-        client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
+        client = new MatrixClient(config.homeserverUrl, config.accessToken, storage, cryptoStorage);
+        if (config.encryption.enabled) {
+            const joinedRooms = await client.getJoinedRooms();
+            await client.crypto.prepare(joinedRooms);
+        }
     }
     patchMatrixClient();
     config.RUNTIME.client = client;
