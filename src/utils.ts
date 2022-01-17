@@ -325,3 +325,44 @@ export function patchMatrixClient() {
     //   errors.
     patchMatrixClientForConciseExceptions();
 }
+
+/**
+ * Shorten a string to a maximal number of characters and newlines.
+ *
+ * @param text The original text.
+ * @param maxLength The maximal length to return, in chars.
+ * @param maxNewlines The maximal number of lines to return.
+ * @returns The largest prefix of `text` with at most `maxLength` chars and `maxNewLines` lines.
+ */
+export function limitLength(text: string, maxLength: number, maxNewlines: number): string {
+    let originalLength = text.length
+    // Shorten text if it is too long.
+    if (text.length > maxLength) {
+        text = text.substring(0, maxLength);
+    }
+    // Shorten text if there are too many newlines.
+    // Note: This only looks for text newlines, not `<div>`, `<li>` or any other HTML box.
+    let index = -1;
+    let newLines = 0;
+    while (true) {
+        index = text.indexOf("\n", index);
+        if (index === -1) {
+            break;
+        }
+        index += 1;
+        newLines += 1;
+        if (newLines > maxNewlines) {
+            text = text.substring(0, index);
+            break;
+        }
+    };
+    if (text.length < originalLength) {
+        return `${text}... [total: ${originalLength} characters]`;
+    } else {
+        return text;
+    }
+}
+
+export function getHomeserver(userId: string): string {
+    return new UserID(userId).domain
+}
