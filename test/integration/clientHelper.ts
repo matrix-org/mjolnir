@@ -1,7 +1,7 @@
 import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
 import e from "express";
-import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient, RustSdkCryptoStorageProvider } from "matrix-bot-sdk";
 import config from "../../src/config";
 
 const REGISTRATION_ATTEMPTS = 10;
@@ -82,8 +82,13 @@ export async function registerNewTestUser(isAdmin: boolean, label: string = "") 
  */
 export async function newTestUser(isAdmin: boolean = false, label: string = ""): Promise<MatrixClient> {
     const username = await registerNewTestUser(isAdmin, label);
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    return await pantalaimon.createClientWithCredentials(username, username);
+    if (config.pantalaimon) {
+        const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+        return await pantalaimon.createClientWithCredentials(username, username);
+    } else {
+        const client = new MatrixClient(config.homeserverUrl, config.accessToken, new MemoryStorageProvider(), new RustSdkCryptoStorageProvider(config.dataPath));
+        client.crypto.prepare(await client.getJoinedRooms());
+    }
 }
 
 /**

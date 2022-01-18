@@ -19,7 +19,8 @@ import {
     MemoryStorageProvider,
     LogService,
     LogLevel,
-    RichConsoleLogger
+    RichConsoleLogger,
+    RustSdkCryptoStorageProvider
 } from "matrix-bot-sdk";
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
@@ -80,8 +81,14 @@ export async function makeMjolnir(): Promise<Mjolnir> {
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    let client: MatrixClient;
+    if (config.pantalaimon) {
+        const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+        client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    } else {
+        client = new MatrixClient(config.homeserverUrl, config.accessToken, new MemoryStorageProvider(), new RustSdkCryptoStorageProvider(config.dataPath));
+        client.crypto.prepare(await client.getJoinedRooms());
+    }
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
     let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);
