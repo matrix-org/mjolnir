@@ -43,7 +43,7 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
 
     if (config.verboseLogging) {
         // We specifically use sendNotice to avoid having to escape HTML
-        await mjolnir.client.sendNotice(config.managementRoom, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
+        await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
     }
 
     const errors: RoomUpdateError[] = [];
