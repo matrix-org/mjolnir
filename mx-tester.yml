@@ -11,6 +11,7 @@ up:
 
 run:
   - yarn test:integration
+  - yarn test:integration:pan
 down:
   finally:
     - docker stop mjolnir-test-reverse-proxy || true

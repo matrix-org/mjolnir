@@ -13,6 +13,7 @@
     "start:dev": "yarn build && node --async-stack-traces lib/index.js",
     "test": "ts-mocha --project ./tsconfig.json test/commands/**/*.ts",
     "test:integration": "NODE_ENV=harness ts-mocha --async-stack-traces --require test/integration/fixtures.ts --project ./tsconfig.json \"test/integration/**/*Test.ts\"",
+    "test:integration:pan": "NODE_ENV=harness-pan ts-mocha --async-stack-traces --require test/integration/fixtures.ts --project ./tsconfig.json \"test/integration/**/*Test.ts\"",
     "test:manual": "NODE_ENV=harness ts-node test/integration/manualLaunchScript.ts"
   },
   "devDependencies": {
