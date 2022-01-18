@@ -39,5 +39,8 @@
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^0.5.19"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
