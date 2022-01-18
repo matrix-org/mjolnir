@@ -1,5 +1,6 @@
 import config from "../../src/config";
 import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
+import { teardownCryptoStores } from "./clientHelper";
 
 // When Mjolnir starts (src/index.ts) it clobbers the config by resolving the management room
 // alias specified in the config (config.managementRoom) and overwriting that with the room ID.
@@ -26,6 +27,7 @@ export const mochaHooks = {
             config.managementRoom = this.managementRoomAlias;
             // remove alias from management room and leave it.
             await teardownManagementRoom(this.mjolnir.client, managementRoomId, this.managementRoomAlias);
+            await teardownCryptoStores();
         }
-    ]
+    ],
 };

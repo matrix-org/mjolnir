@@ -22,10 +22,11 @@ import {
     RichConsoleLogger,
     RustSdkCryptoStorageProvider
 } from "matrix-bot-sdk";
-import { Mjolnir}  from '../../src/Mjolnir';
+import { Mjolnir }  from '../../src/Mjolnir';
 import config from "../../src/config";
-import { registerUser } from "./clientHelper";
+import { getTempCryptoStore, registerUser } from "./clientHelper";
 import { patchMatrixClient } from "../../src/utils";
+import { promises as fs } from "fs";
 
 /**
  * Ensures that a room exists with the alias, if it does not exist we create it.
@@ -51,13 +52,22 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 
 async function configureMjolnir() {
     try {
-        await registerUser('mjolnir', 'mjolnir', 'mjolnir', true)
+        const { access_token } = await registerUser('mjolnir', 'mjolnir', 'mjolnir', true);
+        return access_token;
     } catch (e) {
         if (e.isAxiosError) {
             console.log('Received error while registering', e.response.data || e.response);
             if (e.response.data && e.response.data.errcode === 'M_USER_IN_USE') {
                 console.log('mjolnir already registered, skipping');
-                return;
+                // Needed for encryption tests
+                return (await new MatrixClient(config.homeserverUrl, "").doRequest('POST', '/_matrix/client/r0/login', undefined, {
+                    "type": "m.login.password",
+                    "identifier": {
+                      "type": "m.id.user",
+                      "user": "mjolnir"
+                    },
+                    "password": "mjolnir"
+                })).access_token;
             }
         }
         throw e;
@@ -77,16 +87,16 @@ let globalMjolnir: Mjolnir | null;
  * Return a test instance of Mjolnir.
  */
 export async function makeMjolnir(): Promise<Mjolnir> {
-    await configureMjolnir();
+    const accessToken = await configureMjolnir();
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     let client: MatrixClient;
-    if (config.pantalaimon) {
+    if (config.pantalaimon.use) {
         const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
         client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
     } else {
-        client = new MatrixClient(config.homeserverUrl, config.accessToken, new MemoryStorageProvider(), new RustSdkCryptoStorageProvider(config.dataPath));
+        client = new MatrixClient(config.homeserverUrl, accessToken, new MemoryStorageProvider(), await getTempCryptoStore());
         client.crypto.prepare(await client.getJoinedRooms());
     }
     patchMatrixClient();

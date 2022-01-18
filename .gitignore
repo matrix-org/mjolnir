@@ -1,5 +1,6 @@
 config/*
 !config/default.yaml
+!config/harness-*.yaml
 lib/
 storage/
 venv/
