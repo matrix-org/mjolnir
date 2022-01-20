@@ -15,45 +15,44 @@ describe("Test: Protection settings", function() {
             ProtectionSettingValidationError
         );
     });
-    it('Mjolnir successfully saves valid protection setting values', async function() {
+    it("Mjolnir successfully saves valid protection setting values", async function() {
         this.timeout(20000);
-        await mjolnir().setProtectionSettings('BasicFloodingProtection', {'maxPerMinute': 123});
-        assert.equal(
-            await mjolnir().getProtectionSettings('BasicFloodProtection')['maxPerMinute'],
-            123
-        )
-    });
-    it('Mjolnir should accumulate changed settings', async function() {
-        this.timeout(20000);
-        PROTECTIONS['test'] = {
+
+        PROTECTIONS["test1"] = {
             description: "A test protection",
             factory: () => new class implements IProtection {
-                name = "test";
+                name = "test1";
                 async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
-                settings = {
-                    "test1": StringProtectionSetting(),
-                    "test2": StringProtectionSetting()
-                }
+                settings = { test: new NumberProtectionSetting(3) };
             }
-        }
+        };
 
-        await mjolnir().setProtectionSettings('test', {'test1': "asd1"});
-        await mjolnir().setProtectionSettings('test', {'test2': "asd2"});
+        await this.mjolnir.setProtectionSettings("test1", { test: 123 });
         assert.equal(
-            await mjolnir().getProtectionSettings('BasicFloodProtection'),
-            {"test1": "asd1", "test2": "asd2"}
+            (await this.mjolnir.getProtectionSettings("test1"))["test"],
+            123
         );
     });
-    it('Mjolnir validates number settings correctly', function() {
+    it("Mjolnir should accumulate changed settings", async function() {
         this.timeout(20000);
-        const numberSetting = new NumberProtectionSetting(123, 1, 999);
 
-        assert.equal(numberSetting.parse('321'), 321);
-        assert.equal(numberSetting.parse('1.2'), 1.2);
-        assert.equal(numberSetting.parse('a'), undefined);
+        PROTECTIONS["test2"] = {
+            description: "A test protection",
+            factory: () => new class implements IProtection {
+                name = "test2";
+                async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
+                settings = {
+                    test1: new NumberProtectionSetting(3),
+                    test2: new NumberProtectionSetting(4)
+                };
+            }
+        };
 
-        assert.equal(number.Setting.validate(123), true);
-        assert.equal(number.Setting.validate(1234), false);
+        await this.mjolnir.setProtectionSettings("test2", { test1: 1 });
+        await this.mjolnir.setProtectionSettings("test2", { test2: 2 });
+        const settings = await this.mjolnir.getProtectionSettings("test2");
+        //assert.equal(settings["test1"], 1);
+        assert.equal(settings["test2"], 2);
     });
 });
 
