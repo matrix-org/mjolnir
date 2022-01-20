@@ -8,10 +8,10 @@ import { newTestUser } from "./clientHelper";
 import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
 
 describe("Test: Protection settings", function() {
-    it('Mjolnir refuses to save invalid protection setting values', function() {
+    it("Mjolnir refuses to save invalid protection setting values", async function() {
         this.timeout(20000);
-        assert.throws(
-            async () => await mjolnir().setProtectionSettings('BasicFloodingProtection', {'maxPerMinute': 'soup'}),
+        await assert.rejects(
+            async () => await this.mjolnir.setProtectionSettings("BasicFloodingProtection", {"maxPerMinute": "soup"}),
             ProtectionSettingValidationError
         );
     });
