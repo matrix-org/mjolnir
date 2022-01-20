@@ -415,7 +415,7 @@ export class Mjolnir {
         let savedSettings: { [setting: string]: any } = {}
         try {
             savedSettings = await this.client.getRoomStateEvent(
-                config.managementRoom, 'org.matrix.mjolnir.setting', protectionName
+                this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
             )
         } catch {
             // setting does not exist, return empty object
@@ -463,7 +463,7 @@ export class Mjolnir {
         }
 
         await this.client.sendStateEvent(
-            config.managementRoom, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
+            this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
         );
     }
 
