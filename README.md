@@ -50,7 +50,7 @@ docker run --rm -it -v /etc/mjolnir:/data matrixdotorg/mjolnir:latest
 
 ## Build it (alternative installation)
 
-This bot requires `yarn` and Node 10.
+This bot requires `yarn` and Node 14.
 
 ```bash
 git clone https://github.com/matrix-org/mjolnir.git

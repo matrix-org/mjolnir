@@ -142,6 +142,11 @@ export class ReportManager {
         let initialNoticeReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
+            if (originalEvent.sender !== await this.mjolnir.client.getUserId()) {
+                // Let's not handle reactions to events we didn't send as
+                // some setups have two or more Mjolnir's in the same management room.
+                return;
+            }
             if (!("content" in originalEvent)) {
                 return;
             }

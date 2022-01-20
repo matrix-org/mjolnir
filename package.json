@@ -40,5 +40,8 @@
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^v0.6.0-beta.4"
+  },
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
