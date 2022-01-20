@@ -35,8 +35,9 @@ export async function logMessage(level: LogLevel, module: string, message: strin
         if (level === LogLevel.WARN) clientMessage = `⚠ | ${message}`;
         if (level === LogLevel.ERROR) clientMessage = `‼ | ${message}`;
 
-        const roomIds = [config.managementRoom, ...additionalRoomIds];
         const client = config.RUNTIME.client;
+        const managementRoomId = await client.resolveRoom(config.managementRoom);
+        const roomIds = [managementRoomId, ...additionalRoomIds];
 
         let evContent: TextualMessageEventContent = {
             body: message,
@@ -48,11 +49,7 @@ export async function logMessage(level: LogLevel, module: string, message: strin
             evContent = await replaceRoomIdsWithPills(client, clientMessage, roomIds, "m.notice");
         }
 
-        try {
-            await client.sendMessage(config.managementRoom, evContent);
-        } catch (ex) {
-            console.error("LogProxy", "Cannot log message", level, message, ex);
-        }
+        await client.sendMessage(managementRoomId, evContent);
     }
 
     levelToFn[level.toString()](module, message);

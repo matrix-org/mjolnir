@@ -1,7 +1,7 @@
 import { strict as assert } from "assert";
 
 import config from "../../src/config";
-import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
+import { matrixClient } from "./mjolnirSetupUtils";
 import { newTestUser } from "./clientHelper";
 import { ReportManager, ABUSE_ACTION_CONFIRMATION_KEY, ABUSE_REPORT_KEY } from "../../src/report/ReportManager";
 
@@ -26,7 +26,7 @@ describe("Test: Reporting abuse", async () => {
         // Listen for any notices that show up.
         let notices = [];
         matrixClient().on("room.event", (roomId, event) => {
-            if (roomId = config.managementRoom) {
+            if (roomId = this.mjolnir.managementRoomId) {
                 notices.push(event);
             }
         });
@@ -221,15 +221,15 @@ describe("Test: Reporting abuse", async () => {
         // Listen for any notices that show up.
         let notices = [];
         matrixClient().on("room.event", (roomId, event) => {
-            if (roomId = config.managementRoom) {
+            if (roomId = this.mjolnir.managementRoomId) {
                 notices.push(event);
             }
         });
 
         // Create a moderator.
         let moderatorUser = await newTestUser({ name: { contains: "reporting-abuse-moderator-user" }, isUnthrottled: true });
-        matrixClient().inviteUser(await moderatorUser.getUserId(), config.managementRoom);
-        await moderatorUser.joinRoom(config.managementRoom);
+        matrixClient().inviteUser(await moderatorUser.getUserId(), this.mjolnir.managementRoomId);
+        await moderatorUser.joinRoom(this.mjolnir.managementRoomId);
 
         // Create a few users and a room.
         let goodUser = await newTestUser({ name: { contains: "reacting-abuse-good-user" }, isUnthrottled: true });
@@ -312,7 +312,7 @@ describe("Test: Reporting abuse", async () => {
         for (let button of buttons) {
             if (button["content"]["m.relates_to"]["key"].includes("[redact-message]")) {
                 redactButtonId = button["event_id"];
-                await moderatorUser.sendEvent(config.managementRoom, "m.reaction", button["content"]);
+                await moderatorUser.sendEvent(this.mjolnir.managementRoomId, "m.reaction", button["content"]);
                 break;
             }
         }
@@ -339,7 +339,7 @@ describe("Test: Reporting abuse", async () => {
 
             // It's the confirm button, click it!
             confirmEventId = event["event_id"];
-            await moderatorUser.sendEvent(config.managementRoom, "m.reaction", event["content"]);
+            await moderatorUser.sendEvent(this.mjolnir.managementRoomId, "m.reaction", event["content"]);
             break;
         }
         assert.ok(confirmEventId, "We should have found the confirm button");

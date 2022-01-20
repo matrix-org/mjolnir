@@ -20,7 +20,7 @@ import { onReactionTo } from "./commandUtils";
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
         await moderator.setUserPowerLevel(mjolnirUserId, targetRoom, 100);
         await badUser.joinRoom(targetRoom);
-        moderator.sendMessage(config.managementRoom, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
+        moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
 
         LogService.debug("redactionTest", `targetRoom: ${targetRoom}, managementRoom: ${config.managementRoom}`);
         // Sandwich irrelevant messages in bad messages.
@@ -34,8 +34,8 @@ import { onReactionTo } from "./commandUtils";
 
         try {
             moderator.start();
-            await onReactionTo(moderator, config.managementRoom, '✅', async () => {
-                return await moderator.sendMessage(config.managementRoom, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
+            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+                return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
             });
         } finally {
             moderator.stop();
@@ -66,7 +66,7 @@ import { onReactionTo } from "./commandUtils";
             let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
             await moderator.setUserPowerLevel(mjolnirUserId, targetRoom, 100);
             await badUser.joinRoom(targetRoom);
-            await moderator.sendMessage(config.managementRoom, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
+            await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
             targetRooms.push(targetRoom);
 
             // Sandwich irrelevant messages in bad messages.
@@ -81,8 +81,8 @@ import { onReactionTo } from "./commandUtils";
 
         try {
             moderator.start();
-            await onReactionTo(moderator, config.managementRoom, '✅', async () => {
-                return await moderator.sendMessage(config.managementRoom, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId}` });
+            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+                return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId}` });
             });
         } finally {
             moderator.stop();
@@ -112,13 +112,13 @@ import { onReactionTo } from "./commandUtils";
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
         await moderator.setUserPowerLevel(mjolnirUserId, targetRoom, 100);
         await badUser.joinRoom(targetRoom);
-        moderator.sendMessage(config.managementRoom, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
+        moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
         let eventToRedact = await badUser.sendMessage(targetRoom, {msgtype: 'm.text', body: "Very Bad Stuff"});
 
         try {
             moderator.start();
-            await onReactionTo(moderator, config.managementRoom, '✅', async () => {
-                return await moderator.sendMessage(config.managementRoom, {msgtype: 'm.text', body: `!mjolnir redact https://matrix.to/#/${encodeURIComponent(targetRoom)}/${encodeURIComponent(eventToRedact)}`});
+            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+                return await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir redact https://matrix.to/#/${encodeURIComponent(targetRoom)}/${encodeURIComponent(eventToRedact)}`});
             });
         } finally {
             moderator.stop();
