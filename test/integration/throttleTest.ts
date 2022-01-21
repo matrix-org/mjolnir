@@ -17,3 +17,4 @@ describe("Test: throttled users can function with Mjolnir.", function () {
         assert.equal(messageCount, 150, "There should have been 150 messages in this room");
     })
 })
+
