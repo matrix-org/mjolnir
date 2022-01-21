@@ -58,12 +58,10 @@ export type RegistrationOptions = {
      */
     name: { exact: string } | { contains: string },
     /**
-     * If specified and true, remove throttling for this user.
+     * If specified and true, throttle this user.
      */
-    isUnthrottled?: boolean
+    isThrottled?: boolean
 }
-
-let globalAdminUser: MatrixClient;
 
 /**
  * Register a new test user.
@@ -71,19 +69,6 @@ let globalAdminUser: MatrixClient;
  * @returns A string that is both the username and password of a new user. 
  */
 async function registerNewTestUser(options: RegistrationOptions) {
-    // Initialize global admin user if needed.
-    if (!globalAdminUser) {
-        const USERNAME = "mjolnir-test-internal-admin-user";
-        try {
-            await registerUser(USERNAME, USERNAME, USERNAME, true);
-        } catch (e) {
-            if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
-                globalAdminUser = await new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
-            }
-            throw e;
-        }
-    }
-
     do {
         let username;
         if ("exact" in options.name) {
@@ -119,14 +104,45 @@ export async function newTestUser(options: RegistrationOptions): Promise<MatrixC
     const username = await registerNewTestUser(options);
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(username, username);
-    if (options.isUnthrottled) {
+    if (!options.isThrottled) {
         let userId = await client.getUserId();
-        await globalAdminUser.doRequest("POST", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null, {
-            "messages_per_second": 0,
-            "burst_count": 0
-        });
+        await overrideRatelimitForUser(userId);
     }
     return client;
+}
+
+let _globalAdminUser: MatrixClient;
+
+/**
+ * Get a client that can perform synapse admin API actions.
+ * @returns A client logged in with an admin user.
+ */
+async function getGlobalAdminUser(): Promise<MatrixClient> {
+    // Initialize global admin user if needed.
+    if (!_globalAdminUser) {
+        const USERNAME = "mjolnir-test-internal-admin-user";
+        try {
+            await registerUser(USERNAME, USERNAME, USERNAME, true);
+        } catch (e) {
+            if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
+                _globalAdminUser = await new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
+            } else {
+                throw e;
+            }
+        }
+    }
+    return _globalAdminUser;
+}
+
+/**
+ * Disable ratelimiting for this user in Synapse.
+ * @param userId The user to disable ratelimiting for, has to include both the server part and local part.
+ */
+export async function overrideRatelimitForUser(userId: string) {
+    await (await getGlobalAdminUser()).doRequest("POST", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null, {
+        "messages_per_second": 0,
+        "burst_count": 0
+    });
 }
 
 /**

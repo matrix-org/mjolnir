@@ -26,7 +26,7 @@ describe("Test: Updating the BanList", function () {
     it("Calculates what has changed correctly.", async function () {
         this.timeout(10000);
         const mjolnir = config.RUNTIME.client!
-        const moderator = await newTestUser({ name: { contains: "moderator" }, isUnthrottled: true });
+        const moderator = await newTestUser({ name: { contains: "moderator" }});
         const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
         const banList = new BanList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
@@ -117,7 +117,7 @@ describe("Test: Updating the BanList", function () {
     it("Will remove rules with old types when they are 'soft redacted' with a different but more recent event type.", async function () {
         this.timeout(3000);
         const mjolnir = config.RUNTIME.client!
-        const moderator = await newTestUser({ name: { contains: "moderator" }, isUnthrottled: true });
+        const moderator = await newTestUser({ name: { contains: "moderator" }});
         const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
         const banList = new BanList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
@@ -139,7 +139,7 @@ describe("Test: Updating the BanList", function () {
     it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function () {
         this.timeout(3000);
         const mjolnir = config.RUNTIME.client!
-        const moderator = await newTestUser({ name: { contains: "moderator" }, isUnthrottled: true });
+        const moderator = await newTestUser({ name: { contains: "moderator" }});
         const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
         const banList = new BanList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);

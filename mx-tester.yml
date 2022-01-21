@@ -20,3 +20,32 @@ homeserver:
   public_baseurl: http://localhost:9999
   registration_shared_secret: REGISTRATION_SHARED_SECRET
 
+  # We remove rc_message so we can test rate limiting,
+  # but we keep the others because of https://github.com/matrix-org/synapse/issues/11785
+  # and we don't want to slow integration tests down.
+  rc_registration:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_login:
+    address:
+      per_second: 10000
+      burst_count: 10000
+    account:
+      per_second: 10000
+      burst_count: 10000
+    failed_attempts:
+      per_second: 10000
+      burst_count: 10000
+
+  rc_admin_redaction:
+    per_second: 10000
+    burst_count: 10000
+
+  rc_joins:
+    local:
+      per_second: 10000
+      burst_count: 10000
+    remote:
+      per_second: 10000
+      burst_count: 10000

@@ -369,7 +369,7 @@ function patchMatrixClientForRetry() {
                             // Use default value.
                         }
                     }
-                    LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs}ms before retrying`);
+                    LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs}ms before retrying ${params.method} ${params.uri}`);
                     await new Promise(resolve => setTimeout(resolve, retryAfterMs));
                     attempt += 1;
                 }
