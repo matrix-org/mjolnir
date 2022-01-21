@@ -50,12 +50,12 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 
 async function configureMjolnir() {
     try {
-        await registerUser('mjolnir', 'mjolnir', 'mjolnir', true)
+        await registerUser(config.pantalaimon.username, config.pantalaimon.username, config.pantalaimon.password, true)
     } catch (e) {
         if (e.isAxiosError) {
             console.log('Received error while registering', e.response.data || e.response);
             if (e.response.data && e.response.data.errcode === 'M_USER_IN_USE') {
-                console.log('mjolnir already registered, skipping');
+                console.log(`${config.pantalaimon.username} already registered, skipping`);
                 return;
             }
         }

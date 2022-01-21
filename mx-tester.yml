@@ -1,5 +1,4 @@
 name: mjolnir
-
 up:
   before:
     # Launch the reverse proxy, listening for connections *only* on the local host.
@@ -19,6 +18,8 @@ homeserver:
   server_name: localhost:9999
   public_baseurl: http://localhost:9999
   registration_shared_secret: REGISTRATION_SHARED_SECRET
+  # Make manual testing easier
+  enable_registration: true
 
   # Getting rid of throttling.
   rc_message:
