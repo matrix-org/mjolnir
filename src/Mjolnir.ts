@@ -42,6 +42,7 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import * as htmlEscape from "escape-html";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
+import RuleServer from "./models/RuleServer";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -144,7 +145,8 @@ export class Mjolnir {
         }
         await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
-        const mjolnir = new Mjolnir(client, managementRoomId, protectedRooms, banLists);
+        const ruleServer = config.web.ruleServer ? new RuleServer() : null;
+        const mjolnir = new Mjolnir(client, managementRoomId, protectedRooms, banLists, ruleServer);
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
     }
@@ -154,6 +156,8 @@ export class Mjolnir {
         public readonly managementRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
+        // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
+        public readonly ruleServer: RuleServer|null,
     ) {
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
 
@@ -220,7 +224,7 @@ export class Mjolnir {
 
         // Setup Web APIs
         console.log("Creating Web APIs");
-        this.webapis = new WebAPIs(new ReportManager(this));
+        this.webapis = new WebAPIs(new ReportManager(this), this.ruleServer);
     }
 
     public get lists(): BanList[] {
@@ -431,6 +435,7 @@ export class Mjolnir {
         if (this.banLists.find(b => b.roomId === roomId)) return null;
 
         const list = new BanList(roomId, roomRef, this.client);
+        this.ruleServer?.watch(list);
         await list.updateList();
         this.banLists.push(list);
 
@@ -449,12 +454,14 @@ export class Mjolnir {
 
         const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
         const list = this.banLists.find(b => b.roomId === roomId) || null;
-        if (list) this.banLists.splice(this.banLists.indexOf(list), 1);
+        if (list) {
+            this.banLists.splice(this.banLists.indexOf(list), 1);
+            this.ruleServer?.unwatch(list);
+        }
 
         await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
             references: this.banLists.map(b => b.roomRef),
         });
-
         return list;
     }
 
@@ -508,6 +515,7 @@ export class Mjolnir {
             await this.warnAboutUnprotectedBanListRoom(roomId);
 
             const list = new BanList(roomId, roomRef, this.client);
+            this.ruleServer?.watch(list);
             await list.updateList();
             banLists.push(list);
         }

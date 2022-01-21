@@ -4,7 +4,7 @@ import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
 import { getMessagesByUserIn } from "../../../src/utils";
 import { LogService } from "matrix-bot-sdk";
-import { onReactionTo } from "./commandUtils";
+import { getFirstReaction } from "./commandUtils";
 
  describe("Test: The redaction command", function () {
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id and a room id.', async function() {
@@ -34,7 +34,7 @@ import { onReactionTo } from "./commandUtils";
 
         try {
             moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
             });
         } finally {
@@ -81,7 +81,7 @@ import { onReactionTo } from "./commandUtils";
 
         try {
             moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId}` });
             });
         } finally {
@@ -117,7 +117,7 @@ import { onReactionTo } from "./commandUtils";
 
         try {
             moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir redact https://matrix.to/#/${encodeURIComponent(targetRoom)}/${encodeURIComponent(eventToRedact)}`});
             });
         } finally {
