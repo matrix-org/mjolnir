@@ -125,11 +125,12 @@ async function getGlobalAdminUser(): Promise<MatrixClient> {
             await registerUser(USERNAME, USERNAME, USERNAME, true);
         } catch (e) {
             if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
-                _globalAdminUser = await new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
+                // Then we've already registered the user in a previous run and that is ok.
             } else {
                 throw e;
             }
         }
+        _globalAdminUser = await new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
     }
     return _globalAdminUser;
 }
