@@ -69,10 +69,10 @@ class ProtectionSetting<TChange, TValue> implements IProtectionSetting<TChange, 
     }
 }
 class ProtectionListSetting<TChange, TValue> extends ProtectionSetting<TChange, TValue> implements IProtectionListSetting<TChange, TValue> {
-    addValue(data: TChange) {
+    addValue(data: TChange): TValue {
         throw new Error("not Implemented");
     }
-    removeValue(data: TChange) {
+    removeValue(data: TChange): TValue {
         throw new Error("not Implemented");
     }
 }
@@ -86,12 +86,12 @@ export class StringListProtectionSetting extends ProtectionListSetting<string, s
     value: string[] = [];
     fromString = (data) => data;
     validate = (data) => true;
-    addValue(data: string) {
+    addValue(data: string): string[] {
         return [...this.value, data];
     }
-    removeValue(data: string) {
+    removeValue(data: string): string[] {
         const index = this.value.indexOf(data);
-        return this.value.splice(index, index+1);
+        return this.value.splice(index, index + 1);
     }
 }
 
