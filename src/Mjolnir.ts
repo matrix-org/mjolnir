@@ -448,7 +448,7 @@ export class Mjolnir {
      */
     public async setProtectionSettings(protectionName: string, changedSettings: { [setting: string]: any }): Promise<any> {
         const settingDefinitions = PROTECTIONS[protectionName].factory().settings;
-        const validatedSettings: { [setting: string]: any } = {};
+        const validatedSettings: { [setting: string]: any } = await this.getProtectionSettings(protectionName);
 
         for (let [key, value] of Object.entries(changedSettings)) {
             if (!(key in settingDefinitions)) {
