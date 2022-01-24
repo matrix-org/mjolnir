@@ -13,7 +13,7 @@ export const mochaHooks = {
             this.managementRoomAlias = config.managementRoom;
             this.mjolnir = await makeMjolnir();
             config.RUNTIME.client = this.mjolnir.client;
-            this.mjolnir.start();
+            await this.mjolnir.start();
             console.log("mochaHooks.beforeEach DONE");
         }
     ],
