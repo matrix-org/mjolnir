@@ -1,17 +1,24 @@
 import { strict as assert } from "assert";
 
 import { newTestUser } from "./clientHelper";
-import { getMessagesByUserIn } from "../../src/utils";
 import config from "../../src/config";
-import axios from "axios";
-import { LogService } from "matrix-bot-sdk";
+import { getRequestFn, LogService, MatrixClient } from "matrix-bot-sdk";
 import { createBanList, getFirstReaction } from "./commands/commandUtils";
 
 /**
  * Get a copy of the rules from the ruleserver.
  */
-async function currentRules() {
-    return await (await axios.get(`http://${config.web.address}:${config.web.port}/api/1/ruleserver/updates/`)).data
+async function currentRules(): Promise<{ start: object, stop: object, since: string }> {
+    return await new Promise((resolve, reject) => getRequestFn()({
+        uri: `http://${config.web.address}:${config.web.port}/api/1/ruleserver/updates/`,
+        method: "GET"
+    }, (error, response, body) => {
+        if (error) {
+            reject(error)
+        } else {
+            resolve(JSON.parse(body))
+        }
+    }));
 }
 
 /**
