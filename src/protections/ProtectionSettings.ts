@@ -46,11 +46,11 @@ export interface IProtectionListSetting<TChange, TValue> extends IProtectionSett
     /*
      *
      */
-    addValue(data: TChange): void;
+    addValue(data: TChange): TValue;
     /*
      *
      */
-    removeValue(data: TChange): void;
+    removeValue(data: TChange): TValue;
 }
 export function isListSetting(object: any): object is IProtectionListSetting<any, any> {
     return ("addValue" in object && "removeValue" in object);
@@ -87,10 +87,11 @@ export class StringListProtectionSetting extends ProtectionListSetting<string, s
     fromString = (data) => data;
     validate = (data) => true;
     addValue(data: string) {
-        this.value.push(data);
+        return [...this.value, data];
     }
     removeValue(data: string) {
-        this.value.splice(this.value.indexOf(data), 1);
+        const index = this.value.indexOf(data);
+        return this.value.splice(index, index+1);
     }
 }
 
