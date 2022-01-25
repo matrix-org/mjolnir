@@ -1,7 +1,7 @@
 import { strict as assert } from "assert";
 import { newTestUser, overrideRatelimitForUser, resetRatelimitForUser } from "./clientHelper";
 import { getMessagesByUserIn } from "../../src/utils";
-import { onReactionTo } from "./commands/commandUtils";
+import { getFirstReaction } from "./commands/commandUtils";
 
 describe("Test: throttled users can function with Mjolnir.", function () {
     it('throttled users survive being throttled by synapse', async function() {
@@ -51,7 +51,7 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
 
         try {
             moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
             });
         } finally {
