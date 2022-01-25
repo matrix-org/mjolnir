@@ -21,11 +21,9 @@ homeserver:
   # Make manual testing easier
   enable_registration: true
 
-  # Getting rid of throttling.
-  rc_message:
-    per_second: 10000
-    burst_count: 10000
-
+  # We remove rc_message so we can test rate limiting,
+  # but we keep the others because of https://github.com/matrix-org/synapse/issues/11785
+  # and we don't want to slow integration tests down.
   rc_registration:
     per_second: 10000
     burst_count: 10000

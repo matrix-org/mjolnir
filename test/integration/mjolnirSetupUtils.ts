@@ -23,7 +23,7 @@ import {
 } from "matrix-bot-sdk";
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
-import { registerUser } from "./clientHelper";
+import { overrideRatelimitForUser, registerUser } from "./clientHelper";
 import { patchMatrixClient } from "../../src/utils";
 
 /**
@@ -82,6 +82,7 @@ export async function makeMjolnir(): Promise<Mjolnir> {
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    await overrideRatelimitForUser(await client.getUserId());
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
     let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);
