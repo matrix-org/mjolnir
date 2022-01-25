@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { extractRequestError, LogService, MatrixClient } from "matrix-bot-sdk";
+import { EventEmitter } from "events";
 import { ListRule } from "./ListRule";
 
 export const RULE_USER = "m.policy.rule.user";
@@ -70,11 +71,16 @@ export interface ListRuleChange {
     readonly previousState?: any,
 }
 
+declare interface BanList {
+    on(event: 'BanList.update', listener: (list: BanList, changes: ListRuleChange[]) => void): this
+    emit(event: 'BanList.update', list: BanList, changes: ListRuleChange[]): boolean
+}
+
 /**
  * The BanList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
  * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
  */
-export default class BanList {
+class BanList extends EventEmitter {
     private shortcode: string|null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
@@ -86,6 +92,7 @@ export default class BanList {
      * @param client A matrix client that is used to read the state of the room when `updateList` is called.
      */
     constructor(public readonly roomId: string, public readonly roomRef, private client: MatrixClient) {
+        super();
     }
 
     /**
@@ -268,6 +275,9 @@ export default class BanList {
                 changes.push({rule, changeType, event, sender: event.sender, ... previousState ? {previousState} : {} });
             }
         }
+        this.emit('BanList.update', this, changes);
         return changes;
     }
 }
+
+export default BanList;

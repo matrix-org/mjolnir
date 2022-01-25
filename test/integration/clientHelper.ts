@@ -41,6 +41,7 @@ export async function registerUser(username: string, displayname: string, passwo
             throw ex;
         }
     }
+    throw new Error(`Retried registration ${REGISTRATION_ATTEMPTS} times, is Mjolnir or Synapse misconfigured?`);
 }
 
 export type RegistrationOptions = {
