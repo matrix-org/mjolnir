@@ -16,7 +16,7 @@ limitations under the License.
 
 export class ProtectionSettingValidationError extends Error {};
 
-export interface IProtectionSetting<TChange, TValue> {
+export class AbstractProtectionSetting<TChange, TValue> {
     // the current value of this setting
     value: TValue
 
@@ -26,7 +26,9 @@ export interface IProtectionSetting<TChange, TValue> {
      * @param data Serialised value
      * @returns Deserialised value or undefined if deserialisation failed
      */
-    fromString(data: string): TChange | undefined;
+    fromString(data: string): TChange | undefined {
+        throw new Error("not Implemented");
+    }
 
     /*
      * Check whether a given value is valid for this setting
@@ -34,53 +36,41 @@ export interface IProtectionSetting<TChange, TValue> {
      * @param data Setting value
      * @returns Validity of provided value
      */
-    validate(data: TChange): boolean;
+    validate(data: TChange): boolean {
+        throw new Error("not Implemented");
+    }
 
     /*
      * Store a value in this setting, only to be used after `validate()`
      * @param data Validated setting value
      */
-    setValue(data: TValue): void;
+    setValue(data: TValue) {
+        this.value = data;
+    }
 }
-export interface IProtectionListSetting<TChange, TValue> extends IProtectionSetting<TChange, TValue> {
+export class AbstractProtectionListSetting<TChange, TValue> extends AbstractProtectionSetting<TChange, TValue> {
     /*
      * Add `data` to the current setting value, and return that new object
      *
      * @param data Value to add to the current setting value
      * @returns The potential new value of this setting object
      */
-    addValue(data: TChange): TValue;
+    addValue(data: TChange): TValue {
+        throw new Error("not Implemented");
+    }
+
     /*
      * Remove `data` from the current setting value, and return that new object
      *
      * @param data Value to remove from the current setting value
      * @returns The potential new value of this setting object
      */
-    removeValue(data: TChange): TValue;
-}
-
-class AbstractProtectionSetting<TChange, TValue> implements IProtectionSetting<TChange, TValue> {
-    value: TValue
-    fromString(data: string): TChange | undefined {
-        throw new Error("not Implemented");
-    }
-    validate(data: TChange): boolean {
-        throw new Error("not Implemented");
-    }
-    setValue(data: TValue) {
-        this.value = data;
-    }
-}
-class AbstractProtectionListSetting<TChange, TValue> extends AbstractProtectionSetting<TChange, TValue> implements IProtectionListSetting<TChange, TValue> {
-    addValue(data: TChange): TValue {
-        throw new Error("not Implemented");
-    }
     removeValue(data: TChange): TValue {
         throw new Error("not Implemented");
     }
 }
-export function isListSetting(object: any): object is IProtectionListSetting<any, any> {
-    return ("addValue" in object && "removeValue" in object);
+export function isListSetting(object: any): object is AbstractProtectionListSetting<any, any> {
+    return object instanceof AbstractProtectionListSetting;
 }
 
 
