@@ -146,6 +146,15 @@ export async function overrideRatelimitForUser(userId: string) {
 }
 
 /**
+ * Put back the default ratelimiting for this user in Synapse.
+ * @param userId The user to use default ratelimiting for, has to include both the server part and local part.
+ */
+export async function resetRatelimitForUser(userId: string) {
+    await (await getGlobalAdminUser()).doRequest("DELETE", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null);
+}
+
+
+/**
  * Utility to create an event listener for m.notice msgtype m.room.messages.
  * @param targetRoomdId The roomId to listen into.
  * @param cb The callback when a m.notice event is found in targetRoomId.
