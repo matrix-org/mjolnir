@@ -40,7 +40,12 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
         await moderator.setUserPowerLevel(mjolnirUserId, targetRoom, 100);
         await badUser.joinRoom(targetRoom);
-        moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
+
+        // Give Mjolnir some work to do and some messages to sync through.
+        await Promise.all([...Array(100).keys()].map((i) => moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `Irrelevant Message #${i}`})));
+        await Promise.all([...Array(50).keys()].map(_ => moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: '!mjolnir status'})));
+
+        await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir rooms add ${targetRoom}`});
 
         await Promise.all([...Array(50).keys()].map((i) => badUser.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Bad Message #${i}`})));
 
