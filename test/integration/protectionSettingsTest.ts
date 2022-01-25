@@ -26,28 +26,28 @@ describe("Test: Protection settings", function() {
     it("Mjolnir successfully saves valid protection setting values", async function() {
         this.timeout(20000);
 
-        PROTECTIONS["test"] = {
+        PROTECTIONS["05OVMS"] = {
             description: "A test protection",
             factory: () => new class implements IProtection {
-                name = "test";
+                name = "05OVMS";
                 async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
                 settings = { test: new NumberProtectionSetting(3) };
             }
         };
 
-        await this.mjolnir.setProtectionSettings("test", { test: 123 });
+        await this.mjolnir.setProtectionSettings("05OVMS", { test: 123 });
         assert.equal(
-            (await this.mjolnir.getProtectionSettings("test"))["test"],
+            (await this.mjolnir.getProtectionSettings("05OVMS"))["test"],
             123
         );
     });
     it("Mjolnir should accumulate changed settings", async function() {
         this.timeout(20000);
 
-        PROTECTIONS["test"] = {
+        PROTECTIONS["HPUjKN"] = {
             description: "A test protection",
             factory: () => new class implements IProtection {
-                name = "test";
+                name = "HPUjKN";
                 async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
                 settings = {
                     test1: new NumberProtectionSetting(3),
@@ -56,20 +56,20 @@ describe("Test: Protection settings", function() {
             }
         };
 
-        await this.mjolnir.setProtectionSettings("test", { test1: 1 });
-        await this.mjolnir.setProtectionSettings("test", { test2: 2 });
-        const settings = await this.mjolnir.getProtectionSettings("test");
-        //assert.equal(settings["test1"], 1);
+        await this.mjolnir.setProtectionSettings("HPUjKN", { test1: 1 });
+        await this.mjolnir.setProtectionSettings("HPUjKN", { test2: 2 });
+        const settings = await this.mjolnir.getProtectionSettings("HPUjKN");
+        assert.equal(settings["test1"], 1);
         assert.equal(settings["test2"], 2);
     });
     it("Mjolnir responds to !set correctly", async function() {
         this.timeout(20000);
         await client.joinRoom(config.managementRoom);
 
-        PROTECTIONS["test"] = {
+        PROTECTIONS["JY2TPN"] = {
             description: "A test protection",
             factory: () => new class implements IProtection {
-                name = "test";
+                name = "JY2TPN";
                 async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
                 settings = { test: new StringProtectionSetting() };
             }
@@ -78,26 +78,26 @@ describe("Test: Protection settings", function() {
 
         let reply = new Promise((resolve, reject) => {
             client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
-                if (event.content.body.includes("Changed test.test ")) {
+                if (event.content.body.includes("Changed JY2TPN.test ")) {
                     resolve(event);
                 }
             }))
         });
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config set test.test asd"})
+        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config set JY2TPN.test asd"})
         await reply
 
-        const settings = await this.mjolnir.getProtectionSettings("test");
+        const settings = await this.mjolnir.getProtectionSettings("JY2TPN");
         assert.equal(settings["test"], "asd");
     });
     it("Mjolnir adds a value to a list setting", async function() {
         this.timeout(20000);
         await client.joinRoom(config.managementRoom);
 
-        PROTECTIONS["test"] = {
+        PROTECTIONS["r33XyT"] = {
             description: "A test protection",
             factory: () => new class implements IProtection {
-                name = "test";
+                name = "r33XyT";
                 async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
                 settings = { test: new StringListProtectionSetting() };
             }
@@ -106,25 +106,25 @@ describe("Test: Protection settings", function() {
 
         let reply = new Promise((resolve, reject) => {
             client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
-                if (event.content.body.includes("Changed test.test ")) {
+                if (event.content.body.includes("Changed r33XyT.test ")) {
                     resolve(event);
                 }
             }))
         });
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config add test.test asd"})
+        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config add r33XyT.test asd"})
         await reply
 
-        assert.deepEqual(await this.mjolnir.getProtectionSettings("test"), { "test": ["asd"] });
+        assert.deepEqual(await this.mjolnir.getProtectionSettings("r33XyT"), { "test": ["asd"] });
     });
     it("Mjolnir removes a value from a list setting", async function() {
         this.timeout(20000);
         await client.joinRoom(config.managementRoom);
 
-        PROTECTIONS["test"] = {
+        PROTECTIONS["oXzT0E"] = {
             description: "A test protection",
             factory: () => new class implements IProtection {
-                name = "test";
+                name = "oXzT0E";
                 async handleEvent(mjolnir: Mjolnir, roomId: string, event: any) {};
                 settings = { test: new StringListProtectionSetting() };
             }
@@ -134,7 +134,7 @@ describe("Test: Protection settings", function() {
         let reply = new Promise((resolve, reject) => {
             let i = 0;
             client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
-                if (event.content.body.includes("Changed test.test ")) {
+                if (event.content.body.includes("Changed oXzT0E.test ")) {
                     if (++i == 2) {
                         resolve(event);
                     }
@@ -142,11 +142,11 @@ describe("Test: Protection settings", function() {
             }))
         });
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config add test.test asd"})
-        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config remove test.test asd"})
+        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config add oXzT0E.test asd"})
+        await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config remove oXzT0E.test asd"})
         await reply
 
-        assert.deepEqual(await this.mjolnir.getProtectionSettings("test"), { "test": [] });
+        assert.deepEqual(await this.mjolnir.getProtectionSettings("oXzT0E"), { "test": [] });
     });
 });
 

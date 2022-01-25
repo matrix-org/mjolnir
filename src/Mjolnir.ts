@@ -403,7 +403,7 @@ export class Mjolnir {
     }
 
     /*
-     * Read org.matrix.mjolnir.setting state object, find any saved settings for
+     * Read org.matrix.mjolnir.setting state event, find any saved settings for
      * the requested protectionName, then iterate and validate against their parser
      * counterparts in IProtection.settings and return those which validate
      *
@@ -411,17 +411,17 @@ export class Mjolnir {
      * @returns Every saved setting for this protectionName that has a valid value
      */
     public async getProtectionSettings(protectionName: string): Promise<{ [setting: string]: any }> {
-        const settingDefinitions = PROTECTIONS[protectionName].factory().settings;
         let savedSettings: { [setting: string]: any } = {}
         try {
             savedSettings = await this.client.getRoomStateEvent(
                 this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
-            )
+            );
         } catch {
             // setting does not exist, return empty object
             return savedSettings;
         }
 
+        const settingDefinitions = PROTECTIONS[protectionName].factory().settings;
         const validatedSettings: { [setting: string]: any } = {}
         for (let [key, value] of Object.entries(savedSettings)) {
             if (
@@ -433,6 +433,12 @@ export class Mjolnir {
                     && settingDefinitions[key].validate(value)
             ) {
                 validatedSettings[key] = value;
+            } else {
+                await logMessage(
+                    LogLevel.WARN,
+                    "getProtectionSetting",
+                    `Tried to read ${protectionName}.${key} and got invalid value ${value}`
+                );
             }
         }
         return validatedSettings;
@@ -453,13 +459,14 @@ export class Mjolnir {
         for (let [key, value] of Object.entries(changedSettings)) {
             if (!(key in settingDefinitions)) {
                 throw new ProtectionSettingValidationError(`Failed to find protection setting by name: ${key}`);
-            } else if (typeof(settingDefinitions[key].value) !== typeof(value)) {
-                throw new ProtectionSettingValidationError(`Invalid type for protection setting: ${key} (${typeof(value)})`);
-            } else if (!settingDefinitions[key].validate(value)) {
-                throw new ProtectionSettingValidationError(`Invalid value for protection setting: ${key} (${value})`);
-            } else {
-                validatedSettings[key] = value;
             }
+            if (typeof(settingDefinitions[key].value) !== typeof(value)) {
+                throw new ProtectionSettingValidationError(`Invalid type for protection setting: ${key} (${typeof(value)})`);
+            }
+            if (!settingDefinitions[key].validate(value)) {
+                throw new ProtectionSettingValidationError(`Invalid value for protection setting: ${key} (${value})`);
+            }
+            validatedSettings[key] = value;
         }
 
         await this.client.sendStateEvent(

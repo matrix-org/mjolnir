@@ -41,16 +41,28 @@ enum ConfigAction {
     Remove
 }
 
+/*
+ * Process a given ConfigAction against a given protection setting
+ *
+ * @param mjolnir Current Mjolnir instance
+ * @param parts Arguments given to the command being processed
+ * @param action Which ConfigAction to do to the provided protection setting
+ * @returns Command success or failure message
+ */
 async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], action: ConfigAction): Promise<string> {
     const [protectionName, ...settingParts] = parts[0].split(".");
     const protection = PROTECTIONS[protectionName];
-    if (protection === undefined) return `Unknown protection ${protectionName}`;
+    if (protection === undefined) {
+        return `Unknown protection ${protectionName}`;
+    }
 
     const defaultSettings = protection.factory().settings
     const settingName = settingParts[0];
     const stringValue = parts[1];
 
-    if (!(settingName in defaultSettings)) return `Unknown setting ${settingName}`;
+    if (!(settingName in defaultSettings)) {
+        return `Unknown setting ${settingName}`;
+    }
 
     const parser = defaultSettings[settingName];
     // we don't need to validate `value`, because mjolnir.setProtectionSettings does
@@ -135,18 +147,20 @@ export async function execConfigRemoveProtection(roomId: string, event: any, mjo
  */
 export async function execConfigGetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     let pickProtections = Object.keys(PROTECTIONS);
-    // this means the output is sorted by protection name
-    pickProtections.sort();
 
     if (parts.length < 3) {
-        // no specific protectionName provided, show all of them
-    } else if (!pickProtections.includes(parts[0])) {
-        const errMsg = `Unknown protection: ${parts[0]}`;
-        const errReply = RichReply.createFor(roomId, event, errMsg, errMsg);
-        errReply["msgtype"] = "m.notice";
-        await mjolnir.client.sendMessage(roomId, errReply);
-        return;
+        // no specific protectionName provided, show all of them.
+
+        // sort output by protection name
+        pickProtections.sort();
     } else {
+        if (!pickProtections.includes(parts[0])) {
+            const errMsg = `Unknown protection: ${parts[0]}`;
+            const errReply = RichReply.createFor(roomId, event, errMsg, errMsg);
+            errReply["msgtype"] = "m.notice";
+            await mjolnir.client.sendMessage(roomId, errReply);
+            return;
+        }
         pickProtections = [parts[0]];
     }
 
@@ -175,6 +189,9 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
                 value = savedSettings[settingName]
 
             text += `* ${protectionName}.${settingName}: ${value}`;
+            // `protectionName` and `settingName` are user-provided but
+            // validated against the names of existing protections and their
+            // settings, so XSS is avoided for these already
             html += `<li><code>${protectionName}.${settingName}</code>: <code>${htmlEscape(value)}</code></li>`
         }
     }

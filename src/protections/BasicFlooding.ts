@@ -21,7 +21,8 @@ import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 
-export const MAX_PER_MINUTE = 10; // if this is exceeded, we'll ban the user for spam and redact their messages
+// if this is exceeded, we'll ban the user for spam and redact their messages
+export const DEFAULT_MAX_PER_MINUTE = 10;
 const TIMESTAMP_THRESHOLD = 30000; // 30s out of phase
 
 export class BasicFlooding implements IProtection {
@@ -29,7 +30,7 @@ export class BasicFlooding implements IProtection {
     private lastEvents: { [roomId: string]: { [userId: string]: { originServerTs: number, eventId: string }[] } } = {};
     private recentlyBanned: string[] = [];
 
-    maxPerMinute = new NumberProtectionSetting(MAX_PER_MINUTE);
+    maxPerMinute = new NumberProtectionSetting(DEFAULT_MAX_PER_MINUTE);
     settings = {};
 
     constructor() {

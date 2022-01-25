@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Matrix.org Foundation C.I.C.
+Copyright 2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,19 +44,22 @@ export interface IProtectionSetting<TChange, TValue> {
 }
 export interface IProtectionListSetting<TChange, TValue> extends IProtectionSetting<TChange, TValue> {
     /*
+     * Add `data` to the current setting value, and return that new object
      *
+     * @param data Value to add to the current setting value
+     * @returns The potential new value of this setting object
      */
     addValue(data: TChange): TValue;
     /*
+     * Remove `data` from the current setting value, and return that new object
      *
+     * @param data Value to remove from the current setting value
+     * @returns The potential new value of this setting object
      */
     removeValue(data: TChange): TValue;
 }
-export function isListSetting(object: any): object is IProtectionListSetting<any, any> {
-    return ("addValue" in object && "removeValue" in object);
-}
 
-class ProtectionSetting<TChange, TValue> implements IProtectionSetting<TChange, TValue> {
+class AbstractProtectionSetting<TChange, TValue> implements IProtectionSetting<TChange, TValue> {
     value: TValue
     fromString(data: string): TChange | undefined {
         throw new Error("not Implemented");
@@ -68,7 +71,7 @@ class ProtectionSetting<TChange, TValue> implements IProtectionSetting<TChange, 
         this.value = data;
     }
 }
-class ProtectionListSetting<TChange, TValue> extends ProtectionSetting<TChange, TValue> implements IProtectionListSetting<TChange, TValue> {
+class AbstractProtectionListSetting<TChange, TValue> extends AbstractProtectionSetting<TChange, TValue> implements IProtectionListSetting<TChange, TValue> {
     addValue(data: TChange): TValue {
         throw new Error("not Implemented");
     }
@@ -76,13 +79,17 @@ class ProtectionListSetting<TChange, TValue> extends ProtectionSetting<TChange, 
         throw new Error("not Implemented");
     }
 }
+export function isListSetting(object: any): object is IProtectionListSetting<any, any> {
+    return ("addValue" in object && "removeValue" in object);
+}
 
-export class StringProtectionSetting extends ProtectionSetting<string, string> {
+
+export class StringProtectionSetting extends AbstractProtectionSetting<string, string> {
     value = "";
     fromString = (data) => data;
     validate = (data) => true;
 }
-export class StringListProtectionSetting extends ProtectionListSetting<string, string[]> {
+export class StringListProtectionSetting extends AbstractProtectionListSetting<string, string[]> {
     value: string[] = [];
     fromString = (data) => data;
     validate = (data) => true;
@@ -95,7 +102,7 @@ export class StringListProtectionSetting extends ProtectionListSetting<string, s
     }
 }
 
-export class NumberProtectionSetting extends ProtectionSetting<number, number> {
+export class NumberProtectionSetting extends AbstractProtectionSetting<number, number> {
     min: number|undefined;
     max: number|undefined;
 
