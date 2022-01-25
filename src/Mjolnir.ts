@@ -36,6 +36,7 @@ import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
+import { ProtectionSettingValidationError } from "./protections/ProtectionSettings";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
@@ -401,12 +402,90 @@ export class Mjolnir {
         }
     }
 
+    /*
+     * Read org.matrix.mjolnir.setting state event, find any saved settings for
+     * the requested protectionName, then iterate and validate against their parser
+     * counterparts in IProtection.settings and return those which validate
+     *
+     * @param protectionName The name of the protection whose settings we're reading
+     * @returns Every saved setting for this protectionName that has a valid value
+     */
+    public async getProtectionSettings(protectionName: string): Promise<{ [setting: string]: any }> {
+        let savedSettings: { [setting: string]: any } = {}
+        try {
+            savedSettings = await this.client.getRoomStateEvent(
+                this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
+            );
+        } catch {
+            // setting does not exist, return empty object
+            return savedSettings;
+        }
+
+        const settingDefinitions = PROTECTIONS[protectionName].factory().settings;
+        const validatedSettings: { [setting: string]: any } = {}
+        for (let [key, value] of Object.entries(savedSettings)) {
+            if (
+                    // is this a setting name with a known parser?
+                    key in settingDefinitions
+                    // is the datatype of this setting's value what we expect?
+                    && typeof(settingDefinitions[key].value) === typeof(value)
+                    // is this setting's value valid for the setting?
+                    && settingDefinitions[key].validate(value)
+            ) {
+                validatedSettings[key] = value;
+            } else {
+                await logMessage(
+                    LogLevel.WARN,
+                    "getProtectionSetting",
+                    `Tried to read ${protectionName}.${key} and got invalid value ${value}`
+                );
+            }
+        }
+        return validatedSettings;
+    }
+
+    /*
+     * Takes an object of settings we want to change and what their values should be,
+     * check that their values are valid, combine them with current saved settings,
+     * then save the amalgamation to a state event
+     *
+     * @param protectionName Which protection these settings belong to
+     * @param changedSettings The settings to change and their values
+     */
+    public async setProtectionSettings(protectionName: string, changedSettings: { [setting: string]: any }): Promise<any> {
+        const settingDefinitions = PROTECTIONS[protectionName].factory().settings;
+        const validatedSettings: { [setting: string]: any } = await this.getProtectionSettings(protectionName);
+
+        for (let [key, value] of Object.entries(changedSettings)) {
+            if (!(key in settingDefinitions)) {
+                throw new ProtectionSettingValidationError(`Failed to find protection setting by name: ${key}`);
+            }
+            if (typeof(settingDefinitions[key].value) !== typeof(value)) {
+                throw new ProtectionSettingValidationError(`Invalid type for protection setting: ${key} (${typeof(value)})`);
+            }
+            if (!settingDefinitions[key].validate(value)) {
+                throw new ProtectionSettingValidationError(`Invalid value for protection setting: ${key} (${value})`);
+            }
+            validatedSettings[key] = value;
+        }
+
+        await this.client.sendStateEvent(
+            this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
+        );
+    }
+
     public async enableProtection(protectionName: string, persist = true): Promise<any> {
         const definition = PROTECTIONS[protectionName];
         if (!definition) throw new Error("Failed to find protection by name: " + protectionName);
 
         const protection = definition.factory();
         this.protections.push(protection);
+
+        const savedSettings = await this.getProtectionSettings(protectionName);
+        for (let [key, value] of Object.entries(savedSettings)) {
+            // this.getProtectionSettings() validates this data for us, so we don't need to
+            protection.settings[key].setValue(value);
+        }
 
         if (persist) {
             const existing = this.protections.map(p => p.name);
