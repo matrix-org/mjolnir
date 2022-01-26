@@ -22,8 +22,6 @@ import config from "../config";
 
 export class MessageIsMedia implements IProtection {
 
-    settings = {};
-
     constructor() {
     }
 
