@@ -7,6 +7,9 @@ import { LogService } from "matrix-bot-sdk";
 import { getFirstReaction } from "./commandUtils";
 
  describe("Test: The redaction command", function () {
+    // If a test has a timeout while awaitng on a promise then we never get given control back.
+    afterEach(function() { this.moderator?.stop(); });
+
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id and a room id.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
@@ -51,6 +54,7 @@ import { getFirstReaction } from "./commandUtils";
             })
         });
     })
+
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id in multiple rooms.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
