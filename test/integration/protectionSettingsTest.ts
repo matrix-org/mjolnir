@@ -1,6 +1,8 @@
 import { strict as assert } from "assert";
 
 import config from "../../src/config";
+import { Mjolnir } from "../../src/Mjolnir";
+import { IProtection } from "../../src/protections/IProtection";
 import { PROTECTIONS } from "../../src/protections/protections";
 import { ProtectionSettingValidationError } from "../../src/protections/ProtectionSettings";
 import { NumberProtectionSetting, StringProtectionSetting, StringListProtectionSetting } from "../../src/protections/ProtectionSettings";
@@ -10,7 +12,7 @@ import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
 describe("Test: Protection settings", function() {
     let client;
     this.beforeEach(async function () {
-        client = await newTestUser(true);
+        client = await newTestUser({ name: { contains: "protection-settings" }});
         await client.start();
     })
     this.afterEach(async function () {

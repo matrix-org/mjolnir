@@ -50,7 +50,7 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
         await Promise.all([...Array(50).keys()].map((i) => badUser.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Bad Message #${i}`})));
 
         try {
-            moderator.start();
+            await moderator.start();
             await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
             });

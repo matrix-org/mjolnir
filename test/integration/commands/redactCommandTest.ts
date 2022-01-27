@@ -33,7 +33,7 @@ import { getFirstReaction } from "./commandUtils";
         await badUser.sendMessage(targetRoom, {msgtype: 'm.text', body: "Very Bad Stuff"});
 
         try {
-            moderator.start();
+            await moderator.start();
             await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
             });
@@ -80,7 +80,7 @@ import { getFirstReaction } from "./commandUtils";
         }
 
         try {
-            moderator.start();
+            await moderator.start();
             await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId}` });
             });
@@ -116,7 +116,7 @@ import { getFirstReaction } from "./commandUtils";
         let eventToRedact = await badUser.sendMessage(targetRoom, {msgtype: 'm.text', body: "Very Bad Stuff"});
 
         try {
-            moderator.start();
+            await moderator.start();
             await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir redact https://matrix.to/#/${encodeURIComponent(targetRoom)}/${encodeURIComponent(eventToRedact)}`});
             });

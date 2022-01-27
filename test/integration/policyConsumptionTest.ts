@@ -1,17 +1,24 @@
 import { strict as assert } from "assert";
 
 import { newTestUser } from "./clientHelper";
-import { getMessagesByUserIn } from "../../src/utils";
 import config from "../../src/config";
-import axios from "axios";
-import { LogService } from "matrix-bot-sdk";
+import { getRequestFn, LogService, MatrixClient } from "matrix-bot-sdk";
 import { createBanList, getFirstReaction } from "./commands/commandUtils";
 
 /**
  * Get a copy of the rules from the ruleserver.
  */
-async function currentRules() {
-    return await (await axios.get(`http://${config.web.address}:${config.web.port}/api/1/ruleserver/updates/`)).data
+async function currentRules(): Promise<{ start: object, stop: object, since: string }> {
+    return await new Promise((resolve, reject) => getRequestFn()({
+        uri: `http://${config.web.address}:${config.web.port}/api/1/ruleserver/updates/`,
+        method: "GET"
+    }, (error, response, body) => {
+        if (error) {
+            reject(error)
+        } else {
+            resolve(JSON.parse(body))
+        }
+    }));
 }
 
 /**
@@ -63,11 +70,11 @@ describe("Test: that policy lists are consumed by the associated synapse module"
     it('blocks users in antispam when they are banned from sending messages and invites serverwide.', async function() {
         this.timeout(20000);
         // Create a few users and a room.
-        let badUser = await newTestUser(false, "spammer");
+        let badUser = await newTestUser({ name: { contains: "spammer" }});
         let badUserId = await badUser.getUserId();
         const mjolnir = config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser(false, "moderator");
+        let moderator = await newTestUser({ name: { contains: "moderator" }});
         this.moderator = moderator;
         await moderator.joinRoom(this.mjolnir.managementRoomId);
         let unprotectedRoom = await badUser.createRoom({ invite: [await moderator.getUserId()]});
@@ -98,9 +105,9 @@ describe("Test: that policy lists are consumed by the associated synapse module"
     })
     it('Test: Cannot send message to a room that is listed in a policy list and cannot invite a user to the room either', async function () {
         this.timeout(20000);
-        let badUser = await newTestUser(false, "spammer");
+        let badUser = await newTestUser({ name: { contains: "spammer" }});
         const mjolnir = config.RUNTIME.client!
-        let moderator = await newTestUser(false, "moderator");
+        let moderator = await newTestUser({ name: { contains: "moderator" }});
         await moderator.joinRoom(this.mjolnir.managementRoomId);
         const banList = await createBanList(this.mjolnir.managementRoomId, mjolnir, moderator);
         let badRoom = await badUser.createRoom();
@@ -128,7 +135,7 @@ describe("Test: that policy lists are consumed by the associated synapse module"
     it('Test: When a list becomes unwatched, the associated policies are stopped.', async function () {
         this.timeout(20000);
         const mjolnir = config.RUNTIME.client!
-        let moderator = await newTestUser(false, "moderator");
+        let moderator = await newTestUser({ name: { contains: "moderator" }});
         await moderator.joinRoom(this.mjolnir.managementRoomId);
         const banList = await createBanList(this.mjolnir.managementRoomId, mjolnir, moderator);
         let targetRoom = await moderator.createRoom();

@@ -1,6 +1,5 @@
-import axios from "axios";
 import { HmacSHA1 } from "crypto-js";
-import { LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import { getRequestFn, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
 import config from "../../src/config";
 
 const REGISTRATION_ATTEMPTS = 10;
@@ -17,24 +16,38 @@ const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
  * @param admin True to make the user an admin, false otherwise.
  * @returns The response from synapse.
  */
-export async function registerUser(username: string, displayname: string, password: string, admin: boolean) {
-    const registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`;
+export async function registerUser(username: string, displayname: string, password: string, admin: boolean): Promise<void> {
+    let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
+    const data: {nonce: string} = await new Promise((resolve, reject) => {
+        getRequestFn()({uri: registerUrl, method: "GET", timeout: 60000}, (error, response, resBody) => {
+            error ? reject(error) : resolve(JSON.parse(resBody))
+        });
+    });
+    const nonce = data.nonce!;
+    let mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
     for (let i = 1; i <= REGISTRATION_ATTEMPTS; ++i) {
         try {
-            const { data: { nonce } } = await axios.get(registerUrl);
-            const mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
-            return await axios.post(registerUrl, {
-                nonce,
-                username,
-                displayname,
-                password,
-                admin,
-                mac: mac.toString()
+            const params = {
+                uri: registerUrl,
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    nonce,
+                    username,
+                    displayname,
+                    password,
+                    admin,
+                    mac: mac.toString()
+                }),
+                timeout: 60000
+            }
+            return await new Promise((resolve, reject) => {
+                getRequestFn()(params, error => error ? reject(error) : resolve());
             });
         } catch (ex) {
             // In case of timeout or throttling, backoff and retry.
             if (ex?.code === 'ESOCKETTIMEDOUT' || ex?.code === 'ETIMEDOUT'
-                || ex?.response?.data?.errcode === 'M_LIMIT_EXCEEDED') {
+                || ex?.body?.errcode === 'M_LIMIT_EXCEEDED') {
                 await new Promise(resolve => setTimeout(resolve, REGISTRATION_RETRY_BASE_DELAY_MS * i * i));
                 continue;
             }
@@ -80,7 +93,7 @@ async function registerNewTestUser(options: RegistrationOptions) {
             await registerUser(username, username, username, options.isAdmin);
             return username;
         } catch (e) {
-            if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
+            if (e?.body?.errcode === 'M_USER_IN_USE') {
                 if ("exact" in options.name) {
                     LogService.debug("test/clientHelper", `${username} already registered, reusing`);
                     return username;
