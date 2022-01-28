@@ -23,7 +23,7 @@ import * as crypto from "crypto";
         const targetEventId = await targetEventThunk();
         for (let event of reactionEvents) {
             const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
-            if (in_reply_to.event_id === targetEventId) {
+            if (in_reply_to?.event_id === targetEventId) {
                 return event;
             }
         }
@@ -70,7 +70,7 @@ export async function getFirstReaction(client: MatrixClient, targetRoom: string,
         const targetEventId = await targetEventThunk();
         for (let event of reactionEvents) {
             const relates_to = event.content['m.relates_to'];
-            if (relates_to.event_id === targetEventId && relates_to.key === reactionKey) {
+            if (relates_to?.event_id === targetEventId && relates_to?.key === reactionKey) {
                 return event;
             }
         }
@@ -79,7 +79,7 @@ export async function getFirstReaction(client: MatrixClient, targetRoom: string,
                 if (roomId !== targetRoom) return;
                 if (event.type !== 'm.reaction') return;
                 const relates_to = event.content['m.relates_to'];
-                if (relates_to.event_id === targetEventId && relates_to.key === reactionKey) {
+                if (relates_to?.event_id === targetEventId && relates_to?.key === reactionKey) {
                     resolve(event)
                 }
             }
