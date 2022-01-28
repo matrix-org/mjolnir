@@ -24,6 +24,9 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
         await resetRatelimitForUser(await this.mjolnir.client.getUserId())
     })
     afterEach(async function() {
+        // If a test has a timeout while awaitng on a promise then we never get given control back.
+        this.moderator?.stop();
+
         await overrideRatelimitForUser(await this.mjolnir.client.getUserId());
     })
 

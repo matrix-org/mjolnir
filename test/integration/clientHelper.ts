@@ -90,7 +90,7 @@ async function registerNewTestUser(options: RegistrationOptions) {
             username = `mjolnir-test-user-${options.name.contains}${Math.floor(Math.random() * 100000)}`
         }
         try {
-            await registerUser(username, username, username, options.isAdmin);
+            await registerUser(username, username, username, Boolean(options.isAdmin));
             return username;
         } catch (e) {
             if (e?.body?.errcode === 'M_USER_IN_USE') {
