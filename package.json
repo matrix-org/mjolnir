@@ -16,6 +16,7 @@
     "test:manual": "NODE_ENV=harness ts-node test/integration/manualLaunchScript.ts"
   },
   "devDependencies": {
+    "@types/config": "0.0.41",
     "@types/crypto-js": "^4.0.2",
     "@types/jsdom": "^16.2.11",
     "@types/mocha": "^9.0.0",

@@ -235,9 +235,9 @@ export class ReportManager {
                     "m.relationship": {
                         "rel_type": "m.reference",
                         "event_id": relation.event_id,
-                    }
+                    },
+                    [ABUSE_ACTION_CONFIRMATION_KEY]: confirmationReport
                 };
-                confirmation[ABUSE_ACTION_CONFIRMATION_KEY] = confirmationReport;
 
                 let requestConfirmationEventId = await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, confirmation);
                 await this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
@@ -693,35 +693,41 @@ class DisplayManager {
             // Ignore.
         }
 
-        let eventContent;
+        enum OutType {
+            msg, text, html
+        }
+
+        let eventContent: [OutType, string];
         try {
             if (event["type"] === "m.room.encrypted") {
-                eventContent = { msg: "<encrypted content>" };
+                eventContent = [OutType.msg, "<encrypted content>"];
             } else if ("content" in event) {
                 const MAX_EVENT_CONTENT_LENGTH = 2048;
                 const MAX_NEWLINES = 64;
                 if ("formatted_body" in event.content) {
-                    eventContent = { html: this.limitLength(event.content.formatted_body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
+                    eventContent = [OutType.html, this.limitLength(event.content.formatted_body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES)];
                 } else if ("body" in event.content) {
-                    eventContent = { text: this.limitLength(event.content.body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
+                    eventContent = [OutType.text, this.limitLength(event.content.body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES)];
                 } else {
-                    eventContent = { text: this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
+                    eventContent = [OutType.text, this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES)];
                 }
+            } else {
+                eventContent = [OutType.msg, "Malformed event, cannot read content."];
             }
         } catch (ex) {
-            eventContent = { msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.` };
+            eventContent = [OutType.msg, `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.`];
         }
 
         let accusedId = event["sender"];
 
         let reporterDisplayName: string, accusedDisplayName: string;
         try {
-            reporterDisplayName = await this.owner.mjolnir.client.getUserProfile(reporterId)["displayname"] || reporterId;
+            reporterDisplayName = (await this.owner.mjolnir.client.getUserProfile(reporterId))["displayname"] || reporterId;
         } catch (ex) {
             reporterDisplayName = "<Error: Cannot extract reporter display name>";
         }
         try {
-            accusedDisplayName = await this.owner.mjolnir.client.getUserProfile(accusedId)["displayname"] || accusedId;
+            accusedDisplayName = (await this.owner.mjolnir.client.getUserProfile(accusedId))["displayname"] || accusedId;
         } catch (ex) {
             accusedDisplayName = "<Error: Cannot extract accused display name>";
         }
@@ -832,17 +838,18 @@ class DisplayManager {
         }
 
         // ...insert HTML content
-        for (let [key, value] of [
-            ['event-content', eventContent],
+        for (let {key, value} of [
+            { key: 'event-content', value: eventContent },
         ]) {
             let node = document.getElementById(key);
             if (node) {
-                if ("msg" in value) {
-                    node.textContent = value.msg;
-                } else if ("text" in value) {
-                    node.textContent = value.text;
-                } else if ("html" in value) {
-                    node.innerHTML = value.html;
+                let [outType, out]: [OutType, string] = value;
+                if (outType === OutType.msg) {
+                    node.textContent = out;
+                } else if (outType === OutType.text) {
+                    node.textContent = out;
+                } else if (outType === OutType.html) {
+                    node.innerHTML = out;
                 }
             }
         }
@@ -868,8 +875,8 @@ class DisplayManager {
             body: htmlToText(document.body.outerHTML, { wordwrap: false }),
             format: "org.matrix.custom.html",
             formatted_body: document.body.outerHTML,
+            [ABUSE_REPORT_KEY]: report
         };
-        notice[ABUSE_REPORT_KEY] = report;
 
         let noticeEventId = await this.owner.mjolnir.client.sendMessage(this.owner.mjolnir.managementRoomId, notice);
         if (kind !== Kind.ERROR) {

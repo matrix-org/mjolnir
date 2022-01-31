@@ -91,7 +91,7 @@ class BanList extends EventEmitter {
      * @param roomRef A sharable/clickable matrix URL that refers to the room.
      * @param client A matrix client that is used to read the state of the room when `updateList` is called.
      */
-    constructor(public readonly roomId: string, public readonly roomRef, private client: MatrixClient) {
+    constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
         super();
     }
 
