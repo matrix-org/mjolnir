@@ -76,7 +76,7 @@ interface IConfig {
         abuseReporting: {
             enabled: boolean;
         }
-        ruleServer: {
+        ruleServer?: {
             enabled: boolean;
         }
     }
