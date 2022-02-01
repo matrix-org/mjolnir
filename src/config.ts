@@ -152,4 +152,11 @@ const defaultConfig: IConfig = {
 };
 
 const finalConfig = <IConfig>Object.assign({}, defaultConfig, config);
+// Map the provided config onto the default for any sub config, so that no properties are missing
+// if they are not explicitly provided. It's problematic not to if we want to keep
+// experimental features unreleased https://github.com/matrix-org/mjolnir/issues/206.
+finalConfig.web = Object.assign({}, defaultConfig.web, config.web);
+finalConfig.protections = Object.assign({}, defaultConfig.protections, config.protections);
+finalConfig.commands = Object.assign({}, defaultConfig.commands, config.commands);
+finalConfig.pantalaimon = Object.assign({}, defaultConfig.pantalaimon, config.pantalaimon);
 export default finalConfig;
