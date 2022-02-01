@@ -62,7 +62,7 @@ export class WebAPIs {
         // Configure ruleServer API.
         // FIXME: Doesn't this need some kind of access control?
         // See https://github.com/matrix-org/mjolnir/issues/139#issuecomment-1012221479.
-        if (config.web.ruleServer.enabled) {
+        if (config.web.ruleServer?.enabled) {
             const updatesUrl = `${API_PREFIX}/ruleserver/updates`;
             LogService.info("WebAPIs", `Configuring ${updatesUrl}...`);
             if (!this.ruleServer) {
