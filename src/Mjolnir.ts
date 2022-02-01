@@ -40,7 +40,7 @@ import { ProtectionSettingValidationError } from "./protections/ProtectionSettin
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
 import RuleServer from "./models/RuleServer";
@@ -851,7 +851,7 @@ export class Mjolnir {
             } else if (ruleKind === RULE_ROOM) {
                 ruleKind = 'room';
             }
-            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation)}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
+            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation ?? "")}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* ${change.changeType} ${ruleKind} (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
         }
 

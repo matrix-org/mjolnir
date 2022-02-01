@@ -17,7 +17,7 @@ limitations under the License.
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "../utils";
 import { JSDOM } from 'jsdom';
 
 import { Mjolnir } from "../Mjolnir";

@@ -19,7 +19,7 @@ import { execStatusCommand } from "./StatusCommand";
 import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
 import { execDumpRulesCommand } from "./DumpRulesCommand";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "../utils";
 import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
 import { execCreateListCommand } from "./CreateBanListCommand";

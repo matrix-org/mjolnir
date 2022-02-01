@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "config": "^3.3.6",
-    "escape-html": "^1.0.3",
     "express": "^4.17",
     "html-to-text": "^8.0.0",
     "js-yaml": "^4.1.0",

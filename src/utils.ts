@@ -29,8 +29,16 @@ import {
 } from "matrix-bot-sdk";
 import { logMessage } from "./LogProxy";
 import config from "./config";
-import * as htmlEscape from "escape-html";
 import { ClientRequest, IncomingMessage } from "http";
+
+export function htmlEscape(input: string): string {
+    return input.replace(/["&<>]/g, (char: string) => ({
+        ['"'.charCodeAt(0)]: "&quot;",
+        ["&".charCodeAt(0)]: "&amp;",
+        ["<".charCodeAt(0)]: "&lt;",
+        [">".charCodeAt(0)]: "&gt;"
+    })[char.charCodeAt(0)]);
+}
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
