@@ -693,29 +693,25 @@ class DisplayManager {
             // Ignore.
         }
 
-        enum OutType {
-            msg, text, html
-        }
-
-        let eventContent: [OutType, string];
+        let eventContent: { msg: string} | { html: string } | { text: string };
         try {
             if (event["type"] === "m.room.encrypted") {
-                eventContent = [OutType.msg, "<encrypted content>"];
+                eventContent = { msg: "<encrypted content>" };
             } else if ("content" in event) {
                 const MAX_EVENT_CONTENT_LENGTH = 2048;
                 const MAX_NEWLINES = 64;
                 if ("formatted_body" in event.content) {
-                    eventContent = [OutType.html, this.limitLength(event.content.formatted_body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES)];
+                    eventContent = { html: this.limitLength(event.content.formatted_body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 } else if ("body" in event.content) {
-                    eventContent = [OutType.text, this.limitLength(event.content.body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES)];
+                    eventContent = { text: this.limitLength(event.content.body, MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 } else {
-                    eventContent = [OutType.text, this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES)];
+                    eventContent = { text: this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 }
             } else {
-                eventContent = [OutType.msg, "Malformed event, cannot read content."];
+                eventContent = { msg: "Malformed event, cannot read content." };
             }
         } catch (ex) {
-            eventContent = [OutType.msg, `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.`];
+            eventContent = { msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.` };
         }
 
         let accusedId = event["sender"];
@@ -843,13 +839,12 @@ class DisplayManager {
         ]) {
             let node = document.getElementById(key);
             if (node) {
-                let [outType, out]: [OutType, string] = value;
-                if (outType === OutType.msg) {
-                    node.textContent = out;
-                } else if (outType === OutType.text) {
-                    node.textContent = out;
-                } else if (outType === OutType.html) {
-                    node.innerHTML = out;
+                if ("msg" in value) {
+                    node.textContent = value.msg;
+                } else if ("text" in value) {
+                    node.textContent = value.text;
+                } else if ("html" in value) {
+                    node.innerHTML = value.html
                 }
             }
         }
