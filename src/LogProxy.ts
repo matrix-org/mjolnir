@@ -36,7 +36,7 @@ export async function logMessage(level: LogLevel, module: string, message: strin
 
         const client = config.RUNTIME.client;
         const managementRoomId = await client.resolveRoom(config.managementRoom);
-        const roomIds = [managementRoomId, ...additionalRoomIds];
+        const roomIds = new Set([managementRoomId, ...additionalRoomIds]);
 
         let evContent: TextualMessageEventContent = {
             body: message,

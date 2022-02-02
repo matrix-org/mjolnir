@@ -179,9 +179,19 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     }
 }
 
-export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
-    if (!Array.isArray(roomIds)) roomIds = [roomIds];
-
+/*
+ * Take an arbitrary string and a set of room IDs, and return a
+ * TextualMessageEventContent whose plaintext component replaces those room
+ * IDs with their canonical aliases, and whose html component replaces those
+ * room IDs with their matrix.to room pills.
+ *
+ * @param client The matrix client on which to query for room aliases
+ * @param text An arbitrary string to rewrite with room aliases and pills
+ * @param roomIds A set of room IDs to find and replace in `text`
+ * @param msgtype The desired message type of the returned TextualMessageEventContent
+ * @returns A TextualMessageEventContent with replaced room IDs
+ */
+export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
     const content: TextualMessageEventContent = {
         body: text,
         formatted_body: htmlEscape(text),
