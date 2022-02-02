@@ -14,21 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { IProtection } from "./IProtection";
+import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, Permalinks, UserID } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 
-export class MessageIsMedia implements IProtection {
+export class MessageIsMedia extends Protection {
 
     settings = {};
 
     constructor() {
+        super();
     }
 
     public get name(): string {
         return 'MessageIsMediaProtection';
+    }
+    public get description(): string {
+        return "If a user posts an image or video, that message will be redacted. No bans are issued.";
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {

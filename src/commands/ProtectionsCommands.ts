@@ -17,7 +17,6 @@ limitations under the License.
 import { htmlEscape } from "../utils";
 import { Mjolnir } from "../Mjolnir";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
-import { PROTECTIONS } from "../protections/protections";
 import { isListSetting } from "../protections/ProtectionSettings";
 
 // !mjolnir enable <protection>
@@ -51,12 +50,12 @@ enum ConfigAction {
  */
 async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], action: ConfigAction): Promise<string> {
     const [protectionName, ...settingParts] = parts[0].split(".");
-    const protection = PROTECTIONS[protectionName];
+    const protection = mjolnir.protections.get(protectionName);
     if (protection === undefined) {
         return `Unknown protection ${protectionName}`;
     }
 
-    const defaultSettings = protection.factory().settings
+    const defaultSettings = protection.settings
     const settingName = settingParts[0];
     const stringValue = parts[1];
 
@@ -83,22 +82,16 @@ async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], ac
         }
     }
 
-    // we need this to show what the value used to be
-    const oldSettings = await mjolnir.getProtectionSettings(protectionName);
-
     try {
         await mjolnir.setProtectionSettings(protectionName, { [settingName]: value });
     } catch (e) {
         return `Failed to set setting: ${e.message}`;
     }
 
-    const enabledProtections = Object.fromEntries(mjolnir.enabledProtections.map(p => [p.name, p]));
-    if (protectionName in enabledProtections) {
-        // protection is currently loaded, so change the live setting value
-        enabledProtections[protectionName].settings[settingName].setValue(value);
-    }
+    const oldValue = protection.settings[settingName].value;
+    protection.settings[settingName].setValue(value);
 
-    return `Changed ${protectionName}.${settingName} to ${value} (was ${oldSettings[settingName]})`;
+    return `Changed ${protectionName}.${settingName} to ${value} (was ${oldValue})`;
 }
 
 /*
@@ -146,7 +139,7 @@ export async function execConfigRemoveProtection(roomId: string, event: any, mjo
  * !mjolnir get [protection name]
  */
 export async function execConfigGetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    let pickProtections = Object.keys(PROTECTIONS);
+    let pickProtections = Object.keys(mjolnir.protections);
 
     if (parts.length < 3) {
         // no specific protectionName provided, show all of them.
@@ -170,24 +163,19 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
     let anySettings = false;
 
     for (const protectionName of pickProtections) {
-        // get all available settings, their default values, and their parsers
-        const availableSettings = PROTECTIONS[protectionName].factory().settings;
-        // get all saved non-default values
-        const savedSettings = await mjolnir.getProtectionSettings(protectionName);
+        const protectionSettings = mjolnir.protections.get(protectionName)?.settings ?? {};
 
-        if (Object.keys(availableSettings).length === 0) continue;
+        if (Object.keys(protectionSettings).length === 0) {
+            continue;
+        }
 
-        const settingNames = Object.keys(PROTECTIONS[protectionName].factory().settings);
+        const settingNames = Object.keys(protectionSettings);
         // this means, within each protection name, setting names are sorted
         settingNames.sort();
         for (const settingName of settingNames) {
             anySettings = true;
 
-            let value = availableSettings[settingName].value
-            if (settingName in savedSettings)
-                // we have a non-default value for this setting, use it
-                value = savedSettings[settingName]
-
+            let value = protectionSettings[settingName].value
             text += `* ${protectionName}.${settingName}: ${value}`;
             // `protectionName` and `settingName` are user-provided but
             // validated against the names of existing protections and their
@@ -214,16 +202,15 @@ export async function execDisableProtection(roomId: string, event: any, mjolnir:
 
 // !mjolnir protections
 export async function execListProtections(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const possibleProtections = Object.keys(PROTECTIONS);
     const enabledProtections = mjolnir.enabledProtections.map(p => p.name);
 
     let html = "Available protections:<ul>";
     let text = "Available protections:\n";
 
-    for (const protection of possibleProtections) {
-        const emoji = enabledProtections.includes(protection) ? '🟢 (enabled)' : '🔴 (disabled)';
-        html += `<li>${emoji} <code>${protection}</code> - ${PROTECTIONS[protection].description}</li>`;
-        text += `* ${emoji} ${protection} - ${PROTECTIONS[protection].description}\n`;
+    for (const [protectionName, protection] of mjolnir.protections) {
+        const emoji = enabledProtections.includes(protectionName) ? '🟢 (enabled)' : '🔴 (disabled)';
+        html += `<li>${emoji} <code>${protectionName}</code> - ${protection.description}</li>`;
+        text += `* ${emoji} ${protectionName} - ${protection.description}\n`;
     }
 
     html += "</ul>";

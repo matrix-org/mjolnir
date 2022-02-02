@@ -25,6 +25,15 @@ import { AbstractProtectionSetting } from "./ProtectionSettings";
  */
 export interface IProtection {
     readonly name: string;
+    readonly description: string;
+    enabled: boolean;
     settings: { [setting: string]: AbstractProtectionSetting<any, any> };
     handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
+}
+export abstract class Protection implements IProtection {
+    abstract readonly name: string
+    abstract readonly description: string;
+    enabled = false;
+    abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
+    abstract handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
 }

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { IProtection } from "./IProtection";
+import { Protection } from "./IProtection";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
@@ -25,7 +25,7 @@ import config from "../config";
 export const DEFAULT_MAX_PER_MINUTE = 10;
 const TIMESTAMP_THRESHOLD = 30000; // 30s out of phase
 
-export class BasicFlooding implements IProtection {
+export class BasicFlooding extends Protection {
 
     private lastEvents: { [roomId: string]: { [userId: string]: { originServerTs: number, eventId: string }[] } } = {};
     private recentlyBanned: string[] = [];
@@ -34,10 +34,12 @@ export class BasicFlooding implements IProtection {
         maxPerMinute: new NumberProtectionSetting(DEFAULT_MAX_PER_MINUTE)
     };
 
-    constructor() { }
-
     public get name(): string {
         return 'BasicFloodingProtection';
+    }
+    public get description(): string {
+        return "If a user posts more than " + DEFAULT_MAX_PER_MINUTE + " messages in 60s they'll be " +
+            "banned for spam. This does not publish the ban to any of your ban lists.";
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
