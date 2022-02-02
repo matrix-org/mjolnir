@@ -29,8 +29,16 @@ import {
 } from "matrix-bot-sdk";
 import { logMessage } from "./LogProxy";
 import config from "./config";
-import * as htmlEscape from "escape-html";
 import { ClientRequest, IncomingMessage } from "http";
+
+export function htmlEscape(input: string): string {
+    return input.replace(/["&<>]/g, (char: string) => ({
+        ['"'.charCodeAt(0)]: "&quot;",
+        ["&".charCodeAt(0)]: "&amp;",
+        ["<".charCodeAt(0)]: "&lt;",
+        [">".charCodeAt(0)]: "&gt;"
+    })[char.charCodeAt(0)]);
+}
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -225,11 +233,13 @@ function patchMatrixClientForConciseExceptions() {
         return;
     }
     let originalRequestFn = getRequestFn();
-    setRequestFn((params, cb) => {
+    setRequestFn((params: { [k: string]: any }, cb: any) => {
         // Store an error early, to maintain *some* semblance of stack.
         // We'll only throw the error if there is one.
         let error = new Error("STACK CAPTURE");
-        originalRequestFn(params, function conciseExceptionRequestFn(err, response, resBody) {
+        originalRequestFn(params, function conciseExceptionRequestFn(
+            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+        ) {
             if (!err && (response?.statusCode < 200 || response?.statusCode >= 300)) {
                 // Normally, converting HTTP Errors into rejections is done by the caller
                 // of `requestFn` within matrix-bot-sdk. However, this always ends up rejecting
@@ -332,7 +342,7 @@ function patchMatrixClientForRetry() {
         return;
     }
     let originalRequestFn = getRequestFn();
-    setRequestFn(async (params, cb) => {
+    setRequestFn(async (params: { [k: string]: any }, cb: any) => {
         let attempt = 1;
         numberOfConcurrentRequests += 1;
         if (TRACE_CONCURRENT_REQUESTS) {
@@ -342,7 +352,9 @@ function patchMatrixClientForRetry() {
             while (true) {
                 try {
                     let result: any[] = await new Promise((resolve, reject) => {
-                        originalRequestFn(params, function requestFnWithRetry(err, response, resBody) {
+                        originalRequestFn(params, function requestFnWithRetry(
+                            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+                        ) {
                             // Note: There is no data race on `attempt` as we `await` before continuing
                             // to the next iteration of the loop.
                             if (attempt < MAX_REQUEST_ATTEMPTS && err?.body?.errcode === 'M_LIMIT_EXCEEDED') {

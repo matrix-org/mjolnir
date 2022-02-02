@@ -16,8 +16,7 @@ limitations under the License.
 
 import { LogLevel, LogService, TextualMessageEventContent } from "matrix-bot-sdk";
 import config from "./config";
-import { replaceRoomIdsWithPills } from "./utils";
-import * as htmlEscape from "escape-html";
+import { htmlEscape, replaceRoomIdsWithPills } from "./utils";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,

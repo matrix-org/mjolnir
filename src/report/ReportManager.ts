@@ -17,7 +17,7 @@ limitations under the License.
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "../utils";
 import { JSDOM } from 'jsdom';
 
 import { Mjolnir } from "../Mjolnir";
@@ -235,9 +235,9 @@ export class ReportManager {
                     "m.relationship": {
                         "rel_type": "m.reference",
                         "event_id": relation.event_id,
-                    }
+                    },
+                    [ABUSE_ACTION_CONFIRMATION_KEY]: confirmationReport
                 };
-                confirmation[ABUSE_ACTION_CONFIRMATION_KEY] = confirmationReport;
 
                 let requestConfirmationEventId = await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, confirmation);
                 await this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
@@ -693,7 +693,7 @@ class DisplayManager {
             // Ignore.
         }
 
-        let eventContent;
+        let eventContent: { msg: string} | { html: string } | { text: string };
         try {
             if (event["type"] === "m.room.encrypted") {
                 eventContent = { msg: "<encrypted content>" };
@@ -707,6 +707,8 @@ class DisplayManager {
                 } else {
                     eventContent = { text: this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 }
+            } else {
+                eventContent = { msg: "Malformed event, cannot read content." };
             }
         } catch (ex) {
             eventContent = { msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.` };
@@ -716,12 +718,12 @@ class DisplayManager {
 
         let reporterDisplayName: string, accusedDisplayName: string;
         try {
-            reporterDisplayName = await this.owner.mjolnir.client.getUserProfile(reporterId)["displayname"] || reporterId;
+            reporterDisplayName = (await this.owner.mjolnir.client.getUserProfile(reporterId))["displayname"] || reporterId;
         } catch (ex) {
             reporterDisplayName = "<Error: Cannot extract reporter display name>";
         }
         try {
-            accusedDisplayName = await this.owner.mjolnir.client.getUserProfile(accusedId)["displayname"] || accusedId;
+            accusedDisplayName = (await this.owner.mjolnir.client.getUserProfile(accusedId))["displayname"] || accusedId;
         } catch (ex) {
             accusedDisplayName = "<Error: Cannot extract accused display name>";
         }
@@ -832,8 +834,8 @@ class DisplayManager {
         }
 
         // ...insert HTML content
-        for (let [key, value] of [
-            ['event-content', eventContent],
+        for (let {key, value} of [
+            { key: 'event-content', value: eventContent },
         ]) {
             let node = document.getElementById(key);
             if (node) {
@@ -842,7 +844,7 @@ class DisplayManager {
                 } else if ("text" in value) {
                     node.textContent = value.text;
                 } else if ("html" in value) {
-                    node.innerHTML = value.html;
+                    node.innerHTML = value.html
                 }
             }
         }
@@ -868,8 +870,8 @@ class DisplayManager {
             body: htmlToText(document.body.outerHTML, { wordwrap: false }),
             format: "org.matrix.custom.html",
             formatted_body: document.body.outerHTML,
+            [ABUSE_REPORT_KEY]: report
         };
-        notice[ABUSE_REPORT_KEY] = report;
 
         let noticeEventId = await this.owner.mjolnir.client.sendMessage(this.owner.mjolnir.managementRoomId, notice);
         if (kind !== Kind.ERROR) {

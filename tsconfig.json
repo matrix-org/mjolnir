@@ -9,7 +9,7 @@
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "target": "es2015",
-        "noImplicitAny": false,
+        "noImplicitAny": true,
         "sourceMap": true,
         "strictNullChecks": true,
         "outDir": "./lib",

@@ -17,7 +17,7 @@ limitations under the License.
 export const ERROR_KIND_PERMISSION = "permission";
 export const ERROR_KIND_FATAL = "fatal";
 
-const TRIGGER_INTERVALS = {
+const TRIGGER_INTERVALS: { [key: string]: number } = {
     [ERROR_KIND_PERMISSION]: 3 * 60 * 60 * 1000, // 3 hours
     [ERROR_KIND_FATAL]: 15 * 60 * 1000, // 15 minutes
 };

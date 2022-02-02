@@ -19,7 +19,7 @@ import { execStatusCommand } from "./StatusCommand";
 import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
 import { execDumpRulesCommand } from "./DumpRulesCommand";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "../utils";
 import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";
 import { execCreateListCommand } from "./CreateBanListCommand";
@@ -40,7 +40,7 @@ import { execKickCommand } from "./KickCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
-export async function handleCommand(roomId: string, event: any, mjolnir: Mjolnir) {
+export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
     const cmd = event['content']['body'];
     const parts = cmd.trim().split(' ').filter(p => p.trim().length > 0);
 

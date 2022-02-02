@@ -76,13 +76,13 @@ export function isListSetting(object: any): object is AbstractProtectionListSett
 
 export class StringProtectionSetting extends AbstractProtectionSetting<string, string> {
     value = "";
-    fromString = (data) => data;
-    validate = (data) => true;
+    fromString = (data: string): string => data;
+    validate = (data: string): boolean => true;
 }
 export class StringListProtectionSetting extends AbstractProtectionListSetting<string, string[]> {
     value: string[] = [];
-    fromString = (data) => data;
-    validate = (data) => true;
+    fromString = (data: string): string => data;
+    validate = (data: string): boolean => true;
     addValue(data: string): string[] {
         return [...this.value, data];
     }
@@ -107,11 +107,11 @@ export class NumberProtectionSetting extends AbstractProtectionSetting<number, n
         this.max = max;
     }
 
-    fromString(data) {
+    fromString(data: string) {
         let number = Number(data);
         return isNaN(number) ? undefined : number;
     }
-    validate(data) {
+    validate(data: number) {
         return (!isNaN(data)
             && (this.min === undefined || this.min <= data)
             && (this.max === undefined || data <= this.max))

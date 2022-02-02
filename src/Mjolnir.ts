@@ -40,7 +40,7 @@ import { ProtectionSettingValidationError } from "./protections/ProtectionSettin
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
 import RuleServer from "./models/RuleServer";
@@ -84,7 +84,7 @@ export class Mjolnir {
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
      * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
      */
-    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options) {
+    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options: { [key: string]: any }) {
         client.on("room.invite", async (roomId: string, inviteEvent: any) => {
             const membershipEvent = new MembershipEvent(inviteEvent);
 
@@ -271,7 +271,7 @@ export class Mjolnir {
             await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
-                const data: Object | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
                 if (data && data['rooms']) {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -328,15 +328,15 @@ export class Mjolnir {
         if (unprotectedIdx >= 0) this.knownUnprotectedRooms.splice(unprotectedIdx, 1);
         this.explicitlyProtectedRoomIds.push(roomId);
 
-        let additionalProtectedRooms;
+        let additionalProtectedRooms: { rooms?: string[] } | null = null;
         try {
             additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
-        additionalProtectedRooms.rooms.push(roomId);
-        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
+        const rooms = (additionalProtectedRooms?.rooms ?? []);
+        rooms.push(roomId);
+        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: rooms });
         await this.syncLists(config.verboseLogging);
     }
 
@@ -346,14 +346,13 @@ export class Mjolnir {
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
 
-        let additionalProtectedRooms;
+        let additionalProtectedRooms: { rooms?: string[] } | null = null;
         try {
             additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
-        additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
+        additionalProtectedRooms = { rooms: additionalProtectedRooms?.rooms?.filter(r => r !== roomId) ?? [] };
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
     }
 
@@ -379,7 +378,7 @@ export class Mjolnir {
     private async getEnabledProtections() {
         let enabled: string[] = [];
         try {
-            const protections: Object | null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            const protections: { enabled: string[] } | null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
             if (protections && protections['enabled']) {
                 for (const protection of protections['enabled']) {
                     enabled.push(protection);
@@ -555,8 +554,8 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         try {
-            const accountData: Object | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
-            if (accountData && accountData['warned']) return; // already warned
+            const accountData: { warned: boolean } | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            if (accountData && accountData.warned) return; // already warned
         } catch (e) {
             // Ignore - probably haven't warned about it yet
         }
@@ -575,14 +574,14 @@ export class Mjolnir {
         const banLists: BanList[] = [];
         const joinedRooms = await this.client.getJoinedRooms();
 
-        let watchedListsEvent = {};
+        let watchedListsEvent: { references?: string[] } | null = null;
         try {
             watchedListsEvent = await this.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
         } catch (e) {
             // ignore - not important
         }
 
-        for (const roomRef of (watchedListsEvent['references'] || [])) {
+        for (const roomRef of (watchedListsEvent?.references || [])) {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
 
@@ -852,7 +851,7 @@ export class Mjolnir {
             } else if (ruleKind === RULE_ROOM) {
                 ruleKind = 'room';
             }
-            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation)}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
+            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation ?? "")}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* ${change.changeType} ${ruleKind} (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
         }
 
