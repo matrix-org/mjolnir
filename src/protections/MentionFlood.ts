@@ -43,7 +43,7 @@ export class MentionFlood implements IProtection {
         maxMentionsPerMessage: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS_PER_MESSAGE)
     };
 
-    private justJoined: { [roomId: string]: { [username: string]: Date; }; } = {};
+    private justJoined: Map<string, Map<string, Date>> = new Map<string, Map<string, Date>>();
     private mention: RegExp;
 
     constructor() {
@@ -60,17 +60,17 @@ export class MentionFlood implements IProtection {
         const minsBeforeTrusting = this.settings.minutesBeforeTrusting.value;
 
         if (minsBeforeTrusting > 0) {
-            if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
+            if (!this.justJoined.get(roomId)) this.justJoined.set(roomId, new Map<string, Date>());
 
             // When a new member logs in, store the time they joined.  This will be useful
             // when we need to check if a message was sent within 20 minutes of joining
             if (event['type'] === 'm.room.member') {
                 if (isTrueJoinEvent(event)) {
                     const now = new Date();
-                    this.justJoined[roomId][event['state_key']] = now;
+                    this.justJoined.get(roomId)?.set(event['state_key'], now);
                     LogService.info("MentionFlood", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
                 } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
-                    delete this.justJoined[roomId][event['sender']];
+                    this.justJoined.get(roomId)?.delete(event['sender']);
                 }
 
                 return;
@@ -82,13 +82,13 @@ export class MentionFlood implements IProtection {
 
             // Check conditions first
             if (minsBeforeTrusting > 0) {
-                const joinTime = this.justJoined[roomId][event['sender']];
+                const joinTime = this.justJoined.get(roomId)?.get(event['sender']);
                 if (joinTime) { // Disregard if the user isn't recently joined
 
                     // Check if they did join recently, was it within the timeframe
                     const now = new Date();
                     if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
-                        delete this.justJoined[roomId][event['sender']]; // Remove the user
+                        this.justJoined.get(roomId)?.delete(event['sender']); // Remove the user
                         LogService.info("MentionFlood", `${event['sender']} is no longer considered suspect`);
                         return;
                     }
