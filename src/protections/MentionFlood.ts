@@ -29,7 +29,6 @@ const DEFAULT_REDACT = true;
 const DEFAULT_ACTION = "ban";
 
 const LOCALPART_REGEX = "[0-9a-z-.=_/]+";
-const HISTORIC_LOCALPART_REGEX = "([\\u0021-\\u0039]|[\\u003B-\\u007E])+";
 // https://github.com/johno/domain-regex/blob/8a6984c8fa1fe8481a4b99be0fa7f2a01ee17517/index.js
 const DOMAIN_REGEX = "(\\b((?=[a-z0-9-]{1,63}\\.)(xn--)?[a-z0-9]+(-[a-z0-9]+)*\\.)+[a-z]{2,63}\\b)";
 // https://stackoverflow.com/a/5284410
@@ -52,7 +51,7 @@ export class MentionFlood implements IProtection {
     private mention: RegExp;
 
     constructor() {
-        this.mention = new RegExp(`@(${LOCALPART_REGEX}|${HISTORIC_LOCALPART_REGEX}):(${DOMAIN_REGEX}|${IPV4_REGEX}|${IPV6_REGEX})${PORT_REGEX}`, "gi");
+        this.mention = new RegExp(`@${LOCALPART_REGEX}:(${DOMAIN_REGEX}|${IPV4_REGEX}|${IPV6_REGEX})${PORT_REGEX}`, "gi");
     }
 
     public get name(): string {
