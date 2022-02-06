@@ -57,6 +57,10 @@ interface IConfig {
         confirmWildcardBan: boolean;
     };
     protections: {
+        mentionFlood: {
+            maxMentionsPerMessage: number;
+            minutesBeforeTrusting: number;
+        };
         wordlist: {
             words: string[];
             minutesBeforeTrusting: number;
@@ -78,11 +82,11 @@ interface IConfig {
         address: string;
         abuseReporting: {
             enabled: boolean;
-        }
+        };
         ruleServer?: {
             enabled: boolean;
-        }
-    }
+        };
+    };
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
@@ -122,6 +126,10 @@ const defaultConfig: IConfig = {
         confirmWildcardBan: true,
     },
     protections: {
+        mentionFlood: {
+            maxMentionsPerMessage: 20,
+            minutesBeforeTrusting: 20,
+        },
         wordlist: {
             words: [],
             minutesBeforeTrusting: 20
