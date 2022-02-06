@@ -72,7 +72,7 @@ export class MentionFlood implements IProtection {
                 if (isTrueJoinEvent(event)) {
                     const now = new Date();
                     this.justJoined.get(roomId)?.set(event['state_key'], now);
-                    LogService.info("MentionFlood", `${htmlEscape(event['event_id'])} joined ${roomId} at ${now.toDateString()}`);
+                    LogService.info("MentionFlood", `${htmlEscape(event['state_key'])} joined ${roomId} at ${now.toDateString()}`);
                 } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
                     this.justJoined.get(roomId)?.delete(event['sender']);
                 }
@@ -93,7 +93,7 @@ export class MentionFlood implements IProtection {
                     const now = new Date();
                     if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
                         this.justJoined.get(roomId)?.delete(event['sender']); // Remove the user
-                        LogService.info("MentionFlood", `${htmlEscape(event['event_id'])} is no longer considered suspect`);
+                        LogService.info("MentionFlood", `${htmlEscape(event['sender'])} is no longer considered suspect`);
                         return;
                     }
 
@@ -111,29 +111,29 @@ export class MentionFlood implements IProtection {
                 const action = this.settings.action.value !== "" ? this.settings.action.value : DEFAULT_ACTION;
                 switch (action) {
                     case "ban": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `Banning ${htmlEscape(event['event_id'])} for mention flood violation in ${roomId}.`);
+                        await logMessage(LogLevel.WARN, "MentionFlood", `Banning ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
                         if (!config.noop) {
                             await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
                         } else {
-                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${htmlEscape(event['event_id'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                         }
                         break;
                     }
                     case "kick": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `Kicking ${htmlEscape(event['event_id'])} for mention flood violation in ${roomId}.`);
+                        await logMessage(LogLevel.WARN, "MentionFlood", `Kicking ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
                         if (!config.noop) {
                             await mjolnir.client.kickUser(event['sender'], roomId, "Mention Flood violation");
                         } else {
-                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to kick ${htmlEscape(event['event_id'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to kick ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                         }
                         break;
                     }
                     case "warn": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `Warning ${htmlEscape(event['event_id'])} for mention flood violation in ${roomId}.`);
+                        await logMessage(LogLevel.WARN, "MentionFlood", `Warning ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
                         if (!config.noop) {
                             // await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
                         } else {
-                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to warn ${htmlEscape(event['event_id'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to warn ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                         }
                         break;
                     }
