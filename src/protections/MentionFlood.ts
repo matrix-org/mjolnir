@@ -83,7 +83,7 @@ export class MentionFlood implements IProtection {
         }
 
         if (event['type'] === 'm.room.message') {
-            const message = content['body'] || "";
+            const message: string = content['formatted_body'] || content['body'] || "";
 
             // Check conditions first
             if (minsBeforeTrusting > 0) {
@@ -108,7 +108,7 @@ export class MentionFlood implements IProtection {
 
             // Perform the test
             const maxMentionsPerMessage = this.settings.maxMentionsPerMessage.value;
-            if (message && message.match(this.mention).length > maxMentionsPerMessage) {
+            if (message && (message.match(this.mention)?.length || 0) > maxMentionsPerMessage) {
                 const action = this.settings.action.value !== "" ? this.settings.action.value : DEFAULT_ACTION;
                 switch (action) {
                     case "ban": {
