@@ -33,7 +33,7 @@ export class ProtectionSettingValidationError extends Error {};
  */
 export class AbstractProtectionSetting<TChange, TValue> extends EventEmitter {
     // the current value of this setting
-    value: TValue
+    value: TValue;
 
     /*
      * Deserialise a value for this setting type from a string
@@ -134,13 +134,13 @@ export class MXIDListProtectionSetting extends StringListProtectionSetting {
 }
 
 export class NumberProtectionSetting extends AbstractProtectionSetting<number, number> {
-    min: number|undefined;
-    max: number|undefined;
+    min: number | undefined;
+    max: number | undefined;
 
     constructor(
-            defaultValue: number,
-            min: number|undefined = undefined,
-            max: number|undefined = undefined
+        defaultValue: number,
+        min: number | undefined = undefined,
+        max: number | undefined = undefined
     ) {
         super();
         this.setValue(defaultValue);
@@ -155,7 +155,7 @@ export class NumberProtectionSetting extends AbstractProtectionSetting<number, n
     validate(data: number) {
         return (!isNaN(data)
             && (this.min === undefined || this.min <= data)
-            && (this.max === undefined || data <= this.max))
+            && (this.max === undefined || data <= this.max));
     }
 }
 
@@ -183,4 +183,20 @@ export class DurationMSProtectionSetting extends AbstractProtectionSetting<numbe
             && (this.minMS === undefined || this.minMS <= data)
             && (this.maxMS === undefined || data <= this.maxMS))
     }
+}
+
+
+
+export class BooleanProtectionSetting extends AbstractProtectionSetting<boolean, boolean> {
+    constructor(
+        defaultValue: boolean
+    ) {
+        super();
+        this.setValue(defaultValue);
+    }
+
+    fromString(data: string) {
+        return data.toLowerCase() === "true" ? true : false;
+    }
+    validate = (data: boolean): boolean => true;
 }

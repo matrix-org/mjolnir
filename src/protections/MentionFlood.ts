@@ -21,10 +21,12 @@ import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 import { isTrueJoinEvent } from "../utils";
-import { NumberProtectionSetting } from "./ProtectionSettings";
+import { BooleanProtectionSetting, NumberProtectionSetting, StringProtectionSetting } from "./ProtectionSettings";
 
 const DEFAULT_MINUTES_BEFORE_TRUSTING = 20;
 const DEFAULT_MAX_MENTIONS_PER_MESSAGE = 20;
+const DEFAULT_REDACT = true;
+const DEFAULT_ACTION = "ban";
 
 const LOCALPART_REGEX = "[0-9a-z-.=_/]+";
 // https://github.com/johno/domain-regex/blob/8a6984c8fa1fe8481a4b99be0fa7f2a01ee17517/index.js
@@ -40,7 +42,9 @@ export class MentionFlood implements IProtection {
 
     settings = {
         minutesBeforeTrusting: new NumberProtectionSetting(DEFAULT_MINUTES_BEFORE_TRUSTING),
-        maxMentionsPerMessage: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS_PER_MESSAGE)
+        maxMentionsPerMessage: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS_PER_MESSAGE),
+        redact: new BooleanProtectionSetting(DEFAULT_REDACT),
+        action: new StringProtectionSetting()
     };
 
     private justJoined: Map<string, Map<string, Date>> = new Map<string, Map<string, Date>>();
@@ -104,15 +108,40 @@ export class MentionFlood implements IProtection {
             // Perform the test
             const maxMentionsPerMessage = this.settings.maxMentionsPerMessage.value;
             if (message && message.match(this.mention).length > maxMentionsPerMessage) {
-                await logMessage(LogLevel.WARN, "MentionFlood", `Banning ${event['sender']} for mention flood violation in ${roomId}.`);
-                if (!config.noop) {
-                    await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
-                } else {
-                    await logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                const action = this.settings.action.value !== "" ? this.settings.action.value : DEFAULT_ACTION;
+                switch (action) {
+                    case "ban": {
+                        await logMessage(LogLevel.WARN, "MentionFlood", `Banning ${event['sender']} for mention flood violation in ${roomId}.`);
+                        if (!config.noop) {
+                            await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
+                        } else {
+                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                        }
+                        break;
+                    }
+                    case "kick": {
+                        await logMessage(LogLevel.WARN, "MentionFlood", `Kicking ${event['sender']} for mention flood violation in ${roomId}.`);
+                        if (!config.noop) {
+                            await mjolnir.client.kickUser(event['sender'], roomId, "Mention Flood violation");
+                        } else {
+                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to kick ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                        }
+                        break;
+                    }
+                    case "warn": {
+                        await logMessage(LogLevel.WARN, "MentionFlood", `Warning ${event['sender']} for mention flood violation in ${roomId}.`);
+                        if (!config.noop) {
+                            // await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
+                        } else {
+                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to warn ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                        }
+                        break;
+                    }
                 }
 
+
                 // Redact the event
-                if (!config.noop) {
+                if (!config.noop && this.settings.redact.value) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
                     await logMessage(LogLevel.WARN, "MentionFlood", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
