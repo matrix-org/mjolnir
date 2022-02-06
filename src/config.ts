@@ -57,10 +57,6 @@ interface IConfig {
         confirmWildcardBan: boolean;
     };
     protections: {
-        mentionFlood: {
-            maxMentionsPerMessage: number;
-            minutesBeforeTrusting: number;
-        };
         wordlist: {
             words: string[];
             minutesBeforeTrusting: number;
@@ -126,10 +122,6 @@ const defaultConfig: IConfig = {
         confirmWildcardBan: true,
     },
     protections: {
-        mentionFlood: {
-            maxMentionsPerMessage: 20,
-            minutesBeforeTrusting: 20,
-        },
         wordlist: {
             words: [],
             minutesBeforeTrusting: 20

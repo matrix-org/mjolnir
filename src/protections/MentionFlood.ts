@@ -21,6 +21,10 @@ import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 import { isTrueJoinEvent } from "../utils";
+import { NumberProtectionSetting } from "./ProtectionSettings";
+
+const DEFAULT_MINUTES_BEFORE_TRUSTING = 20;
+const DEFAULT_MAX_MENTIONS_PER_MESSAGE = 20;
 
 const LOCALPART_REGEX = "[0-9a-z-.=_/]+";
 // https://github.com/johno/domain-regex/blob/8a6984c8fa1fe8481a4b99be0fa7f2a01ee17517/index.js
@@ -34,7 +38,10 @@ const PORT_REGEX = "(:[0-9]+)?";
 
 export class MentionFlood implements IProtection {
 
-    settings = {};
+    settings = {
+        minutesBeforeTrusting: new NumberProtectionSetting(DEFAULT_MINUTES_BEFORE_TRUSTING),
+        maxMentionsPerMessage: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS_PER_MESSAGE)
+    };
 
     private justJoined: { [roomId: string]: { [username: string]: Date; }; } = {};
     private mention: RegExp;
@@ -50,7 +57,7 @@ export class MentionFlood implements IProtection {
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
 
         const content = event['content'] || {};
-        const minsBeforeTrusting = config.protections.mentionFlood.minutesBeforeTrusting;
+        const minsBeforeTrusting = this.settings.minutesBeforeTrusting.value;
 
         if (minsBeforeTrusting > 0) {
             if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
@@ -95,7 +102,7 @@ export class MentionFlood implements IProtection {
 
 
             // Perform the test
-            const maxMentionsPerMessage = config.protections.mentionFlood.maxMentionsPerMessage;
+            const maxMentionsPerMessage = this.settings.maxMentionsPerMessage.value;
             if (message && message.match(this.mention).length > maxMentionsPerMessage) {
                 await logMessage(LogLevel.WARN, "MentionFlood", `Banning ${event['sender']} for mention flood violation in ${roomId}.`);
                 if (!config.noop) {
