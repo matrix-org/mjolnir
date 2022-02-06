@@ -78,11 +78,11 @@ interface IConfig {
         address: string;
         abuseReporting: {
             enabled: boolean;
-        };
+        }
         ruleServer?: {
             enabled: boolean;
-        };
-    };
+        }
+    }
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
