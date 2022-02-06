@@ -130,12 +130,7 @@ export class MentionFlood implements IProtection {
                         break;
                     }
                     case "warn": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `Warning ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
-                        if (!config.noop) {
-                            // await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
-                        } else {
-                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to warn ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-                        }
+                        await logMessage(LogLevel.WARN, "MentionFlood", `${htmlEscape(event['sender'])} triggered the mention flood protection in ${roomId}.`);
                         break;
                     }
                 }
