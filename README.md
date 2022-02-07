@@ -84,6 +84,8 @@ set up:
 
 ## Synapse Module
 
+***This requires Synapse 1.37.0 or higher**
+
 Using the bot to manage your rooms is great, however if you want to use your ban lists
 (or someone else's) on your server to affect all of your users then a Synapse module
 is needed. Primarily meant to block invites from undesired homeservers/users, Mjolnir's

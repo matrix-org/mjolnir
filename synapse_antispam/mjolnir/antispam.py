@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2019 The Matrix.org Foundation C.I.C.
+# Copyright 2019-2022 The Matrix.org Foundation C.I.C.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from types import Dict
 
 import logging
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
@@ -29,10 +27,10 @@ class AntiSpam(object):
         self.block_messages = config.get("block_messages", False)
         self.block_usernames = config.get("block_usernames", False)
         self.list_room_ids = config.get("ban_lists", [])
-        self.rooms_to_lists = {}  # type: Dict[str, BanList]
+        self.rooms_to_lists = {}
         self.api = api
 
-        self._api.register_spam_checker_callbacks(
+        self.api.register_spam_checker_callbacks(
             check_event_for_spam=self.check_event_for_spam,
             user_may_invite=self.user_may_invite,
             check_username_for_spam=self.check_username_for_spam,
