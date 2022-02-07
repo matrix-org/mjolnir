@@ -1,10 +1,17 @@
 # This configuration file is for the integration tests run by yarn:integration.
-# Editing this will do nothing and you shouldn't use it as a template.
-# For a template use default.yaml
+# Unless you're working on the test suite, you should probably rather check
+# default.yaml!
+
 # Where the homeserver is located (client-server URL). This should point at
 # pantalaimon if you're using that.
-homeserverUrl: "http://localhost:9999"
+homeserverUrl: "http://localhost:8081"
 
+# Where the homeserver is located (client-server URL). NOT pantalaimon.
+rawHomeserverUrl: "http://localhost:8081"
+
+# README: We use the Pantalaimon client WITHOUT Pantalaimon itself in tests (and the manual test)
+# as an easy way to login with passwords from the config without having
+# to resolve a chicken-vs-egg problem in regards to access tokens.
 # Pantalaimon options (https://github.com/matrix-org/pantalaimon)
 pantalaimon:
   # If true, accessToken above is ignored and the username/password below will be
@@ -159,3 +166,28 @@ health:
     # The HTTP status code which reports that the bot is not healthy/ready.
     # Defaults to 418.
     unhealthyStatus: 418
+
+# Options for exposing web APIs.
+web:
+  # Whether to enable web APIs.
+  enabled: true
+
+  # The port to expose the webserver on. Defaults to 8080.
+  port: 8082
+
+  # The address to listen for requests on. Defaults to all addresses.
+  # Be careful with this setting, as opening to the wide web will increase
+  # your security perimeter.
+  # We listen on all in harness because we might be getting requests through the docker gateway.
+  address: "0.0.0.0"
+
+  # A web API designed to intercept Matrix API
+  # POST /_matrix/client/r0/rooms/{roomId}/report/{eventId}
+  # and display readable abuse reports in the moderation room.
+  abuseReporting:
+    # Whether to enable this feature.
+    enabled: true
+  # A web API for a description of all the combined rules from watched banlists.
+  # GET /api/1/ruleserver/updates
+  ruleServer:
+    enabled: false

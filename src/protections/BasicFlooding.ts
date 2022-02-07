@@ -15,12 +15,14 @@ limitations under the License.
 */
 
 import { IProtection } from "./IProtection";
+import { NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 
-export const MAX_PER_MINUTE = 10; // if this is exceeded, we'll ban the user for spam and redact their messages
+// if this is exceeded, we'll ban the user for spam and redact their messages
+export const DEFAULT_MAX_PER_MINUTE = 10;
 const TIMESTAMP_THRESHOLD = 30000; // 30s out of phase
 
 export class BasicFlooding implements IProtection {
@@ -28,8 +30,11 @@ export class BasicFlooding implements IProtection {
     private lastEvents: { [roomId: string]: { [userId: string]: { originServerTs: number, eventId: string }[] } } = {};
     private recentlyBanned: string[] = [];
 
-    constructor() {
-    }
+    settings = {
+        maxPerMinute: new NumberProtectionSetting(DEFAULT_MAX_PER_MINUTE)
+    };
+
+    constructor() { }
 
     public get name(): string {
         return 'BasicFloodingProtection';
@@ -56,7 +61,7 @@ export class BasicFlooding implements IProtection {
             messageCount++;
         }
 
-        if (messageCount >= MAX_PER_MINUTE) {
+        if (messageCount >= this.settings.maxPerMinute.value) {
             await logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`, roomId);
             if (!config.noop) {
                 await mjolnir.client.banUser(event['sender'], roomId, "spam");
@@ -82,8 +87,8 @@ export class BasicFlooding implements IProtection {
         }
 
         // Trim the oldest messages off the user's history if it's getting large
-        if (forUser.length > MAX_PER_MINUTE * 2) {
-            forUser.splice(0, forUser.length - (MAX_PER_MINUTE * 2) - 1);
+        if (forUser.length > this.settings.maxPerMinute.value * 2) {
+            forUser.splice(0, forUser.length - (this.settings.maxPerMinute.value * 2) - 1);
         }
     }
 }

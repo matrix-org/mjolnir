@@ -23,7 +23,8 @@ import {
 } from "matrix-bot-sdk";
 import { Mjolnir}  from '../../src/Mjolnir';
 import config from "../../src/config";
-import { registerUser } from "./clientHelper";
+import { overrideRatelimitForUser, registerUser } from "./clientHelper";
+import { patchMatrixClient } from "../../src/utils";
 
 /**
  * Ensures that a room exists with the alias, if it does not exist we create it.
@@ -32,38 +33,59 @@ import { registerUser } from "./clientHelper";
  * @returns The room ID of the aliased room.
  */
 export async function ensureAliasedRoomExists(client: MatrixClient, alias: string): Promise<string> {
-    return await client.resolveRoom(alias)
-    .catch(async e => {
+    try {
+        return await client.resolveRoom(alias);
+    } catch (e) {
         if (e?.body?.errcode === 'M_NOT_FOUND') {
             console.info(`${alias} hasn't been created yet, so we're making it now.`)
-            let roomId = await client.createRoom();
-            await client.createRoomAlias(config.managementRoom, roomId);
+            let roomId = await client.createRoom({
+                visibility: "public",
+            });
+            await client.createRoomAlias(alias, roomId);
             return roomId
         }
         throw e;
-    });
+    }
 }
 
 async function configureMjolnir() {
-    await registerUser('mjolnir', 'mjolnir', 'mjolnir', true).catch(e => {
-        if (e.isAxiosError && e.response.data.errcode === 'M_USER_IN_USE') {
-            console.log('mjolnir already registered, skipping');
-        } else {
-            throw e;
+    try {
+        await registerUser(config.pantalaimon.username, config.pantalaimon.username, config.pantalaimon.password, true)
+    } catch (e) {
+        if (e?.body?.errcode === 'M_USER_IN_USE') {
+            console.log(`${config.pantalaimon.username} already registered, skipping`);
+            return;
         }
-    });
+        throw e;
+    };
 }
 
+export function mjolnir(): Mjolnir | null {
+    return globalMjolnir;
+}
+export function matrixClient(): MatrixClient | null {
+    return globalClient;
+}
+let globalClient: MatrixClient | null
+let globalMjolnir: Mjolnir | null;
 
-export async function makeMjolnir() {
+/**
+ * Return a test instance of Mjolnir.
+ */
+export async function makeMjolnir(): Promise<Mjolnir> {
     await configureMjolnir();
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    await overrideRatelimitForUser(await client.getUserId());
+    patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
-    return await Mjolnir.setupMjolnirFromConfig(client);
+    let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);
+    globalClient = client;
+    globalMjolnir = mjolnir;
+    return mjolnir;
 }
 
 /**

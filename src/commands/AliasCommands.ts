@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "../utils";
 
 // !mjolnir move <alias> <new room ID>
 export async function execMoveAliasCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

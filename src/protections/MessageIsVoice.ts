@@ -22,6 +22,8 @@ import config from "../config";
 
 export class MessageIsVoice implements IProtection {
 
+    settings = {};
+
     constructor() {
     }
 

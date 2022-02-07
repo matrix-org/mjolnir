@@ -23,11 +23,22 @@ import {
     MessageType,
     Permalinks,
     TextualMessageEventContent,
-    UserID
+    UserID,
+    getRequestFn,
+    setRequestFn,
 } from "matrix-bot-sdk";
 import { logMessage } from "./LogProxy";
 import config from "./config";
-import * as htmlEscape from "escape-html";
+import { ClientRequest, IncomingMessage } from "http";
+
+export function htmlEscape(input: string): string {
+    return input.replace(/["&<>]/g, (char: string) => ({
+        ['"'.charCodeAt(0)]: "&quot;",
+        ["&".charCodeAt(0)]: "&amp;",
+        ["<".charCodeAt(0)]: "&lt;",
+        [">".charCodeAt(0)]: "&gt;"
+    })[char.charCodeAt(0)]);
+}
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -69,48 +80,24 @@ export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: s
  * Gets all the events sent by a user (or users if using wildcards) in a given room ID, since
  * the time they joined.
  * @param {MatrixClient} client The client to use.
- * @param {string} sender The sender. Can include wildcards to match multiple people.
+ * @param {string} sender The sender. A matrix user id or a wildcard to match multiple senders e.g. *.example.com.
+ * Can also be used to generically search the sender field e.g. *bob* for all events from senders with "bob" in them.
+ * See `MatrixGlob` in matrix-bot-sdk.
  * @param {string} roomId The room ID to search in.
- * @param {number} limit The maximum number of messages to search. Defaults to 1000.
+ * @param {number} limit The maximum number of messages to search. Defaults to 1000. This will be a greater or equal
+ * number of events that are provided to the callback if a wildcard is used, as not all events paginated
+ * will match the glob. The reason the limit is calculated this way is so that a caller cannot accidentally
+ * traverse the entire room history.
  * @param {function} cb Callback function to handle the events as they are received.
- * @returns {Promise<any>} Resolves when complete.
+ * The callback will only be called if there are any relevant events.
+ * @returns {Promise<void>} Resolves when either: the limit has been reached, no relevant events could be found or there is no more timeline to paginate.
  */
-export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<any> {
-    const filter = {
-        room: {
-            rooms: [roomId],
-            state: {
-                // types: ["m.room.member"], // We'll redact all types of events
-                rooms: [roomId],
-            },
-            timeline: {
-                rooms: [roomId],
-                // types: ["m.room.message"], // We'll redact all types of events
-            },
-            ephemeral: {
-                limit: 0,
-                types: [],
-            },
-            account_data: {
-                limit: 0,
-                types: [],
-            },
-        },
-        presence: {
-            limit: 0,
-            types: [],
-        },
-        account_data: {
-            limit: 0,
-            types: [],
-        },
+export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<void> {
+    const isGlob = sender.includes("*");
+    const roomEventFilter = {
+        rooms: [roomId],
+        ... isGlob ? {} : {senders: [sender]}
     };
-
-    let isGlob = true;
-    if (!sender.includes("*")) {
-        isGlob = false;
-        filter.room.timeline['senders'] = [sender];
-    }
 
     const matcher = new MatrixGlob(sender);
 
@@ -134,52 +121,77 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
 
     function backfill(from: string) {
         const qs = {
-            filter: JSON.stringify(filter),
+            filter: JSON.stringify(roomEventFilter),
             from: from,
             dir: "b",
         };
-        LogService.info("utils", "Backfilling with token: " + token);
+        LogService.info("utils", "Backfilling with token: " + from);
         return client.doRequest("GET", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/messages`, qs);
     }
 
     // Do an initial sync first to get the batch token
     const response = await roomInitialSync();
-    if (!response) return [];
 
     let processed = 0;
-
-    const timeline = (response['messages'] || {})
-    const syncedMessages = timeline['chunk'] || [];
-    // The start of the chunk has the oldest events.
-    let token = timeline['start'];
-    let bfMessages = {chunk: syncedMessages, end: token};
-    do {
+    /**
+     * Filter events from the timeline to events that are from a matching sender and under the limit that can be processed by the callback.
+     * @param events Events from the room timeline.
+     * @returns Events that can safely be processed by the callback.
+     */
+    function filterEvents(events: any[]) {
         const messages: any[] = [];
-        for (const event of (bfMessages['chunk'] || [])) {
-            if (processed >= limit) return; // we're done even if we don't want to be
+        for (const event of events) {
+            if (processed >= limit) return messages; // we have provided enough events.
             processed++;
 
             if (testUser(event['sender'])) messages.push(event);
         }
+        return messages;
+    }
 
-        if (token) {
-            bfMessages = await backfill(token);
+    // The recommended APIs for fetching events from a room is to use both rooms/initialSync then /messages.
+    // Unfortunately, this results in code that is rather hard to read, as these two APIs employ very different data structures.
+    // We prefer discarding the results from rooms/initialSync and reading only from /messages,
+    // even if it's a little slower, for the sake of code maintenance.
+    const timeline = response['messages']
+    if (timeline) {
+        // The end of the PaginationChunk has the most recent events from rooms/initialSync.
+        // This token is required be present in the PagintionChunk from rooms/initialSync.
+        let token = timeline['end']!;
+        // We check that we have the token because rooms/messages is not required to provide one
+        // and will not provide one when there is no more history to paginate.
+        while (token && processed < limit) {
+            const bfMessages = await backfill(token);
             let lastToken = token;
             token = bfMessages['end'];
             if (lastToken === token) {
-                LogService.warn("utils", "Backfill returned same end token - returning");
-                cb(messages);
+                LogService.debug("utils", "Backfill returned same end token - returning early.");
                 return;
             }
+            const events = filterEvents(bfMessages['chunk'] || []);
+            // If we are using a glob, there may be no relevant events in this chunk.
+            if (events.length > 0) {
+                await cb(events);
+            }
         }
-
-        cb(messages);
-    } while (token);
+    } else {
+        throw new Error(`Internal Error: rooms/initialSync did not return a pagination chunk for ${roomId}, this is not normal and if it is we need to stop using it. See roomInitialSync() for why we are using it.`);
+    }
 }
 
-export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
-    if (!Array.isArray(roomIds)) roomIds = [roomIds];
-
+/*
+ * Take an arbitrary string and a set of room IDs, and return a
+ * TextualMessageEventContent whose plaintext component replaces those room
+ * IDs with their canonical aliases, and whose html component replaces those
+ * room IDs with their matrix.to room pills.
+ *
+ * @param client The matrix client on which to query for room aliases
+ * @param text An arbitrary string to rewrite with room aliases and pills
+ * @param roomIds A set of room IDs to find and replace in `text`
+ * @param msgtype The desired message type of the returned TextualMessageEventContent
+ * @returns A TextualMessageEventContent with replaced room IDs
+ */
+export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
     const content: TextualMessageEventContent = {
         body: text,
         formatted_body: htmlEscape(text),
@@ -209,4 +221,198 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
     }
 
     return content;
+}
+
+let isMatrixClientPatchedForConciseExceptions = false;
+
+/**
+ * Patch `MatrixClient` into something that throws concise exceptions.
+ *
+ * By default, instances of `MatrixClient` throw instances of `IncomingMessage`
+ * in case of many errors. Unfortunately, these instances are unusable:
+ *
+ * - they are logged as ~800 *lines of code*;
+ * - there is no error message;
+ * - they offer no stack.
+ *
+ * This method configures `MatrixClient` to ensure that methods that may throw
+ * instead throws more reasonable insetances of `Error`.
+ */
+function patchMatrixClientForConciseExceptions() {
+    if (isMatrixClientPatchedForConciseExceptions) {
+        return;
+    }
+    let originalRequestFn = getRequestFn();
+    setRequestFn((params: { [k: string]: any }, cb: any) => {
+        // Store an error early, to maintain *some* semblance of stack.
+        // We'll only throw the error if there is one.
+        let error = new Error("STACK CAPTURE");
+        originalRequestFn(params, function conciseExceptionRequestFn(
+            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+        ) {
+            if (!err && (response?.statusCode < 200 || response?.statusCode >= 300)) {
+                // Normally, converting HTTP Errors into rejections is done by the caller
+                // of `requestFn` within matrix-bot-sdk. However, this always ends up rejecting
+                // with an `IncomingMessage` - exactly what we wish to avoid here.
+                err = response;
+
+                // Safety note: In the calling code within matrix-bot-sdk, if we return
+                // an IncomingMessage as an error, we end up logging an unredacted response,
+                // which may include tokens, passwords, etc. This could be a grave privacy
+                // leak. The matrix-bot-sdk typically handles this by sanitizing the data
+                // before logging it but, by converting the HTTP Error into a rejection
+                // earlier than expected by the matrix-bot-sdk, we skip this step of
+                // sanitization.
+                //
+                // However, since the error we're creating is an `IncomingMessage`, we
+                // rewrite it into an `Error` ourselves in this function. Our `Error`
+                // is even more sanitized (we only include the URL, HTTP method and
+                // the error response) so we are NOT causing a privacy leak.
+                if (!(err instanceof IncomingMessage)) {
+                    // Safety check.
+                    throw new TypeError("Internal error: at this stage, the error should be an IncomingMessage");
+                }
+            }
+            if (!(err instanceof IncomingMessage)) {
+                // In most cases, we're happy with the result.
+                return cb(err, response, resBody);
+            }
+            // However, MatrixClient has a tendency of throwing
+            // instances of `IncomingMessage` instead of instances
+            // of `Error`. The former take ~800 lines of log and
+            // provide no stack trace, which makes them typically
+            // useless.
+            let method: string | null = null;
+            let path = '';
+            let body: string | null = null;
+            if (err.method) {
+                method = err.method;
+            }
+            if (err.url) {
+                path = err.url;
+            }
+            if ("req" in err && (err as any).req instanceof ClientRequest) {
+                if (!method) {
+                    method = (err as any).req.method;
+                }
+                if (!path) {
+                    path = (err as any).req.path;
+                }
+            }
+            if ("body" in err) {
+                body = (err as any).body;
+            }
+            let message = `Error during MatrixClient request ${method} ${path}: ${err.statusCode} ${err.statusMessage} -- ${body}`;
+            error.message = message;
+            if (body) {
+                // Calling code may use `body` to check for errors, so let's
+                // make sure that we're providing it.
+                try {
+                    body = JSON.parse(body);
+                } catch (ex) {
+                    // Not JSON.
+                }
+                // Define the property but don't make it visible during logging.
+                Object.defineProperty(error, "body", {
+                    value: body,
+                    enumerable: false,
+                });
+            }
+            // Calling code may use `statusCode` to check for errors, so let's
+            // make sure that we're providing it.
+            if ("statusCode" in err) {
+                // Define the property but don't make it visible during logging.
+                Object.defineProperty(error, "statusCode", {
+                    value: err.statusCode,
+                    enumerable: false,
+                });
+            }
+            return cb(error, response, resBody);
+        })
+    });
+    isMatrixClientPatchedForConciseExceptions = true;
+}
+
+const MAX_REQUEST_ATTEMPTS = 15;
+const REQUEST_RETRY_BASE_DURATION_MS = 100;
+
+const TRACE_CONCURRENT_REQUESTS = false;
+let numberOfConcurrentRequests = 0;
+let isMatrixClientPatchedForRetryWhenThrottled = false;
+/**
+ * Patch instances of MatrixClient to make sure that it retries requests
+ * in case of throttling.
+ *
+ * Note: As of this writing, we do not re-attempt requests that timeout,
+ * only request that are throttled by the server. The rationale is that,
+ * in case of DoS, we do not wish to make the situation even worse.
+ */
+function patchMatrixClientForRetry() {
+    if (isMatrixClientPatchedForRetryWhenThrottled) {
+        return;
+    }
+    let originalRequestFn = getRequestFn();
+    setRequestFn(async (params: { [k: string]: any }, cb: any) => {
+        let attempt = 1;
+        numberOfConcurrentRequests += 1;
+        if (TRACE_CONCURRENT_REQUESTS) {
+            console.trace("Current number of concurrent requests", numberOfConcurrentRequests);
+        }
+        try {
+            while (true) {
+                try {
+                    let result: any[] = await new Promise((resolve, reject) => {
+                        originalRequestFn(params, function requestFnWithRetry(
+                            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+                        ) {
+                            // Note: There is no data race on `attempt` as we `await` before continuing
+                            // to the next iteration of the loop.
+                            if (attempt < MAX_REQUEST_ATTEMPTS && err?.body?.errcode === 'M_LIMIT_EXCEEDED') {
+                                // We need to retry.
+                                reject(err);
+                            } else {
+                                // No need-to-retry error? Lucky us!
+                                // Note that this may very well be an error, just not
+                                // one we need to retry.
+                                resolve([err, response, resBody]);
+                            }
+                        });
+                    });
+                    // This is our final result.
+                    // Pass result, whether success or error.
+                    return cb(...result);
+                } catch (err) {
+                    // Need to retry.
+                    let retryAfterMs = attempt * attempt * REQUEST_RETRY_BASE_DURATION_MS;
+                    if ("retry_after_ms" in err) {
+                        try {
+                            retryAfterMs = Number.parseInt(err.retry_after_ms, 10);
+                        } catch (ex) {
+                            // Use default value.
+                        }
+                    }
+                    LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs}ms before retrying ${params.method} ${params.uri}`);
+                    await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+                    attempt += 1;
+                }
+            }
+        } finally {
+            numberOfConcurrentRequests -= 1;
+        }
+    });
+    isMatrixClientPatchedForRetryWhenThrottled = true;
+}
+
+/**
+ * Perform any patching deemed necessary to MatrixClient.
+ */
+export function patchMatrixClient() {
+    // Note that the order of patches is meaningful.
+    //
+    // - `patchMatrixClientForConciseExceptions` converts all `IncomingMessage`
+    //   errors into instances of `Error` handled as errors;
+    // - `patchMatrixClientForRetry` expects that all errors are returned as
+    //   errors.
+    patchMatrixClientForConciseExceptions();
+    patchMatrixClientForRetry();
 }

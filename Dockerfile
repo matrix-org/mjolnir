@@ -1,4 +1,4 @@
-FROM node:alpine
+FROM node:14-alpine
 COPY . /tmp/src
 RUN cd /tmp/src \
     && yarn install \

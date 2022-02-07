@@ -26,6 +26,8 @@ export class FirstMessageIsImage implements IProtection {
     private justJoined: { [roomId: string]: string[] } = {};
     private recentlyBanned: string[] = [];
 
+    settings = {};
+
     constructor() {
     }
 

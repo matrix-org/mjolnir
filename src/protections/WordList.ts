@@ -23,6 +23,8 @@ import { isTrueJoinEvent } from "../utils";
 
 export class WordList implements IProtection {
 
+    settings = {};
+
     private justJoined: { [roomId: string]: { [username: string]: Date} } = {};
     private badWords: RegExp;
 
