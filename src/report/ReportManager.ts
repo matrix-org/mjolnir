@@ -19,6 +19,7 @@ import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
 import { htmlEscape } from "../utils";
 import { JSDOM } from 'jsdom';
+import { EventEmitter } from 'events';
 
 import { Mjolnir } from "../Mjolnir";
 
@@ -74,9 +75,10 @@ enum Kind {
 /**
  * A class designed to respond to abuse reports.
  */
-export class ReportManager {
+export class ReportManager extends EventEmitter {
     private displayManager: DisplayManager;
     constructor(public mjolnir: Mjolnir) {
+        super();
         // Configure bot interactions.
         mjolnir.client.on("room.event", async (roomId, event) => {
             try {
@@ -101,17 +103,17 @@ export class ReportManager {
      * The following MUST hold true:
      * - the reporter's id is `reporterId`;
      * - the reporter is a member of `roomId`;
-     * - `eventId` did take place in room `roomId`;
-     * - the reporter could witness event `eventId` in room `roomId`;
+     * - `event` did take place in room `roomId`;
+     * - the reporter could witness event `event` in room `roomId`;
      * - the event being reported is `event`;
      *
      * @param roomId The room in which the abuse took place.
-     * @param eventId The ID of the event reported as abuse.
      * @param reporterId The user who reported the event.
      * @param event The event being reported.
      * @param reason A reason provided by the reporter.
      */
-    public async handleServerAbuseReport({ reporterId, event, reason }: { roomId: string, eventId: string, reporterId: string, event: any, reason?: string }) {
+    public async handleServerAbuseReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
+        this.emit("report.new", { roomId: roomId, reporterId: reporterId, event: event, reason: reason });
         return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: this.mjolnir.managementRoomId });
     }
 

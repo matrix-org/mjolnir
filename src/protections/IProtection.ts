@@ -29,11 +29,17 @@ export interface IProtection {
     enabled: boolean;
     settings: { [setting: string]: AbstractProtectionSetting<any, any> };
     handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
+    handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, reason: string, event: any): Promise<any>;
 }
 export abstract class Protection implements IProtection {
     abstract readonly name: string
     abstract readonly description: string;
     enabled = false;
     abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
-    abstract handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
+    handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
+        return Promise.resolve(null);
+    }
+    handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
+        return Promise.resolve(null);
+    }
 }
