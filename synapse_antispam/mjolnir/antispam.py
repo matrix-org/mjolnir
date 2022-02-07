@@ -20,7 +20,9 @@ from synapse.types import UserID
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
-
+#
+# Old API
+#
 class AntiSpam(object):
     def __init__(self, config, api):
         self.block_invites = config.get("block_invites", True)
@@ -29,12 +31,6 @@ class AntiSpam(object):
         self.list_room_ids = config.get("ban_lists", [])
         self.rooms_to_lists = {}
         self.api = api
-
-        self.api.register_spam_checker_callbacks(
-            check_event_for_spam=self.check_event_for_spam,
-            user_may_invite=self.user_may_invite,
-            check_username_for_spam=self.check_username_for_spam,
-        )
 
         # Now we build the ban lists so we can match them
         self.build_lists()
@@ -78,7 +74,7 @@ class AntiSpam(object):
 
     # --- spam checker interface below here ---
 
-    async def check_event_for_spam(self, event):
+    def check_event_for_spam(self, event):
         room_id = event.get("room_id", "")
         event_type = event.get("type", "")
         state_key = event.get("state_key", None)
@@ -104,7 +100,7 @@ class AntiSpam(object):
 
         return False  # not spam (as far as we're concerned)
 
-    async def user_may_invite(self, inviter_user_id, invitee_user_id, room_id):
+    def user_may_invite(self, inviter_user_id, invitee_user_id, room_id):
         if not self.block_invites:
             return True  # allowed (we aren't blocking invites)
 
@@ -118,7 +114,7 @@ class AntiSpam(object):
 
         return True  # allowed (as far as we're concerned)
 
-    async def check_username_for_spam(self, user_profile):
+    def check_username_for_spam(self, user_profile):
         if not self.block_usernames:
             return True  # allowed (we aren't blocking based on usernames)
 
@@ -128,6 +124,36 @@ class AntiSpam(object):
             user_profile["display_name"]
         )
 
+    def user_may_create_room(self, user_id):
+        return True  # allowed
+
+    def user_may_create_room_alias(self, user_id, room_alias):
+        return True  # allowed
+
+    def user_may_publish_room(self, user_id, room_id):
+        return True  # allowed
+
     @staticmethod
     def parse_config(config):
         return config  # no parsing needed
+
+# New module API
+class Module(object):    
+    def __init__(self, config, api):
+        self.antispam = AntiSpam(config, api)        
+        self.api.register_spam_checker_callbacks(
+            check_event_for_spam=self.antispam.check_event_for_spam,
+            user_may_invite=self.antispam.user_may_invite,
+            check_username_for_spam=self.antispam.check_username_for_spam,
+        )
+
+    # Spam-checker API
+    # Note that these are `async`, by opposition to the APIs in `AntiSpam`.
+    async def check_event_for_spam(self, event):
+        return self.antispam.check_event_for_spam(self, event)
+
+    async def user_may_invite(self, inviter_user_id, invitee_user_id, room_id):
+        return self.antispam.user_may_invite(inviter_user_id, invitee_user_id, room_id)
+
+    async def check_username_for_spam(self, user_profile):
+        return self.antispam.check_username_for_spam

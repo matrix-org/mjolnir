@@ -20,8 +20,6 @@ modules:
   - name: mjolnir
     build:
       - cp -r synapse_antispam $MX_TEST_MODULE_DIR
-    install:
-      - pip install mjolnir
     config:
       module: mjolnir.antispam.AntiSpam
       config: {}
