@@ -15,7 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { IProtection } from "./IProtection";
+import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
@@ -38,7 +38,7 @@ const IPV6_REGEX = "(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:
 const PORT_REGEX = "(:[0-9]+)?";
 
 
-export class MentionFlood implements IProtection {
+export class MentionFlood extends Protection {
 
     settings = {
         minutesBeforeTrusting: new NumberProtectionSetting(DEFAULT_MINUTES_BEFORE_TRUSTING),
@@ -51,11 +51,17 @@ export class MentionFlood implements IProtection {
     private mention: RegExp;
 
     constructor() {
+        super();
         this.mention = new RegExp(`@${LOCALPART_REGEX}:(${DOMAIN_REGEX}|${IPV4_REGEX}|${IPV6_REGEX})${PORT_REGEX}`, "gi");
     }
 
     public get name(): string {
         return 'MentionFlood';
+    }
+
+    public get description(): string {
+        return "If a user posts more mentions than a set amount of time after joining, they " +
+            "will be banned from that room.  This will not publish the ban to a ban list.";
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
