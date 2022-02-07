@@ -87,8 +87,7 @@ export class StringListProtectionSetting extends AbstractProtectionListSetting<s
         return [...this.value, data];
     }
     removeValue(data: string): string[] {
-        const index = this.value.indexOf(data);
-        return this.value.splice(index, index + 1);
+        return this.value.filter(i => i !== data);
     }
 }
 
