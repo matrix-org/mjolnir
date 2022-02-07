@@ -99,25 +99,25 @@ pip install -e "git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdir
 
 Then add the following to your `homeserver.yaml`:
 ```yaml
-spam_checker:
-  module: mjolnir.AntiSpam
-  config:
-    # Prevent servers/users in the ban lists from inviting users on this
-    # server to rooms. Default true.
-    block_invites: true
-    # Flag messages sent by servers/users in the ban lists as spam. Currently
-    # this means that spammy messages will appear as empty to users. Default
-    # false.
-    block_messages: false
-    # Remove users from the user directory search by filtering matrix IDs and
-    # display names by the entries in the user ban list. Default false.
-    block_usernames: false
-    # The room IDs of the ban lists to honour. Unlike other parts of Mjolnir,
-    # this list cannot be room aliases or permalinks. This server is expected
-    # to already be joined to the room - Mjolnir will not automatically join
-    # these rooms.
-    ban_lists:
-      - "!roomid:example.org"
+modules:
+  - module: mjolnir.AntiSpam
+    config:
+      # Prevent servers/users in the ban lists from inviting users on this
+      # server to rooms. Default true.
+      block_invites: true
+      # Flag messages sent by servers/users in the ban lists as spam. Currently
+      # this means that spammy messages will appear as empty to users. Default
+      # false.
+      block_messages: false
+      # Remove users from the user directory search by filtering matrix IDs and
+      # display names by the entries in the user ban list. Default false.
+      block_usernames: false
+      # The room IDs of the ban lists to honour. Unlike other parts of Mjolnir,
+      # this list cannot be room aliases or permalinks. This server is expected
+      # to already be joined to the room - Mjolnir will not automatically join
+      # these rooms.
+      ban_lists:
+         - "!roomid:example.org"
 ```
 
 *Note*: Although this is described as a "spam checker", it does much more than fight

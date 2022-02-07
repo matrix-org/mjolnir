@@ -51,8 +51,7 @@ class AntiSpam(object):
 
     def get_list_for_room(self, room_id):
         if room_id not in self.rooms_to_lists:
-            self.rooms_to_lists[room_id] = BanList(
-                api=self.api, room_id=room_id)
+            self.rooms_to_lists[room_id] = BanList(api=self.api, room_id=room_id)
         return self.rooms_to_lists[room_id]
 
     def is_user_banned(self, user_id):
@@ -87,7 +86,11 @@ class AntiSpam(object):
         state_key = event.get("state_key", None)
 
         # Rebuild the rules if there's an event for our ban lists
-        if state_key is not None and event_type in ALL_RULE_TYPES and room_id in self.list_room_ids:
+        if (
+            state_key is not None
+            and event_type in ALL_RULE_TYPES
+            and room_id in self.list_room_ids
+        ):
             logger.info("Received ban list event - updating list")
             self.get_list_for_room(room_id).build(with_event=event)
             return False  # Ban list updates aren't spam
@@ -123,7 +126,9 @@ class AntiSpam(object):
 
         # Check whether the user ID or display name matches any of the banned
         # patterns.
-        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(user_profile["display_name"])
+        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(
+            user_profile["display_name"]
+        )
 
     @staticmethod
     def parse_config(config):
