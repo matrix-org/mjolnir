@@ -133,20 +133,18 @@ describe("Test: Protection settings", function() {
         };
 
 
-        let reply = new Promise((resolve, reject) => {
-            let i = 0;
+        let reply = () => new Promise((resolve, reject) => {
             client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
                 if (event.content.body.includes("Changed oXzT0E.test ")) {
-                    if (++i == 2) {
-                        resolve(event);
-                    }
+                    resolve(event);
                 }
             }))
         });
 
         await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config add oXzT0E.test asd"})
+        await reply();
         await client.sendMessage(this.mjolnir.managementRoomId, {msgtype: "m.text", body: "!mjolnir config remove oXzT0E.test asd"})
-        await reply
+        await reply();
 
         assert.deepEqual(await this.mjolnir.getProtectionSettings("oXzT0E"), { "test": [] });
     });
