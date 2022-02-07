@@ -21,6 +21,10 @@ import { Mjolnir } from "../Mjolnir";
 
 const MAX_REPORTED_EVENT_BACKLOG = 20;
 
+/*
+ * Hold a list of users trusted to make reports, and enact consequences on
+ * events that surpass configured report count thresholds
+ */
 export class TrustedReporters extends Protection {
     private recentReported = new Map<string /* eventId */, Set<string /* reporterId */>>();
 
