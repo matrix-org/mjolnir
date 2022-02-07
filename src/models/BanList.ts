@@ -16,7 +16,7 @@ limitations under the License.
 
 import { extractRequestError, LogService, MatrixClient } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
-import { ListRule } from "./ListRule";
+import { ListRule, RECOMMENDATION_BAN } from "./ListRule";
 
 export const RULE_USER = "m.policy.rule.user";
 export const RULE_ROOM = "m.policy.rule.room";
@@ -130,7 +130,7 @@ class BanList extends EventEmitter {
 
     /**
      * Return all the active rules of a given kind.
-     * @param kind e.g. RULE_SERVER (m.policy.rule.server)
+     * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the BanList.
      * @returns The active ListRules for the ban list of that kind.
      */
     private rulesOfKind(kind: string): ListRule[] {
@@ -139,7 +139,10 @@ class BanList extends EventEmitter {
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
                 const rule = event?.unsigned?.rule;
-                if (rule && rule.kind === kind) {
+                // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
+                // please make sure that you *only* return rules with `m.ban` or create a different method
+                // (we don't want to accidentally ban entities).
+                if (rule && rule.kind === kind && rule.recommendation === RECOMMENDATION_BAN) {
                     rules.push(rule);
                 }
             }

@@ -2,8 +2,9 @@ import { strict as assert } from "assert";
 
 import config from "../../src/config";
 import { newTestUser } from "./clientHelper";
-import { MatrixClient } from "matrix-bot-sdk";
-import  BanList, { ChangeType, ListRuleChange, RULE_USER } from "../../src/models/BanList";
+import { MatrixClient, UserID } from "matrix-bot-sdk";
+import  BanList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER } from "../../src/models/BanList";
+import { ServerAcl, ServerAclContent } from "../../src/models/ServerAcl";
 
 /**
  * Create a policy rule in a policy room.
@@ -12,13 +13,14 @@ import  BanList, { ChangeType, ListRuleChange, RULE_USER } from "../../src/model
  * @param policyType The type of policy to add e.g. m.policy.rule.user. (Use RULE_USER though).
  * @param entity The entity to ban e.g. @foo:example.org
  * @param reason A reason for the rule e.g. 'Wouldn't stop posting spam links'
+ * @param template The template to use for the policy rule event.
  * @returns The event id of the newly created policy rule.
  */
-async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string) {
+async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = {recommendation: 'm.ban'}) {
     return await client.sendStateEvent(policyRoomId, policyType, `rule:${entity}`, {
         entity,
         reason,
-        recommendation: 'm.ban'
+        ...template,
     });
 }
 
@@ -175,4 +177,51 @@ describe("Test: Updating the BanList", function () {
         assert.equal(changes[0].previousState['event_id'], updatedEventId, 'There should be a previous state event for a modified rule');
         assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
+    it('Test: BanList Supports all entity types.', async function () {
+        const mjolnir = config.RUNTIME.client!
+        const banListId = await mjolnir.createRoom();
+        const banList = new BanList(banListId, banListId, mjolnir);
+        for (let i = 0; i < ALL_RULE_TYPES.length; i++) {
+            await createPolicyRule(mjolnir, banListId, ALL_RULE_TYPES[i], `*${i}*`, '');
+        }
+        let changes: ListRuleChange[] = await banList.updateList();
+        assert.equal(changes.length, ALL_RULE_TYPES.length);
+        assert.equal(banList.allRules.length, ALL_RULE_TYPES.length);
+    })
 });
+
+describe('Test: We do not respond to recommendations other than m.ban in the banlist', function () {
+    it('Will not respond to a rule that has a different recommendation to m.ban (or the unstable equivalent).', async function () {
+        const mjolnir = config.RUNTIME.client!
+        const banListId = await mjolnir.createRoom();
+        const banList = new BanList(banListId, banListId, mjolnir);
+        await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'exmaple.org', '', {recommendation: 'something that is not m.ban'});
+        let changes: ListRuleChange[] = await banList.updateList();
+        assert.equal(changes.length, 1, 'There should only be one change');
+        assert.equal(changes[0].changeType, ChangeType.Added);
+        assert.equal(changes[0].sender, await mjolnir.getUserId());
+        // We really don't want things that aren't m.ban to end up being accessible in these APIs.
+        assert.equal(banList.serverRules.length, 0);
+        assert.equal(banList.allRules.length, 0);
+    })
+})
+
+describe('Test: We will not be able to ban ourselves via ACL.', function () {
+    it('We do not ban ourselves when we put ourselves into the policy list.', async function () {
+        const mjolnir = config.RUNTIME.client!
+        const serverName = new UserID(await mjolnir.getUserId()).domain;
+        const banListId = await mjolnir.createRoom();
+        const banList = new BanList(banListId, banListId, mjolnir);
+        await createPolicyRule(mjolnir, banListId, RULE_SERVER, serverName, '');
+        await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'evil.com', '');
+        await createPolicyRule(mjolnir, banListId, RULE_SERVER, '*', '');
+        // We should still intern the matching rules rule.
+        let changes: ListRuleChange[] = await banList.updateList();
+        assert.equal(banList.serverRules.length, 3);
+        // But when we construct an ACL, we should be safe.
+        const acl = new ServerAcl(serverName)
+        changes.forEach(change => acl.denyServer(change.rule.entity));
+        assert.equal(acl.safeAclContent().deny.length, 1);
+        assert.equal(acl.literalAclContent().deny.length, 3);
+    })
+})
