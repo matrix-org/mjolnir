@@ -3,7 +3,7 @@
 import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
-import { getGlobalAdminUser } from "../clientHelper";
+import { getGlobalAdminUser } from "./clientHelper";
 
 describe("Test: The make admin command", function () {
     // If a test has a timeout while awaitng on a promise then we never get given control back.
