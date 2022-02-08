@@ -3,7 +3,7 @@
 import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
-import { getFirstReaction } from "./commandUtils";
+import { getGlobalAdminUser } from "./clientHelper";
 
 describe("Test: The make admin command", function () {
     // If a test has a timeout while awaitng on a promise then we never get given control back.
@@ -11,6 +11,11 @@ describe("Test: The make admin command", function () {
 
     it('Mjölnir make the bot self room administrator and some other tester too', async function () {
         this.timeout(60000);
+
+        const admin = getGlobalAdminUser();
+        await admin.client.doRequest("PUT", `/_synapse/admin/v2/users/${this.mjolnir.client.getUserId()}`, null, {
+            admin: true
+        });
         const mjolnir = config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
         let moderator = await newTestUser({ name: { contains: "moderator" } });
