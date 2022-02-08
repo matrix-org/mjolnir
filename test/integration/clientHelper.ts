@@ -130,7 +130,7 @@ let _globalAdminUser: MatrixClient;
  * Get a client that can perform synapse admin API actions.
  * @returns A client logged in with an admin user.
  */
-async function getGlobalAdminUser(): Promise<MatrixClient> {
+export async function getGlobalAdminUser(): Promise<MatrixClient> {
     // Initialize global admin user if needed.
     if (!_globalAdminUser) {
         const USERNAME = "mjolnir-test-internal-admin-user";
