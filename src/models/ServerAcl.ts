@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { MatrixGlob } from "matrix-bot-sdk";
 import { setToArray } from "../utils";
 
 export interface ServerAclContent {
@@ -26,6 +27,28 @@ export class ServerAcl {
     private allowedServers: Set<string> = new Set<string>();
     private deniedServers: Set<string> = new Set<string>();
     private allowIps = false;
+
+    public constructor(public readonly homeserver: string) {
+
+    }
+
+    /**
+     * Checks the ACL for any entries that might ban ourself.
+     * @returns A list of deny entries that will not ban our own homeserver.
+     */
+    public safeDeniedServers(): string[] {
+        // The reason we do this check here rather than in the `denyServer` method
+        // is because `literalAclContent` exists and also we want to be defensive about someone
+        // mutating `this.deniedServers` via another method in the future.
+        const entries: string[] = []
+        for (const server of this.deniedServers) {
+            const glob = new MatrixGlob(server);
+            if (!glob.test(this.homeserver)) {
+                entries.push(server);
+            }
+        }
+        return entries;
+    }
 
     public allowIpAddresses(): ServerAcl {
         this.allowIps = true;
@@ -72,7 +95,7 @@ export class ServerAcl {
         }
         return {
             allow: allowed,
-            deny: setToArray(this.deniedServers),
+            deny: this.safeDeniedServers(),
             allow_ip_literals: this.allowIps,
         };
     }

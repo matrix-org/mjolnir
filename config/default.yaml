@@ -68,8 +68,8 @@ noop: false
 
 # Set to true to use /joined_members instead of /state to figure out who is
 # in the room. Using /state is preferred because it means that users are
-# banned when they are invited instead of just when they join, though if your
-# server struggles with /state requests then set this to true.
+# banned when they are invited instead of just when they join. Set this to true
+# if the bot is in large rooms or dozens of rooms.
 fasterMembershipChecks: false
 
 # A case-insensitive list of ban reasons to automatically redact a user's

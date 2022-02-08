@@ -34,6 +34,7 @@ export class ListRule {
 
     /**
      * The recommendation for this rule, or `null` if there is no recommendation or the recommendation is invalid.
+     * Recommendations are normalised to their stable types.
      */
     public get recommendation(): string|null {
         if (RECOMMENDATION_BAN_TYPES.includes(this.action)) return RECOMMENDATION_BAN;

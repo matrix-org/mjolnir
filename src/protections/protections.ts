@@ -16,40 +16,17 @@ limitations under the License.
 
 import { FirstMessageIsImage } from "./FirstMessageIsImage";
 import { IProtection } from "./IProtection";
-import { BasicFlooding, DEFAULT_MAX_PER_MINUTE } from "./BasicFlooding";
+import { BasicFlooding } from "./BasicFlooding";
 import { WordList } from "./WordList";
 import { MessageIsVoice } from "./MessageIsVoice";
 import { MessageIsMedia } from "./MessageIsMedia";
+import { TrustedReporters } from "./TrustedReporters";
 
-export const PROTECTIONS: PossibleProtections = {
-    [new FirstMessageIsImage().name]: {
-        description: "If the first thing a user does after joining is to post an image or video, " +
-            "they'll be banned for spam. This does not publish the ban to any of your ban lists.",
-        factory: () => new FirstMessageIsImage(),
-    },
-    [new BasicFlooding().name]: {
-        description: "If a user posts more than " + DEFAULT_MAX_PER_MINUTE + " messages in 60s they'll be " +
-            "banned for spam. This does not publish the ban to any of your ban lists.",
-        factory: () => new BasicFlooding(),
-    },
-    [new WordList().name]: {
-        description: "If a user posts a monitored word a set amount of time after joining, they " +
-            "will be banned from that room.  This will not publish the ban to a ban list.",
-        factory: () => new WordList(),
-    },
-    [new MessageIsVoice().name]: {
-        description: "If a user posts a voice message, that message will be redacted. No bans are issued.",
-        factory: () => new MessageIsVoice(),
-    },
-    [new MessageIsMedia().name]: {
-        description: "If a user posts an image or video, that message will be redacted. No bans are issued.",
-        factory: () => new MessageIsMedia(),
-    }
-};
-
-export interface PossibleProtections {
-    [name: string]: {
-        description: string;
-        factory: () => IProtection;
-    };
-}
+export const PROTECTIONS: IProtection[] = [
+    new FirstMessageIsImage(),
+    new BasicFlooding(),
+    new WordList(),
+    new MessageIsVoice(),
+    new MessageIsMedia(),
+    new TrustedReporters()
+];

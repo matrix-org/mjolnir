@@ -14,14 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { IProtection } from "./IProtection";
+import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 import { isTrueJoinEvent } from "../utils";
 
-export class WordList implements IProtection {
+export class WordList extends Protection {
 
     settings = {};
 
@@ -29,6 +29,7 @@ export class WordList implements IProtection {
     private badWords: RegExp;
 
     constructor() {
+        super();
         // Create a mega-regex from all the tiny baby regexs
         this.badWords = new RegExp(
             "(" + config.protections.wordlist.words.join(")|(") + ")",
@@ -38,6 +39,10 @@ export class WordList implements IProtection {
 
     public get name(): string {
         return 'WordList';
+    }
+    public get description(): string {
+        return "If a user posts a monitored word a set amount of time after joining, they " +
+            "will be banned from that room.  This will not publish the ban to a ban list.";
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
