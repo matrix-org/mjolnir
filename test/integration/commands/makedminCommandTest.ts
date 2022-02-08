@@ -22,17 +22,12 @@ describe("Test: The make admin command", function () {
         let targetRoom = await moderator.createRoom({ invite: [mjolnirUserId, testerUserId] });
         await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}` });
 
-        try {
-            await moderator.start();
-            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
-                return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir make admin ${targetRoom}` });
-            });
-            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
-                return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir make admin ${targetRoom} ${tester.getUserId()}` });
-            });
-        } finally {
-            moderator.stop();
-        }
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir make admin ${targetRoom}` });
+        });
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir make admin ${targetRoom} ${tester.getUserId()}` });
+        });
 
         assert.ok(await mjolnir.userHasPowerLevelForAction(mjolnirUserId, targetRoom, PowerLevelAction.Ban), "Bot user is now room admin.");
         assert.ok(await mjolnir.userHasPowerLevelForAction(testerUserId, targetRoom, PowerLevelAction.Ban), "Tester user is now room admin.");
