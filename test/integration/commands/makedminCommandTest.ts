@@ -19,7 +19,7 @@ describe("Test: The make admin command", function () {
         this.moderator = moderator;
         this.tester = tester;
         await moderator.joinRoom(config.managementRoom);
-        let targetRoom = await moderator.createRoom({ invite: [await moderator.getUserId(), mjolnirUserId, testerUserId] });
+        let targetRoom = await moderator.createRoom({ invite: [mjolnirUserId, testerUserId] });
         await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}` });
 
         try {
