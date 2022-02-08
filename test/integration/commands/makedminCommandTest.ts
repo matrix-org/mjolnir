@@ -13,7 +13,7 @@ describe("Test: The make admin command", function () {
         this.timeout(60000);
 
         const admin = getGlobalAdminUser();
-        await admin.doRequest("PUT", `/_synapse/admin/v2/users/${this.mjolnir.client.getUserId()}`, null, {
+        await admin.client.doRequest("PUT", `/_synapse/admin/v2/users/${this.mjolnir.client.getUserId()}`, null, {
             admin: true
         });
         const mjolnir = config.RUNTIME.client!
