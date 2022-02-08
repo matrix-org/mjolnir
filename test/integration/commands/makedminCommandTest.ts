@@ -2,7 +2,7 @@
 
 import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
-import { PowerLevelAction } from "matrix-bot-sdk";
+import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { getFirstReaction } from "./commandUtils";
 
 describe("Test: The make admin command", function () {
