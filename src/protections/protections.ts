@@ -20,11 +20,13 @@ import { BasicFlooding } from "./BasicFlooding";
 import { WordList } from "./WordList";
 import { MessageIsVoice } from "./MessageIsVoice";
 import { MessageIsMedia } from "./MessageIsMedia";
+import { TrustedReporters } from "./TrustedReporters";
 
 export const PROTECTIONS: IProtection[] = [
     new FirstMessageIsImage(),
     new BasicFlooding(),
     new WordList(),
     new MessageIsVoice(),
-    new MessageIsMedia()
+    new MessageIsMedia(),
+    new TrustedReporters()
 ];

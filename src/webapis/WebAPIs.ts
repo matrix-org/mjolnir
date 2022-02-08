@@ -175,7 +175,7 @@ export class WebAPIs {
             }
 
             let reason = request.body["reason"];
-            await this.reportManager.handleServerAbuseReport({ roomId, eventId, reporterId, event, reason });
+            await this.reportManager.handleServerAbuseReport({ roomId, reporterId, event, reason });
 
             // Match the spec behavior of `/report`: return 200 and an empty JSON.
             response.status(200).json({});
