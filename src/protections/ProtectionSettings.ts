@@ -14,6 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { EventEmitter } from "events";
+
 export class ProtectionSettingValidationError extends Error {};
 
 /*
@@ -50,6 +52,7 @@ export class AbstractProtectionSetting<TChange, TValue> {
      */
     setValue(data: TValue) {
         this.value = data;
+        this.emit("set", data);
     }
 }
 export class AbstractProtectionListSetting<TChange, TValue> extends AbstractProtectionSetting<TChange, TValue> {
@@ -88,10 +91,30 @@ export class StringListProtectionSetting extends AbstractProtectionListSetting<s
     fromString = (data: string): string => data;
     validate = (data: string): boolean => true;
     addValue(data: string): string[] {
-        return [...this.value, data];
+        this.emit("add", data);
+        this.value.push(data);
+        return this.value;
     }
     removeValue(data: string): string[] {
-        return this.value.filter(i => i !== data);
+        this.emit("remove", data);
+        this.value =  this.value.filter(i => i !== data);
+        return this.value;
+    }
+}
+
+export class StringSetProtectionSetting extends AbstractProtectionListSetting<string, Set<String>> {
+    value: Set<string> = new Set();
+    fromString = (data: string): string => data;
+    validate = (data: string): boolean => true;
+    addValue(data: string): Set<string> {
+        this.emit("add", data);
+        this.value.add(data);
+        return this.value;
+    }
+    removeValue(data: string): Set<string> {
+        this.emit("remove", data);
+        this.value.delete(data);
+        return this.value;
     }
 }
 
