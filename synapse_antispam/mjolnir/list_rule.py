@@ -26,10 +26,12 @@ ROOM_RULE_TYPES = [RULE_ROOM, "m.room.rule.room", "org.matrix.mjolnir.rule.room"
 SERVER_RULE_TYPES = [RULE_SERVER, "m.room.rule.server", "org.matrix.mjolnir.rule.server"]
 ALL_RULE_TYPES = [*USER_RULE_TYPES, *ROOM_RULE_TYPES, *SERVER_RULE_TYPES]
 
+
 def recommendation_to_stable(recommendation):
     if recommendation in RECOMMENDATION_BAN_TYPES:
         return RECOMMENDATION_BAN
     return None
+
 
 def rule_type_to_stable(rule):
     if rule in USER_RULE_TYPES:
@@ -39,6 +41,7 @@ def rule_type_to_stable(rule):
     if rule in SERVER_RULE_TYPES:
         return RULE_SERVER
     return None
+
 
 class ListRule(object):
     def __init__(self, entity, action, reason, kind):

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2019 The Matrix.org Foundation C.I.C.
+# Copyright 2019-2022 The Matrix.org Foundation C.I.C.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,13 +14,21 @@
 # limitations under the License.
 
 import logging
+from typing import Dict, Union
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
 from synapse.types import UserID
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
+
 class AntiSpam(object):
+    """
+    Implements the old synapse spam-checker API, for compatibility with older configurations.
+
+    See https://github.com/matrix-org/synapse/blob/master/docs/spam_checker.md
+    """
+
     def __init__(self, config, api):
         self.block_invites = config.get("block_invites", True)
         self.block_messages = config.get("block_messages", False)
@@ -77,7 +85,11 @@ class AntiSpam(object):
         state_key = event.get("state_key", None)
 
         # Rebuild the rules if there's an event for our ban lists
-        if state_key is not None and event_type in ALL_RULE_TYPES and room_id in self.list_room_ids:
+        if (
+            state_key is not None
+            and event_type in ALL_RULE_TYPES
+            and room_id in self.list_room_ids
+        ):
             logger.info("Received ban list event - updating list")
             self.get_list_for_room(room_id).build(with_event=event)
             return False  # Ban list updates aren't spam
@@ -113,7 +125,9 @@ class AntiSpam(object):
 
         # Check whether the user ID or display name matches any of the banned
         # patterns.
-        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(user_profile["display_name"])
+        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(
+            user_profile["display_name"]
+        )
 
     def user_may_create_room(self, user_id):
         return True  # allowed
@@ -127,3 +141,33 @@ class AntiSpam(object):
     @staticmethod
     def parse_config(config):
         return config  # no parsing needed
+
+
+# New module API
+class Module:
+    """
+    Our main entry point. Implements the Synapse Module API.
+    """
+
+    def __init__(self, config, api):
+        self.antispam = AntiSpam(config, api)
+        self.antispam.api.register_spam_checker_callbacks(
+            check_event_for_spam=self.check_event_for_spam,
+            user_may_invite=self.user_may_invite,
+            check_username_for_spam=self.check_username_for_spam,
+        )
+
+    # Callbacks for `register_spam_checker_callbacks`
+    # Note that these are `async`, by opposition to the APIs in `AntiSpam`.
+    async def check_event_for_spam(
+        self, event: "synapse.events.EventBase"
+    ) -> Union[bool, str]:
+        return self.antispam.check_event_for_spam(event)
+
+    async def user_may_invite(
+        self, inviter_user_id: str, invitee_user_id: str, room_id: str
+    ) -> bool:
+        return self.antispam.user_may_invite(inviter_user_id, invitee_user_id, room_id)
+
+    async def check_username_for_spam(self, user_profile: Dict[str, str]) -> bool:
+        return self.antispam.check_username_for_spam(user_profile)
