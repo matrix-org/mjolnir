@@ -14,22 +14,27 @@
 # limitations under the License.
 
 import logging
+from typing import Dict, Union
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
 from synapse.types import UserID
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
-#
-# Old API
-#
+
 class AntiSpam(object):
+    """
+    Implements the old synapse spam-checker API, for compatibility with older configurations.
+
+    See https://github.com/matrix-org/synapse/blob/master/docs/spam_checker.md
+    """
+
     def __init__(self, config, api):
         self.block_invites = config.get("block_invites", True)
         self.block_messages = config.get("block_messages", False)
         self.block_usernames = config.get("block_usernames", False)
         self.list_room_ids = config.get("ban_lists", [])
-        self.rooms_to_lists = {}
+        self.rooms_to_lists = {}  # type: Dict[str, BanList]
         self.api = api
 
         # Now we build the ban lists so we can match them
@@ -137,23 +142,32 @@ class AntiSpam(object):
     def parse_config(config):
         return config  # no parsing needed
 
+
 # New module API
-class Module(object):    
+class Module:
+    """
+    Our main entry point. Implements the Synapse Module API.
+    """
+
     def __init__(self, config, api):
-        self.antispam = AntiSpam(config, api)        
-        self.api.register_spam_checker_callbacks(
-            check_event_for_spam=self.antispam.check_event_for_spam,
-            user_may_invite=self.antispam.user_may_invite,
-            check_username_for_spam=self.antispam.check_username_for_spam,
+        self.antispam = AntiSpam(config, api)
+        self.antispam.api.register_spam_checker_callbacks(
+            check_event_for_spam=self.check_event_for_spam,
+            user_may_invite=self.user_may_invite,
+            check_username_for_spam=self.check_username_for_spam,
         )
 
-    # Spam-checker API
+    # Callbacks for `register_spam_checker_callbacks`
     # Note that these are `async`, by opposition to the APIs in `AntiSpam`.
-    async def check_event_for_spam(self, event):
-        return self.antispam.check_event_for_spam(self, event)
+    async def check_event_for_spam(
+        self, event: "synapse.events.EventBase"
+    ) -> Union[bool, str]:
+        return self.antispam.check_event_for_spam(event)
 
-    async def user_may_invite(self, inviter_user_id, invitee_user_id, room_id):
+    async def user_may_invite(
+        self, inviter_user_id: str, invitee_user_id: str, room_id: str
+    ) -> bool:
         return self.antispam.user_may_invite(inviter_user_id, invitee_user_id, room_id)
 
-    async def check_username_for_spam(self, user_profile):
-        return self.antispam.check_username_for_spam
+    async def check_username_for_spam(self, user_profile: Dict[str, str]) -> bool:
+        return self.antispam.check_username_for_spam(user_profile)

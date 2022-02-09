@@ -84,7 +84,7 @@ set up:
 
 ## Synapse Module
 
-***This requires Synapse 1.37.0 or higher**
+**This requires Synapse 1.37.0 or higher**
 
 Using the bot to manage your rooms is great, however if you want to use your ban lists
 (or someone else's) on your server to affect all of your users then a Synapse module
@@ -102,7 +102,7 @@ pip install -e "git+https://github.com/matrix-org/mjolnir.git#egg=mjolnir&subdir
 Then add the following to your `homeserver.yaml`:
 ```yaml
 modules:
-  - module: mjolnir.AntiSpam
+  - module: mjolnir.Module
     config:
       # Prevent servers/users in the ban lists from inviting users on this
       # server to rooms. Default true.

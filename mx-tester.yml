@@ -21,7 +21,7 @@ modules:
     build:
       - cp -r synapse_antispam $MX_TEST_MODULE_DIR
     config:
-      module: mjolnir.antispam.AntiSpam
+      module: mjolnir.Module
       config: {}
 
 
