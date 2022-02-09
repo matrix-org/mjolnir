@@ -44,6 +44,7 @@ import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
 import RuleServer from "./models/RuleServer";
+import { batchedSyncWithBanList } from "./actions/policySyncBatcher";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -762,11 +763,8 @@ export class Mjolnir {
      * @param policyRoomId The room with a policy list which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    public async syncWithPolicyRoom(policyRoomId: string): Promise<void> {
-        const banList = this.banLists.find(list => list.roomId === policyRoomId);
-        if (banList === undefined) return;
+     public async immediateSyncWithBanList(banList: BanList): Promise<void> {
         const changes = await banList.updateList();
-        await this.printBanlistChanges(changes, banList, true);
 
         let hadErrors = false;
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
@@ -786,7 +784,22 @@ export class Mjolnir {
                 formatted_body: html,
             });
         }
+        // This can fail if the change is very large and it is much less important than applying bans, so do it last.
+        await this.printBanlistChanges(changes, banList, true);
     }
+
+    /**
+     * Pulls any changes to the rules that are in a policy room and updates all protected rooms
+     * with those changes. Does not fail if there are errors updating the room, these are reported to the management room.
+     * @param policyRoomId The room with a policy list which we will check for changes and apply them to all protected rooms.
+     * @returns When all of the protected rooms have been updated.
+     */
+    public syncWithBanList(policyRoomId: string, promptingChange: { event_id: string, origin_server_ts: number, type: string }): void {
+        const banList = this.banLists.find(list => list.roomId === policyRoomId);
+        if (banList === undefined) return;
+        batchedSyncWithBanList(this, banList, promptingChange.event_id);
+    }
+
 
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
@@ -805,7 +818,7 @@ export class Mjolnir {
         // themselves.
         if (this.banLists.map(b => b.roomId).includes(roomId)) {
             if (ALL_RULE_TYPES.includes(event['type'])) {
-                await this.syncWithPolicyRoom(roomId);
+                await this.syncWithBanList(roomId, event);
             }
         }
 
