@@ -1,10 +1,12 @@
 import { strict as assert } from "assert";
 
 import config from "../../src/config";
-import { newTestUser } from "./clientHelper";
-import { MatrixClient, UserID } from "matrix-bot-sdk";
+import { newTestUser, noticeListener } from "./clientHelper";
+import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
 import  BanList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER } from "../../src/models/BanList";
 import { ServerAcl, ServerAclContent } from "../../src/models/ServerAcl";
+import { createBanList } from "./commands/commandUtils";
+import { getMessagesByUserIn } from "../../src/utils";
 
 /**
  * Create a policy rule in a policy room.
@@ -223,5 +225,66 @@ describe('Test: We will not be able to ban ourselves via ACL.', function () {
         changes.forEach(change => acl.denyServer(change.rule.entity));
         assert.equal(acl.safeAclContent().deny.length, 1);
         assert.equal(acl.literalAclContent().deny.length, 3);
+    })
+})
+
+
+describe.only('Test: ACL updates will batch when rules are added in succession.', function () {
+    after(async function() {
+        await this.mjolnir!.unwatchList(this.banListId);
+    })
+    it('Will batch ACL updates if we spam rules into a BanList', async function () {
+        this.timeout(180000)
+        const mjolnir = config.RUNTIME.client!
+        const serverName: string = new UserID(await mjolnir.getUserId()).domain
+        const moderator = await newTestUser({ name: { contains: "moderator" }});
+        moderator.joinRoom(this.mjolnir.managementRoomId);
+        const mjolnirId = await mjolnir.getUserId();
+        // How many rooms are we going to protect? Do we need to protect a few and verify all the ACL updates were batched in each?
+        const protectedRooms: string[] = [];
+        for (let i = 0; i < 10; i++) {
+            const room = await moderator.createRoom({ invite: [mjolnirId]});
+            await mjolnir.joinRoom(room);
+            await moderator.setUserPowerLevel(mjolnirId, room, 100);
+            await this.mjolnir!.addProtectedRoom(room);
+            protectedRooms.push(room);
+        }
+
+        // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
+        await this.mjolnir!.syncLists();
+        await Promise.all(protectedRooms.map(async room => {
+            // We're going to need timeline pagination I'm afraid.
+            const roomAcl = await mjolnir.getRoomStateEvent(room, "m.room.server_acl", "");
+            assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
+        }));
+
+        // Flood the subsribed list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
+        this.banListId = await mjolnir.createRoom();
+        this.mjolnir!.watchList(Permalinks.forRoom(this.banListId));
+        const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
+        for (let i = 0; i < 200; i++) {
+            acl.denyServer(i.toString());
+            await createPolicyRule(mjolnir, this.banListId, RULE_SERVER, `${i}`, `Rule #${i}`);
+            // Wait 20ms before sending the next one
+            await new Promise(resolve => setTimeout(resolve, 5));
+        }
+
+        // We do this because it should force us to wait until all the ACL events have been applied.
+        await this.mjolnir!.syncLists();
+
+        // Check the protected rooms only have 2 ACL updates each.
+        await Promise.all(protectedRooms.map(async room => {
+            // We're going to need timeline pagination I'm afraid.
+            const roomAcl = await mjolnir.getRoomStateEvent(room, "m.room.server_acl", "");
+            if (!acl.matches(roomAcl)) {
+                assert.fail(`Room ${room} doesn't have the correct ACL: ${JSON.stringify(roomAcl, null, 2)}`)
+            }
+            let aclEventCount = 0;
+            await getMessagesByUserIn(mjolnir, mjolnirId, room, 100, events => {
+                events.forEach(event => event.type === 'm.room.server_acl' ? aclEventCount += 1 : null);
+            });
+            LogService.info('BanListTett', `aclEventCount: ${aclEventCount}`);
+            assert.equal(aclEventCount, 2, 'We should have only sent 2 ACL events to the room because they should be batched');
+        }));
     })
 })
