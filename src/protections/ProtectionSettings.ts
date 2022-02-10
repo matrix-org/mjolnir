@@ -22,7 +22,7 @@ export class ProtectionSettingValidationError extends Error {};
  * @param TChange Type for individual pieces of data (e.g. `string`)
  * @param TValue Type for overall value of this setting (e.g. `string[]`)
  */
-export class AbstractProtectionSetting<TChange, TValue> {
+export class AbstractProtectionSetting<TChange, TValue> extends EventEmitter {
     // the current value of this setting
     value: TValue
 
