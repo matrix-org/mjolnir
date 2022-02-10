@@ -36,7 +36,7 @@ describe("Test: The make admin command", function () {
             await userA.start();
             await userA.joinRoom(targetRoom);
             powerLevels = await mjolnir.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
-            if (powerLevels["users"][mjolnirUserId] !== 0) {
+            if (powerLevels["users"][mjolnirUserId] === 100) {
                 assert.fail(`Bot is already an admin of ${targetRoom}`);
             }
             await getFirstReaction(mjolnir, this.mjolnir.managementRoomId, '✅', async () => {
@@ -86,7 +86,7 @@ describe("Test: The make admin command", function () {
         try {
             await moderator.start();
             powerLevels = await userA.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
-            if (powerLevels["users"][userBId] !== 0) {
+            if (powerLevels["users"][userBId] === 100) {
                 assert.fail(`User B is already an admin of ${targetRoom}`);
             }
             await getFirstReaction(mjolnir, this.mjolnir.managementRoomId, '✅', async () => {
