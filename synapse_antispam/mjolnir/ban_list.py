@@ -14,11 +14,18 @@
 # limitations under the License.
 
 import logging
-from .list_rule import ListRule, ALL_RULE_TYPES, USER_RULE_TYPES, SERVER_RULE_TYPES, ROOM_RULE_TYPES
+from .list_rule import (
+    ListRule,
+    ALL_RULE_TYPES,
+    USER_RULE_TYPES,
+    SERVER_RULE_TYPES,
+    ROOM_RULE_TYPES,
+)
 from twisted.internet import defer
 from synapse.metrics.background_process_metrics import run_as_background_process
 
 logger = logging.getLogger("synapse.contrib." + __name__)
+
 
 class BanList(object):
     def __init__(self, api, room_id):
@@ -52,7 +59,11 @@ class BanList(object):
                     w_state_key = with_event.get("state_key", "")
                     w_event_id = with_event.event_id
                     event_id = event.event_id
-                    if w_event_type == event_type and w_state_key == state_key and w_event_id != event_id:
+                    if (
+                        w_event_type == event_type
+                        and w_state_key == state_key
+                        and w_event_id != event_id
+                    ):
                         continue
 
                 entity = content.get("entity", None)
@@ -61,8 +72,13 @@ class BanList(object):
                 if entity is None or recommendation is None or reason is None:
                     continue  # invalid event
 
-                logger.info("Adding rule %s/%s with action %s" % (event_type, entity, recommendation))
-                rule = ListRule(entity=entity, action=recommendation, reason=reason, kind=event_type)
+                logger.info(
+                    "Adding rule %s/%s with action %s"
+                    % (event_type, entity, recommendation)
+                )
+                rule = ListRule(
+                    entity=entity, action=recommendation, reason=reason, kind=event_type
+                )
                 if event_type in USER_RULE_TYPES:
                     self.user_rules.append(rule)
                 elif event_type in ROOM_RULE_TYPES:
@@ -73,4 +89,6 @@ class BanList(object):
         run_as_background_process("mjolnir_build_ban_list", run, with_event)
 
     def get_relevant_state_events(self):
-        return self.api.get_state_events_in_room(self.room_id, [(t, None) for t in ALL_RULE_TYPES])
+        return self.api.get_state_events_in_room(
+            self.room_id, [(t, None) for t in ALL_RULE_TYPES]
+        )

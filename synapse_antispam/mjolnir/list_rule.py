@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2019 The Matrix.org Foundation C.I.C.
+# Copyright 2022 The Matrix.org Foundation C.I.C.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from synapse.util import glob_to_regex
+from .matching import glob_to_regex
 
 RECOMMENDATION_BAN = "m.ban"
 RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"]
@@ -31,6 +31,7 @@ def recommendation_to_stable(recommendation):
         return RECOMMENDATION_BAN
     return None
 
+
 def rule_type_to_stable(rule):
     if rule in USER_RULE_TYPES:
         return RULE_USER
@@ -39,6 +40,7 @@ def rule_type_to_stable(rule):
     if rule in SERVER_RULE_TYPES:
         return RULE_SERVER
     return None
+
 
 class ListRule(object):
     def __init__(self, entity, action, reason, kind):

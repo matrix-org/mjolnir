@@ -1,4 +1,5 @@
 name: mjolnir
+
 up:
   before:
     # Launch the reverse proxy, listening for connections *only* on the local host.
@@ -10,9 +11,20 @@ up:
 
 run:
   - yarn test:integration
+
 down:
   finally:
     - docker stop mjolnir-test-reverse-proxy || true
+
+modules:
+  - name: mjolnir
+    build:
+      - cp -r synapse_antispam $MX_TEST_MODULE_DIR
+    config:
+      module: mjolnir.Module
+      config: {}
+
+
 homeserver:
   # Basic configuration.
   server_name: localhost:9999
