@@ -16,6 +16,9 @@ describe("Test: The make admin command", function () {
 
     it('Mjölnir make the bot self room administrator', async function () {
         this.timeout(90000);
+        if (!config.admin?.enableMakeRoomAdminCommand) {
+            done();
+        }
         const mjolnir = config.RUNTIME.client!;
         const mjolnirUserId = await mjolnir.getUserId();
         const moderator = await newTestUser({ name: { contains: "moderator" } });
@@ -56,6 +59,9 @@ describe("Test: The make admin command", function () {
 
     it('Mjölnir make the tester room administrator', async function () {
         this.timeout(90000);
+        if (!config.admin?.enableMakeRoomAdminCommand) {
+            done();
+        }
         const mjolnir = config.RUNTIME.client!;
         const moderator = await newTestUser({ name: { contains: "moderator" } });
         const userA = await newTestUser({ name: { contains: "a" } });

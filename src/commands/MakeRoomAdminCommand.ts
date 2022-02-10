@@ -14,18 +14,19 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import config from "../config";
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
 
 // !mjolnir make admin <room> [<user ID>]
 export async function execMakeRoomAdminCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const isAdmin = await mjolnir.isSynapseAdmin();
-    if (!isAdmin) {
-        const message = "I am not a Synapse administrator, or the endpoint is blocked";
+    if (!config.admin?.enableMakeRoomAdminCommand || !isAdmin) {
+        const message = "The command is either not enabled in the config, or I can't perform the requested operation";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
-        return;
+        return;        
     }
 
     await mjolnir.makeUserRoomAdmin(await mjolnir.client.resolveRoom(parts[3]), parts[4]);
