@@ -74,6 +74,8 @@ export interface ListRuleChange {
 declare interface BanList {
     on(event: 'BanList.update', listener: (list: BanList, changes: ListRuleChange[]) => void): this
     emit(event: 'BanList.update', list: BanList, changes: ListRuleChange[]): boolean
+    on(event: 'BanList.batch', listener: (list: BanList) => void): this
+    emit(event: 'BanList.batch', list: BanList): boolean
 }
 
 /**
@@ -84,6 +86,8 @@ class BanList extends EventEmitter {
     private shortcode: string|null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
+    // Batches new events from sync together before starting the process to update the list.
+    private readonly batcher: UpdateBatcher;
 
     /**
      * Construct a BanList, does not synchronize with the room.
@@ -93,6 +97,7 @@ class BanList extends EventEmitter {
      */
     constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
         super();
+        this.batcher = new UpdateBatcher(this);
     }
 
     /**
@@ -281,6 +286,71 @@ class BanList extends EventEmitter {
         this.emit('BanList.update', this, changes);
         return changes;
     }
+
+    /**
+     * Inform the `BanList` about a new event from the room it is modelling.
+     * @param event An event from the room the `BanList` models to inform an instance about.
+     */
+    public updateForEvent(event: { event_id: string }): void {
+        // We have to allow the batcher to emit BanList.batch because
+        // if we await in the updateForEvent method that is called by Mjolnir's sync
+        // event emitter, then by the time we start batching we will be far too late
+        // and unable to batch effectivly
+        // if you don't believe me you can test it for yourself, it is rubbish.
+        this.batcher.addToBatch(event.event_id)
+    }
 }
 
 export default BanList;
+
+/**
+ * Helper class that emits a batch event on a `BanList` when it has made a batch
+ * out of the events given to `addToBatch`.
+ */
+class UpdateBatcher {
+    private isWaiting = false;
+    private previousEventId: string|null = null;
+    private readonly waitPeriod = 200; // 200ms seems good enough.
+    private readonly maxWait = 3000; // 3s is long enough to wait while batching.
+
+    constructor(private readonly banList: BanList) {
+
+    }
+
+    /**
+     * Reset the state for the next batch.
+     */
+    private reset() {
+        this.previousEventId = null;
+        this.isWaiting = false;
+    }
+
+    /**
+     * Checks if any more events have been added to the current batch since
+     * the previous iteration, then keep waiting up to `this.maxWait`, otherwise stop
+     * and emit a batch.
+     * @param eventId The id of the first event for this batch.
+     */
+    private async checkBatch(eventId: string): Promise<void> {
+        let start = Date.now();
+        do {
+            await new Promise(resolve => setTimeout(resolve, this.waitPeriod));
+        } while ((Date.now() - start) < this.maxWait && this.previousEventId !== eventId)
+        this.reset();
+        this.banList.emit('BanList.batch', this.banList);
+    }
+
+    /**
+     * Adds an event to the batch.
+     * @param eventId The event to inform the batcher about.
+     */
+    public addToBatch(eventId: string): void {
+        if (this.isWaiting) {
+            this.previousEventId = eventId;
+            return;
+        }
+        this.previousEventId = eventId;
+        this.isWaiting = true;
+        this.checkBatch(eventId);
+    }
+}
