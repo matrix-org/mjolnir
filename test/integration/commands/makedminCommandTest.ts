@@ -19,6 +19,7 @@ describe("Test: The make admin command", function () {
         const mjolnirUserId = await mjolnir.getUserId();
         const moderator = await newTestUser({ name: { contains: "moderator" } });
         this.moderator = moderator;
+        let powerLevels: any;
 
         await moderator.joinRoom(config.managementRoom);
         LogService.debug("makeadminTest", `Joining managementRoom: ${config.managementRoom}`);
@@ -28,6 +29,10 @@ describe("Test: The make admin command", function () {
         LogService.debug("makeadminTest", `Adding targetRoom: ${targetRoom}`);
         try {
             await moderator.start();
+            powerLevels = await mjolnir.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+            if (powerLevels["users"][mjolnirUserId] !== 0) {
+                assert.fail(`Bot is already an admin of ${targetRoom}`);
+            }
             await getFirstReaction(mjolnir, this.mjolnir.managementRoomId, '✅', async () => {
                 LogService.debug("makeadminTest", `Sending: !mjolnir make admin ${targetRoom}`);
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir make admin ${targetRoom}` });
@@ -37,7 +42,8 @@ describe("Test: The make admin command", function () {
         }
         LogService.debug("makeadminTest", `Making self admin`);
 
-        assert.ok(await mjolnir.userHasPowerLevelForAction(mjolnirUserId, targetRoom, PowerLevelAction.Ban), "Bot user is now room admin.");
+        powerLevels = await mjolnir.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+        assert.equal(powerLevels["users"][mjolnirUserId], 100, "Bot user is not room admin.");
     });
 
     it('Mjölnir make the tester room administrator', async function () {
@@ -50,6 +56,7 @@ describe("Test: The make admin command", function () {
         this.moderator = moderator;
         this.userA = userA;
         this.userB = userB;
+        let powerLevels: any;
 
         await moderator.joinRoom(this.mjolnir.managementRoomId);
         LogService.debug("makeadminTest", `Joining managementRoom: ${this.mjolnir.managementRoomId}`);
@@ -64,6 +71,10 @@ describe("Test: The make admin command", function () {
         }
         try {
             await moderator.start();
+            powerLevels = await userA.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+            if (powerLevels["users"][userBId] !== 0) {
+                assert.fail(`Bot is already an admin of ${targetRoom}`);
+            }
             await getFirstReaction(mjolnir, this.mjolnir.managementRoomId, '✅', async () => {
                 LogService.debug("makeadminTest", `Sending: !mjolnir make admin ${targetRoom} ${userBId}`);
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir make admin ${targetRoom} ${userBId}` });
@@ -73,6 +84,7 @@ describe("Test: The make admin command", function () {
         }
         LogService.debug("makeadminTest", `Making User B admin`);
 
-        await assert.ok(await userA.userHasPowerLevelForAction(userBId, targetRoom, PowerLevelAction.Ban), "User B is now room admin.");
+        powerLevels = await userA.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+        assert.equal(powerLevels, 100, "User B is not room admin.");
     });
 });
