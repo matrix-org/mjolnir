@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { FirstMessageIsImage } from "./FirstMessageIsImage";
-import { IProtection } from "./IProtection";
+import { Protection } from "./IProtection";
 import { BasicFlooding } from "./BasicFlooding";
 import { DetectFederationLag } from "./DetectFederationLag";
 import { WordList } from "./WordList";
@@ -23,7 +23,7 @@ import { MessageIsVoice } from "./MessageIsVoice";
 import { MessageIsMedia } from "./MessageIsMedia";
 import { TrustedReporters } from "./TrustedReporters";
 
-export const PROTECTIONS: IProtection[] = [
+export const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
     new BasicFlooding(),
     new WordList(),

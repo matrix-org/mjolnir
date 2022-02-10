@@ -303,7 +303,7 @@ enum AlertDiff {
  * 
  * Each individual server may have lag.
  */
-class RoomStats {
+class RoomInfo {
     constructor(now: Date = new Date()) {
         this.serverLags = new Map();
         this.totalLag = new ServerInfo({
@@ -478,7 +478,7 @@ export class DetectFederationLag extends Protection {
     /**
      * For each room we're monitoring, lag information.
      */
-    lagPerRoom: Map<string /* roomId */, RoomStats> = new Map();
+    lagPerRoom: Map<string /* roomId */, RoomInfo> = new Map();
     public settings = {
         // Rooms to ignore.
         ignoreRooms: new StringSetProtectionSetting(),
@@ -579,10 +579,10 @@ export class DetectFederationLag extends Protection {
             return;
         }
 
-        let roomStats = this.lagPerRoom.get(roomId);
-        if (!roomStats) {
-            roomStats = new RoomStats();
-            this.lagPerRoom.set(roomId, roomStats);
+        let roomInfo = this.lagPerRoom.get(roomId);
+        if (!roomInfo) {
+            roomInfo = new RoomInfo();
+            this.lagPerRoom.set(roomId, roomInfo);
         }
 
         const localDomain = new UserID(await mjolnir.client.getUserId()).domain
@@ -598,12 +598,12 @@ export class DetectFederationLag extends Protection {
                     exitWarningZone: this.settings.federatedHomeserverLagExitWarningZoneMS.value,
                 };
 
-        let diff = roomStats.pushLag(domain, delay, this.latestHistogramSettings, thresholds, now);
+        let diff = roomInfo.pushLag(domain, delay, this.latestHistogramSettings, thresholds, now);
         if (diff === AlertDiff.NoChange) {
             return;
         }
 
-        if (roomStats.latestWarning.getTime() + this.settings.warnAgainAfterMS.value > now.getTime()) {
+        if (roomInfo.latestWarning.getTime() + this.settings.warnAgainAfterMS.value > now.getTime()) {
             if (!isLocalDomain || diff !== AlertDiff.Start) {
                 // No need to check for alarms, we have raised an alarm recently.
                 return;
@@ -611,37 +611,37 @@ export class DetectFederationLag extends Protection {
         }
 
         // Check whether an alarm needs to be raised!
-        let isLocalDomainOnAlert = roomStats.isServerOnAlert(localDomain);
-        if (roomStats.alerts > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value
+        let isLocalDomainOnAlert = roomInfo.isServerOnAlert(localDomain);
+        if (roomInfo.alerts > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value
             || isLocalDomainOnAlert) {
             // Raise the alarm!
-            if (!roomStats.latestAlertStart) {
-                roomStats.latestAlertStart = now;
+            if (!roomInfo.latestAlertStart) {
+                roomInfo.latestAlertStart = now;
             }
-            roomStats.latestAlertStart = now;
+            roomInfo.latestAlertStart = now;
             // Background-send message.
-            let stats = roomStats.globalStats(now);
+            let stats = roomInfo.globalStats(now);
             /* do not await */ logMessage(LogLevel.WARN, "FederationLag",
-                `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomStats.latestAlertStart}.\n${roomStats.alerts} homeservers are lagging: ${[...roomStats.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
+                `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomInfo.latestAlertStart}.\n${roomInfo.alerts} homeservers are lagging: ${[...roomInfo.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
             // Drop a state event, for the use of potential other bots.
             let warnStateEventId = await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, LAG_STATE_EVENT, roomId, {
-                domains: [...roomStats.serversOnAlert()],
+                domains: [...roomInfo.serversOnAlert()],
                 roomId,
                 // We need to round the stats, as Matrix doesn't support floating-point
                 // numbers in messages.
                 stats: stats?.round(),
-                since: roomStats.latestAlertStart,
+                since: roomInfo.latestAlertStart,
             });
-            roomStats.warnStateEventId = warnStateEventId;
-        } else if (roomStats.alerts < this.settings.numberOfLaggingFederatedHomeserversExitWarningZone.value
+            roomInfo.warnStateEventId = warnStateEventId;
+        } else if (roomInfo.alerts < this.settings.numberOfLaggingFederatedHomeserversExitWarningZone.value
             || !isLocalDomainOnAlert) {
             // Stop the alarm!
             /* do not await */ logMessage(LogLevel.INFO, "FederationLag",
-                `Room ${roomId} lag has decreased to an acceptable level. Currently, ${roomStats.alerts} homeservers are still lagging`
+                `Room ${roomId} lag has decreased to an acceptable level. Currently, ${roomInfo.alerts} homeservers are still lagging`
             );
-            if (roomStats.warnStateEventId) {
-                let warnStateEventId = roomStats.warnStateEventId;
-                roomStats.warnStateEventId = null;
+            if (roomInfo.warnStateEventId) {
+                let warnStateEventId = roomInfo.warnStateEventId;
+                roomInfo.warnStateEventId = null;
                 await mjolnir.client.redactEvent(mjolnir.managementRoomId, warnStateEventId, "Alert over");
             }
         }
@@ -656,14 +656,14 @@ export class DetectFederationLag extends Protection {
     public async cleanup(now: Date = new Date()) {
         let oldest: Date = this.getOldestAcceptableData(now);
         let lagPerRoomDeleteIds = [];
-        for (let [roomId, roomStats] of this.lagPerRoom) {
-            if (roomStats.latestMessage < oldest) {
+        for (let [roomId, roomInfo] of this.lagPerRoom) {
+            if (roomInfo.latestMessage < oldest) {
                 // We need to remove the entire room.
                 lagPerRoomDeleteIds.push(roomId);
                 continue;
             }
             // Clean room stats.
-            roomStats.cleanup(this.latestHistogramSettings, now, oldest);
+            roomInfo.cleanup(this.latestHistogramSettings, now, oldest);
         }
         for (let roomId of lagPerRoomDeleteIds) {
             this.lagPerRoom.delete(roomId);
@@ -679,4 +679,50 @@ export class DetectFederationLag extends Protection {
             bucketNumber: this.settings.bucketNumber.value,
         });
     };
+
+    /**
+     * Return (mostly) human-readable lag status.
+     */
+    public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<string | null> {
+        let roomId = subcommand[0] || "*";
+        let now = new Date();
+        const localDomain = new UserID(await mjolnir.client.getUserId()).domain;
+        let annotatedStats = (roomInfo: RoomInfo) => {
+            let stats = roomInfo.globalStats(now)?.round();
+            if (stats == null) {
+                return null;
+            }
+            const isLocalDomainOnAlert = roomInfo.isServerOnAlert(localDomain);
+            const numberOfServersOnAlert = roomInfo.alerts;
+            if (isLocalDomainOnAlert) {
+                (stats as any)["warning"] = "Local homeserver is lagging";
+            } else if (numberOfServersOnAlert > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value) {
+                (stats as any)["warning"] = `${numberOfServersOnAlert} homeservers are lagging`;
+            }
+            return stats;
+        };
+        if (roomId == "*") {
+            // Collate data from all protected rooms.
+            let result: any = {};
+
+            for (let [roomId, roomInfo] of this.lagPerRoom.entries()) {
+                const key = await mjolnir.client.getPublishedAlias(roomId) || roomId;
+                result[key] = annotatedStats(roomInfo);
+            }
+            return JSON.stringify(result, null, 2);
+        } else {
+            // Fetch data from a specific room.
+            let roomInfo = this.lagPerRoom.get(roomId);
+            if (!roomInfo) {
+                return `Either ${roomId} is unmonitored or it has received no messages in a while`;
+            }
+
+            // Fetch data from all remote homeservers.
+            let stats = annotatedStats(roomInfo);
+            if (!stats) {
+                return `No recent messages in room ${roomId}`;
+            }
+            return JSON.stringify(stats, null, 2);
+        }
+    }
 }

@@ -23,31 +23,34 @@ import { AbstractProtectionSetting } from "./ProtectionSettings";
  *
  * Protections are guaranteed to be run before redaction handlers.
  */
-export interface IProtection {
-    readonly name: string;
-    readonly description: string;
-    enabled: boolean;
-    settings: { [setting: string]: AbstractProtectionSetting<any, any> };
-    /*
-     * Handle a single event from a protected room, to decide if we need to
-     * respond to it
-     */
-    handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
-    /*
-     * Handle a single reported event from a protecte room, to decide if we
-     * need to respond to it
-     */
-    handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, reason: string, event: any): Promise<any>;
-}
-export abstract class Protection implements IProtection {
+export abstract class Protection {
     abstract readonly name: string
     abstract readonly description: string;
     enabled = false;
     abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
+
+
+    /*
+     * Handle a single event from a protected room, to decide if we need to
+     * respond to it
+     */
     handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         return Promise.resolve(null);
     }
+
+    /*
+     * Handle a single reported event from a protecte room, to decide if we
+     * need to respond to it
+     */
     handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
         return Promise.resolve(null);
+    }
+
+    /**
+     * Return status information for `!mjolnir status ${protectionName}`.
+     */
+    async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<string | null> {
+        // By default, protections don't have any status to show.
+        return null;
     }
 }

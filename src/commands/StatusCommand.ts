@@ -1,5 +1,5 @@
 /*
-Copyright 2019, 2020 The Matrix.org Foundation C.I.C.
+Copyright 2019-2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -16,9 +16,21 @@ limitations under the License.
 
 import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, STATE_SYNCING } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
+import { htmlEscape } from "../utils";
 
 // !mjolnir
-export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir) {
+export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    switch (parts[1]) {
+        case undefined:
+        case 'mjolnir':
+            return showMjolnirStatus(roomId, event, mjolnir);
+        case 'protection':
+            return showProtectionStatus(roomId, event, mjolnir, parts.slice(2));
+    }
+}
+
+async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
+    // Display the status of Mjölnir.
     let html = "";
     let text = "";
 
@@ -67,4 +79,25 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
     return mjolnir.client.sendMessage(roomId, reply);
+}
+
+async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    let protectionName = parts[0];
+    let protection = mjolnir.getProtection(protectionName);
+    let textReply;
+    let htmlReply
+    if (!protection) {
+        textReply = htmlReply = "Unknown protection";
+    } else {
+        let status = await protection.statusCommand(mjolnir, parts.slice(1));
+        if (status) {
+            htmlReply = status;
+            textReply = htmlEscape(htmlReply);
+        } else {
+            htmlReply = textReply = "<no status>";
+        }
+    }
+    const reply = RichReply.createFor(roomId, event, textReply, htmlReply);
+    reply["msgtype"] = "m.notice";
+    await mjolnir.client.sendMessage(roomId, reply);
 }

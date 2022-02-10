@@ -1,5 +1,5 @@
 /*
-Copyright 2019-2021 The Matrix.org Foundation C.I.C.
+Copyright 2019-2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
 import { execKickCommand } from "./KickCommand";
 
+
 export const COMMAND_PREFIX = "!mjolnir";
 
 export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
@@ -46,7 +47,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
 
     try {
         if (parts.length === 1 || parts[1] === 'status') {
-            return await execStatusCommand(roomId, event, mjolnir);
+            return await execStatusCommand(roomId, event, mjolnir, parts.slice(2));
         } else if (parts[1] === 'ban' && parts.length > 2) {
             return await execBanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'unban' && parts.length > 2) {
@@ -114,6 +115,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             const menu = "" +
                 "!mjolnir                                                            - Print status information\n" +
                 "!mjolnir status                                                     - Print status information\n" +
+                "!mjolnir status protection <protection> [subcommand]                - Print status information for a protection\n" +
                 "!mjolnir ban <list shortcode> <user|room|server> <glob> [reason]    - Adds an entity to the ban list\n" +
                 "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]   - Removes an entity from the ban list. If apply is 'true', the users matching the glob will actually be unbanned\n" +
                 "!mjolnir redact <user ID> [room alias/ID] [limit]                   - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +

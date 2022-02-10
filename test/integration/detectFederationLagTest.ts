@@ -30,13 +30,12 @@ describe("Test: DetectFederationLag protection", function() {
             bucketDurationMS: BUCKET_DURATION_MS,
             // Three homeservers should be sufficient to raise an alert.
             numberOfLaggingFederatedHomeserversEnterWarningZone: NUMBER_OF_LAGGING_FEDERATED_HOMESERVERS_ENTER_WARNING_ZONE,
-            //
+
             localHomeserverLagEnterWarningZoneMS: LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
             localHomeserverLagExitWarningZoneMS: LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
 
             federatedHomeserverLagEnterWarningZoneMS: FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
             federatedHomeserverLagExitWarningZoneMS: FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
-
         };
         for (let key of Object.keys(SETTINGS)) {
             this.detector.settings[key].setValue(SETTINGS[key]);
