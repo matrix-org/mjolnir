@@ -36,12 +36,14 @@ import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
+import { ProtectionSettingValidationError } from "./protections/ProtectionSettings";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
+import RuleServer from "./models/RuleServer";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -54,11 +56,10 @@ const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
 export class Mjolnir {
-
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
-    private protections: IProtection[] = [];
+    public protections = new Map<string /* protection name */, IProtection>();
     /**
      * This is for users who are not listed on a watchlist,
      * but have been flagged by the automatic spam detection as suispicous
@@ -83,14 +84,14 @@ export class Mjolnir {
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
      * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
      */
-    private static addJoinOnInviteListener(client: MatrixClient, options) {
+    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options: { [key: string]: any }) {
         client.on("room.invite", async (roomId: string, inviteEvent: any) => {
             const membershipEvent = new MembershipEvent(inviteEvent);
 
             const reportInvite = async () => {
                 if (!options.recordIgnoredInvites) return; // Nothing to do
 
-                await client.sendMessage(options.managementRoom, {
+                await client.sendMessage(mjolnir.managementRoomId, {
                     msgtype: "m.text",
                     body: `${membershipEvent.sender} has invited me to ${roomId} but the config prevents me from accepting the invitation. `
                         + `If you would like this room protected, use "!mjolnir rooms add ${roomId}" so I can accept the invite.`,
@@ -102,7 +103,7 @@ export class Mjolnir {
             };
 
             if (options.autojoinOnlyIfManager) {
-                const managers = await client.getJoinedRoomMembers(options.managementRoom);
+                const managers = await client.getJoinedRoomMembers(mjolnir.managementRoomId);
                 if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             } else {
                 const groupMembers = await client.unstableApis.getGroupUsers(options.acceptInvitesFromGroup);
@@ -120,8 +121,6 @@ export class Mjolnir {
      * @returns A new Mjolnir instance that can be started without further setup.
      */
     static async setupMjolnirFromConfig(client: MatrixClient): Promise<Mjolnir> {
-        Mjolnir.addJoinOnInviteListener(client, config);
-
         const banLists: BanList[] = [];
         const protectedRooms: { [roomId: string]: string } = {};
         const joinedRooms = await client.getJoinedRooms();
@@ -143,19 +142,23 @@ export class Mjolnir {
         LogService.info("index", "Resolving management room...");
         const managementRoomId = await client.resolveRoom(config.managementRoom);
         if (!joinedRooms.includes(managementRoomId)) {
-            config.managementRoom = await client.joinRoom(config.managementRoom);
-        } else {
-            config.managementRoom = managementRoomId;
+            await client.joinRoom(config.managementRoom);
         }
         await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
-        return new Mjolnir(client, protectedRooms, banLists);
+        const ruleServer = config.web.ruleServer ? new RuleServer() : null;
+        const mjolnir = new Mjolnir(client, managementRoomId, protectedRooms, banLists, ruleServer);
+        Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
+        return mjolnir;
     }
 
     constructor(
         public readonly client: MatrixClient,
+        public readonly managementRoomId: string,
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
+        // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
+        public readonly ruleServer: RuleServer|null,
     ) {
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
 
@@ -168,7 +171,7 @@ export class Mjolnir {
         client.on("room.event", this.handleEvent.bind(this));
 
         client.on("room.message", async (roomId, event) => {
-            if (roomId !== config.managementRoom) return;
+            if (roomId !== this.managementRoomId) return;
             if (!event['content']) return;
 
             const content = event['content'];
@@ -222,7 +225,9 @@ export class Mjolnir {
 
         // Setup Web APIs
         console.log("Creating Web APIs");
-        this.webapis = new WebAPIs(new ReportManager(this));
+        const reportManager = new ReportManager(this);
+        reportManager.on("report.new", this.handleReport);
+        this.webapis = new WebAPIs(reportManager, this.ruleServer);
     }
 
     public get lists(): BanList[] {
@@ -234,7 +239,7 @@ export class Mjolnir {
     }
 
     public get enabledProtections(): IProtection[] {
-        return this.protections;
+        return [...this.protections.values()].filter(p => p.enabled);
     }
 
     /**
@@ -268,7 +273,7 @@ export class Mjolnir {
             await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
-                const data: Object | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
                 if (data && data['rooms']) {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -290,7 +295,7 @@ export class Mjolnir {
             if (config.syncOnStartup) {
                 await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.syncLists(config.verboseLogging);
-                await this.enableProtections();
+                await this.registerProtections();
             }
 
             this.currentState = STATE_RUNNING;
@@ -325,15 +330,15 @@ export class Mjolnir {
         if (unprotectedIdx >= 0) this.knownUnprotectedRooms.splice(unprotectedIdx, 1);
         this.explicitlyProtectedRoomIds.push(roomId);
 
-        let additionalProtectedRooms;
+        let additionalProtectedRooms: { rooms?: string[] } | null = null;
         try {
             additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
-        additionalProtectedRooms.rooms.push(roomId);
-        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
+        const rooms = (additionalProtectedRooms?.rooms ?? []);
+        rooms.push(roomId);
+        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: rooms });
         await this.syncLists(config.verboseLogging);
     }
 
@@ -343,21 +348,20 @@ export class Mjolnir {
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
 
-        let additionalProtectedRooms;
+        let additionalProtectedRooms: { rooms?: string[] } | null = null;
         try {
             additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
         } catch (e) {
             LogService.warn("Mjolnir", extractRequestError(e));
         }
-        if (!additionalProtectedRooms || !additionalProtectedRooms['rooms']) additionalProtectedRooms = { rooms: [] };
-        additionalProtectedRooms.rooms = additionalProtectedRooms.rooms.filter(r => r !== roomId);
+        additionalProtectedRooms = { rooms: additionalProtectedRooms?.rooms?.filter(r => r !== roomId) ?? [] };
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
     }
 
     private async resyncJoinedRooms(withSync = true) {
         if (!config.protectAllJoinedRooms) return;
 
-        const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== config.managementRoom);
+        const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== this.managementRoomId);
         for (const roomId of this.protectedJoinedRoomIds) {
             delete this.protectedRooms[roomId];
         }
@@ -373,51 +377,162 @@ export class Mjolnir {
         }
     }
 
-    private async getEnabledProtections() {
-        let enabled: string[] = [];
-        try {
-            const protections: Object | null = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
-            if (protections && protections['enabled']) {
-                for (const protection of protections['enabled']) {
-                    enabled.push(protection);
-                }
-            }
-        } catch (e) {
-            LogService.warn("Mjolnir", extractRequestError(e));
-        }
-
-        return enabled;
-    }
-
-    private async enableProtections() {
-        for (const protection of await this.getEnabledProtections()) {
+    /*
+     * Take all the builtin protections, register them to set their enabled (or not) state and
+     * update their settings with any saved non-default values
+     */
+    private async registerProtections() {
+        for (const protection of PROTECTIONS) {
             try {
-                this.enableProtection(protection, false);
+                await this.registerProtection(protection);
             } catch (e) {
                 LogService.warn("Mjolnir", extractRequestError(e));
             }
         }
     }
 
-    public async enableProtection(protectionName: string, persist = true): Promise<any> {
-        const definition = PROTECTIONS[protectionName];
-        if (!definition) throw new Error("Failed to find protection by name: " + protectionName);
-
-        const protection = definition.factory();
-        this.protections.push(protection);
-
-        if (persist) {
-            const existing = this.protections.map(p => p.name);
-            await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: existing });
+    /*
+     * Make a list of the names of enabled protections and save them in a state event
+     */
+    private async saveEnabledProtections() {
+        const protections = this.enabledProtections.map(p => p.name);
+        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
+    }
+    /*
+     * Enable a protection by name and persist its enable state in to a state event
+     *
+     * @param name The name of the protection whose settings we're enabling
+     */
+    public async enableProtection(name: string) {
+        const protection = this.protections.get(name);
+        if (protection !== undefined) {
+            protection.enabled = true;
+            await this.saveEnabledProtections();
+        }
+    }
+    /*
+     * Disable a protection by name and remove it from the persistent list of enabled protections
+     *
+     * @param name The name of the protection whose settings we're disabling
+     */
+    public async disableProtection(name: string) {
+        const protection = this.protections.get(name);
+        if (protection !== undefined) {
+            protection.enabled = false;
+            await this.saveEnabledProtections();
         }
     }
 
-    public async disableProtection(protectionName: string): Promise<any> {
-        const idx = this.protections.findIndex(p => p.name === protectionName);
-        if (idx >= 0) this.protections.splice(idx, 1);
+    /*
+     * Read org.matrix.mjolnir.setting state event, find any saved settings for
+     * the requested protectionName, then iterate and validate against their parser
+     * counterparts in IProtection.settings and return those which validate
+     *
+     * @param protectionName The name of the protection whose settings we're reading
+     * @returns Every saved setting for this protectionName that has a valid value
+     */
+    public async getProtectionSettings(protectionName: string): Promise<{ [setting: string]: any }> {
+        let savedSettings: { [setting: string]: any } = {}
+        try {
+            savedSettings = await this.client.getRoomStateEvent(
+                this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
+            );
+        } catch {
+            // setting does not exist, return empty object
+            return {};
+        }
 
-        const existing = this.protections.map(p => p.name);
-        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: existing });
+        const settingDefinitions = this.protections.get(protectionName)?.settings ?? {};
+        const validatedSettings: { [setting: string]: any } = {}
+        for (let [key, value] of Object.entries(savedSettings)) {
+            if (
+                    // is this a setting name with a known parser?
+                    key in settingDefinitions
+                    // is the datatype of this setting's value what we expect?
+                    && typeof(settingDefinitions[key].value) === typeof(value)
+                    // is this setting's value valid for the setting?
+                    && settingDefinitions[key].validate(value)
+            ) {
+                validatedSettings[key] = value;
+            } else {
+                await logMessage(
+                    LogLevel.WARN,
+                    "getProtectionSetting",
+                    `Tried to read ${protectionName}.${key} and got invalid value ${value}`
+                );
+            }
+        }
+        return validatedSettings;
+    }
+
+    /*
+     * Takes an object of settings we want to change and what their values should be,
+     * check that their values are valid, combine them with current saved settings,
+     * then save the amalgamation to a state event
+     *
+     * @param protectionName Which protection these settings belong to
+     * @param changedSettings The settings to change and their values
+     */
+    public async setProtectionSettings(protectionName: string, changedSettings: { [setting: string]: any }): Promise<any> {
+        const protection = this.protections.get(protectionName);
+        if (protection === undefined) {
+            return;
+        }
+
+        const validatedSettings: { [setting: string]: any } = await this.getProtectionSettings(protectionName);
+
+        for (let [key, value] of Object.entries(changedSettings)) {
+            if (!(key in protection.settings)) {
+                throw new ProtectionSettingValidationError(`Failed to find protection setting by name: ${key}`);
+            }
+            if (typeof(protection.settings[key].value) !== typeof(value)) {
+                throw new ProtectionSettingValidationError(`Invalid type for protection setting: ${key} (${typeof(value)})`);
+            }
+            if (!protection.settings[key].validate(value)) {
+                throw new ProtectionSettingValidationError(`Invalid value for protection setting: ${key} (${value})`);
+            }
+            validatedSettings[key] = value;
+        }
+
+        await this.client.sendStateEvent(
+            this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
+        );
+    }
+
+    /*
+     * Given a protection object; add it to our list of protections, set whether it is enabled
+     * and update its settings with any saved non-default values.
+     *
+     * @param protection The protection object we want to register
+     */
+    public async registerProtection(protection: IProtection): Promise<any> {
+        this.protections.set(protection.name, protection)
+
+        let enabledProtections: { enabled: string[] } | null = null;
+        try {
+            enabledProtections = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+        } catch {
+            // this setting either doesn't exist, or we failed to read it (bad network?)
+            // TODO: retry on certain failures?
+        }
+        protection.enabled = enabledProtections?.enabled.includes(protection.name) ?? false;
+
+        const savedSettings = await this.getProtectionSettings(protection.name);
+        for (let [key, value] of Object.entries(savedSettings)) {
+            // this.getProtectionSettings() validates this data for us, so we don't need to
+            protection.settings[key].setValue(value);
+        }
+    }
+    /*
+     * Given a protection object; remove it from our list of protections.
+     *
+     * @param protection The protection object we want to unregister
+     */
+    public unregisterProtection(protectionName: string) {
+        if (!(protectionName in this.protections)) {
+            throw new Error("Failed to find protection by name: " + protectionName);
+        }
+        this.protections.delete(protectionName);
     }
 
     public async watchList(roomRef: string): Promise<BanList | null> {
@@ -433,6 +548,7 @@ export class Mjolnir {
         if (this.banLists.find(b => b.roomId === roomId)) return null;
 
         const list = new BanList(roomId, roomRef, this.client);
+        this.ruleServer?.watch(list);
         await list.updateList();
         this.banLists.push(list);
 
@@ -451,12 +567,14 @@ export class Mjolnir {
 
         const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
         const list = this.banLists.find(b => b.roomId === roomId) || null;
-        if (list) this.banLists.splice(this.banLists.indexOf(list), 1);
+        if (list) {
+            this.banLists.splice(this.banLists.indexOf(list), 1);
+            this.ruleServer?.unwatch(list);
+        }
 
         await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
             references: this.banLists.map(b => b.roomRef),
         });
-
         return list;
     }
 
@@ -471,8 +589,8 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         try {
-            const accountData: Object | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
-            if (accountData && accountData['warned']) return; // already warned
+            const accountData: { warned: boolean } | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            if (accountData && accountData.warned) return; // already warned
         } catch (e) {
             // Ignore - probably haven't warned about it yet
         }
@@ -491,14 +609,14 @@ export class Mjolnir {
         const banLists: BanList[] = [];
         const joinedRooms = await this.client.getJoinedRooms();
 
-        let watchedListsEvent = {};
+        let watchedListsEvent: { references?: string[] } | null = null;
         try {
             watchedListsEvent = await this.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
         } catch (e) {
             // ignore - not important
         }
 
-        for (const roomRef of (watchedListsEvent['references'] || [])) {
+        for (const roomRef of (watchedListsEvent?.references || [])) {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
 
@@ -510,6 +628,7 @@ export class Mjolnir {
             await this.warnAboutUnprotectedBanListRoom(roomId);
 
             const list = new BanList(roomId, roomRef, this.client);
+            this.ruleServer?.watch(list);
             await list.updateList();
             banLists.push(list);
         }
@@ -527,7 +646,7 @@ export class Mjolnir {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";
-            await this.client.sendMessage(config.managementRoom, {
+            await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -630,7 +749,7 @@ export class Mjolnir {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(config.managementRoom, {
+            await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -662,7 +781,7 @@ export class Mjolnir {
         if (!hadErrors) {
             const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(config.managementRoom, {
+            await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -673,7 +792,7 @@ export class Mjolnir {
 
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
-        if (roomId === config.managementRoom) {
+        if (roomId === this.managementRoomId) {
             if (event['type'] === 'm.room.message' && event['content'] && event['content']['body']) {
                 if (event['content']['body'] === "** Unable to decrypt: The sender's device has not sent us the keys for this message. **") {
                     // UISI
@@ -695,8 +814,8 @@ export class Mjolnir {
         if (Object.keys(this.protectedRooms).includes(roomId)) {
             if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
 
-            // Iterate all the protections
-            for (const protection of this.protections) {
+            // Iterate all the enabled protections
+            for (const protection of this.enabledProtections) {
                 try {
                     await protection.handleEvent(this, roomId, event);
                 } catch (e) {
@@ -704,7 +823,7 @@ export class Mjolnir {
                     LogService.error("Mjolnir", "Error handling protection: " + protection.name);
                     LogService.error("Mjolnir", "Failed event: " + eventPermalink);
                     LogService.error("Mjolnir", extractRequestError(e));
-                    await this.client.sendNotice(config.managementRoom, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
+                    await this.client.sendNotice(this.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
                 }
             }
 
@@ -767,7 +886,7 @@ export class Mjolnir {
             } else if (ruleKind === RULE_ROOM) {
                 ruleKind = 'room';
             }
-            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation)}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
+            html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation ?? "")}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* ${change.changeType} ${ruleKind} (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
         }
 
@@ -777,7 +896,7 @@ export class Mjolnir {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(config.managementRoom, message);
+        await this.client.sendMessage(this.managementRoomId, message);
         return true;
     }
 
@@ -815,7 +934,7 @@ export class Mjolnir {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(config.managementRoom, message);
+        await this.client.sendMessage(this.managementRoomId, message);
         return true;
     }
 
@@ -859,5 +978,11 @@ export class Mjolnir {
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
         return await this.eventRedactionQueue.process(this.client, roomId);
+    }
+
+    private async handleReport(roomId: string, reporterId: string, event: any, reason?: string) {
+        for (const protection of this.enabledProtections) {
+            await protection.handleReport(this, roomId, reporterId, event, reason);
+        }
     }
 }

@@ -31,9 +31,9 @@ interface Arguments {
 
 // Exported for tests
 export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments|null> {
-    let defaultShortcode = null;
+    let defaultShortcode: string | null = null;
     try {
-        const data: Object = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
+        const data: { shortcode: string } = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
         defaultShortcode = data['shortcode'];
     } catch (e) {
         LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");

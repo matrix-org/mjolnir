@@ -1,7 +1,7 @@
 import { strict as assert } from "assert";
 
 import config from "../../src/config";
-import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
+import { matrixClient } from "./mjolnirSetupUtils";
 import { newTestUser } from "./clientHelper";
 import { ReportManager, ABUSE_ACTION_CONFIRMATION_KEY, ABUSE_REPORT_KEY } from "../../src/report/ReportManager";
 
@@ -21,19 +21,19 @@ const REPORT_NOTICE_REGEXPS = {
 
 describe("Test: Reporting abuse", async () => {
     it('Mjölnir intercepts abuse reports', async function() {
-        this.timeout(10000);
+        this.timeout(60000);
 
         // Listen for any notices that show up.
         let notices = [];
         matrixClient().on("room.event", (roomId, event) => {
-            if (roomId = config.managementRoom) {
+            if (roomId = this.mjolnir.managementRoomId) {
                 notices.push(event);
             }
         });
 
         // Create a few users and a room.
-        let goodUser = await newTestUser(false, "reporting-abuse-good-user");
-        let badUser = await newTestUser(false, "reporting-abuse-bad-user");
+        let goodUser = await newTestUser({ name: { contains: "reporting-abuse-good-user" }});
+        let badUser = await newTestUser({ name: { contains: "reporting-abuse-bad-user" }});
         let goodUserId = await goodUser.getUserId();
         let badUserId = await badUser.getUserId();
 
@@ -216,24 +216,24 @@ describe("Test: Reporting abuse", async () => {
         }
     });
     it('The redact action works', async function() {
-        this.timeout(10000);
+        this.timeout(60000);
 
         // Listen for any notices that show up.
         let notices = [];
         matrixClient().on("room.event", (roomId, event) => {
-            if (roomId = config.managementRoom) {
+            if (roomId = this.mjolnir.managementRoomId) {
                 notices.push(event);
             }
         });
 
         // Create a moderator.
-        let moderatorUser = await newTestUser(false, "reacting-abuse-moderator-user");
-        matrixClient().inviteUser(await moderatorUser.getUserId(), config.managementRoom);
-        await moderatorUser.joinRoom(config.managementRoom);
+        let moderatorUser = await newTestUser({ name: { contains: "reporting-abuse-moderator-user" }});
+        matrixClient().inviteUser(await moderatorUser.getUserId(), this.mjolnir.managementRoomId);
+        await moderatorUser.joinRoom(this.mjolnir.managementRoomId);
 
         // Create a few users and a room.
-        let goodUser = await newTestUser(false, "reacting-abuse-good-user");
-        let badUser = await newTestUser(false, "reacting-abuse-bad-user");
+        let goodUser = await newTestUser({ name: { contains: "reacting-abuse-good-user" }});
+        let badUser = await newTestUser({ name: { contains: "reacting-abuse-bad-user" }});
         let goodUserId = await goodUser.getUserId();
         let badUserId = await badUser.getUserId();
 
@@ -312,7 +312,7 @@ describe("Test: Reporting abuse", async () => {
         for (let button of buttons) {
             if (button["content"]["m.relates_to"]["key"].includes("[redact-message]")) {
                 redactButtonId = button["event_id"];
-                await moderatorUser.sendEvent(config.managementRoom, "m.reaction", button["content"]);
+                await moderatorUser.sendEvent(this.mjolnir.managementRoomId, "m.reaction", button["content"]);
                 break;
             }
         }
@@ -339,7 +339,7 @@ describe("Test: Reporting abuse", async () => {
 
             // It's the confirm button, click it!
             confirmEventId = event["event_id"];
-            await moderatorUser.sendEvent(config.managementRoom, "m.reaction", event["content"]);
+            await moderatorUser.sendEvent(this.mjolnir.managementRoomId, "m.reaction", event["content"]);
             break;
         }
         assert.ok(confirmEventId, "We should have found the confirm button");

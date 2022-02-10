@@ -10,22 +10,20 @@ export const mochaHooks = {
     beforeEach: [
         async function() {
             console.log("mochaHooks.beforeEach");
+            // Sometimes it takes a little longer to register users.
+            this.timeout(3000)
             this.managementRoomAlias = config.managementRoom;
             this.mjolnir = await makeMjolnir();
             config.RUNTIME.client = this.mjolnir.client;
-            this.mjolnir.start();
+            await this.mjolnir.start();
             console.log("mochaHooks.beforeEach DONE");
         }
     ],
     afterEach: [
         async function() {
             await this.mjolnir.stop();
-            // Mjolnir resolves config.managementRoom and overwrites it, so we undo this here
-            // after stopping Mjolnir for the next time we setup a Mjolnir and a management room.
-            let managementRoomId = config.managementRoom;
-            config.managementRoom = this.managementRoomAlias;
             // remove alias from management room and leave it.
-            await teardownManagementRoom(this.mjolnir.client, managementRoomId, this.managementRoomAlias);
+            await teardownManagementRoom(this.mjolnir.client, this.mjolnir.managementRoomId, config.managementRoom);
         }
     ]
 };

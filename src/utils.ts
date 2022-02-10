@@ -23,11 +23,22 @@ import {
     MessageType,
     Permalinks,
     TextualMessageEventContent,
-    UserID
+    UserID,
+    getRequestFn,
+    setRequestFn,
 } from "matrix-bot-sdk";
 import { logMessage } from "./LogProxy";
 import config from "./config";
-import * as htmlEscape from "escape-html";
+import { ClientRequest, IncomingMessage } from "http";
+
+export function htmlEscape(input: string): string {
+    return input.replace(/["&<>]/g, (char: string) => ({
+        ['"'.charCodeAt(0)]: "&quot;",
+        ["&".charCodeAt(0)]: "&amp;",
+        ["<".charCodeAt(0)]: "&lt;",
+        [">".charCodeAt(0)]: "&gt;"
+    })[char.charCodeAt(0)]);
+}
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -168,9 +179,19 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     }
 }
 
-export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
-    if (!Array.isArray(roomIds)) roomIds = [roomIds];
-
+/*
+ * Take an arbitrary string and a set of room IDs, and return a
+ * TextualMessageEventContent whose plaintext component replaces those room
+ * IDs with their canonical aliases, and whose html component replaces those
+ * room IDs with their matrix.to room pills.
+ *
+ * @param client The matrix client on which to query for room aliases
+ * @param text An arbitrary string to rewrite with room aliases and pills
+ * @param roomIds A set of room IDs to find and replace in `text`
+ * @param msgtype The desired message type of the returned TextualMessageEventContent
+ * @returns A TextualMessageEventContent with replaced room IDs
+ */
+export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
     const content: TextualMessageEventContent = {
         body: text,
         formatted_body: htmlEscape(text),
@@ -200,4 +221,198 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
     }
 
     return content;
+}
+
+let isMatrixClientPatchedForConciseExceptions = false;
+
+/**
+ * Patch `MatrixClient` into something that throws concise exceptions.
+ *
+ * By default, instances of `MatrixClient` throw instances of `IncomingMessage`
+ * in case of many errors. Unfortunately, these instances are unusable:
+ *
+ * - they are logged as ~800 *lines of code*;
+ * - there is no error message;
+ * - they offer no stack.
+ *
+ * This method configures `MatrixClient` to ensure that methods that may throw
+ * instead throws more reasonable insetances of `Error`.
+ */
+function patchMatrixClientForConciseExceptions() {
+    if (isMatrixClientPatchedForConciseExceptions) {
+        return;
+    }
+    let originalRequestFn = getRequestFn();
+    setRequestFn((params: { [k: string]: any }, cb: any) => {
+        // Store an error early, to maintain *some* semblance of stack.
+        // We'll only throw the error if there is one.
+        let error = new Error("STACK CAPTURE");
+        originalRequestFn(params, function conciseExceptionRequestFn(
+            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+        ) {
+            if (!err && (response?.statusCode < 200 || response?.statusCode >= 300)) {
+                // Normally, converting HTTP Errors into rejections is done by the caller
+                // of `requestFn` within matrix-bot-sdk. However, this always ends up rejecting
+                // with an `IncomingMessage` - exactly what we wish to avoid here.
+                err = response;
+
+                // Safety note: In the calling code within matrix-bot-sdk, if we return
+                // an IncomingMessage as an error, we end up logging an unredacted response,
+                // which may include tokens, passwords, etc. This could be a grave privacy
+                // leak. The matrix-bot-sdk typically handles this by sanitizing the data
+                // before logging it but, by converting the HTTP Error into a rejection
+                // earlier than expected by the matrix-bot-sdk, we skip this step of
+                // sanitization.
+                //
+                // However, since the error we're creating is an `IncomingMessage`, we
+                // rewrite it into an `Error` ourselves in this function. Our `Error`
+                // is even more sanitized (we only include the URL, HTTP method and
+                // the error response) so we are NOT causing a privacy leak.
+                if (!(err instanceof IncomingMessage)) {
+                    // Safety check.
+                    throw new TypeError("Internal error: at this stage, the error should be an IncomingMessage");
+                }
+            }
+            if (!(err instanceof IncomingMessage)) {
+                // In most cases, we're happy with the result.
+                return cb(err, response, resBody);
+            }
+            // However, MatrixClient has a tendency of throwing
+            // instances of `IncomingMessage` instead of instances
+            // of `Error`. The former take ~800 lines of log and
+            // provide no stack trace, which makes them typically
+            // useless.
+            let method: string | null = null;
+            let path = '';
+            let body: string | null = null;
+            if (err.method) {
+                method = err.method;
+            }
+            if (err.url) {
+                path = err.url;
+            }
+            if ("req" in err && (err as any).req instanceof ClientRequest) {
+                if (!method) {
+                    method = (err as any).req.method;
+                }
+                if (!path) {
+                    path = (err as any).req.path;
+                }
+            }
+            if ("body" in err) {
+                body = (err as any).body;
+            }
+            let message = `Error during MatrixClient request ${method} ${path}: ${err.statusCode} ${err.statusMessage} -- ${body}`;
+            error.message = message;
+            if (body) {
+                // Calling code may use `body` to check for errors, so let's
+                // make sure that we're providing it.
+                try {
+                    body = JSON.parse(body);
+                } catch (ex) {
+                    // Not JSON.
+                }
+                // Define the property but don't make it visible during logging.
+                Object.defineProperty(error, "body", {
+                    value: body,
+                    enumerable: false,
+                });
+            }
+            // Calling code may use `statusCode` to check for errors, so let's
+            // make sure that we're providing it.
+            if ("statusCode" in err) {
+                // Define the property but don't make it visible during logging.
+                Object.defineProperty(error, "statusCode", {
+                    value: err.statusCode,
+                    enumerable: false,
+                });
+            }
+            return cb(error, response, resBody);
+        })
+    });
+    isMatrixClientPatchedForConciseExceptions = true;
+}
+
+const MAX_REQUEST_ATTEMPTS = 15;
+const REQUEST_RETRY_BASE_DURATION_MS = 100;
+
+const TRACE_CONCURRENT_REQUESTS = false;
+let numberOfConcurrentRequests = 0;
+let isMatrixClientPatchedForRetryWhenThrottled = false;
+/**
+ * Patch instances of MatrixClient to make sure that it retries requests
+ * in case of throttling.
+ *
+ * Note: As of this writing, we do not re-attempt requests that timeout,
+ * only request that are throttled by the server. The rationale is that,
+ * in case of DoS, we do not wish to make the situation even worse.
+ */
+function patchMatrixClientForRetry() {
+    if (isMatrixClientPatchedForRetryWhenThrottled) {
+        return;
+    }
+    let originalRequestFn = getRequestFn();
+    setRequestFn(async (params: { [k: string]: any }, cb: any) => {
+        let attempt = 1;
+        numberOfConcurrentRequests += 1;
+        if (TRACE_CONCURRENT_REQUESTS) {
+            console.trace("Current number of concurrent requests", numberOfConcurrentRequests);
+        }
+        try {
+            while (true) {
+                try {
+                    let result: any[] = await new Promise((resolve, reject) => {
+                        originalRequestFn(params, function requestFnWithRetry(
+                            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+                        ) {
+                            // Note: There is no data race on `attempt` as we `await` before continuing
+                            // to the next iteration of the loop.
+                            if (attempt < MAX_REQUEST_ATTEMPTS && err?.body?.errcode === 'M_LIMIT_EXCEEDED') {
+                                // We need to retry.
+                                reject(err);
+                            } else {
+                                // No need-to-retry error? Lucky us!
+                                // Note that this may very well be an error, just not
+                                // one we need to retry.
+                                resolve([err, response, resBody]);
+                            }
+                        });
+                    });
+                    // This is our final result.
+                    // Pass result, whether success or error.
+                    return cb(...result);
+                } catch (err) {
+                    // Need to retry.
+                    let retryAfterMs = attempt * attempt * REQUEST_RETRY_BASE_DURATION_MS;
+                    if ("retry_after_ms" in err) {
+                        try {
+                            retryAfterMs = Number.parseInt(err.retry_after_ms, 10);
+                        } catch (ex) {
+                            // Use default value.
+                        }
+                    }
+                    LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs}ms before retrying ${params.method} ${params.uri}`);
+                    await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+                    attempt += 1;
+                }
+            }
+        } finally {
+            numberOfConcurrentRequests -= 1;
+        }
+    });
+    isMatrixClientPatchedForRetryWhenThrottled = true;
+}
+
+/**
+ * Perform any patching deemed necessary to MatrixClient.
+ */
+export function patchMatrixClient() {
+    // Note that the order of patches is meaningful.
+    //
+    // - `patchMatrixClientForConciseExceptions` converts all `IncomingMessage`
+    //   errors into instances of `Error` handled as errors;
+    // - `patchMatrixClientForRetry` expects that all errors are returned as
+    //   errors.
+    patchMatrixClientForConciseExceptions();
+    patchMatrixClientForRetry();
 }

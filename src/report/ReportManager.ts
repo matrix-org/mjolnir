@@ -17,10 +17,10 @@ limitations under the License.
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { LogService, UserID } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
-import * as htmlEscape from "escape-html";
+import { htmlEscape } from "../utils";
 import { JSDOM } from 'jsdom';
+import { EventEmitter } from 'events';
 
-import config from "../config";
 import { Mjolnir } from "../Mjolnir";
 
 /// Regexp, used to extract the action label from an action reaction
@@ -75,9 +75,10 @@ enum Kind {
 /**
  * A class designed to respond to abuse reports.
  */
-export class ReportManager {
+export class ReportManager extends EventEmitter {
     private displayManager: DisplayManager;
     constructor(public mjolnir: Mjolnir) {
+        super();
         // Configure bot interactions.
         mjolnir.client.on("room.event", async (roomId, event) => {
             try {
@@ -102,18 +103,18 @@ export class ReportManager {
      * The following MUST hold true:
      * - the reporter's id is `reporterId`;
      * - the reporter is a member of `roomId`;
-     * - `eventId` did take place in room `roomId`;
-     * - the reporter could witness event `eventId` in room `roomId`;
+     * - `event` did take place in room `roomId`;
+     * - the reporter could witness event `event` in room `roomId`;
      * - the event being reported is `event`;
      *
      * @param roomId The room in which the abuse took place.
-     * @param eventId The ID of the event reported as abuse.
      * @param reporterId The user who reported the event.
      * @param event The event being reported.
      * @param reason A reason provided by the reporter.
      */
-    public async handleServerAbuseReport({ reporterId, event, reason }: { roomId: string, eventId: string, reporterId: string, event: any, reason?: string }) {
-        return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: config.managementRoom });
+    public async handleServerAbuseReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
+        this.emit("report.new", { roomId: roomId, reporterId: reporterId, event: event, reason: reason });
+        return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: this.mjolnir.managementRoomId });
     }
 
     /**
@@ -128,7 +129,7 @@ export class ReportManager {
             return;
         }
 
-        if (roomId !== config.managementRoom) {
+        if (roomId !== this.mjolnir.managementRoomId) {
             // Let's not accept commands in rooms other than the management room.
             return;
         }
@@ -143,6 +144,11 @@ export class ReportManager {
         let initialNoticeReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
+            if (originalEvent.sender !== await this.mjolnir.client.getUserId()) {
+                // Let's not handle reactions to events we didn't send as
+                // some setups have two or more Mjolnir's in the same management room.
+                return;
+            }
             if (!("content" in originalEvent)) {
                 return;
             }
@@ -201,7 +207,7 @@ export class ReportManager {
                 })
             } else {
                 LogService.info("ReportManager::handleReaction", "User", event["sender"], "cancelled action", matches[1]);
-                this.mjolnir.client.redactEvent(config.managementRoom, relation.event_id, "Action cancelled");
+                this.mjolnir.client.redactEvent(this.mjolnir.managementRoomId, relation.event_id, "Action cancelled");
             }
 
             return;
@@ -231,19 +237,19 @@ export class ReportManager {
                     "m.relationship": {
                         "rel_type": "m.reference",
                         "event_id": relation.event_id,
-                    }
+                    },
+                    [ABUSE_ACTION_CONFIRMATION_KEY]: confirmationReport
                 };
-                confirmation[ABUSE_ACTION_CONFIRMATION_KEY] = confirmationReport;
 
-                let requestConfirmationEventId = await this.mjolnir.client.sendMessage(config.managementRoom, confirmation);
-                await this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
+                let requestConfirmationEventId = await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, confirmation);
+                await this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": requestConfirmationEventId,
                         "key": `🆗 ${action.emoji} ${await action.title(this, initialNoticeReport)} [${action.label}][${CONFIRM}]`
                     }
                 });
-                await this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
+                await this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": requestConfirmationEventId,
@@ -287,7 +293,7 @@ export class ReportManager {
         let response;
         try {
             // Check security.
-            if (moderationRoomId === config.managementRoom) {
+            if (moderationRoomId === this.mjolnir.managementRoomId) {
                 // Always accept actions executed from the management room.
             } else {
                 throw new Error("Security error: Cannot execute this action.");
@@ -297,14 +303,14 @@ export class ReportManager {
             error = ex;
         }
         if (error) {
-            this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
+            this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                 "m.relates_to": {
                     "rel_type": "m.annotation",
                     "event_id": failureEventId,
                     "key": `${action.emoji} ❌`
                 }
             });
-            this.mjolnir.client.sendEvent(config.managementRoom, "m.notice", {
+            this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.notice", {
                 "body": error.message || "<unknown error>",
                 "m.relationship": {
                     "rel_type": "m.reference",
@@ -312,7 +318,7 @@ export class ReportManager {
                 }
             })
         } else {
-            this.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
+            this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                 "m.relates_to": {
                     "rel_type": "m.annotation",
                     "event_id": successEventId,
@@ -320,10 +326,10 @@ export class ReportManager {
                 }
             });
             if (onSuccessRemoveEventId) {
-                this.mjolnir.client.redactEvent(config.managementRoom, onSuccessRemoveEventId, "Action complete");
+                this.mjolnir.client.redactEvent(this.mjolnir.managementRoomId, onSuccessRemoveEventId, "Action complete");
             }
             if (response) {
-                this.mjolnir.client.sendMessage(config.managementRoom, {
+                this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, {
                     msgtype: "m.notice",
                     "formatted_body": response,
                     format: "org.matrix.custom.html",
@@ -460,7 +466,7 @@ class IgnoreBadReport implements IUIAction {
         return "Ignore bad report";
     }
     public async execute(manager: ReportManager, report: IReportWithAction): Promise<string | undefined> {
-        await manager.mjolnir.client.sendEvent(config.managementRoom, "m.room.message",
+        await manager.mjolnir.client.sendEvent(manager.mjolnir.managementRoomId, "m.room.message",
             {
                 msgtype: "m.notice",
                 body: "Report classified as invalid",
@@ -622,7 +628,7 @@ class EscalateToServerModerationRoom implements IUIAction {
     public emoji = "⏫";
     public needsConfirmation = true;
     public async canExecute(manager: ReportManager, report: IReport, moderationRoomId: string): Promise<boolean> {
-        if (moderationRoomId === config.managementRoom) {
+        if (moderationRoomId === manager.mjolnir.managementRoomId) {
             // We're already at the top of the chain.
             return false;
         }
@@ -651,7 +657,7 @@ class EscalateToServerModerationRoom implements IUIAction {
         // - `moderationRoomId`: statically known good;
         // - `reporterId`: we trust `report`, could be forged by a moderator, low impact;
         // - `event`: checked just before.
-        await displayManager.displayReportAndUI({ kind: Kind.ESCALATED_REPORT, reporterId: report.reporter_id, moderationRoomId: config.managementRoom, event });
+        await displayManager.displayReportAndUI({ kind: Kind.ESCALATED_REPORT, reporterId: report.reporter_id, moderationRoomId: manager.mjolnir.managementRoomId, event });
         return;
     }
 }
@@ -689,7 +695,7 @@ class DisplayManager {
             // Ignore.
         }
 
-        let eventContent;
+        let eventContent: { msg: string} | { html: string } | { text: string };
         try {
             if (event["type"] === "m.room.encrypted") {
                 eventContent = { msg: "<encrypted content>" };
@@ -703,6 +709,8 @@ class DisplayManager {
                 } else {
                     eventContent = { text: this.limitLength(JSON.stringify(event["content"], null, 2), MAX_EVENT_CONTENT_LENGTH, MAX_NEWLINES) };
                 }
+            } else {
+                eventContent = { msg: "Malformed event, cannot read content." };
             }
         } catch (ex) {
             eventContent = { msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.` };
@@ -712,12 +720,12 @@ class DisplayManager {
 
         let reporterDisplayName: string, accusedDisplayName: string;
         try {
-            reporterDisplayName = await this.owner.mjolnir.client.getUserProfile(reporterId)["displayname"] || reporterId;
+            reporterDisplayName = (await this.owner.mjolnir.client.getUserProfile(reporterId))["displayname"] || reporterId;
         } catch (ex) {
             reporterDisplayName = "<Error: Cannot extract reporter display name>";
         }
         try {
-            accusedDisplayName = await this.owner.mjolnir.client.getUserProfile(accusedId)["displayname"] || accusedId;
+            accusedDisplayName = (await this.owner.mjolnir.client.getUserProfile(accusedId))["displayname"] || accusedId;
         } catch (ex) {
             accusedDisplayName = "<Error: Cannot extract accused display name>";
         }
@@ -828,8 +836,8 @@ class DisplayManager {
         }
 
         // ...insert HTML content
-        for (let [key, value] of [
-            ['event-content', eventContent],
+        for (let {key, value} of [
+            { key: 'event-content', value: eventContent },
         ]) {
             let node = document.getElementById(key);
             if (node) {
@@ -838,7 +846,7 @@ class DisplayManager {
                 } else if ("text" in value) {
                     node.textContent = value.text;
                 } else if ("html" in value) {
-                    node.innerHTML = value.html;
+                    node.innerHTML = value.html
                 }
             }
         }
@@ -864,10 +872,10 @@ class DisplayManager {
             body: htmlToText(document.body.outerHTML, { wordwrap: false }),
             format: "org.matrix.custom.html",
             formatted_body: document.body.outerHTML,
+            [ABUSE_REPORT_KEY]: report
         };
-        notice[ABUSE_REPORT_KEY] = report;
 
-        let noticeEventId = await this.owner.mjolnir.client.sendMessage(config.managementRoom, notice);
+        let noticeEventId = await this.owner.mjolnir.client.sendMessage(this.owner.mjolnir.managementRoomId, notice);
         if (kind !== Kind.ERROR) {
             // Now let's display buttons.
             for (let [label, action] of ACTIONS) {
@@ -875,7 +883,7 @@ class DisplayManager {
                 if (!await action.canExecute(this.owner, report, moderationRoomId)) {
                     continue;
                 }
-                await this.owner.mjolnir.client.sendEvent(config.managementRoom, "m.reaction", {
+                await this.owner.mjolnir.client.sendEvent(this.owner.mjolnir.managementRoomId, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": noticeEventId,

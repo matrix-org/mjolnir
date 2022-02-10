@@ -16,8 +16,7 @@ limitations under the License.
 
 import { LogLevel, LogService, TextualMessageEventContent } from "matrix-bot-sdk";
 import config from "./config";
-import { replaceRoomIdsWithPills } from "./utils";
-import * as htmlEscape from "escape-html";
+import { htmlEscape, replaceRoomIdsWithPills } from "./utils";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -35,8 +34,9 @@ export async function logMessage(level: LogLevel, module: string, message: strin
         if (level === LogLevel.WARN) clientMessage = `⚠ | ${message}`;
         if (level === LogLevel.ERROR) clientMessage = `‼ | ${message}`;
 
-        const roomIds = [config.managementRoom, ...additionalRoomIds];
         const client = config.RUNTIME.client;
+        const managementRoomId = await client.resolveRoom(config.managementRoom);
+        const roomIds = new Set([managementRoomId, ...additionalRoomIds]);
 
         let evContent: TextualMessageEventContent = {
             body: message,
@@ -48,7 +48,7 @@ export async function logMessage(level: LogLevel, module: string, message: strin
             evContent = await replaceRoomIdsWithPills(client, clientMessage, roomIds, "m.notice");
         }
 
-        await client.sendMessage(config.managementRoom, evContent);
+        await client.sendMessage(managementRoomId, evContent);
     }
 
     levelToFn[level.toString()](module, message);
