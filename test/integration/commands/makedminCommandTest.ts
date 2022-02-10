@@ -51,7 +51,7 @@ describe("Test: The make admin command", function () {
 
         powerLevels = await mjolnir.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
         assert.equal(powerLevels["users"][mjolnirUserId], 100, "Bot user is not room admin.");
-        assert.equal(powerLevels["users"][userAId], 0, "User A must not be room admin.");
+        assert.equal(powerLevels["users"][userAId], (0 || undefined), "User A must not be room admin.");
     });
 
     it('Mjölnir make the tester room administrator', async function () {
@@ -100,6 +100,6 @@ describe("Test: The make admin command", function () {
 
         powerLevels = await userA.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
         assert.equal(powerLevels["users"][userBId], 100, "User B is not room admin.");
-        assert.equal(powerLevels["users"][userCId], 0, "User C must not be room admin.");
+        assert.equal(powerLevels["users"][userCId], (0 || undefined), "User C must not be room admin.");
     });
 });
