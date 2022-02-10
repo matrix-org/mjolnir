@@ -22,6 +22,8 @@ import { logMessage } from "../LogProxy";
 
 const DEFAULT_BUCKET_DURATION_MS = 10_000;
 const DEFAULT_BUCKET_NUMBER = 6;
+const DEFAULT_CLEANUP_PERIOD_MS = 3_600 * 1_000;
+const DEFAULT_INITIAL_DELAY_GRACE_MS = 180_000;
 const DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS = 120_000;
 const DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS = 100_000;
 const DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS = 180_000;
@@ -31,9 +33,17 @@ const DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_EXIT_WARNING_ZONE = 10;
 const DEFAULT_REWARN_AFTER_MS = 60_000;
 
 /**
+ * A state event emitted in the moderation room when there is lag,
+ * redacted when lag has disappeared.
+ *
+ * The state key is the id of the room in which lag was detected.
+ */
+export const LAG_STATE_EVENT = "org.mjolnir.monitoring.lag";
+
+/**
  * Settings for a timed histogram.
  */
- type HistogramSettings = {
+type HistogramSettings = {
     // The width of a bucket, in ms.
     bucketDurationMS: number,
     // The number of buckets.
@@ -108,7 +118,7 @@ class TimedHistogram<T> {
             this.buckets.splice(0, this.buckets.length - settings.bucketNumber);
         }
         const oldestAcceptableTimestamp = now.getTime() - settings.bucketDurationMS * settings.bucketNumber;
-        for (let i = this.buckets.length - 2; i >=0; --i) {
+        for (let i = this.buckets.length - 2; i >= 0; --i) {
             // Find the most recent bucket that is too old.
             if (this.buckets[i].start.getTime() < oldestAcceptableTimestamp) {
                 // ...and remove that bucket and every bucket before it.
@@ -130,19 +140,66 @@ class TimedHistogram<T> {
 /**
  * General-purpose statistics on a sample.
  */
-type Stats = {
+class Stats {
+    constructor(values: number[]) {
+        this.length = values.length;
+        if (this.length == 0) {
+            throw new TypeError("Attempting to compute stats on an empty sample");
+        }
+        if (this.length == 1) {
+            // `values[Math.ceil(this.length / 2)]` below fails when `this.length == 1`.
+            this.min =
+                this.max =
+                this.mean =
+                this.median = values[0];
+            this.stddev = 0;
+            return;
+        }
+        values.sort();
+        this.min = values[0];
+        this.max = values[this.length - 1];
+        let total = 0;
+        for (let num of values) {
+            total += num;
+        }
+        this.mean = total / this.length;
+
+        let totalVariance = 0;
+        for (let num of values) {
+            const deviation = num - this.mean;
+            totalVariance += deviation * deviation;
+        }
+        this.stddev = Math.sqrt(totalVariance / this.length);
+
+        if (this.length % 2 == 0) {
+            this.median = values[this.length / 2];
+        } else {
+            this.median = (values[Math.floor(this.length / 2)] + values[Math.ceil(this.length / 2)]) / 2;
+        }
+    }
     // Minimum.
-    min: number,
+    public readonly min: number;
     // Maximum.
-    max: number,
+    public readonly max: number;
     // Mean.
-    mean: number,
+    public readonly mean: number;
     // Median.
-    median: number,
+    public readonly median: number;
     // Standard deviation.
-    stddev: number,
+    public readonly stddev: number;
     // Length of the sample.
-    length: number,
+    public readonly length: number;
+
+    public round(): { min: number, max: number, mean: number, median: number, stddev: number, length: number } {
+        return {
+            min: Math.round(this.min),
+            max: Math.round(this.max),
+            mean: Math.round(this.mean),
+            median: Math.round(this.median),
+            stddev: Math.round(this.stddev),
+            length: this.length
+        }
+    }
 }
 
 /**
@@ -150,17 +207,8 @@ type Stats = {
  * and can compute statistics.
  */
 class NumbersTimedHistogram extends TimedHistogram<number> {
-    private _latestStatsUpdate: Date;
     constructor(settings: HistogramSettings, now = new Date()) {
         super(settings);
-        this._latestStatsUpdate = now;
-    }
-
-    /**
-     * The instant at which `stats()` was last called.
-     */
-    public get latestStatsUpdate() {
-        return this._latestStatsUpdate;
     }
 
     /**
@@ -168,8 +216,7 @@ class NumbersTimedHistogram extends TimedHistogram<number> {
      *
      * @returns `null` if the histogram is empty, otherwise `Stats`.
      */
-    public stats(now: Date = new Date()): Stats|null {
-        this._latestStatsUpdate = now;
+    public stats(): Stats | null {
         if (this.buckets.length == 0) {
             return null;
         }
@@ -180,38 +227,7 @@ class NumbersTimedHistogram extends TimedHistogram<number> {
         if (numbers.length == 0) {
             return null;
         }
-        numbers.sort();
-        const length = numbers.length;
-        const min = numbers[0];
-        const max = numbers[length - 1];
-        let total = 0;
-        for (let num of numbers) {
-            total += num;
-        }
-        const mean = total / length;
-
-        let totalVariance = 0;
-        for (let num of numbers) {
-            const deviation = num - mean;
-            totalVariance += deviation * deviation;
-        }
-        const stddev = Math.sqrt(totalVariance / length);
-
-        let median;
-        if (length % 2 == 0) {
-            median = numbers[length / 2];
-        } else {
-            median = (numbers[Math.floor(length / 2)] + numbers[Math.ceil(length / 2)]) / 2;
-        }
-
-        return {
-            min,
-            max,
-            mean,
-            stddev,
-            median,
-            length
-        }
+        return new Stats(numbers);
     }
 }
 
@@ -225,7 +241,7 @@ class ServerInfo {
     /**
      * The histogram collecting lag, in ms.
      */
-    public histogram: NumbersTimedHistogram;
+    private histogram: NumbersTimedHistogram;
 
     /**
      * Date of the latest message received from this server.
@@ -233,9 +249,11 @@ class ServerInfo {
      * May be used to clean up data structures.
      */
     public latestMessage: Date = new Date(0);
+    public latestStatsUpdate: Date;
 
-    constructor(settings: HistogramSettings, now: Date = new Date()) {
+    constructor(settings: HistogramSettings, now: Date) {
         this.histogram = new NumbersTimedHistogram(settings, now);
+        this.latestStatsUpdate = now;
     }
 
     /**
@@ -243,9 +261,23 @@ class ServerInfo {
      *
      * @param lag The duration of lag, in ms.
      */
-    addLag(lag: number, now: Date = new Date()) {
+    pushLag(lag: number, now: Date) {
         this.latestMessage = now;
         this.histogram.push(lag, now);
+    }
+
+    updateSettings(settings: HistogramSettings, now: Date) {
+        this.histogram.updateSettings(settings, now);
+    }
+
+    /**
+     * Compute stats.
+     *
+     * @returns `null` if the histogram is empty, otherwise `Stats`.
+     */
+    stats(now: Date) {
+        this.latestStatsUpdate = now;
+        return this.histogram.stats();
     }
 }
 
@@ -260,18 +292,24 @@ type WarningThresholds = {
     exitWarningZone: number
 }
 
+enum AlertDiff {
+    Start,
+    Stop,
+    NoChange
+}
+
 /**
  * Statistics to help determine whether we should raise the alarm on lag in a room.
  * 
  * Each individual server may have lag.
  */
 class RoomStats {
-    constructor() {
+    constructor(now: Date = new Date()) {
         this.serverLags = new Map();
         this.totalLag = new ServerInfo({
             bucketDurationMS: DEFAULT_BUCKET_DURATION_MS,
             bucketNumber: DEFAULT_BUCKET_NUMBER
-        });
+        }, now);
     }
     /**
      * A map of domain => lag information.
@@ -304,7 +342,12 @@ class RoomStats {
      * If non-`null`, we have issued a structured warning as a state event.
      * This needs to be redacted once the alert has passed.
      */
-    public warnStateEventId: string|null = null;
+    public warnStateEventId: string | null = null;
+
+    /**
+     * The date at which we last received a message in this room.
+     */
+    public latestMessage: Date = new Date(0);
 
     /**
      * Add a lag annotation.
@@ -312,37 +355,49 @@ class RoomStats {
      * @param serverId The server from which the message was sent. Could be the local server.
      * @param lag How many ms of lag was measured. Hopefully ~0.
      * @param settings Settings used in case we need to create or update the histogram.
+     * @param thresholds The thresholds to use to determine whether an origin server is currently lagging.
      * @param now Instant at which all of this was measured.
      */
-    addLag(serverId: string, lag: number, settings: HistogramSettings, thresholds: WarningThresholds, now: Date = new Date()) {
+    pushLag(serverId: string, lag: number, settings: HistogramSettings, thresholds: WarningThresholds, now: Date = new Date()): AlertDiff {
+        this.latestMessage = now;
+
         // Update per-server lag.
         let serverInfo = this.serverLags.get(serverId);
         if (!serverInfo) {
-            serverInfo = new ServerInfo(settings);
+            serverInfo = new ServerInfo(settings, now);
             this.serverLags.set(serverId, serverInfo);
         } else {
-            serverInfo.histogram.updateSettings(settings, now);
+            serverInfo.updateSettings(settings, now);
         }
-        serverInfo.addLag(lag, now);
+        serverInfo.pushLag(lag, now);
 
         // Update global lag.
-        this.totalLag.histogram.updateSettings(settings, now);
-        this.totalLag.addLag(lag, now);
+        this.totalLag.updateSettings(settings, now);
+        this.totalLag.pushLag(lag, now);
 
         // Check for alerts, if necessary.
-        if (serverInfo.histogram.latestStatsUpdate.getTime() + settings.bucketDurationMS > now.getTime()) {
+        if (serverInfo.latestStatsUpdate.getTime() + settings.bucketDurationMS > now.getTime()) {
             // Too early to recompute stats.
-            return;
+            return AlertDiff.NoChange;
         }
 
-        let stats = serverInfo.histogram.stats(now)!;
+        let stats = serverInfo.stats(now)!;
         if (stats.median > thresholds.enterWarningZone) {
             // Oops, we're now on alert for this server.
-            this.serverAlerts.add(serverId);
+            let previous = this.serverAlerts.has(serverId);
+            if (!previous) {
+                this.serverAlerts.add(serverId);
+                return AlertDiff.Start;
+            }
         } else if (stats.median < thresholds.exitWarningZone) {
             // Ah, we left the alert zone.
-            this.serverAlerts.delete(serverId);
+            let previous = this.serverAlerts.has(serverId);
+            if (previous) {
+                this.serverAlerts.delete(serverId);
+                return AlertDiff.Stop;
+            }
         }
+        return AlertDiff.NoChange;
     }
 
     /**
@@ -353,7 +408,24 @@ class RoomStats {
     }
 
     /**
-     * @param serverId 
+     * The current global stats.
+     * 
+     * These stats are not separated by remote server.
+     *
+     * @returns null if we have no recent data at all,
+     * some stats otherwise.
+     */
+    public globalStats(now: Date): Stats | null {
+        return this.totalLag.stats(now);
+    }
+
+    /**
+     * Check if a server is currently marked as lagging.
+     *
+     * A server is marked as lagging if its mean lag has exceeded
+     * `threshold.enterWarningZone` and has not decreased below
+     * `threshold.exitWarningZone`.
+     * 
      * @returns `true` is that server is currently on alert.
      */
     public isServerOnAlert(serverId: string): boolean {
@@ -361,10 +433,44 @@ class RoomStats {
     }
 
     /**
-     * The histogram for global performance in this room.
+     * The list of servers currently on alert.
      */
-    public get histogram(): NumbersTimedHistogram {
-        return this.totalLag.histogram;
+    public serversOnAlert(): IterableIterator<string> {
+        return this.serverAlerts.keys();
+    }
+
+    public cleanup(settings: HistogramSettings, now: Date, oldest: Date) {
+        // Cleanup global histogram.
+        //
+        // If `oldest == now - settings.duration * settings.number`, this
+        // should correspond exactly to the cleanup that takes place within
+        // `this.serverLags`. There is a risk of inconsistency between data
+        // if this is not the case.
+        //
+        // We assume that this is an acceptable risk: as we regularly
+        // erase oldest data from both `this.totalLag` and individual
+        // entries of `this.serverLags`, both sets of data will eventually
+        // catch up with each other.
+        this.totalLag.updateSettings(settings, now);
+        let serverLagsDeleteIds = [];
+        for (let [serverId, serverStats] of this.serverLags) {
+            if (serverStats.latestMessage < oldest) {
+                // Remove entire histogram.
+                serverLagsDeleteIds.push(serverId);
+                continue;
+            }
+            // Cleanup histogram.
+            serverStats.updateSettings(settings, now);
+        }
+        for (let key of serverLagsDeleteIds) {
+            this.serverLags.delete(key);
+            this.serverAlerts.delete(key);
+            // Note that we remove the alert to save memory (it's not really useful
+            // to keep monitoring a server for too long after receiving a message)
+            // but this does NOT guaranteed that server lag is over. It may be that
+            // the server is down or that the server is lagging by more than ~1h
+            // (by default).
+        }
     }
 }
 
@@ -373,48 +479,75 @@ export class DetectFederationLag extends Protection {
      * For each room we're monitoring, lag information.
      */
     lagPerRoom: Map<string /* roomId */, RoomStats> = new Map();
-    settings = {
+    public settings = {
         // Rooms to ignore.
         ignoreRooms: new StringSetProtectionSetting(),
         // Servers to ignore, typically because they're known to be slow.
         ignoreServers: new StringSetProtectionSetting(),
         // How often we should recompute lag (ms).
-        bucketDurationMS: new NumberProtectionSetting(DEFAULT_BUCKET_DURATION_MS),
+        bucketDurationMS: new NumberProtectionSetting(DEFAULT_BUCKET_DURATION_MS, 100),
         // How long we should remember lag in a room (`bucketDuration * bucketNumber` ms).
-        bucketNumber: new NumberProtectionSetting(DEFAULT_BUCKET_NUMBER),
+        bucketNumber: new NumberProtectionSetting(DEFAULT_BUCKET_NUMBER, 1),
         // How much lag before the local homeserver is considered lagging.
-        localHomeserverLagEnterWarningZone: new NumberProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS),
+        localHomeserverLagEnterWarningZoneMS: new NumberProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
         // How much lag before the local homeserver is considered not lagging anymore.
-        localHomeserverLagExitWarningZone: new NumberProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS),
+        localHomeserverLagExitWarningZoneMS: new NumberProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
         // How much lag before a federated homeserver is considered lagging.
-        federatedHomeserverLagEnterWarningZone: new NumberProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS),
+        federatedHomeserverLagEnterWarningZoneMS: new NumberProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
         // How much lag before a federated homeserver is considered not lagging anymore.
-        federatedHomeserverLagExitWarningZone: new NumberProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS),
+        federatedHomeserverLagExitWarningZoneMS: new NumberProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
         // How much time we should wait before printing a new warning (ms).
-        warnAgainAfterMS: new NumberProtectionSetting(DEFAULT_REWARN_AFTER_MS),
+        warnAgainAfterMS: new NumberProtectionSetting(DEFAULT_REWARN_AFTER_MS, 1),
         // How many federated homeservers it takes to trigger an alert.
         // You probably want to update this if you're monitoring a room that
         // has many underpowered homeservers.
-        numberOfLaggingFederatedHomeserversEnterWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_ENTER_WARNING_ZONE),
+        numberOfLaggingFederatedHomeserversEnterWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_ENTER_WARNING_ZONE, 1),
         // How many federated homeservers it takes before we're considered not on alert anymore.
         // You probably want to update this if you're monitoring a room that
         // has many underpowered homeservers.
-        numberOfLaggingFederatedHomeserversExitWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_EXIT_WARNING_ZONE),
+        numberOfLaggingFederatedHomeserversExitWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_EXIT_WARNING_ZONE, 1),
+        // How long to wait before actually collecting statistics.
+        // Used to avoid being misled by Mjölnir catching up with old messages on first sync.
+        initialDelayGraceMS: new NumberProtectionSetting(DEFAULT_INITIAL_DELAY_GRACE_MS, 0),
+        cleanupPeriodMS: new NumberProtectionSetting(DEFAULT_CLEANUP_PERIOD_MS, 1),
     };
+    // The instant at which the first message was received.
+    private firstMessage: Date | null = null;
+    // The latest instant at which we have started cleaning up old data.
+    private latestCleanup: Date = new Date(0);
+    private latestHistogramSettings: HistogramSettings;
     constructor() {
         super();
-        // FIXME: Once in a while, cleanup!
+        // Initialize and watch `this.latestHistogramSettings`.
+        this.updateLatestHistogramSettings();
+        this.settings.bucketDurationMS.on("set", () => this.updateLatestHistogramSettings());
+        this.settings.bucketNumber.on("set", () => this.updateLatestHistogramSettings());
+    }
+    dispose() {
+        this.settings.bucketDurationMS.removeAllListeners();
+        this.settings.bucketNumber.removeAllListeners();
     }
     public get name(): string {
         return 'DetectFederationLag';
     }
     public get description(): string {
-        return `Warn moderators if either the local homeserver starts lagging by ${this.settings.localHomeserverLagEnterWarningZone.value}ms or at least ${this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value} start lagging by at least ${this.settings.federatedHomeserverLagEnterWarningZone.value}ms.`;
+        return `Warn moderators if either the local homeserver starts lagging by ${this.settings.localHomeserverLagEnterWarningZoneMS.value}ms or at least ${this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value} start lagging by at least ${this.settings.federatedHomeserverLagEnterWarningZoneMS.value}ms.`;
     }
 
-    public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
+    public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any, now: Date = new Date()): Promise<any> {
         // First, handle all cases in which we should ignore the event.
-        // FIXME: We should probably entirely ignore it until first /sync is complete.
+        if (!this.firstMessage) {
+            this.firstMessage = now;
+        }
+        if (this.firstMessage.getTime() + this.settings.initialDelayGraceMS.value > now.getTime()) {
+            // We're still in the initial grace period, ignore.
+            return;
+        }
+        if (this.latestCleanup.getTime() + this.settings.cleanupPeriodMS.value > now.getTime()) {
+            // We should run some cleanup.
+            this.latestCleanup = now;
+            this.cleanup(now);
+        }
         if (this.settings.ignoreRooms.value.has(roomId)) {
             // Room is ignored.
             return;
@@ -434,7 +567,6 @@ export class DetectFederationLag extends Protection {
             return;
         }
 
-        let now = new Date();
         let origin = event['origin_server_ts'] as number;
         if (typeof origin != "number") {
             // Ill-formed event.
@@ -453,66 +585,98 @@ export class DetectFederationLag extends Protection {
             this.lagPerRoom.set(roomId, roomStats);
         }
 
-        const histogramSettings = Object.freeze({
-            bucketNumber: this.settings.bucketNumber.value,
-            bucketDurationMS: this.settings.bucketDurationMS.value
-        });
         const localDomain = new UserID(await mjolnir.client.getUserId()).domain
         const isLocalDomain = domain == localDomain;
         const thresholds =
             isLocalDomain
-            ? {
-                enterWarningZone: this.settings.localHomeserverLagEnterWarningZone.value,
-                exitWarningZone: this.settings.localHomeserverLagExitWarningZone.value,
-            }
-            : {
-                enterWarningZone: this.settings.federatedHomeserverLagEnterWarningZone.value,
-                exitWarningZone: this.settings.federatedHomeserverLagExitWarningZone.value,
-            };
+                ? {
+                    enterWarningZone: this.settings.localHomeserverLagEnterWarningZoneMS.value,
+                    exitWarningZone: this.settings.localHomeserverLagExitWarningZoneMS.value,
+                }
+                : {
+                    enterWarningZone: this.settings.federatedHomeserverLagEnterWarningZoneMS.value,
+                    exitWarningZone: this.settings.federatedHomeserverLagExitWarningZoneMS.value,
+                };
 
-        roomStats.addLag(domain, delay, histogramSettings, thresholds, now);
+        let diff = roomStats.pushLag(domain, delay, this.latestHistogramSettings, thresholds, now);
+        if (diff === AlertDiff.NoChange) {
+            return;
+        }
 
         if (roomStats.latestWarning.getTime() + this.settings.warnAgainAfterMS.value > now.getTime()) {
-            // No need to check for alarms, we have raised an alarm recently.
-            // FIXME: There may be cases in which we want to re-raise an alarm, e.g.
-            // if the local domain wasn't on alarm and now is.
-            return;
+            if (!isLocalDomain || diff !== AlertDiff.Start) {
+                // No need to check for alarms, we have raised an alarm recently.
+                return;
+            }
         }
 
         // Check whether an alarm needs to be raised!
         let isLocalDomainOnAlert = roomStats.isServerOnAlert(localDomain);
         if (roomStats.alerts > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value
-            || isLocalDomainOnAlert)
-        {
+            || isLocalDomainOnAlert) {
             // Raise the alarm!
             if (!roomStats.latestAlertStart) {
                 roomStats.latestAlertStart = now;
             }
             roomStats.latestAlertStart = now;
             // Background-send message.
-            let stats = roomStats.histogram.stats();
-            logMessage(LogLevel.WARN, "FederationLag",
-                `Room ${roomId} is experiencing ${ isLocalDomainOnAlert ? "LOCAL" : "federated" } lag since ${roomStats.latestAlertStart}.\nHomeservers displaying lag: ${roomStats.alerts}. Room: ${JSON.stringify(stats, null, 2)}.`);
+            let stats = roomStats.globalStats(now);
+            /* do not await */ logMessage(LogLevel.WARN, "FederationLag",
+                `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomStats.latestAlertStart}.\n${roomStats.alerts} homeservers are lagging: ${[...roomStats.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
             // Drop a state event, for the use of potential other bots.
-            let warnStateEventId = await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, "org.mjolnir.monitoring.lag", roomId, {
-                domain,
+            let warnStateEventId = await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, LAG_STATE_EVENT, roomId, {
+                domains: [...roomStats.serversOnAlert()],
                 roomId,
-                stats,
+                // We need to round the stats, as Matrix doesn't support floating-point
+                // numbers in messages.
+                stats: stats?.round(),
                 since: roomStats.latestAlertStart,
             });
             roomStats.warnStateEventId = warnStateEventId;
         } else if (roomStats.alerts < this.settings.numberOfLaggingFederatedHomeserversExitWarningZone.value
-            || !isLocalDomainOnAlert)
-        {
+            || !isLocalDomainOnAlert) {
             // Stop the alarm!
-            logMessage(LogLevel.INFO, "FederationLag",
+            /* do not await */ logMessage(LogLevel.INFO, "FederationLag",
                 `Room ${roomId} lag has decreased to an acceptable level. Currently, ${roomStats.alerts} homeservers are still lagging`
             );
             if (roomStats.warnStateEventId) {
                 let warnStateEventId = roomStats.warnStateEventId;
                 roomStats.warnStateEventId = null;
-                mjolnir.client.redactEvent(mjolnir.managementRoomId, warnStateEventId, "Alert over");
+                await mjolnir.client.redactEvent(mjolnir.managementRoomId, warnStateEventId, "Alert over");
             }
         }
     }
+
+    /**
+     * Run cleanup on data structures, to save memory.
+     *
+     * @param now Now.
+     * @param oldest Prune any data older than `oldest`.
+     */
+    public async cleanup(now: Date = new Date()) {
+        let oldest: Date = this.getOldestAcceptableData(now);
+        let lagPerRoomDeleteIds = [];
+        for (let [roomId, roomStats] of this.lagPerRoom) {
+            if (roomStats.latestMessage < oldest) {
+                // We need to remove the entire room.
+                lagPerRoomDeleteIds.push(roomId);
+                continue;
+            }
+            // Clean room stats.
+            roomStats.cleanup(this.latestHistogramSettings, now, oldest);
+        }
+        for (let roomId of lagPerRoomDeleteIds) {
+            this.lagPerRoom.delete(roomId);
+        }
+    }
+
+    private getOldestAcceptableData(now: Date): Date {
+        return new Date(now.getTime() - this.latestHistogramSettings.bucketDurationMS * this.latestHistogramSettings.bucketNumber)
+    }
+    private updateLatestHistogramSettings() {
+        this.latestHistogramSettings = Object.freeze({
+            bucketDurationMS: this.settings.bucketDurationMS.value,
+            bucketNumber: this.settings.bucketNumber.value,
+        });
+    };
 }

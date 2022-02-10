@@ -543,7 +543,7 @@ export class Mjolnir {
      *
      * @param protection The protection object we want to register
      */
-    public async registerProtection(protection: IProtection): Promise<any> {
+    public async registerProtection(protection: IProtection) {
         this.protections.set(protection.name, protection)
 
         let enabledProtections: { enabled: string[] } | null = null;
