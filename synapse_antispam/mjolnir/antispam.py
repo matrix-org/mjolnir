@@ -17,7 +17,7 @@ import logging
 from typing import Dict, Union
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
-from synapse.types import UserID
+from synapse.module_api import UserID
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
