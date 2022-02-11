@@ -49,7 +49,7 @@ interface IConfig {
     automaticallyRedactForReasons: string[]; // case-insensitive globs
     protectAllJoinedRooms: boolean;
     admin?: {
-        enableMakeRoomAdminCommand: boolean;
+        enableMakeRoomAdminCommand?: boolean;
     }
     commands: {
         allowNoPrefix: boolean;

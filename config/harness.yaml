@@ -96,12 +96,14 @@ protectedRooms: []
 # Manually add these rooms to the protected rooms list if you want them protected.
 protectAllJoinedRooms: false
 
-# Server administration commands
+# Server administration commands, these commands will only work if Mjolnir is
+# a global server administrator
 admin:
-  # The make admin command allows you to use the Synapse admin API to force
-  # a room dministrator of the target room which is local to Mjolnir's HomeServer
-  # to change the Power Level of either a target user or bot itself to room
-  # administrator.
+  # The `make admin` upgrades the powerlevel of a specified user (or the bot itself)
+  # of a room to make them admin of the room (powerlevel 100).
+  #
+  # This only works if the room has at least one admin on the local homeserver
+  # (the homeserver specified in `homeserverUrl` in this file).
   enableMakeRoomAdminCommand: true
 
 # Misc options for command handling and commands
