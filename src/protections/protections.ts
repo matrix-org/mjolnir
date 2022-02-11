@@ -21,6 +21,7 @@ import { WordList } from "./WordList";
 import { MessageIsVoice } from "./MessageIsVoice";
 import { MessageIsMedia } from "./MessageIsMedia";
 import { TrustedReporters } from "./TrustedReporters";
+import { PropagateRoomBan } from './PropagateRoomBan';
 
 export const PROTECTIONS: IProtection[] = [
     new FirstMessageIsImage(),
@@ -28,5 +29,6 @@ export const PROTECTIONS: IProtection[] = [
     new WordList(),
     new MessageIsVoice(),
     new MessageIsMedia(),
-    new TrustedReporters()
+    new TrustedReporters(),
+    new PropagateRoomBan()
 ];
