@@ -63,11 +63,7 @@ const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
-export interface ILogProxy {
-    logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds?: string[] | string | null, isRecursive?: boolean): Promise<any>;
-}
-
-export class Mjolnir implements ILogProxy {
+export class Mjolnir {
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
@@ -355,7 +351,7 @@ export class Mjolnir implements ILogProxy {
                 format: "org.matrix.custom.html",
             };
             if (!isRecursive) {
-                evContent = await replaceRoomIdsWithPills(client, this, clientMessage, new Set(roomIds), "m.notice");
+                evContent = await replaceRoomIdsWithPills(this, clientMessage, new Set(roomIds), "m.notice");
             }
 
             await client.sendMessage(managementRoomId, evContent);
@@ -871,7 +867,7 @@ export class Mjolnir implements ILogProxy {
 
             // Run the event handlers - we always run this after protections so that the protections
             // can flag the event for redaction.
-            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this.client, this);
+            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this);
 
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
@@ -1019,7 +1015,7 @@ export class Mjolnir implements ILogProxy {
      * @returns The list of errors encountered, for reporting to the management room.
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
-        return await this.eventRedactionQueue.process(this.client, this, roomId);
+        return await this.eventRedactionQueue.process(this, roomId);
     }
 
     private async handleReport(roomId: string, reporterId: string, event: any, reason?: string) {
