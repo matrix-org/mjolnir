@@ -53,6 +53,28 @@ export async function registerUser(username: string, displayname: string, passwo
                 await new Promise(resolve => setTimeout(resolve, REGISTRATION_RETRY_BASE_DELAY_MS * i * i));
                 continue;
             }
+
+            // If already created, try logging in.
+            if (ex?.body?.errcode === 'M_USER_IN_USE') {
+                const loginUrl = `${config.homeserverUrl}/_matrix/client/r0/login`
+                const params = {
+                    uri: loginUrl,
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        "type": "m.login.password",
+                        "identifier": {
+                          "type": "m.id.user",
+                          "user": username
+                        },
+                        "password": password
+                    }),
+                    timeout: 60000
+                }
+                return await new Promise((resolve, reject) => {
+                    getRequestFn()(params, (error, result) => error ? reject(error) : resolve(result));
+                });
+            }
             throw ex;
         }
     }

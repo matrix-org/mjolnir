@@ -60,21 +60,7 @@ async function configureMjolnir() {
         );
         return access_token;
     } catch (e) {
-        if (e.isAxiosError) {
-            console.log('Received error while registering', e.response.data || e.response);
-            if (e.response.data && e.response.data.errcode === 'M_USER_IN_USE') {
-                console.log('mjolnir already registered, skipping');
-                // Needed for encryption tests
-                return (await new MatrixClient(config.homeserverUrl, "").doRequest('POST', '/_matrix/client/r0/login', undefined, {
-                    "type": "m.login.password",
-                    "identifier": {
-                      "type": "m.id.user",
-                      "user": "mjolnir"
-                    },
-                    "password": "mjolnir"
-                })).access_token;
-            }
-        }
+        console.log('Received error while registering', e.response.data || e.response);
         throw e;
     };
 }
