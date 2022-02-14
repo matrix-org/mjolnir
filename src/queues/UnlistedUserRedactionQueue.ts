@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 import { extractRequestError, LogLevel, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
-import { logMessage } from "../LogProxy";
 import config from "../config";
+import { ILogProxy } from "../Mjolnir";
 
 /**
  * A queue of users who have been flagged for redaction typically by the flooding or image protection.
@@ -38,7 +38,7 @@ export class UnlistedUserRedactionQueue {
         return this.usersToRedact.has(userId);
     }
 
-    public async handleEvent(roomId: string, event: any, mjolnirClient: MatrixClient) {
+    public async handleEvent(roomId: string, event: any, mjolnirClient: MatrixClient, logProxy: ILogProxy) {
         if (this.isUserQueued(event['sender'])) {
             const permalink = Permalinks.forEvent(roomId, event['event_id']);
             try {
@@ -46,10 +46,10 @@ export class UnlistedUserRedactionQueue {
                 if (!config.noop) {
                     await mjolnirClient.redactEvent(roomId, event['event_id']);
                 } else {
-                    await logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
+                    await logProxy.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
                 }
             } catch (e) {
-                logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
+                logProxy.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
                 LogService.warn("AutomaticRedactionQueue", extractRequestError(e));
             }
         }

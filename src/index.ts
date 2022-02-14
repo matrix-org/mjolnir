@@ -24,7 +24,6 @@ import {
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 import config from "./config";
-import { logMessage } from "./LogProxy";
 import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
 import { patchMatrixClient } from "./utils";
@@ -41,6 +40,7 @@ if (config.health.healthz.enabled) {
     Healthz.listen();
 }
 
+let bot: Mjolnir | null = null;
 (async function () {
     const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
     const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
@@ -55,9 +55,9 @@ if (config.health.healthz.enabled) {
     patchMatrixClient();
     config.RUNTIME.client = client;
 
-    let bot = await Mjolnir.setupMjolnirFromConfig(client);
+    bot = await Mjolnir.setupMjolnirFromConfig(client);
     await bot.start();
 })().catch(err => {
-    logMessage(LogLevel.ERROR, "index", err);
+    bot?.logMessage(LogLevel.ERROR, "index", err);
     process.exit(1);
 });
