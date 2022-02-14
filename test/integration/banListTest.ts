@@ -237,7 +237,8 @@ describe.only('Test: ACL updates will batch when rules are added in succession.'
         const moderator = await newTestUser({ name: { contains: "moderator" }});
         moderator.joinRoom(this.mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.getUserId();
-        // How many rooms are we going to protect? Do we need to protect a few and verify all the ACL updates were batched in each?
+
+        // Setup some protected rooms so we can check their ACL state later.
         const protectedRooms: string[] = [];
         for (let i = 0; i < 10; i++) {
             const room = await moderator.createRoom({ invite: [mjolnirId]});
@@ -255,22 +256,24 @@ describe.only('Test: ACL updates will batch when rules are added in succession.'
             assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
         }));
 
-        // Flood the subsribed list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
+        // Flood the watched list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
         const banListId = await moderator.createRoom({ invite: [mjolnirId] });
         mjolnir.joinRoom(banListId);
         this.mjolnir!.watchList(Permalinks.forRoom(banListId));
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
         for (let i = 0; i < 200; i++) {
-            acl.denyServer(i.toString());
-            await createPolicyRule(moderator, banListId, RULE_SERVER, `${i}`, `Rule #${i}`);
+            const badServer = `${i}.evil.com`;
+            acl.denyServer(badServer);
+            await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule #${i}`);
             // Give them a bit of a spread over time.
             await new Promise(resolve => setTimeout(resolve, 5));
         }
 
         // We do this because it should force us to wait until all the ACL events have been applied.
+        // Even if that does mean the last few events will not go through batching...
         await this.mjolnir!.syncLists();
 
-        // Check each of the protected rooms.
+        // Check each of the protected rooms for ACL events and make sure they were batched and are correct.
         await Promise.all(protectedRooms.map(async room => {
             const roomAcl = await mjolnir.getRoomStateEvent(room, "m.room.server_acl", "");
             if (!acl.matches(roomAcl)) {
@@ -281,8 +284,8 @@ describe.only('Test: ACL updates will batch when rules are added in succession.'
                 events.forEach(event => event.type === 'm.room.server_acl' ? aclEventCount += 1 : null);
             });
             LogService.debug('BanListTest', `aclEventCount: ${aclEventCount}`);
-            // If there's less than two then it probably means the ACL was put in by this test calling syncLists
-            // and not the listener that detects changes to ban lists.
+            // If there's less than two then it means the ACL was updated by this test calling `this.mjolnir!.syncLists()`
+            // and not the listener that detects changes to ban lists (that we want to test!).
             assert.equal(aclEventCount < 10 && aclEventCount > 2, true, 'We should have sent less than 10 ACL events to each room because they should be batched')
         }));
     })

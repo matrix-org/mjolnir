@@ -26,7 +26,7 @@ import {
     UserID
 } from "matrix-bot-sdk";
 
-import BanList, { ALL_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
+import BanList, { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -764,7 +764,7 @@ export class Mjolnir {
     /**
      * Pulls any changes to the rules that are in a policy room and updates all protected rooms
      * with those changes. Does not fail if there are errors updating the room, these are reported to the management room.
-     * @param policyRoomId The room with a policy list which we will check for changes and apply them to all protected rooms.
+     * @param banList The `BanList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
      public async syncWithBanList(banList: BanList): Promise<void> {
@@ -809,7 +809,7 @@ export class Mjolnir {
         // themselves.
         const banList = this.banLists.find(list => list.roomId === roomId);
         if (banList !== undefined) {
-            if (ALL_RULE_TYPES.includes(event['type'])) {
+            if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
                 banList.updateForEvent(event)
             }
         }
