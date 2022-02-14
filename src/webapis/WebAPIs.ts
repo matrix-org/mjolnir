@@ -17,10 +17,12 @@ limitations under the License.
 import { Server } from "http";
 
 import * as express from "express";
-import { MatrixClient } from "matrix-bot-sdk";
+import { LogService, MatrixClient } from "matrix-bot-sdk";
 
 import config from "../config";
+import RuleServer from "../models/RuleServer";
 import { ReportManager } from "../report/ReportManager";
+
 
 /**
  * A common prefix for all web-exposed APIs.
@@ -33,7 +35,7 @@ export class WebAPIs {
     private webController: express.Express = express();
     private httpServer?: Server;
 
-    constructor(private reportManager: ReportManager) {
+    constructor(private reportManager: ReportManager, private readonly ruleServer: RuleServer|null) {
         // Setup JSON parsing.
         this.webController.use(express.json());
     }
@@ -55,6 +57,22 @@ export class WebAPIs {
                 await this.handleReport({ request, response, roomId: request.params.room_id, eventId: request.params.event_id })
             });
             console.log(`Configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
+        }
+
+        // Configure ruleServer API.
+        // FIXME: Doesn't this need some kind of access control?
+        // See https://github.com/matrix-org/mjolnir/issues/139#issuecomment-1012221479.
+        if (config.web.ruleServer?.enabled) {
+            const updatesUrl = `${API_PREFIX}/ruleserver/updates`;
+            LogService.info("WebAPIs", `Configuring ${updatesUrl}...`);
+            if (!this.ruleServer) {
+                throw new Error("The rule server to use has not been configured for the WebAPIs.");
+            }
+            const ruleServer: RuleServer = this.ruleServer;
+            this.webController.get(updatesUrl, async (request, response) => {
+                await this.handleRuleServerUpdate(ruleServer, { request, response, since: request.query.since as string});
+            });
+            LogService.info("WebAPIs", `Configuring ${updatesUrl}... DONE`);
         }
     }
 
@@ -89,16 +107,19 @@ export class WebAPIs {
             {
                 // -- Create a client on behalf of the reporter.
                 // We'll use it to confirm the authenticity of the report.
-                let accessToken;
+                let accessToken: string | undefined = undefined;
 
                 // Authentication mechanism 1: Request header.
                 let authorization = request.get('Authorization');
 
                 if (authorization) {
                     [, accessToken] = AUTHORIZATION.exec(authorization)!;
-                } else {
+                } else if (typeof(request.query["access_token"]) === 'string') {
                     // Authentication mechanism 2: Access token as query parameter.
                     accessToken = request.query["access_token"];
+                } else {
+                    response.status(401).send("Missing access token");
+                    return;
                 }
 
                 // Create a client dedicated to this report.
@@ -154,13 +175,25 @@ export class WebAPIs {
             }
 
             let reason = request.body["reason"];
-            await this.reportManager.handleServerAbuseReport({ roomId, eventId, reporterId, event, reason });
+            await this.reportManager.handleServerAbuseReport({ roomId, reporterId, event, reason });
 
             // Match the spec behavior of `/report`: return 200 and an empty JSON.
             response.status(200).json({});
         } catch (ex) {
             console.warn("Error responding to an abuse report", roomId, eventId, ex);
             response.status(503);
+        }
+    }
+
+    async handleRuleServerUpdate(ruleServer: RuleServer, { since, request, response }: { since: string, request: express.Request, response: express.Response }) {
+        // FIXME Have to do this because express sends keep alive by default and during tests.
+        // The server will never be able to close because express never closes the sockets, only stops accepting new connections.
+        // See https://github.com/matrix-org/mjolnir/issues/139#issuecomment-1012221479.
+        response.set("Connection", "close");
+        try {
+            response.json(ruleServer.getUpdates(since)).status(200);
+        } catch (ex) {
+            LogService.error("WebAPIs", `Error responding to a rule server updates request`, since, ex);
         }
     }
 }

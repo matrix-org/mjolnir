@@ -29,8 +29,16 @@ import {
 } from "matrix-bot-sdk";
 import { logMessage } from "./LogProxy";
 import config from "./config";
-import * as htmlEscape from "escape-html";
 import { ClientRequest, IncomingMessage } from "http";
+
+export function htmlEscape(input: string): string {
+    return input.replace(/["&<>]/g, (char: string) => ({
+        ['"'.charCodeAt(0)]: "&quot;",
+        ["&".charCodeAt(0)]: "&amp;",
+        ["<".charCodeAt(0)]: "&lt;",
+        [">".charCodeAt(0)]: "&gt;"
+    })[char.charCodeAt(0)]);
+}
 
 export function setToArray<T>(set: Set<T>): T[] {
     const arr: T[] = [];
@@ -171,9 +179,19 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     }
 }
 
-export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: string[] | string, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
-    if (!Array.isArray(roomIds)) roomIds = [roomIds];
-
+/*
+ * Take an arbitrary string and a set of room IDs, and return a
+ * TextualMessageEventContent whose plaintext component replaces those room
+ * IDs with their canonical aliases, and whose html component replaces those
+ * room IDs with their matrix.to room pills.
+ *
+ * @param client The matrix client on which to query for room aliases
+ * @param text An arbitrary string to rewrite with room aliases and pills
+ * @param roomIds A set of room IDs to find and replace in `text`
+ * @param msgtype The desired message type of the returned TextualMessageEventContent
+ * @returns A TextualMessageEventContent with replaced room IDs
+ */
+export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
     const content: TextualMessageEventContent = {
         body: text,
         formatted_body: htmlEscape(text),
@@ -225,11 +243,13 @@ function patchMatrixClientForConciseExceptions() {
         return;
     }
     let originalRequestFn = getRequestFn();
-    setRequestFn((params, cb) => {
+    setRequestFn((params: { [k: string]: any }, cb: any) => {
         // Store an error early, to maintain *some* semblance of stack.
         // We'll only throw the error if there is one.
         let error = new Error("STACK CAPTURE");
-        originalRequestFn(params, function conciseExceptionRequestFn(err, response, resBody) {
+        originalRequestFn(params, function conciseExceptionRequestFn(
+            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+        ) {
             if (!err && (response?.statusCode < 200 || response?.statusCode >= 300)) {
                 // Normally, converting HTTP Errors into rejections is done by the caller
                 // of `requestFn` within matrix-bot-sdk. However, this always ends up rejecting
@@ -313,6 +333,76 @@ function patchMatrixClientForConciseExceptions() {
     isMatrixClientPatchedForConciseExceptions = true;
 }
 
+const MAX_REQUEST_ATTEMPTS = 15;
+const REQUEST_RETRY_BASE_DURATION_MS = 100;
+
+const TRACE_CONCURRENT_REQUESTS = false;
+let numberOfConcurrentRequests = 0;
+let isMatrixClientPatchedForRetryWhenThrottled = false;
+/**
+ * Patch instances of MatrixClient to make sure that it retries requests
+ * in case of throttling.
+ *
+ * Note: As of this writing, we do not re-attempt requests that timeout,
+ * only request that are throttled by the server. The rationale is that,
+ * in case of DoS, we do not wish to make the situation even worse.
+ */
+function patchMatrixClientForRetry() {
+    if (isMatrixClientPatchedForRetryWhenThrottled) {
+        return;
+    }
+    let originalRequestFn = getRequestFn();
+    setRequestFn(async (params: { [k: string]: any }, cb: any) => {
+        let attempt = 1;
+        numberOfConcurrentRequests += 1;
+        if (TRACE_CONCURRENT_REQUESTS) {
+            console.trace("Current number of concurrent requests", numberOfConcurrentRequests);
+        }
+        try {
+            while (true) {
+                try {
+                    let result: any[] = await new Promise((resolve, reject) => {
+                        originalRequestFn(params, function requestFnWithRetry(
+                            err: { [key: string]: any }, response: { [key: string]: any }, resBody: string
+                        ) {
+                            // Note: There is no data race on `attempt` as we `await` before continuing
+                            // to the next iteration of the loop.
+                            if (attempt < MAX_REQUEST_ATTEMPTS && err?.body?.errcode === 'M_LIMIT_EXCEEDED') {
+                                // We need to retry.
+                                reject(err);
+                            } else {
+                                // No need-to-retry error? Lucky us!
+                                // Note that this may very well be an error, just not
+                                // one we need to retry.
+                                resolve([err, response, resBody]);
+                            }
+                        });
+                    });
+                    // This is our final result.
+                    // Pass result, whether success or error.
+                    return cb(...result);
+                } catch (err) {
+                    // Need to retry.
+                    let retryAfterMs = attempt * attempt * REQUEST_RETRY_BASE_DURATION_MS;
+                    if ("retry_after_ms" in err) {
+                        try {
+                            retryAfterMs = Number.parseInt(err.retry_after_ms, 10);
+                        } catch (ex) {
+                            // Use default value.
+                        }
+                    }
+                    LogService.debug("Mjolnir.client", `Waiting ${retryAfterMs}ms before retrying ${params.method} ${params.uri}`);
+                    await new Promise(resolve => setTimeout(resolve, retryAfterMs));
+                    attempt += 1;
+                }
+            }
+        } finally {
+            numberOfConcurrentRequests -= 1;
+        }
+    });
+    isMatrixClientPatchedForRetryWhenThrottled = true;
+}
+
 /**
  * Perform any patching deemed necessary to MatrixClient.
  */
@@ -324,4 +414,5 @@ export function patchMatrixClient() {
     // - `patchMatrixClientForRetry` expects that all errors are returned as
     //   errors.
     patchMatrixClientForConciseExceptions();
+    patchMatrixClientForRetry();
 }

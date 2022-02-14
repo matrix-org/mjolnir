@@ -24,7 +24,7 @@ import {
 } from "matrix-bot-sdk";
 import { Mjolnir }  from '../../src/Mjolnir';
 import config from "../../src/config";
-import { getTempCryptoStore, registerUser } from "./clientHelper";
+import { getTempCryptoStore, overrideRatelimitForUser, registerUser } from "./clientHelper";
 import { patchMatrixClient } from "../../src/utils";
 import { promises as fs } from "fs";
 
@@ -52,7 +52,12 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 
 async function configureMjolnir() {
     try {
-        const { access_token } = await registerUser('mjolnir', 'mjolnir', 'mjolnir', true);
+        const { access_token } = await registerUser(
+            config.pantalaimon.username,
+            config.pantalaimon.username,
+            config.pantalaimon.password,
+            true
+        );
         return access_token;
     } catch (e) {
         if (e.isAxiosError) {
@@ -99,6 +104,7 @@ export async function makeMjolnir(): Promise<Mjolnir> {
         client = new MatrixClient(config.homeserverUrl, accessToken, new MemoryStorageProvider(), await getTempCryptoStore());
         client.crypto.prepare(await client.getJoinedRooms());
     }
+    await overrideRatelimitForUser(await client.getUserId());
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
     let mjolnir = await Mjolnir.setupMjolnirFromConfig(client);

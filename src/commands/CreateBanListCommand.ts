@@ -23,7 +23,7 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
     const shortcode = parts[3];
     const aliasLocalpart = parts[4];
 
-    const powerLevels = {
+    const powerLevels: { [key: string]: any } = {
         "ban": 50,
         "events": {
             "m.room.name": 100,
@@ -38,12 +38,11 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
         "redact": 50,
         "state_default": 50,
         "users": {
-            // populated in a moment
+            [await mjolnir.client.getUserId()]: 100,
+            [event["sender"]]: 50
         },
         "users_default": 0,
     };
-    powerLevels['users'][await mjolnir.client.getUserId()] = 100;
-    powerLevels['users'][event['sender']] = 50;
 
     const listRoomId = await mjolnir.client.createRoom({
         preset: "public_chat",

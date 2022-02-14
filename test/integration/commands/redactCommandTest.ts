@@ -4,17 +4,20 @@ import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
 import { getMessagesByUserIn } from "../../../src/utils";
 import { LogService } from "matrix-bot-sdk";
-import { onReactionTo } from "./commandUtils";
+import { getFirstReaction } from "./commandUtils";
 
  describe("Test: The redaction command", function () {
+    // If a test has a timeout while awaitng on a promise then we never get given control back.
+    afterEach(function() { this.moderator?.stop(); });
+
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id and a room id.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser(false, "spammer-needs-redacting");
+        let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
         let badUserId = await badUser.getUserId();
         const mjolnir = config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser(false, "moderator");
+        let moderator = await newTestUser({ name: { contains: "moderator" } });
         this.moderator = moderator;
         await moderator.joinRoom(config.managementRoom);
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
@@ -33,8 +36,8 @@ import { onReactionTo } from "./commandUtils";
         await badUser.sendMessage(targetRoom, {msgtype: 'm.text', body: "Very Bad Stuff"});
 
         try {
-            moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await moderator.start();
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId} ${targetRoom}` });
             });
         } finally {
@@ -51,14 +54,15 @@ import { onReactionTo } from "./commandUtils";
             })
         });
     })
+
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id in multiple rooms.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser(false, "spammer-needs-redacting");
+        let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
         let badUserId = await badUser.getUserId();
         const mjolnir = config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser(false, "moderator");
+        let moderator = await newTestUser({ name: { contains: "moderator" } });
         this.moderator = moderator;
         await moderator.joinRoom(config.managementRoom);
         let targetRooms: string[] = [];
@@ -80,8 +84,8 @@ import { onReactionTo } from "./commandUtils";
         }
 
         try {
-            moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await moderator.start();
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir redact ${badUserId}` });
             });
         } finally {
@@ -103,10 +107,10 @@ import { onReactionTo } from "./commandUtils";
     it("Redacts a single event when instructed to.", async function () {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser(false, "spammer-needs-redacting");
+        let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
         const mjolnir = config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser(false, "moderator");
+        let moderator = await newTestUser({ name: { contains: "moderator" } });
         this.moderator = moderator;
         await moderator.joinRoom(config.managementRoom);
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
@@ -116,8 +120,8 @@ import { onReactionTo } from "./commandUtils";
         let eventToRedact = await badUser.sendMessage(targetRoom, {msgtype: 'm.text', body: "Very Bad Stuff"});
 
         try {
-            moderator.start();
-            await onReactionTo(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+            await moderator.start();
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir redact https://matrix.to/#/${encodeURIComponent(targetRoom)}/${encodeURIComponent(eventToRedact)}`});
             });
         } finally {

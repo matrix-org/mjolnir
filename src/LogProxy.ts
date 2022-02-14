@@ -16,8 +16,7 @@ limitations under the License.
 
 import { LogLevel, LogService, TextualMessageEventContent } from "matrix-bot-sdk";
 import config from "./config";
-import { replaceRoomIdsWithPills } from "./utils";
-import * as htmlEscape from "escape-html";
+import { htmlEscape, replaceRoomIdsWithPills } from "./utils";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -37,7 +36,7 @@ export async function logMessage(level: LogLevel, module: string, message: strin
 
         const client = config.RUNTIME.client;
         const managementRoomId = await client.resolveRoom(config.managementRoom);
-        const roomIds = [managementRoomId, ...additionalRoomIds];
+        const roomIds = new Set([managementRoomId, ...additionalRoomIds]);
 
         let evContent: TextualMessageEventContent = {
             body: message,

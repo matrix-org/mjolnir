@@ -15,7 +15,8 @@ limitations under the License.
 */
 
 import { extractRequestError, LogService, MatrixClient } from "matrix-bot-sdk";
-import { ListRule } from "./ListRule";
+import { EventEmitter } from "events";
+import { ListRule, RECOMMENDATION_BAN } from "./ListRule";
 
 export const RULE_USER = "m.policy.rule.user";
 export const RULE_ROOM = "m.policy.rule.room";
@@ -70,11 +71,16 @@ export interface ListRuleChange {
     readonly previousState?: any,
 }
 
+declare interface BanList {
+    on(event: 'BanList.update', listener: (list: BanList, changes: ListRuleChange[]) => void): this
+    emit(event: 'BanList.update', list: BanList, changes: ListRuleChange[]): boolean
+}
+
 /**
  * The BanList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
  * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
  */
-export default class BanList {
+class BanList extends EventEmitter {
     private shortcode: string|null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
@@ -85,7 +91,8 @@ export default class BanList {
      * @param roomRef A sharable/clickable matrix URL that refers to the room.
      * @param client A matrix client that is used to read the state of the room when `updateList` is called.
      */
-    constructor(public readonly roomId: string, public readonly roomRef, private client: MatrixClient) {
+    constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
+        super();
     }
 
     /**
@@ -123,7 +130,7 @@ export default class BanList {
 
     /**
      * Return all the active rules of a given kind.
-     * @param kind e.g. RULE_SERVER (m.policy.rule.server)
+     * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the BanList.
      * @returns The active ListRules for the ban list of that kind.
      */
     private rulesOfKind(kind: string): ListRule[] {
@@ -132,7 +139,10 @@ export default class BanList {
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
                 const rule = event?.unsigned?.rule;
-                if (rule && rule.kind === kind) {
+                // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
+                // please make sure that you *only* return rules with `m.ban` or create a different method
+                // (we don't want to accidentally ban entities).
+                if (rule && rule.kind === kind && rule.recommendation === RECOMMENDATION_BAN) {
                     rules.push(rule);
                 }
             }
@@ -268,6 +278,9 @@ export default class BanList {
                 changes.push({rule, changeType, event, sender: event.sender, ... previousState ? {previousState} : {} });
             }
         }
+        this.emit('BanList.update', this, changes);
         return changes;
     }
 }
+
+export default BanList;
