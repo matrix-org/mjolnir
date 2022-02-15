@@ -614,7 +614,7 @@ export class Mjolnir {
         }
     }
 
-    public async buildWatchedBanLists() {
+    private async buildWatchedBanLists() {
         this.banLists = [];
         const joinedRooms = await this.client.getJoinedRooms();
 
@@ -767,7 +767,7 @@ export class Mjolnir {
      * @param banList The `BanList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-     public async syncWithBanList(banList: BanList): Promise<void> {
+     private async syncWithBanList(banList: BanList): Promise<void> {
         const changes = await banList.updateList();
 
         let hadErrors = false;
