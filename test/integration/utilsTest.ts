@@ -16,7 +16,7 @@ describe("Test: utils", function() {
         );
 
         const out = await replaceRoomIdsWithPills(
-            this.mjolnir.client,
+            this.mjolnir,
             `it's fun here in ${this.mjolnir.managementRoomId}`,
             new Set([this.mjolnir.managementRoomId])
         );

@@ -24,7 +24,6 @@ import {
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
 import config from "./config";
-import { logMessage } from "./LogProxy";
 import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
 import { patchMatrixClient } from "./utils";
@@ -42,22 +41,25 @@ if (config.health.healthz.enabled) {
 }
 
 (async function () {
-    const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
-    const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
+    let bot: Mjolnir | null = null;
+    try {
+        const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
+        const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
 
-    let client: MatrixClient;
-    if (config.pantalaimon.use) {
-        const pantalaimon = new PantalaimonClient(config.homeserverUrl, storage);
-        client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
-    } else {
-        client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
+        let client: MatrixClient;
+        if (config.pantalaimon.use) {
+            const pantalaimon = new PantalaimonClient(config.homeserverUrl, storage);
+            client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+        } else {
+            client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
+        }
+        patchMatrixClient();
+        config.RUNTIME.client = client;
+
+        bot = await Mjolnir.setupMjolnirFromConfig(client);
+        await bot.start();
+    } catch (err) {
+        bot?.logMessage(LogLevel.ERROR, "index", err);
+        process.exit(1);
     }
-    patchMatrixClient();
-    config.RUNTIME.client = client;
-
-    let bot = await Mjolnir.setupMjolnirFromConfig(client);
-    await bot.start();
-})().catch(err => {
-    logMessage(LogLevel.ERROR, "index", err);
-    process.exit(1);
-});
+})();

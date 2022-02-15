@@ -18,7 +18,6 @@ import BanList from "../models/BanList";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
 import config from "../config";
-import { logMessage } from "../LogProxy";
 import { LogLevel } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
@@ -35,7 +34,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
     for (const roomId of roomIds) {
         try {
             // We specifically use sendNotice to avoid having to escape HTML
-            await logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`, roomId);
+            await mjolnir.logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`, roomId);
 
             let members: { userId: string, membership: string }[];
 
@@ -63,7 +62,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                             // User needs to be banned
 
                             // We specifically use sendNotice to avoid having to escape HTML
-                            await logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
+                            await mjolnir.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
 
                             if (!config.noop) {
                                 await mjolnir.client.banUser(member.userId, roomId, userRule.reason);
@@ -71,7 +70,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                                     mjolnir.queueRedactUserMessagesIn(member.userId, roomId);
                                 }
                             } else {
-                                await logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                                await mjolnir.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                             }
 
                             banned = true;

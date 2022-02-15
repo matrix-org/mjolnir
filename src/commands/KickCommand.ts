@@ -17,7 +17,6 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel } from "matrix-bot-sdk";
 import config from "../config";
-import { logMessage } from "../LogProxy";
 
 // !mjolnir kick <user> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -39,11 +38,11 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         const joinedUsers = await mjolnir.client.getJoinedRoomMembers(targetRoomId);
         if (!joinedUsers.includes(userId)) continue; // skip
 
-        await logMessage(LogLevel.INFO, "KickCommand", `Kicking ${userId} in ${targetRoomId} for ${reason}`, targetRoomId);
+        await mjolnir.logMessage(LogLevel.INFO, "KickCommand", `Kicking ${userId} in ${targetRoomId} for ${reason}`, targetRoomId);
         if (!config.noop) {
             await mjolnir.client.kickUser(userId, targetRoomId, reason);
         } else {
-            await logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
+            await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
         }
     }
 

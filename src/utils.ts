@@ -27,7 +27,7 @@ import {
     getRequestFn,
     setRequestFn,
 } from "matrix-bot-sdk";
-import { logMessage } from "./LogProxy";
+import { Mjolnir } from "./Mjolnir";
 import config from "./config";
 import { ClientRequest, IncomingMessage } from "http";
 
@@ -59,17 +59,17 @@ export function isTrueJoinEvent(event: any): boolean {
     return membership === 'join' && prevMembership !== "join";
 }
 
-export async function redactUserMessagesIn(client: MatrixClient, userIdOrGlob: string, targetRoomIds: string[], limit = 1000) {
+export async function redactUserMessagesIn(mjolnir: Mjolnir, userIdOrGlob: string, targetRoomIds: string[], limit = 1000) {
     for (const targetRoomId of targetRoomIds) {
-        await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
+        await mjolnir.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
 
-        await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
+        await getMessagesByUserIn(mjolnir.client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
             for (const victimEvent of eventsToRedact) {
-                await logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
+                await mjolnir.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
                 if (!config.noop) {
-                    await client.redactEvent(targetRoomId, victimEvent['event_id']);
+                    await mjolnir.client.redactEvent(targetRoomId, victimEvent['event_id']);
                 } else {
-                    await logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
+                    await mjolnir.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
                 }
             }
         });
@@ -191,7 +191,7 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
  * @param msgtype The desired message type of the returned TextualMessageEventContent
  * @returns A TextualMessageEventContent with replaced room IDs
  */
-export async function replaceRoomIdsWithPills(client: MatrixClient, text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
+export async function replaceRoomIdsWithPills(mjolnir: Mjolnir, text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
     const content: TextualMessageEventContent = {
         body: text,
         formatted_body: htmlEscape(text),
@@ -203,14 +203,14 @@ export async function replaceRoomIdsWithPills(client: MatrixClient, text: string
         return v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
     };
 
-    const viaServers = [(new UserID(await client.getUserId())).domain];
+    const viaServers = [(new UserID(await mjolnir.client.getUserId())).domain];
     for (const roomId of roomIds) {
         let alias = roomId;
         try {
-            alias = (await client.getPublishedAlias(roomId)) || roomId;
+            alias = (await mjolnir.client.getPublishedAlias(roomId)) || roomId;
         } catch (e) {
             // This is a recursive call, so tell the function not to try and call us
-            await logMessage(LogLevel.WARN, "utils", `Failed to resolve room alias for ${roomId} - see console for details`, null, true);
+            await mjolnir.logMessage(LogLevel.WARN, "utils", `Failed to resolve room alias for ${roomId} - see console for details`, null, true);
             LogService.warn("utils", extractRequestError(e));
         }
         const regexRoomId = new RegExp(escapeRegex(roomId), "g");

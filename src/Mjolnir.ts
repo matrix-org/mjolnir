@@ -23,7 +23,8 @@ import {
     MatrixGlob,
     MembershipEvent,
     Permalinks,
-    UserID
+    UserID,
+    TextualMessageEventContent
 } from "matrix-bot-sdk";
 
 import BanList, { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
@@ -32,7 +33,6 @@ import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { applyUserBans } from "./actions/ApplyBan";
 import config from "./config";
-import { logMessage } from "./LogProxy";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { IProtection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
@@ -43,7 +43,15 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
+import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
+
+const levelToFn = {
+    [LogLevel.DEBUG.toString()]: LogService.debug,
+    [LogLevel.INFO.toString()]: LogService.info,
+    [LogLevel.WARN.toString()]: LogService.warn,
+    [LogLevel.ERROR.toString()]: LogService.error,
+};
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -144,10 +152,10 @@ export class Mjolnir {
         if (!joinedRooms.includes(managementRoomId)) {
             await client.joinRoom(config.managementRoom);
         }
-        await logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
         const mjolnir = new Mjolnir(client, managementRoomId, protectedRooms, banLists, ruleServer);
+        await mjolnir.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
     }
@@ -270,7 +278,7 @@ export class Mjolnir {
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
 
-            await logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
+            await this.logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
                 const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
@@ -287,25 +295,25 @@ export class Mjolnir {
             this.applyUnprotectedRooms();
 
             if (config.verifyPermissionsOnStartup) {
-                await logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
+                await this.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
                 await this.verifyPermissions(config.verboseLogging);
             }
 
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
-                await logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
+                await this.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.syncLists(config.verboseLogging);
                 await this.registerProtections();
             }
 
             this.currentState = STATE_RUNNING;
             Healthz.isHealthy = true;
-            await logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
+            await this.logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
         } catch (err) {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
-                await logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
+                await this.logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
             } catch (e) {
                 // If we failed to handle the error, just crash
                 console.error(e);
@@ -322,6 +330,36 @@ export class Mjolnir {
         this.client.stop();
         this.webapis.stop();
     }
+
+    public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
+        if (!additionalRoomIds) additionalRoomIds = [];
+        if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
+
+        if (config.RUNTIME.client && (config.verboseLogging || LogLevel.INFO.includes(level))) {
+            let clientMessage = message;
+            if (level === LogLevel.WARN) clientMessage = `⚠ | ${message}`;
+            if (level === LogLevel.ERROR) clientMessage = `‼ | ${message}`;
+
+            const client = config.RUNTIME.client;
+            const managementRoomId = await client.resolveRoom(config.managementRoom);
+            const roomIds = [managementRoomId, ...additionalRoomIds];
+
+            let evContent: TextualMessageEventContent = {
+                body: message,
+                formatted_body: htmlEscape(message),
+                msgtype: "m.notice",
+                format: "org.matrix.custom.html",
+            };
+            if (!isRecursive) {
+                evContent = await replaceRoomIdsWithPills(this, clientMessage, new Set(roomIds), "m.notice");
+            }
+
+            await client.sendMessage(managementRoomId, evContent);
+        }
+
+        levelToFn[level.toString()](module, message);
+    }
+
 
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -455,7 +493,7 @@ export class Mjolnir {
             ) {
                 validatedSettings[key] = value;
             } else {
-                await logMessage(
+                await this.logMessage(
                     LogLevel.WARN,
                     "getProtectionSetting",
                     `Tried to read ${protectionName}.${key} and got invalid value ${value}`
@@ -606,7 +644,7 @@ export class Mjolnir {
             // Ignore - probably haven't warned about it yet
         }
 
-        await logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
+        await this.logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
         await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
     }
 
@@ -834,16 +872,16 @@ export class Mjolnir {
 
             // Run the event handlers - we always run this after protections so that the protections
             // can flag the event for redaction.
-            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this.client);
+            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this);
 
             if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
                 // power levels were updated - recheck permissions
                 ErrorCache.resetError(roomId, ERROR_KIND_PERMISSION);
-                await logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
+                await this.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
                 const errors = await this.verifyPermissionsIn(roomId);
                 const hadErrors = await this.printActionResult(errors);
                 if (!hadErrors) {
-                    await logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
+                    await this.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
                 }
                 return;
             } else if (event['type'] === "m.room.member") {
@@ -982,7 +1020,7 @@ export class Mjolnir {
      * @returns The list of errors encountered, for reporting to the management room.
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
-        return await this.eventRedactionQueue.process(this.client, roomId);
+        return await this.eventRedactionQueue.process(this, roomId);
     }
 
     private async handleReport(roomId: string, reporterId: string, event: any, reason?: string) {
