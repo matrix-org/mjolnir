@@ -52,8 +52,20 @@ export class WebAPIs {
         // Configure /report API.
         if (config.web.abuseReporting.enabled) {
             console.log(`Configuring ${API_PREFIX}/report/:room_id/:event_id...`);
+            this.webController.options(`${API_PREFIX}/report/:room_id/:event_id`, async (request, response) => {
+                // reply with CORS options
+                response.header("Access-Control-Allow-Origin", "*");
+                response.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, Date");
+                response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
+                response.status(200);
+                return response.send();
+            });
             this.webController.post(`${API_PREFIX}/report/:room_id/:event_id`, async (request, response) => {
                 console.debug(`Received a message on ${API_PREFIX}/report/:room_id/:event_id`, request.params);
+                // set CORS headers for the response
+                response.header("Access-Control-Allow-Origin", "*");
+                response.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, Date");
+                response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
                 await this.handleReport({ request, response, roomId: request.params.room_id, eventId: request.params.event_id })
             });
             console.log(`Configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
