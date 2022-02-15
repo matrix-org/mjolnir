@@ -11,17 +11,26 @@ export const mochaHooks = {
         async function() {
             console.log("mochaHooks.beforeEach");
             // Sometimes it takes a little longer to register users.
-            this.timeout(3000)
+            this.timeout(10000)
             this.managementRoomAlias = config.managementRoom;
             this.mjolnir = await makeMjolnir();
             config.RUNTIME.client = this.mjolnir.client;
+            await Promise.all([
+                this.mjolnir.client.setAccountData('org.matrix.mjolnir.protected_rooms', { rooms: [] }),
+                this.mjolnir.client.setAccountData('org.matrix.mjolnir.watched_lists', { references: [] }),
+            ]);
             await this.mjolnir.start();
             console.log("mochaHooks.beforeEach DONE");
         }
     ],
     afterEach: [
         async function() {
+            this.timeout(10000)
             await this.mjolnir.stop();
+            await Promise.all([
+                this.mjolnir.client.setAccountData('org.matrix.mjolnir.protected_rooms', { rooms: [] }),
+                this.mjolnir.client.setAccountData('org.matrix.mjolnir.watched_lists', { references: [] }),
+            ]);
             // remove alias from management room and leave it.
             await teardownManagementRoom(this.mjolnir.client, this.mjolnir.managementRoomId, config.managementRoom);
         }

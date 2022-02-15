@@ -26,12 +26,13 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
+ * Does not update the banLists before taking their rules to build the server ACL.
  * @param {BanList[]} lists The lists to construct ACLs from.
  * @param {string[]} roomIds The room IDs to apply the ACLs in.
  * @param {Mjolnir} mjolnir The Mjolnir client to apply the ACLs with.
  */
 export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
-    const serverName: string = new UserID(await config.RUNTIME.client!.getUserId()).domain;
+    const serverName: string = new UserID(await mjolnir.client.getUserId()).domain;
 
     // Construct a server ACL first
     const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");

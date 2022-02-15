@@ -26,7 +26,7 @@ import {
     UserID
 } from "matrix-bot-sdk";
 
-import BanList, { ALL_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
+import BanList, { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -535,6 +535,20 @@ export class Mjolnir {
         this.protections.delete(protectionName);
     }
 
+    /**
+     * Helper for constructing `BanList`s and making sure they have the right listeners set up.
+     * @param roomId The room id for the `BanList`.
+     * @param roomRef A reference (matrix.to URL) for the `BanList`.
+     */
+    private async addBanList(roomId: string, roomRef: string): Promise<BanList> {
+        const list = new BanList(roomId, roomRef, this.client);
+        this.ruleServer?.watch(list);
+        list.on('BanList.batch', this.syncWithBanList.bind(this));
+        await list.updateList();
+        this.banLists.push(list);
+        return list;
+    }
+
     public async watchList(roomRef: string): Promise<BanList | null> {
         const joinedRooms = await this.client.getJoinedRooms();
         const permalink = Permalinks.parseUrl(roomRef);
@@ -547,10 +561,7 @@ export class Mjolnir {
 
         if (this.banLists.find(b => b.roomId === roomId)) return null;
 
-        const list = new BanList(roomId, roomRef, this.client);
-        this.ruleServer?.watch(list);
-        await list.updateList();
-        this.banLists.push(list);
+        const list = await this.addBanList(roomId, roomRef);
 
         await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
             references: this.banLists.map(b => b.roomRef),
@@ -605,8 +616,8 @@ export class Mjolnir {
         }
     }
 
-    public async buildWatchedBanLists() {
-        const banLists: BanList[] = [];
+    private async buildWatchedBanLists() {
+        this.banLists = [];
         const joinedRooms = await this.client.getJoinedRooms();
 
         let watchedListsEvent: { references?: string[] } | null = null;
@@ -626,14 +637,8 @@ export class Mjolnir {
             }
 
             await this.warnAboutUnprotectedBanListRoom(roomId);
-
-            const list = new BanList(roomId, roomRef, this.client);
-            this.ruleServer?.watch(list);
-            await list.updateList();
-            banLists.push(list);
+            await this.addBanList(roomId, roomRef);
         }
-
-        this.banLists = banLists;
     }
 
     public async verifyPermissions(verbose = true, printRegardless = false) {
@@ -761,14 +766,11 @@ export class Mjolnir {
     /**
      * Pulls any changes to the rules that are in a policy room and updates all protected rooms
      * with those changes. Does not fail if there are errors updating the room, these are reported to the management room.
-     * @param policyRoomId The room with a policy list which we will check for changes and apply them to all protected rooms.
+     * @param banList The `BanList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    public async syncWithPolicyRoom(policyRoomId: string): Promise<void> {
-        const banList = this.banLists.find(list => list.roomId === policyRoomId);
-        if (banList === undefined) return;
+     private async syncWithBanList(banList: BanList): Promise<void> {
         const changes = await banList.updateList();
-        await this.printBanlistChanges(changes, banList, true);
 
         let hadErrors = false;
         const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
@@ -788,6 +790,8 @@ export class Mjolnir {
                 formatted_body: html,
             });
         }
+        // This can fail if the change is very large and it is much less important than applying bans, so do it last.
+        await this.printBanlistChanges(changes, banList, true);
     }
 
     private async handleEvent(roomId: string, event: any) {
@@ -805,9 +809,10 @@ export class Mjolnir {
 
         // Check for updated ban lists before checking protected rooms - the ban lists might be protected
         // themselves.
-        if (this.banLists.map(b => b.roomId).includes(roomId)) {
-            if (ALL_RULE_TYPES.includes(event['type'])) {
-                await this.syncWithPolicyRoom(roomId);
+        const banList = this.banLists.find(list => list.roomId === roomId);
+        if (banList !== undefined) {
+            if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
+                banList.updateForEvent(event)
             }
         }
 
