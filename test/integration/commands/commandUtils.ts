@@ -10,7 +10,23 @@ import * as crypto from "crypto";
  * @param targetEventThunk A function that produces an event ID when called. This event ID is then used to listen for a reply.
  * @returns The replying event.
  */
- export async function getFirstReply(client: MatrixClient, targetRoom: string, targetEventThunk: () => Promise<string>): Promise<any> {
+export async function getFirstReply(client: MatrixClient, targetRoom: string, targetEventThunk: () => Promise<string>): Promise<any> {
+    return getNthReply(client, targetRoom, 1, targetEventThunk);
+}
+
+/**
+ * Returns a promise that resolves to the nth event replying to the event produced by targetEventThunk.
+ * @param client A MatrixClient that is already in the targetRoom. We will use it to listen for the event produced by targetEventThunk.
+ * This function assumes that the start() has already been called on the client.
+ * @param targetRoom The room to listen for the reply in.
+ * @param n The number of events to wait for. Must be >= 1.
+ * @param targetEventThunk A function that produces an event ID when called. This event ID is then used to listen for a reply.
+ * @returns The replying event.
+ */
+export async function getNthReply(client: MatrixClient, targetRoom: string, n: number, targetEventThunk: () => Promise<string>): Promise<any> {
+    if (Number.isNaN(n) || !Number.isInteger(n) || n <= 0) {
+        throw new TypeError(`Invalid number of events ${n}`);
+    }
     let reactionEvents = [];
     const addEvent = function (roomId, event) {
         if (roomId !== targetRoom) return;
@@ -27,7 +43,10 @@ import * as crypto from "crypto";
         for (let event of reactionEvents) {
             const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
             if (in_reply_to?.event_id === targetEventId) {
-                return event;
+                n -= 1;
+                if (n == 0) {
+                    return event;
+                }
             }
         }
         return await new Promise(resolve => {
@@ -36,7 +55,10 @@ import * as crypto from "crypto";
                 if (event.type !== 'm.room.message') return;
                 const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
                 if (in_reply_to?.event_id === targetEventId) {
-                    resolve(event)
+                    n -= 1;
+                    if (n == 0) {
+                        resolve(event);
+                    }
                 }
             }
             client.on('room.event', targetCb);
@@ -48,7 +70,6 @@ import * as crypto from "crypto";
         }
     }
 }
-
 
 
 /**

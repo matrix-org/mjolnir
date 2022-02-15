@@ -16,16 +16,8 @@ limitations under the License.
 
 import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, STATE_SYNCING } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
-import { htmlEscape } from "../utils";
-import { default as parseDuration } from "parse-duration";
+import { htmlEscape, parseDuration } from "../utils";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
-
-// Define a few aliases to simplify parsing durations.
-
-parseDuration["days"] = parseDuration["day"];
-parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
-parseDuration["months"] = parseDuration["month"];
-parseDuration["years"] = parseDuration["year"];
 
 const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
 const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
@@ -36,10 +28,10 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
         case undefined:
         case 'mjolnir':
             return showMjolnirStatus(roomId, event, mjolnir);
-        case 'protection':
-            return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
         case 'joins':
             return showJoinsStatus(roomId, event, mjolnir, parts.slice(/* ["joins"] */ 1));
+        case 'protection':
+            return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
         default:
             throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);
     }
