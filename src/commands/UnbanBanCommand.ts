@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
-import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
+import BanList, { ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "../models/BanList";
+import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply, MatrixClient } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 import config from "../config";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
@@ -136,10 +136,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
 
-    const ruleContent = {}; // empty == clear/unban
-    const stateKey = `rule:${bits.entity}`;
-
-    await mjolnir.client.sendStateEvent(bits.list!.roomId, bits.ruleType!, stateKey, ruleContent);
+    await bits.list!.unbanEntity(bits.ruleType!, bits.entity);
 
     if (USER_RULE_TYPES.includes(bits.ruleType!) && bits.reason === 'true') {
         const rule = new MatrixGlob(bits.entity);

@@ -183,6 +183,33 @@ class BanList extends EventEmitter {
     }
 
     /**
+     * Remove all entries in the banList that ban this entity by searching for entries that have legacy rule types.
+     * @param ruleType The normalized type for this rule e.g. `RULE_USER`.
+     * @param entity The entity to unban from this list.
+     * @returns true if any rules were removed and the entity was unbanned, otherwise false because there were no rules.
+     */
+    public async unbanEntity(ruleType: string, entity: string): Promise<boolean> {
+        const stateKey = `rule:${entity}`;
+        const typesToCheck = (() => {
+            if (ruleType === RULE_USER) {
+                return USER_RULE_TYPES;
+            } else if (ruleType === RULE_SERVER) {
+                return SERVER_RULE_TYPES;
+            } else if (ruleType === RULE_ROOM) {
+                return ROOM_RULE_TYPES;
+            } else {
+                return [ruleType];
+            }
+        })();
+        const entries: { type: string }[] = typesToCheck.map(entityType => this.state.get(entityType)?.get(stateKey)).filter(e => e);
+        if (entries.length === 0) {
+            return false;
+        }
+        await Promise.all(entries.map(e => this.client.sendStateEvent(roomId, e.type, stateKey, {})));
+        return true;
+    }
+
+    /**
      * Synchronise the model with the room representing the ban list by reading the current state of the room
      * and updating the model to reflect the room.
      * @returns A description of any rules that were added, modified or removed from the list as a result of this update.
