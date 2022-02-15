@@ -19,12 +19,14 @@ import {
     MemoryStorageProvider,
     LogService,
     LogLevel,
-    RichConsoleLogger
+    RichConsoleLogger,
+    RustSdkCryptoStorageProvider
 } from "matrix-bot-sdk";
-import { Mjolnir}  from '../../src/Mjolnir';
+import { Mjolnir }  from '../../src/Mjolnir';
 import config from "../../src/config";
-import { overrideRatelimitForUser, registerUser } from "./clientHelper";
+import { getTempCryptoStore, overrideRatelimitForUser, registerUser } from "./clientHelper";
 import { patchMatrixClient } from "../../src/utils";
+import { promises as fs } from "fs";
 
 /**
  * Ensures that a room exists with the alias, if it does not exist we create it.
@@ -50,12 +52,15 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 
 async function configureMjolnir() {
     try {
-        await registerUser(config.pantalaimon.username, config.pantalaimon.username, config.pantalaimon.password, true)
+        const { access_token } = await registerUser(
+            config.pantalaimon.username,
+            config.pantalaimon.username,
+            config.pantalaimon.password,
+            true
+        );
+        return access_token;
     } catch (e) {
-        if (e?.body?.errcode === 'M_USER_IN_USE') {
-            console.log(`${config.pantalaimon.username} already registered, skipping`);
-            return;
-        }
+        console.log('Received error while registering', e.response.data || e.response);
         throw e;
     };
 }
@@ -73,12 +78,18 @@ let globalMjolnir: Mjolnir | null;
  * Return a test instance of Mjolnir.
  */
 export async function makeMjolnir(): Promise<Mjolnir> {
-    await configureMjolnir();
+    const accessToken = await configureMjolnir();
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    let client: MatrixClient;
+    if (config.pantalaimon.use) {
+        const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+        client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    } else {
+        client = new MatrixClient(config.homeserverUrl, accessToken, new MemoryStorageProvider(), await getTempCryptoStore());
+        client.crypto.prepare(await client.getJoinedRooms());
+    }
     await overrideRatelimitForUser(await client.getUserId());
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);

@@ -1,9 +1,11 @@
 import { HmacSHA1 } from "crypto-js";
-import { getRequestFn, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import { promises as fs } from "fs";
+import { getRequestFn, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient, RustSdkCryptoStorageProvider } from "matrix-bot-sdk";
 import config from "../../src/config";
 
 const REGISTRATION_ATTEMPTS = 10;
 const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
+let CryptoStorePaths: string[] = [];
 
 /**
  * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
@@ -16,7 +18,7 @@ const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
  * @param admin True to make the user an admin, false otherwise.
  * @returns The response from synapse.
  */
-export async function registerUser(username: string, displayname: string, password: string, admin: boolean): Promise<void> {
+export async function registerUser(username: string, displayname: string, password: string, admin: boolean): Promise<{access_token: string}> {
     let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
     const data: {nonce: string} = await new Promise((resolve, reject) => {
         getRequestFn()({uri: registerUrl, method: "GET", timeout: 60000}, (error, response, resBody) => {
@@ -42,7 +44,7 @@ export async function registerUser(username: string, displayname: string, passwo
                 timeout: 60000
             }
             return await new Promise((resolve, reject) => {
-                getRequestFn()(params, error => error ? reject(error) : resolve());
+                getRequestFn()(params, (error, result) => error ? reject(error) : resolve(result));
             });
         } catch (ex) {
             // In case of timeout or throttling, backoff and retry.
@@ -50,6 +52,28 @@ export async function registerUser(username: string, displayname: string, passwo
                 || ex?.body?.errcode === 'M_LIMIT_EXCEEDED') {
                 await new Promise(resolve => setTimeout(resolve, REGISTRATION_RETRY_BASE_DELAY_MS * i * i));
                 continue;
+            }
+
+            // If already created, try logging in.
+            if (ex?.body?.errcode === 'M_USER_IN_USE') {
+                const loginUrl = `${config.homeserverUrl}/_matrix/client/r0/login`
+                const params = {
+                    uri: loginUrl,
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        "type": "m.login.password",
+                        "identifier": {
+                          "type": "m.id.user",
+                          "user": username
+                        },
+                        "password": password
+                    }),
+                    timeout: 60000
+                }
+                return await new Promise((resolve, reject) => {
+                    getRequestFn()(params, (error, result) => error ? reject(error) : resolve(result));
+                });
             }
             throw ex;
         }
@@ -76,6 +100,12 @@ export type RegistrationOptions = {
     isThrottled?: boolean
 }
 
+export async function getTempCryptoStore() {
+    const cryptoDir = await fs.mkdtemp('mjolnir-integration-test');
+    CryptoStorePaths.push(cryptoDir);
+    return new RustSdkCryptoStorageProvider(cryptoDir);
+}
+
 /**
  * Register a new test user.
  *
@@ -90,13 +120,13 @@ async function registerNewTestUser(options: RegistrationOptions) {
             username = `mjolnir-test-user-${options.name.contains}${Math.floor(Math.random() * 100000)}`
         }
         try {
-            await registerUser(username, username, username, Boolean(options.isAdmin));
-            return username;
+            const { access_token } = await registerUser(username, username, username, Boolean(options.isAdmin));
+            return { access_token, username };
         } catch (e) {
             if (e?.body?.errcode === 'M_USER_IN_USE') {
                 if ("exact" in options.name) {
                     LogService.debug("test/clientHelper", `${username} already registered, reusing`);
-                    return username;
+                    return { username };
                 } else {
                     LogService.debug("test/clientHelper", `${username} already registered, trying another`);
                 }
@@ -114,9 +144,15 @@ async function registerNewTestUser(options: RegistrationOptions) {
  * @returns A new `MatrixClient` session for a unique test user.
  */
 export async function newTestUser(options: RegistrationOptions): Promise<MatrixClient> {
-    const username = await registerNewTestUser(options);
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    const client = await pantalaimon.createClientWithCredentials(username, username);
+    const { username, access_token } = await registerNewTestUser(options);
+    let client: MatrixClient;
+    if (config.pantalaimon.use) {
+        const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+        client = await pantalaimon.createClientWithCredentials(username, username);
+    } else {
+        client = new MatrixClient(config.homeserverUrl, access_token, new MemoryStorageProvider(), await getTempCryptoStore());
+        client.crypto.prepare(await client.getJoinedRooms());
+    }
     if (!options.isThrottled) {
         let userId = await client.getUserId();
         await overrideRatelimitForUser(userId);
@@ -180,4 +216,9 @@ export function noticeListener(targetRoomdId: string, cb) {
         if (event?.content?.msgtype !== "m.notice") return;
             cb(event);
     }
+}
+
+export async function teardownCryptoStores () {
+    await Promise.all(CryptoStorePaths.map(p => fs.rm(p, { force: true, recursive: true})));
+    CryptoStorePaths = [];
 }
