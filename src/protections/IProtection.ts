@@ -34,7 +34,7 @@ export interface IProtection {
      */
     handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
     /*
-     * Handle a single reported event from a protecte room, to decide if we
+     * Handle a single reported event from a protected room, to decide if we
      * need to respond to it
      */
     handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, reason: string, event: any): Promise<any>;

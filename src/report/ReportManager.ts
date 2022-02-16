@@ -113,7 +113,7 @@ export class ReportManager extends EventEmitter {
      * @param reason A reason provided by the reporter.
      */
     public async handleServerAbuseReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
-        this.emit("report.new", { roomId: roomId, reporterId: reporterId, event: event, reason: reason });
+        this.emit("report.new", { mjolnir: this.mjolnir, roomId: roomId, reporterId: reporterId, event: event, reason: reason });
         return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: this.mjolnir.managementRoomId });
     }
 
