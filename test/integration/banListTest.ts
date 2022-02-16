@@ -3,9 +3,9 @@ import { strict as assert } from "assert";
 import config from "../../src/config";
 import { newTestUser, noticeListener } from "./clientHelper";
 import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
-import  BanList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER } from "../../src/models/BanList";
+import  BanList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/BanList";
 import { ServerAcl, ServerAclContent } from "../../src/models/ServerAcl";
-import { createBanList } from "./commands/commandUtils";
+import { createBanList, getFirstReaction } from "./commands/commandUtils";
 import { getMessagesByUserIn } from "../../src/utils";
 
 /**
@@ -288,5 +288,77 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             // and not the listener that detects changes to ban lists (that we want to test!).
             assert.equal(aclEventCount < 10 && aclEventCount > 2, true, 'We should have sent less than 10 ACL events to each room because they should be batched')
         }));
+    })
+})
+
+describe('Test: unbaning entities via the BanList.', function () {
+    afterEach(function() { this.moderator?.stop(); });
+    it('Will remove rules that have legacy types', async function () {
+        this.timeout(20000)
+        const mjolnir = config.RUNTIME.client!
+        const serverName: string = new UserID(await mjolnir.getUserId()).domain
+        const moderator = await newTestUser({ name: { contains: "moderator" }});
+        this.moderator = moderator;
+        moderator.joinRoom(this.mjolnir.managementRoomId);
+        const mjolnirId = await mjolnir.getUserId();
+
+        // We'll make 1 protected room to test ACLs in.
+        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId]});
+        await mjolnir.joinRoom(protectedRoom);
+        await moderator.setUserPowerLevel(mjolnirId, protectedRoom, 100);
+        await this.mjolnir!.addProtectedRoom(protectedRoom);
+
+        // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
+        await this.mjolnir!.syncLists();
+        const roomAcl = await mjolnir.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
+        assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
+
+        // Create some legacy rules on a BanList.
+        const banListId = await moderator.createRoom({ invite: [mjolnirId] });
+        await moderator.setUserPowerLevel(await mjolnir.getUserId(), banListId, 100);
+        await moderator.sendStateEvent(banListId, 'org.matrix.mjolnir.shortcode', '', { shortcode: "unban-test"});
+        await mjolnir.joinRoom(banListId);
+        this.mjolnir!.watchList(Permalinks.forRoom(banListId));
+        // we use this to compare changes.
+        const banList = new BanList(banListId, banListId, moderator);
+        // we need two because we need to test the case where an entity has all rule types in the list
+        // and another one that only has one (so that we would hit 404 while looking up state)
+        const olderBadServer = "old.evil.com"
+        const newerBadServer = "new.evil.com"
+        await Promise.all(SERVER_RULE_TYPES.map(type => createPolicyRule(moderator, banListId, type, olderBadServer, 'gregg rulz ok')));
+        await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'this is bad sort it out.');
+        // Wait for the ACL event to be applied to our protected room.
+        await this.mjolnir!.syncLists();
+
+        await banList.updateList();
+        // rules are normalized, that's why there should only be 2.
+        assert.equal(banList.allRules.length, 2);
+
+        // Check that we have setup our test properly and therefore evil.com is banned.
+        const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*").denyServer(olderBadServer).denyServer(newerBadServer);
+        const protectedAcl = await mjolnir.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
+        if (!acl.matches(protectedAcl)) {
+            assert.fail(`Room ${protectedRoom} doesn't have the correct ACL: ${JSON.stringify(roomAcl, null, 2)}`);
+        }
+
+        // Now unban the servers, we will go via the unban command for completeness sake.
+        try {
+            await moderator.start();
+            for (const server of [olderBadServer, newerBadServer]) {
+                await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
+                    return await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir unban unban-test server ${server}`});
+                });
+            }
+        } finally {
+            moderator.stop();
+        }
+
+        // Wait for mjolnir to sync protected rooms to update ACL.
+        await this.mjolnir!.syncLists();
+        // Confirm that the server is unbanned.
+        await banList.updateList();
+        assert.equal(banList.allRules.length, 0);
+        const aclAfter = await mjolnir.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
+        assert.equal(aclAfter.deny.length, 0, 'Should be no servers denied anymore');
     })
 })

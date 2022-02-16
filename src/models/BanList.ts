@@ -183,8 +183,8 @@ class BanList extends EventEmitter {
     }
 
     /**
-     * Remove all entries in the banList that ban this entity by searching for entries that have legacy rule types.
-     * @param ruleType The normalized type for this rule e.g. `RULE_USER`.
+     * Remove all rules in the banList that would ban this entity by searching for rules that have legacy state types.
+     * @param ruleType The normalized (most recent) type for this rule e.g. `RULE_USER`.
      * @param entity The entity to unban from this list.
      * @returns true if any rules were removed and the entity was unbanned, otherwise false because there were no rules.
      */
@@ -201,11 +201,16 @@ class BanList extends EventEmitter {
                 return [ruleType];
             }
         })();
-        const entries: { type: string }[] = typesToCheck.map(entityType => this.state.get(entityType)?.get(stateKey)).filter(e => e);
-        if (entries.length === 0) {
+        // We can't cheat and check our state cache because we normalize the event types to the most recent version.
+        const typesToRemove = (await Promise.all(
+            typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
+                .then(_ => stateType) // We need the state type as getRoomState only returns the content, not the top level.
+                .catch(e => e.statusCode === 404 ? null : Promise.reject(e))))
+        ).filter(e => e); // remove nulls. I don't know why TS still thinks there can be nulls after this??
+        if (typesToRemove.length === 0) {
             return false;
         }
-        await Promise.all(entries.map(e => this.client.sendStateEvent(roomId, e.type, stateKey, {})));
+        await Promise.all(typesToRemove.map(stateType => this.client.sendStateEvent(this.roomId, stateType!, stateKey, {})));
         return true;
     }
 
