@@ -20,14 +20,14 @@ import { htmlEscape } from "../utils";
 
 // !mjolnir
 export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    switch (parts[1]) {
+    switch (parts[0]) {
         case undefined:
         case 'mjolnir':
             return showMjolnirStatus(roomId, event, mjolnir);
         case 'protection':
-            return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["!mjolnir";  "status"; "protection"] */ 3));
+            return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
         default:
-            throw new Error(`Invalid status command: ${htmlEscape(parts[1])}`);    
+            throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);    
         }
 }
 

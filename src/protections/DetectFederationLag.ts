@@ -19,7 +19,6 @@ import { NumberProtectionSetting, StringSetProtectionSetting } from "./Protectio
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
-import { htmlEscape } from "../utils";
 
 const DEFAULT_BUCKET_DURATION_MS = 10_000;
 const DEFAULT_BUCKET_NUMBER = 6;
@@ -94,7 +93,7 @@ class TimedHistogram<T> {
      * @param now The current date, used to create a new bucket to the event if
      *  necessary and to determine whether some buckets are too old.
      */
-    push(event: T, now: Date = new Date()) {
+    push(event: T, now: Date) {
         let timeStamp = now.getTime();
         let latestBucket = this.buckets[this.buckets.length - 1];
         if (latestBucket && latestBucket.start.getTime() + this.settings.bucketDurationMS >= timeStamp) {
@@ -114,7 +113,7 @@ class TimedHistogram<T> {
      * If any buckets are too old, remove them. If there are (still) too
      * many buckets, remove the oldest ones.
      */
-    private trimBuckets(settings: HistogramSettings, now: Date = new Date()) {
+    private trimBuckets(settings: HistogramSettings, now: Date) {
         if (this.buckets.length > settings.bucketNumber) {
             this.buckets.splice(0, this.buckets.length - settings.bucketNumber);
         }
@@ -132,7 +131,7 @@ class TimedHistogram<T> {
     /**
      * Change the settings of a histogram.
      */
-    public updateSettings(settings: HistogramSettings, now: Date = new Date()) {
+    public updateSettings(settings: HistogramSettings, now: Date) {
         this.trimBuckets(settings, now);
         this.settings = settings;
     }
@@ -169,7 +168,7 @@ class Stats {
             this.stddev = 0;
             return;
         }
-        values.sort();
+        values.sort((a, b) => a - b); // Don't forget to force sorting by value, not by stringified value!
         this.min = values[0];
         this.max = values[this.length - 1];
         let total = 0;
@@ -209,7 +208,7 @@ class Stats {
  * and can compute statistics.
  */
 class NumbersTimedHistogram extends TimedHistogram<number> {
-    constructor(settings: HistogramSettings, now = new Date()) {
+    constructor(settings: HistogramSettings) {
         super(settings);
     }
 
@@ -254,7 +253,7 @@ class ServerInfo {
     public latestStatsUpdate: Date;
 
     constructor(settings: HistogramSettings, now: Date) {
-        this.histogram = new NumbersTimedHistogram(settings, now);
+        this.histogram = new NumbersTimedHistogram(settings);
         this.latestStatsUpdate = now;
     }
 
@@ -277,8 +276,10 @@ class ServerInfo {
      *
      * @returns `null` if the histogram is empty, otherwise `Stats`.
      */
-    stats(now: Date) {
-        this.latestStatsUpdate = now;
+    stats(now?: Date) {
+        if (now) {
+            this.latestStatsUpdate = now;
+        }
         return this.histogram.stats();
     }
 }
@@ -344,7 +345,7 @@ class RoomInfo {
      */
     public latestMessage: Date = new Date(0);
 
-    constructor(now: Date = new Date()) {
+    constructor(now: Date) {
         this.serverLags = new Map();
         this.totalLag = new ServerInfo({
             bucketDurationMS: DEFAULT_BUCKET_DURATION_MS,
@@ -418,8 +419,8 @@ class RoomInfo {
      * @returns null if we have no recent data at all,
      * some stats otherwise.
      */
-    public globalStats(now: Date): Stats | null {
-        return this.totalLag.stats(now);
+    public globalStats(): Stats | null {
+        return this.totalLag.stats();
     }
 
     /**
@@ -537,6 +538,10 @@ export class DetectFederationLag extends Protection {
         return `Warn moderators if either the local homeserver starts lagging by ${this.settings.localHomeserverLagEnterWarningZoneMS.value}ms or at least ${this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value} start lagging by at least ${this.settings.federatedHomeserverLagEnterWarningZoneMS.value}ms.`;
     }
 
+    /**
+     * @param now An argument used only by tests, to simulate events taking place at a specific date.
+     * @returns 
+     */
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any, now: Date = new Date()): Promise<any> {
         // First, handle all cases in which we should ignore the event.
         if (!this.firstMessage) {
@@ -584,7 +589,7 @@ export class DetectFederationLag extends Protection {
 
         let roomInfo = this.lagPerRoom.get(roomId);
         if (!roomInfo) {
-            roomInfo = new RoomInfo();
+            roomInfo = new RoomInfo(now);
             this.lagPerRoom.set(roomId, roomInfo);
         }
 
@@ -623,7 +628,7 @@ export class DetectFederationLag extends Protection {
             }
             roomInfo.latestAlertStart = now;
             // Background-send message.
-            const stats = roomInfo.globalStats(now);
+            const stats = roomInfo.globalStats();
             /* do not await */ logMessage(LogLevel.WARN, "FederationLag",
                 `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomInfo.latestAlertStart}.\n${roomInfo.alerts} homeservers are lagging: ${[...roomInfo.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
             // Drop a state event, for the use of potential other bots.
@@ -688,10 +693,9 @@ export class DetectFederationLag extends Protection {
      */
     public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
         const roomId = subcommand[0] || "*";
-        const now = new Date();
         const localDomain = new UserID(await mjolnir.client.getUserId()).domain;
         const annotatedStats = (roomInfo: RoomInfo) => {
-            const stats = roomInfo.globalStats(now)?.round();
+            const stats = roomInfo.globalStats()?.round();
             if (!stats) {
                 return null;
             }
@@ -705,6 +709,7 @@ export class DetectFederationLag extends Protection {
             return stats;
         };
         let text;
+        let html;
         if (roomId === "*") {
             // Collate data from all protected rooms.
             const result: any = {};
@@ -714,24 +719,26 @@ export class DetectFederationLag extends Protection {
                 result[key] = annotatedStats(perRoomInfo);
             }
             text = JSON.stringify(result, null, 2);
+            html = `<code>${JSON.stringify(result, null, "&nbsp;&nbsp;")}</code>`;
         } else {
             // Fetch data from a specific room.
             const roomInfo = this.lagPerRoom.get(roomId);
             if (!roomInfo) {
-                text = `Either ${roomId} is unmonitored or it has received no messages in a while`;
+                html = text = `Either ${roomId} is unmonitored or it has received no messages in a while`;
             } else {
                 // Fetch data from all remote homeservers.
                 const stats = annotatedStats(roomInfo);
                 if (!stats) {
-                    text = `No recent messages in room ${roomId}`;
+                    html = text = `No recent messages in room ${roomId}`;
                 } else {
-                    text = JSON.stringify(stats, null, 2);;
+                    text = JSON.stringify(stats, null, 2);
+                    html = `<code>${JSON.stringify(stats, null, "&nbsp;&nbsp;")}</code>`;
                 }
             }
         }
         return {
                 text,
-                html: htmlEscape(text)
+                html
         }
     }
 }

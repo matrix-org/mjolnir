@@ -858,7 +858,7 @@ export class Mjolnir {
             }
         }
 
-        if (Object.keys(this.protectedRooms).includes(roomId)) {
+        if (roomId in this.protectedRooms) {
             if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
 
             // Iterate all the enabled protections
