@@ -183,7 +183,8 @@ class BanList extends EventEmitter {
     }
 
     /**
-     * Remove all rules in the banList that would ban this entity by searching for rules that have legacy state types.
+     * Remove all rules in the banList for this entity that have the same state key (as when we ban them)
+     * by searching for rules that have legacy state types.
      * @param ruleType The normalized (most recent) type for this rule e.g. `RULE_USER`.
      * @param entity The entity to unban from this list.
      * @returns true if any rules were removed and the entity was unbanned, otherwise false because there were no rules.
