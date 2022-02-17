@@ -190,17 +190,18 @@ class BanList extends EventEmitter {
      */
     public async unbanEntity(ruleType: string, entity: string): Promise<boolean> {
         const stateKey = `rule:${entity}`;
-        const typesToCheck = (() => {
-            if (ruleType === RULE_USER) {
-                return USER_RULE_TYPES;
-            } else if (ruleType === RULE_SERVER) {
-                return SERVER_RULE_TYPES;
-            } else if (ruleType === RULE_ROOM) {
-                return ROOM_RULE_TYPES;
-            } else {
-                return [ruleType];
-            }
-        })();
+        let typesToCheck = [ruleType];
+        switch (ruleType) {
+            case RULE_USER:
+                typesToCheck = USER_RULE_TYPES;
+                break;
+            case RULE_SERVER:
+                typesToCheck = SERVER_RULE_TYPES;
+                break;
+            case RULE_ROOM:
+                typesToCheck = ROOM_RULE_TYPES;
+                break;
+        }
         // We can't cheat and check our state cache because we normalize the event types to the most recent version.
         const typesToRemove = (await Promise.all(
             typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
