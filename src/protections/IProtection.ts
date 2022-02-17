@@ -49,7 +49,7 @@ export abstract class Protection {
     /**
      * Return status information for `!mjolnir status ${protectionName}`.
      */
-    async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<string | null> {
+    async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
         // By default, protections don't have any status to show.
         return null;
     }

@@ -19,6 +19,7 @@ import { NumberProtectionSetting, StringSetProtectionSetting } from "./Protectio
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
+import { htmlEscape } from "../utils";
 
 const DEFAULT_BUCKET_DURATION_MS = 10_000;
 const DEFAULT_BUCKET_NUMBER = 6;
@@ -685,7 +686,7 @@ export class DetectFederationLag extends Protection {
     /**
      * Return (mostly) human-readable lag status.
      */
-    public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<string | null> {
+    public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
         const roomId = subcommand[0] || "*";
         const now = new Date();
         const localDomain = new UserID(await mjolnir.client.getUserId()).domain;
@@ -703,6 +704,7 @@ export class DetectFederationLag extends Protection {
             }
             return stats;
         };
+        let text;
         if (roomId === "*") {
             // Collate data from all protected rooms.
             const result: any = {};
@@ -711,20 +713,25 @@ export class DetectFederationLag extends Protection {
                 const key = await mjolnir.client.getPublishedAlias(perRoomId) || perRoomId;
                 result[key] = annotatedStats(perRoomInfo);
             }
-            return JSON.stringify(result, null, 2);
+            text = JSON.stringify(result, null, 2);
         } else {
             // Fetch data from a specific room.
             const roomInfo = this.lagPerRoom.get(roomId);
             if (!roomInfo) {
-                return `Either ${roomId} is unmonitored or it has received no messages in a while`;
+                text = `Either ${roomId} is unmonitored or it has received no messages in a while`;
+            } else {
+                // Fetch data from all remote homeservers.
+                const stats = annotatedStats(roomInfo);
+                if (!stats) {
+                    text = `No recent messages in room ${roomId}`;
+                } else {
+                    text = JSON.stringify(stats, null, 2);;
+                }
             }
-
-            // Fetch data from all remote homeservers.
-            const stats = annotatedStats(roomInfo);
-            if (!stats) {
-                return `No recent messages in room ${roomId}`;
-            }
-            return JSON.stringify(stats, null, 2);
+        }
+        return {
+                text,
+                html: htmlEscape(text)
         }
     }
 }
