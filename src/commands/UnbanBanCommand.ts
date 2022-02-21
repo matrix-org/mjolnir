@@ -136,10 +136,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
 
-    const ruleContent = {}; // empty == clear/unban
-    const stateKey = `rule:${bits.entity}`;
-
-    await mjolnir.client.sendStateEvent(bits.list!.roomId, bits.ruleType!, stateKey, ruleContent);
+    await bits.list!.unbanEntity(bits.ruleType!, bits.entity);
 
     if (USER_RULE_TYPES.includes(bits.ruleType!) && bits.reason === 'true') {
         const rule = new MatrixGlob(bits.entity);

@@ -183,6 +183,40 @@ class BanList extends EventEmitter {
     }
 
     /**
+     * Remove all rules in the banList for this entity that have the same state key (as when we ban them)
+     * by searching for rules that have legacy state types.
+     * @param ruleType The normalized (most recent) type for this rule e.g. `RULE_USER`.
+     * @param entity The entity to unban from this list.
+     * @returns true if any rules were removed and the entity was unbanned, otherwise false because there were no rules.
+     */
+    public async unbanEntity(ruleType: string, entity: string): Promise<boolean> {
+        const stateKey = `rule:${entity}`;
+        let typesToCheck = [ruleType];
+        switch (ruleType) {
+            case RULE_USER:
+                typesToCheck = USER_RULE_TYPES;
+                break;
+            case RULE_SERVER:
+                typesToCheck = SERVER_RULE_TYPES;
+                break;
+            case RULE_ROOM:
+                typesToCheck = ROOM_RULE_TYPES;
+                break;
+        }
+        // We can't cheat and check our state cache because we normalize the event types to the most recent version.
+        const typesToRemove = (await Promise.all(
+            typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
+                .then(_ => stateType) // We need the state type as getRoomState only returns the content, not the top level.
+                .catch(e => e.statusCode === 404 ? null : Promise.reject(e))))
+        ).filter(e => e); // remove nulls. I don't know why TS still thinks there can be nulls after this??
+        if (typesToRemove.length === 0) {
+            return false;
+        }
+        await Promise.all(typesToRemove.map(stateType => this.client.sendStateEvent(this.roomId, stateType!, stateKey, {})));
+        return true;
+    }
+
+    /**
      * Synchronise the model with the room representing the ban list by reading the current state of the room
      * and updating the model to reflect the room.
      * @returns A description of any rules that were added, modified or removed from the list as a result of this update.
