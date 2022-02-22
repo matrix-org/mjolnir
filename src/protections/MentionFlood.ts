@@ -21,7 +21,7 @@ import { LogLevel, LogService } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
 import config from "../config";
 import { htmlEscape, isTrueJoinEvent } from "../utils";
-import { BooleanProtectionSetting, NumberProtectionSetting, StringProtectionSetting } from "./ProtectionSettings";
+import { BooleanProtectionSetting, NumberProtectionSetting, OptionListProtectionSetting } from "./ProtectionSettings";
 
 const DEFAULT_MINUTES_BEFORE_TRUSTING = 20;
 const DEFAULT_MAX_MENTIONS_PER_MESSAGE = 20;
@@ -44,7 +44,7 @@ export class MentionFlood extends Protection {
         minutesBeforeTrusting: new NumberProtectionSetting(DEFAULT_MINUTES_BEFORE_TRUSTING),
         maxMentionsPerMessage: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS_PER_MESSAGE),
         redact: new BooleanProtectionSetting(DEFAULT_REDACT),
-        action: new StringProtectionSetting()
+        action: new OptionListProtectionSetting(["ban", "kick", "warn"])
     };
 
     private justJoined: Map<string, Map<string, Date>> = new Map<string, Map<string, Date>>();

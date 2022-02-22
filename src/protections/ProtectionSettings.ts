@@ -185,8 +185,8 @@ export class DurationMSProtectionSetting extends AbstractProtectionSetting<numbe
     }
 }
 
-
-
+// A setting that only can be true or false.
+// Returns undefined if anything else is set.
 export class BooleanProtectionSetting extends AbstractProtectionSetting<boolean, boolean> {
     constructor(
         defaultValue: boolean
@@ -195,6 +195,7 @@ export class BooleanProtectionSetting extends AbstractProtectionSetting<boolean,
         this.setValue(defaultValue);
     }
 
+    // We return undefined for anything other than "true" or "false"
     fromString(data: string) {
         if (data.toLowerCase() === "true") {
             return true;
@@ -204,5 +205,23 @@ export class BooleanProtectionSetting extends AbstractProtectionSetting<boolean,
             return undefined;
         }
     }
+
+    // This is already handled in setProtectionSettings due to the types
     validate = (data: boolean): boolean => true;
+}
+
+
+// A list of strings that match the allowed values
+export class OptionListProtectionSetting extends AbstractProtectionSetting<string, string> {
+    constructor(private allowedValues: string[]) {
+        super();
+    }
+
+    // We dont need to convert the string
+    fromString(data: string) {
+        return data;
+    }
+
+    // validates if data is in the allowedValues
+    validate = (data: string) => this.allowedValues.includes(data);
 }
