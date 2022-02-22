@@ -196,7 +196,13 @@ export class BooleanProtectionSetting extends AbstractProtectionSetting<boolean,
     }
 
     fromString(data: string) {
-        return data.toLowerCase() === "true" ? true : false;
+        if (data.toLowerCase() === "true") {
+            return true;
+        } else if (data.toLowerCase() === "false") {
+            return false;
+        } else {
+            return undefined;
+        }
     }
     validate = (data: boolean): boolean => true;
 }
