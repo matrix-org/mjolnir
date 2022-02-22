@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Protection } from "./IProtection";
-import { NumberProtectionSetting, StringSetProtectionSetting } from "./ProtectionSettings";
+import { DurationMSProtectionSetting, NumberProtectionSetting, StringSetProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { logMessage } from "../LogProxy";
@@ -488,20 +488,20 @@ export class DetectFederationLag extends Protection {
         ignoreRooms: new StringSetProtectionSetting(),
         // Servers to ignore, typically because they're known to be slow.
         ignoreServers: new StringSetProtectionSetting(),
-        // How often we should recompute lag (ms).
-        bucketDurationMS: new NumberProtectionSetting(DEFAULT_BUCKET_DURATION_MS, 100),
+        // How often we should recompute lag.
+        bucketDuration: new DurationMSProtectionSetting(DEFAULT_BUCKET_DURATION_MS, 100),
         // How long we should remember lag in a room (`bucketDuration * bucketNumber` ms).
         bucketNumber: new NumberProtectionSetting(DEFAULT_BUCKET_NUMBER, 1),
         // How much lag before the local homeserver is considered lagging.
-        localHomeserverLagEnterWarningZoneMS: new NumberProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
+        localHomeserverLagEnterWarningZone: new DurationMSProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
         // How much lag before the local homeserver is considered not lagging anymore.
-        localHomeserverLagExitWarningZoneMS: new NumberProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
+        localHomeserverLagExitWarningZone: new DurationMSProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
         // How much lag before a federated homeserver is considered lagging.
-        federatedHomeserverLagEnterWarningZoneMS: new NumberProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
+        federatedHomeserverLagEnterWarningZone: new DurationMSProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
         // How much lag before a federated homeserver is considered not lagging anymore.
-        federatedHomeserverLagExitWarningZoneMS: new NumberProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
-        // How much time we should wait before printing a new warning (ms).
-        warnAgainAfterMS: new NumberProtectionSetting(DEFAULT_REWARN_AFTER_MS, 1),
+        federatedHomeserverLagExitWarningZone: new DurationMSProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
+        // How much time we should wait before printing a new warning.
+        warnAgainAfter: new DurationMSProtectionSetting(DEFAULT_REWARN_AFTER_MS, 1),
         // How many federated homeservers it takes to trigger an alert.
         // You probably want to update this if you're monitoring a room that
         // has many underpowered homeservers.
@@ -512,8 +512,8 @@ export class DetectFederationLag extends Protection {
         numberOfLaggingFederatedHomeserversExitWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_EXIT_WARNING_ZONE, 1),
         // How long to wait before actually collecting statistics.
         // Used to avoid being misled by Mjölnir catching up with old messages on first sync.
-        initialDelayGraceMS: new NumberProtectionSetting(DEFAULT_INITIAL_DELAY_GRACE_MS, 0),
-        cleanupPeriodMS: new NumberProtectionSetting(DEFAULT_CLEANUP_PERIOD_MS, 1),
+        initialDelayGrace: new DurationMSProtectionSetting(DEFAULT_INITIAL_DELAY_GRACE_MS, 0),
+        cleanupPeriod: new DurationMSProtectionSetting(DEFAULT_CLEANUP_PERIOD_MS, 1),
     };
     // The instant at which the first message was received.
     private firstMessage: Date | null = null;
@@ -524,34 +524,33 @@ export class DetectFederationLag extends Protection {
         super();
         // Initialize and watch `this.latestHistogramSettings`.
         this.updateLatestHistogramSettings();
-        this.settings.bucketDurationMS.on("set", () => this.updateLatestHistogramSettings());
+        this.settings.bucketDuration.on("set", () => this.updateLatestHistogramSettings());
         this.settings.bucketNumber.on("set", () => this.updateLatestHistogramSettings());
     }
     dispose() {
-        this.settings.bucketDurationMS.removeAllListeners();
+        this.settings.bucketDuration.removeAllListeners();
         this.settings.bucketNumber.removeAllListeners();
     }
     public get name(): string {
         return 'DetectFederationLag';
     }
     public get description(): string {
-        return `Warn moderators if either the local homeserver starts lagging by ${this.settings.localHomeserverLagEnterWarningZoneMS.value}ms or at least ${this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value} start lagging by at least ${this.settings.federatedHomeserverLagEnterWarningZoneMS.value}ms.`;
+        return `Warn moderators if either the local homeserver starts lagging by ${this.settings.localHomeserverLagEnterWarningZone.value}ms or at least ${this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value} start lagging by at least ${this.settings.federatedHomeserverLagEnterWarningZone.value}ms.`;
     }
 
     /**
      * @param now An argument used only by tests, to simulate events taking place at a specific date.
-     * @returns 
      */
-    public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any, now: Date = new Date()): Promise<any> {
+    public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any, now: Date = new Date()) {
         // First, handle all cases in which we should ignore the event.
         if (!this.firstMessage) {
             this.firstMessage = now;
         }
-        if (this.firstMessage.getTime() + this.settings.initialDelayGraceMS.value > now.getTime()) {
+        if (this.firstMessage.getTime() + this.settings.initialDelayGrace.value > now.getTime()) {
             // We're still in the initial grace period, ignore.
             return;
         }
-        if (this.latestCleanup.getTime() + this.settings.cleanupPeriodMS.value > now.getTime()) {
+        if (this.latestCleanup.getTime() + this.settings.cleanupPeriod.value > now.getTime()) {
             // We should run some cleanup.
             this.latestCleanup = now;
             this.cleanup(now);
@@ -576,7 +575,7 @@ export class DetectFederationLag extends Protection {
         }
 
         const origin = event['origin_server_ts'] as number;
-        if (typeof origin !== "number") {
+        if (typeof origin !== "number" || isNaN(origin)) {
             // Ill-formed event.
             return;
         }
@@ -598,12 +597,12 @@ export class DetectFederationLag extends Protection {
         const thresholds =
             isLocalDomain
                 ? {
-                    enterWarningZone: this.settings.localHomeserverLagEnterWarningZoneMS.value,
-                    exitWarningZone: this.settings.localHomeserverLagExitWarningZoneMS.value,
+                    enterWarningZone: this.settings.localHomeserverLagEnterWarningZone.value,
+                    exitWarningZone: this.settings.localHomeserverLagExitWarningZone.value,
                 }
                 : {
-                    enterWarningZone: this.settings.federatedHomeserverLagEnterWarningZoneMS.value,
-                    exitWarningZone: this.settings.federatedHomeserverLagExitWarningZoneMS.value,
+                    enterWarningZone: this.settings.federatedHomeserverLagEnterWarningZone.value,
+                    exitWarningZone: this.settings.federatedHomeserverLagExitWarningZone.value,
                 };
 
         const diff = roomInfo.pushLag(domain, delay, this.latestHistogramSettings, thresholds, now);
@@ -611,7 +610,7 @@ export class DetectFederationLag extends Protection {
             return;
         }
 
-        if (roomInfo.latestWarning.getTime() + this.settings.warnAgainAfterMS.value > now.getTime()) {
+        if (roomInfo.latestWarning.getTime() + this.settings.warnAgainAfter.value > now.getTime()) {
             if (!isLocalDomain || diff !== AlertDiff.Start) {
                 // No need to check for alarms, we have raised an alarm recently.
                 return;
@@ -683,7 +682,7 @@ export class DetectFederationLag extends Protection {
     }
     private updateLatestHistogramSettings() {
         this.latestHistogramSettings = Object.freeze({
-            bucketDurationMS: this.settings.bucketDurationMS.value,
+            bucketDurationMS: this.settings.bucketDuration.value,
             bucketNumber: this.settings.bucketNumber.value,
         });
     };

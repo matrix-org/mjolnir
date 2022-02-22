@@ -15,6 +15,15 @@ limitations under the License.
 */
 
 import { EventEmitter } from "events";
+import { default as parseDuration } from "parse-duration";
+
+// Define a few aliases to simplify parsing durations.
+
+parseDuration["milliseconds"] = parseDuration["millis"] = parseDuration["ms"];
+parseDuration["days"] = parseDuration["day"];
+parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
+parseDuration["months"] = parseDuration["month"];
+parseDuration["years"] = parseDuration["year"];
 
 export class ProtectionSettingValidationError extends Error {};
 
@@ -148,5 +157,30 @@ export class NumberProtectionSetting extends AbstractProtectionSetting<number, n
             && (this.min === undefined || this.min <= data)
             && (this.max === undefined || data <= this.max))
     }
+}
 
+/**
+ * A setting holding durations, in ms.
+ *
+ * When parsing, the setting expects a unit, e.g. "1ms".
+ */
+export class DurationMSProtectionSetting extends AbstractProtectionSetting<number, number> {
+    constructor(
+            defaultValue: number,
+            public readonly minMS: number|undefined = undefined,
+            public readonly maxMS: number|undefined = undefined
+    ) {
+        super();
+        this.setValue(defaultValue);
+    }
+
+    fromString(data: string) {
+        let number = parseDuration(data);
+        return isNaN(number) ? undefined : number;
+    }
+    validate(data: number) {
+        return (!isNaN(data)
+            && (this.minMS === undefined || this.minMS <= data)
+            && (this.maxMS === undefined || data <= this.maxMS))
+    }
 }

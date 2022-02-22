@@ -27,7 +27,7 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
         case 'protection':
             return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
         default:
-            throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);    
+            throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);
         }
 }
 
@@ -87,7 +87,7 @@ async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir
     const protectionName = parts[0];
     const protection = mjolnir.getProtection(protectionName);
     let text;
-    let html
+    let html;
     if (!protection) {
         text = html = "Unknown protection";
     } else {
@@ -96,7 +96,8 @@ async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir
             text = status.text;
             html = status.html;
         } else {
-            html = text = "<no status>";
+            text = "<no status>";
+            html = "&lt;no status&gt;";
         }
     }
     const reply = RichReply.createFor(roomId, event, text, html);
