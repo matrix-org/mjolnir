@@ -72,3 +72,6 @@ typings/
 
 # Python packing directories.
 mjolnir.egg-info/
+
+# Visual Studio data
+.vs
