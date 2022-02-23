@@ -79,7 +79,7 @@ export type RegistrationOptions = {
 /**
  * Register a new test user.
  *
- * @returns A string that is both the username and password of a new user. 
+ * @returns A string that is both the username and password of a new user.
  */
 async function registerNewTestUser(options: RegistrationOptions) {
     do {
