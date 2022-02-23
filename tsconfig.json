@@ -9,7 +9,7 @@
         "noImplicitReturns": true,
         "noUnusedLocals": true,
         "target": "es2015",
-        "noImplicitAny": true,
+//        "noImplicitAny": true,
         "sourceMap": true,
         "strictNullChecks": true,
         "outDir": "./lib",
@@ -19,6 +19,8 @@
         ]
     },
     "include": [
-        "./src/**/*"
+        "./src/**/*",
+        // We will want to add "./test/**/*" eventually.
+        "./test/integration/manualLaunchScript.ts"
     ]
 }
