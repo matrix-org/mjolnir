@@ -20,7 +20,6 @@
     },
     "include": [
         "./src/**/*",
-        // We will want to add "./test/**/*" eventually.
         "./test/integration/manualLaunchScript.ts"
     ]
 }
