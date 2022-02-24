@@ -33,17 +33,17 @@ describe("Test: DetectFederationLag protection", function() {
 
         const SETTINGS = {
             // The protection should kick in immediately.
-            initialDelayGraceMS: 0,
+            initialDelayGrace: 0,
             // Make histograms progress quickly.
-            bucketDurationMS: BUCKET_DURATION_MS,
+            bucketDuration: BUCKET_DURATION_MS,
             // Three homeservers should be sufficient to raise an alert.
             numberOfLaggingFederatedHomeserversEnterWarningZone: NUMBER_OF_LAGGING_FEDERATED_HOMESERVERS_ENTER_WARNING_ZONE,
 
-            localHomeserverLagEnterWarningZoneMS: LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
-            localHomeserverLagExitWarningZoneMS: LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
+            localHomeserverLagEnterWarningZone: LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
+            localHomeserverLagExitWarningZone: LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
 
-            federatedHomeserverLagEnterWarningZoneMS: FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
-            federatedHomeserverLagExitWarningZoneMS: FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
+            federatedHomeserverLagEnterWarningZone: FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
+            federatedHomeserverLagExitWarningZone: FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
         };
         for (let key of Object.keys(SETTINGS)) {
             this.detector.settings[key].setValue(SETTINGS[key]);
