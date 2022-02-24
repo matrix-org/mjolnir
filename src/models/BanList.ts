@@ -72,8 +72,12 @@ export interface ListRuleChange {
 }
 
 declare interface BanList {
+    // BanList.update is emitted when the BanList has pulled new rules from Matrix and informs listeners of any changes.
     on(event: 'BanList.update', listener: (list: BanList, changes: ListRuleChange[]) => void): this
     emit(event: 'BanList.update', list: BanList, changes: ListRuleChange[]): boolean
+    // BanList.batch is emitted when the BanList has created a batch from the events provided by `updateForEvent`.
+    on(event: 'BanList.batch', listener: (list: BanList) => void): this
+    emit(event: 'BanList.batch', list: BanList): boolean
 }
 
 /**
@@ -84,6 +88,8 @@ class BanList extends EventEmitter {
     private shortcode: string|null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
+    // Batches new events from sync together before starting the process to update the list.
+    private readonly batcher: UpdateBatcher;
 
     /**
      * Construct a BanList, does not synchronize with the room.
@@ -93,6 +99,7 @@ class BanList extends EventEmitter {
      */
     constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
         super();
+        this.batcher = new UpdateBatcher(this);
     }
 
     /**
@@ -173,6 +180,40 @@ class BanList extends EventEmitter {
 
     public get allRules(): ListRule[] {
         return [...this.serverRules, ...this.userRules, ...this.roomRules];
+    }
+
+    /**
+     * Remove all rules in the banList for this entity that have the same state key (as when we ban them)
+     * by searching for rules that have legacy state types.
+     * @param ruleType The normalized (most recent) type for this rule e.g. `RULE_USER`.
+     * @param entity The entity to unban from this list.
+     * @returns true if any rules were removed and the entity was unbanned, otherwise false because there were no rules.
+     */
+    public async unbanEntity(ruleType: string, entity: string): Promise<boolean> {
+        const stateKey = `rule:${entity}`;
+        let typesToCheck = [ruleType];
+        switch (ruleType) {
+            case RULE_USER:
+                typesToCheck = USER_RULE_TYPES;
+                break;
+            case RULE_SERVER:
+                typesToCheck = SERVER_RULE_TYPES;
+                break;
+            case RULE_ROOM:
+                typesToCheck = ROOM_RULE_TYPES;
+                break;
+        }
+        // We can't cheat and check our state cache because we normalize the event types to the most recent version.
+        const typesToRemove = (await Promise.all(
+            typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
+                .then(_ => stateType) // We need the state type as getRoomState only returns the content, not the top level.
+                .catch(e => e.statusCode === 404 ? null : Promise.reject(e))))
+        ).filter(e => e); // remove nulls. I don't know why TS still thinks there can be nulls after this??
+        if (typesToRemove.length === 0) {
+            return false;
+        }
+        await Promise.all(typesToRemove.map(stateType => this.client.sendStateEvent(this.roomId, stateType!, stateKey, {})));
+        return true;
     }
 
     /**
@@ -281,6 +322,75 @@ class BanList extends EventEmitter {
         this.emit('BanList.update', this, changes);
         return changes;
     }
+
+    /**
+     * Inform the `BanList` about a new event from the room it is modelling.
+     * @param event An event from the room the `BanList` models to inform an instance about.
+     */
+    public updateForEvent(event: { event_id: string }): void {
+        this.batcher.addToBatch(event.event_id)
+    }
 }
 
 export default BanList;
+
+/**
+ * Helper class that emits a batch event on a `BanList` when it has made a batch
+ * out of the events given to `addToBatch`.
+ */
+class UpdateBatcher {
+    // Whether we are waiting for more events to form a batch.
+    private isWaiting = false;
+    // The latest (or most recent) event we have received.
+    private latestEventId: string|null = null;
+    private readonly waitPeriodMS = 200; // 200ms seems good enough.
+    private readonly maxWaitMS = 3000; // 3s is long enough to wait while batching.
+
+    constructor(private readonly banList: BanList) {
+
+    }
+
+    /**
+     * Reset the state for the next batch.
+     */
+    private reset() {
+        this.latestEventId = null;
+        this.isWaiting = false;
+    }
+
+    /**
+     * Checks if any more events have been added to the current batch since
+     * the previous iteration, then keep waiting up to `this.maxWait`, otherwise stop
+     * and emit a batch.
+     * @param eventId The id of the first event for this batch.
+     */
+    private async checkBatch(eventId: string): Promise<void> {
+        let start = Date.now();
+        do {
+            await new Promise(resolve => setTimeout(resolve, this.waitPeriodMS));
+        } while ((Date.now() - start) < this.maxWaitMS && this.latestEventId !== eventId)
+        this.reset();
+        this.banList.emit('BanList.batch', this.banList);
+    }
+
+    /**
+     * Adds an event to the batch.
+     * @param eventId The event to inform the batcher about.
+     */
+    public addToBatch(eventId: string): void {
+        if (this.isWaiting) {
+            this.latestEventId = eventId;
+            return;
+        }
+        this.latestEventId = eventId;
+        this.isWaiting = true;
+        // We 'spawn' off here after performing the checks above
+        // rather than before (ie if `addToBatch` was async) because
+        // `banListTest` showed that there were 100~ ACL events per protected room
+        // as compared to just 5~ by doing this. Not entirely sure why but it probably
+        // has to do with queuing up `n event` tasks on the event loop that exaust scheduling
+        // (so the latency between them is percieved as much higher by
+        // the time they get checked in `this.checkBatch`, thus batching fails).
+        this.checkBatch(eventId);
+    }
+}

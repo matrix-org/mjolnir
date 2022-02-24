@@ -17,7 +17,6 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, Permalinks, UserID } from "matrix-bot-sdk";
-import { logMessage } from "../LogProxy";
 import config from "../config";
 
 export class MessageIsMedia extends Protection {
@@ -42,12 +41,12 @@ export class MessageIsMedia extends Protection {
             const formattedBody = content['formatted_body'] || '';
             const isMedia = msgtype === 'm.image' || msgtype === 'm.video' || formattedBody.toLowerCase().includes('<img');
             if (isMedia) {
-                await logMessage(LogLevel.WARN, "MessageIsMedia", `Redacting event from ${event['sender']} for posting an image/video. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
+                await mjolnir.logMessage(LogLevel.WARN, "MessageIsMedia", `Redacting event from ${event['sender']} for posting an image/video. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
                 // Redact the event
                 if (!config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "Images/videos are not permitted here");
                 } else {
-                    await logMessage(LogLevel.WARN, "MessageIsMedia", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.logMessage(LogLevel.WARN, "MessageIsMedia", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }
