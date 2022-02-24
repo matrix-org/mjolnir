@@ -14,17 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { StringProtectionSetting } from './ProtectionSettings';
-import { Mjolnir } from '../Mjolnir';
-import { recommendationToStable, RECOMMENDATION_BAN } from '../models/ListRule';
-import { logMessage } from '../LogProxy';
-import { LogLevel } from 'matrix-bot-sdk';
-import { RULE_USER } from '../models/BanList';
 import { Protection } from './IProtection';
+import { Mjolnir } from '../Mjolnir';
+import { StringProtectionSetting } from './ProtectionSettings';
+import { LogLevel, extractRequestError } from 'matrix-bot-sdk';
+import { recommendationToStable, RECOMMENDATION_BAN } from '../models/ListRule';
+import { RULE_USER } from '../models/BanList';
+import { DEFAULT_LIST_EVENT_TYPE } from '../commands/SetDefaultBanListCommand';
 
 export class PropagateRoomBan extends Protection {
     settings = {
-        banlistShortcode: new StringProtectionSetting(),
+        banListShortcode: new StringProtectionSetting(),
     };
 
     public get name(): string {
@@ -34,7 +34,8 @@ export class PropagateRoomBan extends Protection {
     public get description(): string {
         return (
             'If a user is banned in a protected room by a room administrator then the ban ' +
-            'will be published to the banlist defined using the banlistShortcode setting.'
+            'will be published to the banlist defined using the banListShortcode setting ' +
+            '(defaults to the default banlist).'
         );
     }
 
@@ -56,26 +57,41 @@ export class PropagateRoomBan extends Protection {
             reason: banReason,
         };
 
-        if (this.settings.banlistShortcode.value === '') {
-            await logMessage(
-                LogLevel.WARN,
-                'PropagateRoomBan',
-                `Can not publish to banlist. User ${bannedUser} was banned in ${roomId}, but protection setting banlistShortcode is missing`
-            );
-            return;
+        let banListShortcode: string = this.settings.banListShortcode.value;
+        if (banListShortcode === '') {
+            // try to use default banList
+            try {
+                const data: { shortcode: string } =
+                    await mjolnir.client.getAccountData(
+                        DEFAULT_LIST_EVENT_TYPE
+                    );
+                banListShortcode = data['shortcode'];
+            } catch (e) {
+                await mjolnir.logMessage(
+                    LogLevel.WARN,
+                    'PropagateRoomBan',
+                    `Can not publish to banlist. User ${bannedUser} was banned in ${roomId}, but protection setting banListShortcode is missing and could not get default banlist`
+                );
+                await mjolnir.logMessage(
+                    LogLevel.WARN,
+                    'PropagateRoomBan',
+                    extractRequestError(e)
+                );
+                return;
+            }
         }
 
         const banlist = mjolnir.lists.find(
             (bl) =>
                 bl.listShortcode.toLowerCase() ===
-                this.settings.banlistShortcode.value.toLowerCase()
+                banListShortcode.toLowerCase()
         );
 
         if (!banlist) {
-            await logMessage(
+            await mjolnir.logMessage(
                 LogLevel.WARN,
                 'PropagateRoomBan',
-                `Can not publish to banlist. User ${bannedUser} was banned in ${roomId}, but banlist ${this.settings.banlistShortcode.value} is not found`
+                `Can not publish to banlist. User ${bannedUser} was banned in ${roomId}, but banlist ${banListShortcode} is not found`
             );
             return;
         }
@@ -86,7 +102,7 @@ export class PropagateRoomBan extends Protection {
             stateKey,
             ruleContent
         );
-        await logMessage(
+        await mjolnir.logMessage(
             LogLevel.INFO,
             'PropagateRoomBan',
             `User ${bannedUser} added to banlist ${banlist.listShortcode}, because ${sender} banned him in ${roomId} for: ${banReason}`
