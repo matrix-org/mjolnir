@@ -18,7 +18,6 @@ import { Protection } from "./IProtection";
 import { DurationMSProtectionSetting, NumberProtectionSetting, StringSetProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, UserID } from "matrix-bot-sdk";
-import { logMessage } from "../LogProxy";
 
 const DEFAULT_BUCKET_DURATION_MS = 10_000;
 const DEFAULT_BUCKET_NUMBER = 6;
@@ -628,7 +627,7 @@ export class DetectFederationLag extends Protection {
             roomInfo.latestAlertStart = now;
             // Background-send message.
             const stats = roomInfo.globalStats();
-            /* do not await */ logMessage(LogLevel.WARN, "FederationLag",
+            /* do not await */ mjolnir.logMessage(LogLevel.WARN, "FederationLag",
                 `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomInfo.latestAlertStart}.\n${roomInfo.alerts} homeservers are lagging: ${[...roomInfo.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
             // Drop a state event, for the use of potential other bots.
             const warnStateEventId = await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, LAG_STATE_EVENT, roomId, {
@@ -643,7 +642,7 @@ export class DetectFederationLag extends Protection {
         } else if (roomInfo.alerts < this.settings.numberOfLaggingFederatedHomeserversExitWarningZone.value
             || !isLocalDomainOnAlert) {
             // Stop the alarm!
-            /* do not await */ logMessage(LogLevel.INFO, "FederationLag",
+            /* do not await */ mjolnir.logMessage(LogLevel.INFO, "FederationLag",
                 `Room ${roomId} lag has decreased to an acceptable level. Currently, ${roomInfo.alerts} homeservers are still lagging`
             );
             if (roomInfo.warnStateEventId) {
