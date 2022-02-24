@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { AbstractProtectionSetting } from "./ProtectionSettings";
+import { Consequence } from "./consequence";
 
 /**
  * Represents a protection mechanism of sorts. Protections are intended to be
@@ -29,21 +30,18 @@ export abstract class Protection {
     enabled = false;
     abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
 
-
     /*
      * Handle a single event from a protected room, to decide if we need to
      * respond to it
      */
-    handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-        return Promise.resolve(null);
+    async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<Consequence | any> {
     }
 
     /*
      * Handle a single reported event from a protecte room, to decide if we
      * need to respond to it
      */
-    handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
-        return Promise.resolve(null);
+    async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
     }
 
     /**

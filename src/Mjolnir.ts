@@ -36,6 +36,7 @@ import config from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { Protection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
+import { ConsequenceType, Consequence } from "./protections/consequence";
 import { ProtectionSettingValidationError } from "./protections/ProtectionSettings";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { Healthz } from "./health/healthz";
@@ -62,6 +63,7 @@ const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
+const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
 
 export class Mjolnir {
     private displayName: string;
@@ -836,6 +838,36 @@ export class Mjolnir {
         await this.printBanlistChanges(changes, banList, true);
     }
 
+    private async handleConsequence(protection: Protection, roomId: string, event: any, consequence: Consequence) {
+        switch (consequence.type) {
+            case ConsequenceType.alert:
+                break;
+            case ConsequenceType.redact:
+                await this.client.redactEvent(roomId, event["event_id"], "abuse detected");
+                break;
+            case ConsequenceType.ban:
+                await this.client.banUser(event["sender"], roomId, "abuse detected");
+                break;
+        }
+
+        let message = `protection ${protection.name} enacting ${ConsequenceType[consequence.type]} against ${htmlEscape(event["sender"])}`;
+        if (consequence.reason !== undefined) {
+            // even though internally-sourced, there's no promise that `consequence.reason`
+            // will never have user-supplied information, so escape it
+            message += ` (reason: ${htmlEscape(consequence.reason)})`;
+        }
+
+        await this.client.sendMessage(this.managementRoomId, {
+            msgtype: "m.notice",
+            body: message,
+            [CONSEQUENCE_EVENT_DATA]: {
+                who: event["sender"],
+                room: roomId,
+                type: ConsequenceType[consequence.type]
+            }
+        });
+    }
+
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
         if (roomId === this.managementRoomId) {
@@ -863,14 +895,20 @@ export class Mjolnir {
 
             // Iterate all the enabled protections
             for (const protection of this.enabledProtections) {
+                let consequence: Consequence | undefined = undefined;
                 try {
-                    await protection.handleEvent(this, roomId, event);
+                    consequence = await protection.handleEvent(this, roomId, event);
                 } catch (e) {
                     const eventPermalink = Permalinks.forEvent(roomId, event['event_id']);
                     LogService.error("Mjolnir", "Error handling protection: " + protection.name);
                     LogService.error("Mjolnir", "Failed event: " + eventPermalink);
                     LogService.error("Mjolnir", extractRequestError(e));
                     await this.client.sendNotice(this.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
+                    continue;
+                }
+
+                if (consequence !== undefined) {
+                    await this.handleConsequence(protection, roomId, event, consequence);
                 }
             }
 
