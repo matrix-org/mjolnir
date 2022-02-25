@@ -327,6 +327,10 @@ function patchMatrixClientForConciseExceptions() {
                     enumerable: false,
                 });
             }
+            if (!LogService.level.includes(LogLevel.TRACE)) {
+                // Remove stack trace to reduce impact on logs.
+                error.stack = "";
+            }
             return cb(error, response, resBody);
         })
     });
