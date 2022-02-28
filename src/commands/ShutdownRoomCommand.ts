@@ -20,6 +20,7 @@ import { RichReply } from "matrix-bot-sdk";
 // !mjolnir shutdown room <room> [<message>]
 export async function execShutdownRoomCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const victim = parts[3];
+    const reason = parts.slice(4).join(" ") || undefined;
 
     const isAdmin = await mjolnir.isSynapseAdmin();
     if (!isAdmin) {
@@ -30,6 +31,6 @@ export async function execShutdownRoomCommand(roomId: string, event: any, mjolni
         return;
     }
 
-    await mjolnir.shutdownSynapseRoom(await mjolnir.client.resolveRoom(victim), parts[4]);
+    await mjolnir.shutdownSynapseRoom(await mjolnir.client.resolveRoom(victim), reason);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
