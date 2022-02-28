@@ -18,7 +18,6 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
-import { logMessage } from "../LogProxy";
 import config from "../config";
 import { htmlEscape, isTrueJoinEvent } from "../utils";
 import { BooleanProtectionSetting, NumberProtectionSetting, OptionListProtectionSetting } from "./ProtectionSettings";
@@ -65,7 +64,6 @@ export class MentionFlood extends Protection {
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-
         const content = event['content'] || {};
         const minsBeforeTrusting = this.settings.minutesBeforeTrusting.value;
 
@@ -117,25 +115,25 @@ export class MentionFlood extends Protection {
                 const action = this.settings.action.value !== "" ? this.settings.action.value : DEFAULT_ACTION;
                 switch (action) {
                     case "ban": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `Banning ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
+                        await mjolnir.logMessage(LogLevel.WARN, "MentionFlood", `Banning ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
                         if (!config.noop) {
                             await mjolnir.client.banUser(event['sender'], roomId, "Mention Flood violation");
                         } else {
-                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                            await mjolnir.logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                         }
                         break;
                     }
                     case "kick": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `Kicking ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
+                        await mjolnir.logMessage(LogLevel.WARN, "MentionFlood", `Kicking ${htmlEscape(event['sender'])} for mention flood violation in ${roomId}.`);
                         if (!config.noop) {
                             await mjolnir.client.kickUser(event['sender'], roomId, "Mention Flood violation");
                         } else {
-                            await logMessage(LogLevel.WARN, "MentionFlood", `Tried to kick ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                            await mjolnir.logMessage(LogLevel.WARN, "MentionFlood", `Tried to kick ${htmlEscape(event['sender'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                         }
                         break;
                     }
                     case "warn": {
-                        await logMessage(LogLevel.WARN, "MentionFlood", `${htmlEscape(event['sender'])} triggered the mention flood protection in ${roomId}.`);
+                        await mjolnir.logMessage(LogLevel.WARN, "MentionFlood", `${htmlEscape(event['sender'])} triggered the mention flood protection in ${roomId}.`);
                         break;
                     }
                 }
@@ -145,7 +143,7 @@ export class MentionFlood extends Protection {
                 if (!config.noop && this.settings.redact.value) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
-                    await logMessage(LogLevel.WARN, "MentionFlood", `Tried to redact ${htmlEscape(event['event_id'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.logMessage(LogLevel.WARN, "MentionFlood", `Tried to redact ${htmlEscape(event['event_id'])} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }
