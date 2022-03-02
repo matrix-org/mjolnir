@@ -9,12 +9,16 @@ import { ConsequenceType, Consequence } from "../../src/protections/consequence"
 
 describe("Test: standard consequences", function() {
     let badUser;
+    let goodUser;
     this.beforeEach(async function () {
         badUser = await newTestUser({ name: { contains: "standard-consequences" }});
+        goodUser = await newTestUser({ name: { contains: "standard-consequences" }});
         await badUser.start();
+        await goodUser.start();
     })
     this.afterEach(async function () {
         await badUser.stop();
+        await goodUser.stop();
     })
     it("Mjolnir applies a standard consequence redaction", async function() {
         this.timeout(20000);
@@ -106,6 +110,49 @@ describe("Test: standard consequences", function() {
         });
 
         const [eventBan, eventMessage] = await reply
+    });
+    it("Mjolnir doesn't ban a good user", async function() {
+        this.timeout(20000);
+
+        let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await goodUser.getUserId()] });
+        await goodUser.joinRoom(protectedRoomId);
+        await this.mjolnir.addProtectedRoom(protectedRoomId);
+
+        await this.mjolnir.registerProtection(new class implements IProtection {
+            name = "95B1Cr";
+            description = "A test protection";
+            settings = { };
+            handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
+                if (event.content.body === "8HUnwb") {
+                    return new Consequence(ConsequenceType.ban, "asd");
+                }
+            };
+        });
+        await this.mjolnir.enableProtection("95B1Cr");
+
+        await goodUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "SUwvFT"});
+        let reply = new Promise(async (resolve, reject) => {
+            this.mjolnir.client.on('room.message', async (roomId, event) => {
+                if (event?.content?.body === "SUwvFT") {
+                    goodUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "ahr4eE"});
+                } else if (event?.content?.body === "ahr4eE") {
+                    resolve(null);
+                }
+            });
+
+            goodUser.on('room.leave', (roomId, event) => {
+                if (
+                    roomId === protectedRoomId
+                    && event?.type === "m.room.member"
+                    && event.content?.membership === "ban"
+                    && event.state_key === goodUser.userId
+                ) {
+                    reject("good user has been banned");
+                }
+            });
+        });
+
+        await reply
     });
 });
 
