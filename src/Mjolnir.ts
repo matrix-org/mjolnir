@@ -838,19 +838,19 @@ export class Mjolnir {
         await this.printBanlistChanges(changes, banList, true);
     }
 
-    private async handleConsequence(protection: Protection, roomId: string, event: any, consequence: Consequence) {
+    private async handleConsequence(protection: Protection, roomId: string, eventId: string, sender: string, consequence: Consequence) {
         switch (consequence.type) {
             case ConsequenceType.alert:
                 break;
             case ConsequenceType.redact:
-                await this.client.redactEvent(roomId, event["event_id"], "abuse detected");
+                await this.client.redactEvent(roomId, eventId, "abuse detected");
                 break;
             case ConsequenceType.ban:
-                await this.client.banUser(event["sender"], roomId, "abuse detected");
+                await this.client.banUser(sender, roomId, "abuse detected");
                 break;
         }
 
-        let message = `protection ${protection.name} enacting ${ConsequenceType[consequence.type]} against ${htmlEscape(event["sender"])}`;
+        let message = `protection ${protection.name} enacting ${ConsequenceType[consequence.type]} against ${htmlEscape(sender)}`;
         if (consequence.reason !== undefined) {
             // even though internally-sourced, there's no promise that `consequence.reason`
             // will never have user-supplied information, so escape it
@@ -861,7 +861,7 @@ export class Mjolnir {
             msgtype: "m.notice",
             body: message,
             [CONSEQUENCE_EVENT_DATA]: {
-                who: event["sender"],
+                who: sender,
                 room: roomId,
                 type: ConsequenceType[consequence.type]
             }
@@ -908,7 +908,7 @@ export class Mjolnir {
                 }
 
                 if (consequence !== undefined) {
-                    await this.handleConsequence(protection, roomId, event, consequence);
+                    await this.handleConsequence(protection, roomId, event["event_id"], event["sender"], consequence);
                 }
             }
 
