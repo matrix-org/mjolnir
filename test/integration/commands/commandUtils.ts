@@ -21,6 +21,9 @@ import * as crypto from "crypto";
     try {
         client.on('room.event', addEvent)
         const targetEventId = await targetEventThunk();
+        if (typeof targetEventId !== 'string') {
+            throw new TypeError();
+        }
         for (let event of reactionEvents) {
             const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
             if (in_reply_to?.event_id === targetEventId) {

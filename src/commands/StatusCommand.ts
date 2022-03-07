@@ -17,6 +17,18 @@ limitations under the License.
 import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, STATE_SYNCING } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
 import { htmlEscape } from "../utils";
+import { default as parseDuration } from "parse-duration";
+import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
+
+// Define a few aliases to simplify parsing durations.
+
+parseDuration["days"] = parseDuration["day"];
+parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
+parseDuration["months"] = parseDuration["month"];
+parseDuration["years"] = parseDuration["year"];
+
+const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
+const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
 
 // !mjolnir
 export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -26,9 +38,11 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
             return showMjolnirStatus(roomId, event, mjolnir);
         case 'protection':
             return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
+        case 'joins':
+            return showJoinsStatus(roomId, event, mjolnir, parts.slice(/* ["joins"] */ 1));
         default:
             throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);
-        }
+    }
 }
 
 async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
@@ -104,3 +118,67 @@ async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir
     reply["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, reply);
 }
+
+/**
+ * Show the most recent joins to a room.
+ */
+async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: Mjolnir, args: string[]) {
+    const targetRoomAliasOrId = args[0];
+    const maxAgeArg = args[1] || "1 day";
+    const maxEntriesArg = args[2] = "200";
+    const { html, text } = await (async () => {
+        if (!targetRoomAliasOrId) {
+            return {
+                html: "Missing arg: <code>room id</code>",
+                text: "Missing arg: `room id`"
+            };
+        }
+        const maxAgeMS = parseDuration(maxAgeArg);
+        if (!maxAgeMS) {
+            return {
+                html: "Invalid duration. Example: <code>1.5 days</code> or <code>10 minutes</code>",
+                text: "Invalid duration. Example: `1.5 days` or `10 minutes`",
+            }
+        }
+        const maxEntries = Number.parseInt(maxEntriesArg, 10);
+        if (!maxEntries) {
+            return {
+                html: "Invalid number of entries. Example: <code>200</code>",
+                text: "Invalid number of entries. Example: `200`",
+            }
+        }
+        const minDate = new Date(Date.now() - maxAgeMS);
+        const HUMANIZER_OPTIONS = {
+            // Reduce "1 day" => "1day" to simplify working with CSV.
+            spacer: "",
+            // Reduce "1 day, 2 hours" => "1.XXX day" to simplify working with CSV.
+            largest: 1,
+        };
+        const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS, HUMANIZER_OPTIONS);
+        let targetRoomId;
+        try {
+            targetRoomId = await mjolnir.client.resolveRoom(targetRoomAliasOrId);
+        } catch (ex) {
+            return {
+                html: `Cannot resolve room ${htmlEscape(targetRoomAliasOrId)}.`,
+                text: `Cannot resolve room \`${targetRoomAliasOrId}\`.`
+            }
+        }
+        const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+        const htmlFragments = [];
+        const textFragments = [];
+        for (let join of joins) {
+            const durationHumanReadable = HUMANIZER.humanize(Date.now() - join.timestamp, HUMANIZER_OPTIONS);
+            htmlFragments.push(`<li>${htmlEscape(join.userId)}: ${durationHumanReadable}</li>`);
+            textFragments.push(`- ${join.userId}: ${durationHumanReadable}`);
+        }
+        return {
+            html: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries): <ul> ${htmlFragments.join()} </ul>`,
+            text: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries):\n${textFragments.join("\n")}`
+        }
+    })();
+    const reply = RichReply.createFor(destinationRoomId, event, text, html);
+    reply["msgtype"] = "m.notice";
+    return mjolnir.client.sendMessage(destinationRoomId, reply);
+}
+
