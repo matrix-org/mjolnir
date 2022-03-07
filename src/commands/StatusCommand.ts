@@ -38,6 +38,8 @@ export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjo
             return showMjolnirStatus(roomId, event, mjolnir);
         case 'protection':
             return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
+        case 'joins':
+            return showJoinsStatus(roomId, event, mjolnir, parts.slice(/* ["joins"] */ 1));
         default:
             throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);
     }
@@ -121,11 +123,11 @@ async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir
  * Show the most recent joins to a room.
  */
 async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: Mjolnir, args: string[]) {
-    const targetRoomId = args[0];
+    const targetRoomAliasOrId = args[0];
     const maxAgeArg = args[1] || "1 day";
     const maxEntriesArg = args[2] = "200";
-    const { html, text } = (() => {
-        if (!targetRoomId) {
+    const { html, text } = await (async () => {
+        if (!targetRoomAliasOrId) {
             return {
                 html: "Missing arg: <code>room id</code>",
                 text: "Missing arg: `room id`"
@@ -153,6 +155,15 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
             largest: 1,
         };
         const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS, HUMANIZER_OPTIONS);
+        let targetRoomId;
+        try {
+            targetRoomId = await mjolnir.client.resolveRoom(targetRoomAliasOrId);
+        } catch (ex) {
+            return {
+                html: `Cannot resolve room ${htmlEscape(targetRoomAliasOrId)}.`,
+                text: `Cannot resolve room \`${targetRoomAliasOrId}\`.`
+            }
+        }
         const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
         const htmlFragments = [];
         const textFragments = [];
