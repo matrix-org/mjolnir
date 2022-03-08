@@ -19,7 +19,7 @@ import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import config from "../config";
-import { htmlEscape, isTrueJoinEvent } from "../utils";
+import { htmlEscape } from "../utils";
 import { BooleanProtectionSetting, DurationMSProtectionSetting, NumberProtectionSetting, OptionListProtectionSetting } from "./ProtectionSettings";
 
 const DEFAULT_MINUTES_BEFORE_TRUSTING = 20 * 60 * 1000;
@@ -50,7 +50,6 @@ export class MentionFlood extends Protection {
         action: new OptionListProtectionSetting(["ban", "kick", "warn"])
     };
 
-    private justJoined: Map<string, Map<string, Date>> = new Map<string, Map<string, Date>>();
     private mention: RegExp;
 
     constructor() {
@@ -71,44 +70,23 @@ export class MentionFlood extends Protection {
         const content = event['content'] || {};
         const minsBeforeTrusting = this.settings.minutesBeforeTrusting.value;
 
-        if (minsBeforeTrusting > 0) {
-            if (!this.justJoined.get(roomId)) this.justJoined.set(roomId, new Map<string, Date>());
-
-            // When a new member logs in, store the time they joined.  This will be useful
-            // when we need to check if a message was sent within 20 minutes of joining
-            if (event['type'] === 'm.room.member') {
-                if (isTrueJoinEvent(event)) {
-                    const now = new Date();
-                    this.justJoined.get(roomId)?.set(event['state_key'], now);
-                    LogService.info("MentionFlood", `${htmlEscape(event['state_key'])} joined ${roomId} at ${now.toDateString()}`);
-                } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
-                    this.justJoined.get(roomId)?.delete(event['sender']);
-                }
-
-                return;
-            }
-        }
-
         if (event['type'] === 'm.room.message') {
             const message: string = content['formatted_body'] || content['body'] || "";
 
             // Check conditions first
             if (minsBeforeTrusting > 0) {
-                const joinTime = this.justJoined.get(roomId)?.get(event['sender']);
-                if (joinTime) { // Disregard if the user isn't recently joined
+                const joinTime = mjolnir.roomJoins.getUserJoin({ roomId: roomId, userId: event['sender'] });
+                // If we know the user and have its time we check if.
+                // Otherwise we assume a bug and still mark them as suspect just to make sure.
+                if (joinTime) {
 
                     // Check if they did join recently, was it within the timeframe
-                    const now = new Date();
-                    if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
-                        this.justJoined.get(roomId)?.delete(event['sender']); // Remove the user
+                    const now = Date.now();
+                    if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting) {
                         LogService.info("MentionFlood", `${htmlEscape(event['sender'])} is no longer considered suspect`);
                         return;
                     }
 
-                } else {
-                    // The user isn't in the recently joined users list, no need to keep
-                    // looking
-                    return;
                 }
             }
 
