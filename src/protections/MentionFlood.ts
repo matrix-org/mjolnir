@@ -20,9 +20,9 @@ import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import config from "../config";
 import { htmlEscape, isTrueJoinEvent } from "../utils";
-import { BooleanProtectionSetting, NumberProtectionSetting, OptionListProtectionSetting } from "./ProtectionSettings";
+import { BooleanProtectionSetting, DurationMSProtectionSetting, NumberProtectionSetting, OptionListProtectionSetting } from "./ProtectionSettings";
 
-const DEFAULT_MINUTES_BEFORE_TRUSTING = 20;
+const DEFAULT_MINUTES_BEFORE_TRUSTING = 20 * 60 * 1000;
 const DEFAULT_MAX_MENTIONS_PER_MESSAGE = 20;
 const DEFAULT_REDACT = true;
 const DEFAULT_ACTION = "ban";
@@ -40,9 +40,13 @@ const PORT_REGEX = "(:[0-9]+)?";
 export class MentionFlood extends Protection {
 
     settings = {
-        minutesBeforeTrusting: new NumberProtectionSetting(DEFAULT_MINUTES_BEFORE_TRUSTING),
+        // Time in which this protection takes action on users
+        minutesBeforeTrusting: new DurationMSProtectionSetting(DEFAULT_MINUTES_BEFORE_TRUSTING),
+        // The minimum amount of mentions for this protection to take action
         maxMentionsPerMessage: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS_PER_MESSAGE),
+        // Defines if messages shall also get directly redacted or not
         redact: new BooleanProtectionSetting(DEFAULT_REDACT),
+        // The action that is supposed to get taken
         action: new OptionListProtectionSetting(["ban", "kick", "warn"])
     };
 
