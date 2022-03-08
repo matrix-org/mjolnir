@@ -465,10 +465,15 @@ describe("Test: Testing RoomMemberManager", function() {
         const EXPERIMENTS = [
             // Kick bad users in one room, using duration syntax, no reason.
             {
+                // A human-readable name for the command.
                 name: "kick with duration",
+                // The actual command-line.
                 command: roomId => `!mjolnir since ${Date.now() - cutDate.getTime()}ms kick 100 ${roomId}`,
+                // If `true`, this command should affect room `WITNESS_ROOM_ID`.
                 shouldAffectWitnessRoom: false,
+                // The number of responses we expect to this command.
                 n: 1,
+                // How affected users should leave the room.
                 method: Method.kick,
             },
             // Ban bad users in one room, using duration syntax, no reason.
@@ -499,7 +504,7 @@ describe("Test: Testing RoomMemberManager", function() {
             // Kick bad users in one room, using duration syntax, with reason.
             {
                 name: "kick with duration and reason",
-                command: roomId => `!mjolnir since ${Date.now() - cutDate.getTime()}ms kick 100 "bad, bad user" ${roomId}`,
+                command: roomId => `!mjolnir since ${Date.now() - cutDate.getTime()}ms kick 100 ${roomId} bad, bad user`,
                 shouldAffectWitnessRoom: false,
                 n: 1,
                 method: Method.kick,
@@ -507,7 +512,7 @@ describe("Test: Testing RoomMemberManager", function() {
             // Ban bad users in one room, using duration syntax, with reason.
             {
                 name: "ban with duration and reason",
-                command: roomId => `!mjolnir since ${Date.now() - cutDate.getTime()}ms ban 100 "bad, bad user" ${roomId}`,
+                command: roomId => `!mjolnir since ${Date.now() - cutDate.getTime()}ms ban 100 ${roomId} bad, bad user`,
                 shouldAffectWitnessRoom: false,
                 n: 1,
                 method: Method.ban,
@@ -515,7 +520,7 @@ describe("Test: Testing RoomMemberManager", function() {
             // Kick bad users in one room, using date syntax, with reason.
             {
                 name: "kick with date and reason",
-                command: roomId => `!mjolnir since "${cutDate}" kick 100 "bad, bad user" ${roomId}`,
+                command: roomId => `!mjolnir since "${cutDate}" kick 100 ${roomId} bad, bad user`,
                 shouldAffectWitnessRoom: false,
                 n: 1,
                 method: Method.kick,
@@ -523,7 +528,7 @@ describe("Test: Testing RoomMemberManager", function() {
             // Ban bad users in one room, using date syntax, with reason.
             {
                 name: "ban with date and reason",
-                command: roomId => `!mjolnir since "${cutDate}" ban 100 "bad, bad user" ${roomId}`,
+                command: roomId => `!mjolnir since "${cutDate}" ban 100 ${roomId} bad, bad user`,
                 shouldAffectWitnessRoom: false,
                 n: 1,
                 method: Method.ban,
@@ -532,7 +537,7 @@ describe("Test: Testing RoomMemberManager", function() {
             // Kick bad users everywhere, no reason
             {
                 name: "kick with date everywhere",
-                command: () => `!mjolnir since "${cutDate}" kick 100 "bad, bad user" *`,
+                command: () => `!mjolnir since "${cutDate}" kick 100 * bad, bad user`,
                 shouldAffectWitnessRoom: true,
                 n: NUMBER_OF_ROOMS - 1,
                 method: Method.kick,

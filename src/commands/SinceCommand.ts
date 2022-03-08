@@ -31,12 +31,23 @@ enum Action {
 
 type Result<T> = {ok: T} | {error: string};
 
+/**
+ * Attempt to parse a `ParseEntry`, as provided by the shell-style parser, using a parsing function.
+ *
+ * @param name The name of the object being parsed. Used for error messages.
+ * @param token The `ParseEntry` provided by the shell-style parser. It will be converted
+ *   to string if possible. Otherwise, this returns an error.
+ * @param parser A function that attempts to parse `token` (converted to string) into
+ *   its final result. It should provide an error fit for the end-user if it fails.
+ * @returns An error fit for the end-user if `token` could not be converted to string or
+ *   if `parser` failed.
+ */
 function parseToken<T>(name: string, token: ParseEntry, parser: (source: string) => Result<T>): Result<T> {
     if (!token) {
         return { error: `Missing ${name}`};
     }
     if (typeof token === "object" && "pattern" in token) {
-        // In future versions, we *might* be smarter patterns, but not yet.
+        // In future versions, we *might* be smarter about patterns, but not yet.
         token = token.pattern;
     }
 
@@ -54,6 +65,12 @@ function parseToken<T>(name: string, token: ParseEntry, parser: (source: string)
     return result;
 }
 
+/**
+ * Attempt to convert a token into a string.
+ * @param name 
+ * @param token 
+ * @returns 
+ */
 function getTokenAsString(name: string, token: ParseEntry): {error: string}|{ok: string} {
     if (!token) {
         return { error: `Missing ${name}`};
@@ -68,8 +85,21 @@ function getTokenAsString(name: string, token: ParseEntry): {error: string}|{ok:
     return { error: `Invalid ${name}` };
 }
 
-// !mjolnir since <date>/<duration> <action> <number> [reason] [...rooms]
+// !mjolnir since <date>/<duration> <action> <number> [...rooms] [...reason]
 export async function execSinceCommand(destinationRoomId: string, event: any, mjolnir: Mjolnir, tokens: ParseEntry[]) {
+    let result = await execSinceCommandAux(destinationRoomId, event, mjolnir, tokens);
+    if ("error" in result) {
+        mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '❌');
+        mjolnir.logMessage(LogLevel.WARN, "SinceCommand", result.error);
+        const reply = RichReply.createFor(destinationRoomId, event, result.error, htmlEscape(result.error));
+        reply["msgtype"] = "m.notice";
+        /* no need to await */ mjolnir.client.sendMessage(destinationRoomId, reply);
+    } else {
+        // Details have already been printed.
+        mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '✅');
+    }
+}
+async function execSinceCommandAux(destinationRoomId: string, event: any, mjolnir: Mjolnir, tokens: ParseEntry[]): Promise<Result<undefined>> {
     const [dateOrDurationToken, actionToken, maxEntriesToken, ...optionalTokens] = tokens;
 
     // Parse origin date or duration.
@@ -90,7 +120,7 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
         return { error: "" };
     });
     if ("error" in minDateResult) {
-        return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", minDateResult.error);
+        return minDateResult;
     }
     const { minDate, maxAgeMS } = minDateResult.ok!;
 
@@ -104,7 +134,7 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
         }
     });
     if ("error" in maxEntriesResult) {
-        return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", maxEntriesResult.error);
+        return maxEntriesResult;
     }
     const maxEntries = maxEntriesResult.ok!;
 
@@ -121,46 +151,49 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
         return {error: `Expected one of ${JSON.stringify(Action)}`};
     })
     if ("error" in actionResult) {
-        return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", actionResult.error);
+        return actionResult;
     }
     const action: Action = actionResult.ok!;
 
     // Now list affected rooms.
     const rooms: Set<string> = new Set();
-    let reason: string | undefined;
-    for (let i = 0; i < optionalTokens.length; ++i) {
-        const token = optionalTokens[i];
-        const maybeRoomResult = getTokenAsString("[room]", token);
-        if ("error" in maybeRoomResult) {
-            return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", maybeRoomResult.error);
+    let reasonParts: string[] | undefined;
+    for (let token of optionalTokens) {
+        const maybeArg = getTokenAsString(reasonParts ? "[reason]" : "[room]", token);
+        if ("error" in maybeArg) {
+            return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", maybeArg.error);
         }
-
-        const maybeRoom = maybeRoomResult.ok!;
-
-        if (maybeRoom === "*") {
-            for (let roomId of Object.keys(mjolnir.protectedRooms)) {
+        const maybeRoom = maybeArg.ok;
+        if (!reasonParts) {
+            // If we haven't reached the reason yet, attempt to use `maybeRoom` as a room.
+            if (maybeRoom === "*") {
+                for (let roomId of Object.keys(mjolnir.protectedRooms)) {
+                    rooms.add(roomId);
+                }
+                continue;
+            } else if (maybeRoom.startsWith("#") || maybeRoom.startsWith("!")) {
+                const roomId = await mjolnir.client.resolveRoom(maybeRoom);
+                if (!(roomId in mjolnir.protectedRooms)) {
+                    return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
+                }
                 rooms.add(roomId);
+                continue;
             }
-        } else if (maybeRoom.startsWith("#") || maybeRoom.startsWith("!")) {
-            const roomId = await mjolnir.client.resolveRoom(maybeRoom);
-            if (!(roomId in mjolnir.protectedRooms)) {
-                return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
-            }
-            rooms.add(roomId);
-        } else {
-            if (i === 0) {
-                // First argument may not be a room.
-                reason = maybeRoom;
-            } else {
-                return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `Invalid room ${htmlEscape(maybeRoom)}.`);
-            }
+            // If we reach this step, it's not a room, so it must be a reason.
+            // All further arguments are now part of `reason`.
+            reasonParts = [];
         }
+        reasonParts.push(maybeRoom);
     }
+    
     if (rooms.size === 0) {
-        return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `Missing rooms. Use "*" if you wish to apply to every protected room.`);
+        return {
+            error: "Missing rooms. Use `*` if you wish to apply to every protected room.",
+        };
     }
 
     const progressEventId = await mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '⏳');
+    const reason: string | undefined = reasonParts?.join(" ");
 
     for (let targetRoomId of rooms) {
         let {html, text} = await (async () => {
@@ -214,7 +247,7 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
     }
 
     await mjolnir.client.redactEvent(destinationRoomId, progressEventId);
-    mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '✅');
+    return {ok: undefined};
 }
 
 function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: number, minDate: Date, maxAgeMS: number): {html: string, text: string} {
