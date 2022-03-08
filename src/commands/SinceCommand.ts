@@ -67,9 +67,11 @@ function parseToken<T>(name: string, token: ParseEntry, parser: (source: string)
 
 /**
  * Attempt to convert a token into a string.
- * @param name 
- * @param token 
- * @returns 
+ * @param name The name of the object being parsed. Used for error messages.
+ * @param token The `ParseEntry` provided by the shell-style parser. It will be converted
+ *   to string if possible. Otherwise, this returns an error.
+ * @returns An error fit for the end-user if `token` could not be converted to string, otherwise
+ *   `{ok: string}`.
  */
 function getTokenAsString(name: string, token: ParseEntry): {error: string}|{ok: string} {
     if (!token) {
@@ -185,7 +187,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
         }
         reasonParts.push(maybeRoom);
     }
-    
+
     if (rooms.size === 0) {
         return {
             error: "Missing rooms. Use `*` if you wish to apply to every protected room.",
