@@ -25,7 +25,7 @@ parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
 parseDuration["months"] = parseDuration["month"];
 parseDuration["years"] = parseDuration["year"];
 
-export class ProtectionSettingValidationError extends Error {};
+export class ProtectionSettingValidationError extends Error { };
 
 /*
  * @param TChange Type for individual pieces of data (e.g. `string`)
@@ -106,7 +106,7 @@ export class StringListProtectionSetting extends AbstractProtectionListSetting<s
     }
     removeValue(data: string): string[] {
         this.emit("remove", data);
-        this.value =  this.value.filter(i => i !== data);
+        this.value = this.value.filter(i => i !== data);
         return this.value;
     }
 }
@@ -166,9 +166,9 @@ export class NumberProtectionSetting extends AbstractProtectionSetting<number, n
  */
 export class DurationMSProtectionSetting extends AbstractProtectionSetting<number, number> {
     constructor(
-            defaultValue: number,
-            public readonly minMS: number|undefined = undefined,
-            public readonly maxMS: number|undefined = undefined
+        defaultValue: number,
+        public readonly minMS: number | undefined = undefined,
+        public readonly maxMS: number | undefined = undefined
     ) {
         super();
         this.setValue(defaultValue);
@@ -181,7 +181,7 @@ export class DurationMSProtectionSetting extends AbstractProtectionSetting<numbe
     validate(data: number) {
         return (!isNaN(data)
             && (this.minMS === undefined || this.minMS <= data)
-            && (this.maxMS === undefined || data <= this.maxMS))
+            && (this.maxMS === undefined || data <= this.maxMS));
     }
 }
 
