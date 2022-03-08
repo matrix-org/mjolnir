@@ -62,8 +62,8 @@ export class MentionFlood extends Protection {
     }
 
     public get description(): string {
-        return "If a user posts more mentions than a set amount of time after joining, they " +
-            "will be banned from that room.  This will not publish the ban to a ban list.";
+        return `Protects against recently joined users attempting to ping too many other users at the same time. 
+        This will not publish bans to the ban list.`;
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
