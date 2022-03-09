@@ -34,6 +34,9 @@ class AntiSpam(object):
         self.block_messages = config.get("block_messages", False)
         self.block_usernames = config.get("block_usernames", False)
         self.list_room_ids = config.get("ban_lists", [])
+        self.message_limit: Option[int] = config.get("message_limit", None)
+        self.message_limit_rooms: Option[List[str]] = config.get("message_limit_rooms", None)
+        self.message_limit_remote_servers: bool = config.get("message_limit_remote_servers", False)
         self.rooms_to_lists = {}  # type: Dict[str, BanList]
         self.api = api
 
@@ -94,14 +97,19 @@ class AntiSpam(object):
             self.get_list_for_room(room_id).build(with_event=event)
             return False  # Ban list updates aren't spam
 
-        if not self.block_messages:
-            return False  # not spam (we aren't blocking messages)
-
         sender = UserID.from_string(event.get("sender", ""))
-        if self.is_user_banned(sender.to_string()):
-            return True
-        if self.is_server_banned(sender.domain):
-            return True
+        if self.block_messages:
+            if self.is_user_banned(sender.to_string()):
+                return True
+            if self.is_server_banned(sender.domain):
+                return True
+
+        # check if the event is from us or we if we are limiting message length from remote servers too.
+        if self.message_limit and (sender.domain == self.api.server_name or self.message_limit_remote_servers):
+            body = event.get("content", {}).get("body", "")
+            if len(body) > self.message_limit:
+                if self.message_limit_rooms is None or room_id in self.message_limit_rooms:
+                    return True  # above the limit, spam
 
         return False  # not spam (as far as we're concerned)
 
