@@ -35,10 +35,6 @@ class AntiSpam(object):
         self.block_messages = config.get("block_messages", False)
         self.block_usernames = config.get("block_usernames", False)
         self.list_room_ids = config.get("ban_lists", [])
-        message_max_length: dict = config.get("message_max_length", {})
-        self.message_max_length_threshold: Option[int] = message_max_length.get("threshold", None)
-        self.message_max_length_rooms: Set[str] = set(message_max_length.get("rooms", []))
-        self.message_max_length_remote_servers: bool = message_max_length.get("remote_servers", False)
         self.rooms_to_lists = {}  # type: Dict[str, BanList]
         self.api = api
 
@@ -99,19 +95,12 @@ class AntiSpam(object):
             self.get_list_for_room(room_id).build(with_event=event)
             return False  # Ban list updates aren't spam
 
-        sender = UserID.from_string(event.get("sender", ""))
         if self.block_messages:
+            sender = UserID.from_string(event.get("sender", ""))
             if self.is_user_banned(sender.to_string()):
                 return True
             if self.is_server_banned(sender.domain):
                 return True
-
-        # check if the event is from us or we if we are limiting message length from remote servers too.
-        if self.message_max_length_threshold and (sender.domain == self.api.server_name or sender.domain in self.message_max_length_remote_servers):
-            body = event.get("content", {}).get("body", "")
-            if len(body) > self.message_max_length_threshold:
-                if self.message_max_length_rooms is None or room_id in self.message_max_length_rooms:
-                    return True  # above the limit, spam
 
         return False  # not spam (as far as we're concerned)
 
