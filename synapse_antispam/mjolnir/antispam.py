@@ -18,6 +18,7 @@ from typing import Dict, Union
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
 from synapse.module_api import UserID
+from .message_max_length import MessageMaxLength
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
@@ -34,9 +35,10 @@ class AntiSpam(object):
         self.block_messages = config.get("block_messages", False)
         self.block_usernames = config.get("block_usernames", False)
         self.list_room_ids = config.get("ban_lists", [])
-        self.message_limit: Option[int] = config.get("message_limit", None)
-        self.message_limit_rooms: Option[List[str]] = config.get("message_limit_rooms", None)
-        self.message_limit_remote_servers: bool = config.get("message_limit_remote_servers", False)
+        message_max_length: dict = config.get("message_max_length", {})
+        self.message_max_length_threshold: Option[int] = message_max_length.get("threshold", None)
+        self.message_max_length_rooms: Set[str] = set(message_max_length.get("rooms", []))
+        self.message_max_length_remote_servers: bool = message_max_length.get("remote_servers", False)
         self.rooms_to_lists = {}  # type: Dict[str, BanList]
         self.api = api
 
@@ -105,10 +107,10 @@ class AntiSpam(object):
                 return True
 
         # check if the event is from us or we if we are limiting message length from remote servers too.
-        if self.message_limit and (sender.domain == self.api.server_name or self.message_limit_remote_servers):
+        if self.message_max_length_threshold and (sender.domain == self.api.server_name or sender.domain in self.message_max_length_remote_servers):
             body = event.get("content", {}).get("body", "")
-            if len(body) > self.message_limit:
-                if self.message_limit_rooms is None or room_id in self.message_limit_rooms:
+            if len(body) > self.message_max_length_threshold:
+                if self.message_max_length_rooms is None or room_id in self.message_max_length_rooms:
                     return True  # above the limit, spam
 
         return False  # not spam (as far as we're concerned)
@@ -159,6 +161,7 @@ class Module:
 
     def __init__(self, config, api):
         self.antispam = AntiSpam(config, api)
+        self.message_max_length = MessageMaxLength(config.get("message_max_length", {}), api)
         self.antispam.api.register_spam_checker_callbacks(
             check_event_for_spam=self.check_event_for_spam,
             user_may_invite=self.user_may_invite,
@@ -170,7 +173,7 @@ class Module:
     async def check_event_for_spam(
         self, event: "synapse.events.EventBase"
     ) -> Union[bool, str]:
-        return self.antispam.check_event_for_spam(event)
+        return self.antispam.check_event_for_spam(event) or self.message_max_length.check_event_for_spam(event)
 
     async def user_may_invite(
         self, inviter_user_id: str, invitee_user_id: str, room_id: str
