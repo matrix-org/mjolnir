@@ -115,6 +115,7 @@ describe("Test: standard consequences", function() {
         this.timeout(20000);
 
         let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await goodUser.getUserId()] });
+        await badUser.joinRoom(protectedRoomId);
         await goodUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
@@ -134,20 +135,21 @@ describe("Test: standard consequences", function() {
         let reply = new Promise(async (resolve, reject) => {
             this.mjolnir.client.on('room.message', async (roomId, event) => {
                 if (event?.content?.body === "SUwvFT") {
-                    goodUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "ahr4eE"});
-                } else if (event?.content?.body === "ahr4eE") {
-                    resolve(null);
+                    await badUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "8HUnwb"});
                 }
             });
 
-            goodUser.on('room.leave', (roomId, event) => {
+            badUser.on('room.leave', (roomId, event) => {
                 if (
                     roomId === protectedRoomId
                     && event?.type === "m.room.member"
                     && event.content?.membership === "ban"
-                    && event.state_key === goodUser.userId
                 ) {
-                    reject("good user has been banned");
+                    if (event.state_key === goodUser.userId) {
+                        reject("good user has been banned");
+                    } else if (event.state_key === badUser.userId) {
+                        resolve(null);
+                    }
                 }
             });
         });
