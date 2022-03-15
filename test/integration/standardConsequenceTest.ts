@@ -131,7 +131,6 @@ describe("Test: standard consequences", function() {
         });
         await this.mjolnir.enableProtection("95B1Cr");
 
-        await goodUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "SUwvFT"});
         let reply = new Promise(async (resolve, reject) => {
             this.mjolnir.client.on('room.message', async (roomId, event) => {
                 if (event?.content?.body === "SUwvFT") {
@@ -139,7 +138,7 @@ describe("Test: standard consequences", function() {
                 }
             });
 
-            badUser.on('room.leave', (roomId, event) => {
+            this.mjolnir.client.on('room.event', (roomId, event) => {
                 if (
                     roomId === protectedRoomId
                     && event?.type === "m.room.member"
@@ -153,6 +152,7 @@ describe("Test: standard consequences", function() {
                 }
             });
         });
+        await goodUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "SUwvFT"});
 
         await reply
     });
