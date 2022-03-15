@@ -49,7 +49,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
     const parts = cmd.trim().split(' ').filter(p => p.trim().length > 0);
 
     // A shell-style parser that can parse `"a b c"` (with quotes) as a single argument.
-    const tokens = tokenize(cmd).slice(/* "!mjolnir" "command" */ 2);
+    // We do **not** want to parse `#` as a comment start, though.
+    const tokens = tokenize(cmd.replace("#", "\\#")).slice(/* get rid of ["!mjolnir", command] */ 2);
 
     try {
         if (parts.length === 1 || parts[1] === 'status') {

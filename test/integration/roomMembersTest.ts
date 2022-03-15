@@ -1,4 +1,5 @@
 import { strict as assert } from "assert";
+import { randomUUID } from "crypto";
 import { SynapseRoomProperty } from "matrix-bot-sdk";
 import { COMMAND_PREFIX } from "../../src/commands/CommandHandler";
 import { execKickCommand } from "../../src/commands/KickCommand";
@@ -406,14 +407,19 @@ describe("Test: Testing RoomMemberManager", function() {
         // Create and protect rooms.
         // - room 0 remains unprotected, as witness;
         // - room 1 is protected but won't be targeted directly, also as witness.
-        const NUMBER_OF_ROOMS = 12;
+        const NUMBER_OF_ROOMS = 14;
         const roomIds = [];
+        const roomAliases = [];
         const mjolnirUserId = await this.mjolnir.client.getUserId();
         for (let i = 0; i < NUMBER_OF_ROOMS; ++i) {
             const roomId = await this.moderator.createRoom({
                 invite: [mjolnirUserId, ...goodUserIds, ...badUserIds],
             });
             roomIds.push(roomId);
+
+            const alias = `#since-test-${randomUUID()}:localhost:9999`;
+            await this.moderator.createRoomAlias(alias, roomId);
+            roomAliases.push(alias);
         }
         for (let i = 1; i < roomIds.length; ++i) {
             // Protect all rooms except roomIds[0], as witness.
@@ -524,7 +530,7 @@ describe("Test: Testing RoomMemberManager", function() {
                 shouldAffectWitnessRoom: false,
                 n: 1,
                 method: Method.kick,
-            },            
+            },
             // Ban bad users in one room, using date syntax, with reason.
             {
                 name: "ban with date and reason",
@@ -533,7 +539,25 @@ describe("Test: Testing RoomMemberManager", function() {
                 n: 1,
                 method: Method.ban,
             },
-            
+
+            // Kick bad users in one room, using duration syntax, without reason, using alias.
+            {
+                name: "kick with duration, no reason, alias",
+                command: (_, roomAlias) => `!mjolnir since ${Date.now() - cutDate.getTime()}ms kick 100 ${roomAlias}`,
+                shouldAffectWitnessRoom: false,
+                n: 1,
+                method: Method.kick,
+            },
+
+            // Kick bad users in one room, using duration syntax, with reason, using alias.
+            {
+                name: "kick with duration, reason and alias",
+                command: (_, roomAlias) => `!mjolnir since ${Date.now() - cutDate.getTime()}ms kick 100 ${roomAlias} for some reason`,
+                shouldAffectWitnessRoom: false,
+                n: 1,
+                method: Method.kick,
+            },
+
             // Kick bad users everywhere, no reason
             {
                 name: "kick with date everywhere",
@@ -546,10 +570,11 @@ describe("Test: Testing RoomMemberManager", function() {
         for (let i = 0; i < EXPERIMENTS.length; ++i) {
             const experiment = EXPERIMENTS[i];
             const roomId = roomIds[i + 2];
+            const roomAlias = roomAliases[i + 2];
             const joined = this.mjolnir.roomJoins.getUsersInRoom(roomId, start, 100);
             assert.ok(joined.length >= 2 * SAMPLE_SIZE, `We should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`);
             await getNthReply(this.mjolnir.client, this.mjolnir.managementRoomId, experiment.n, async () => {
-                const command = experiment.command(roomId);
+                const command = experiment.command(roomId, roomAlias);
                 let result = await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
                 return result;
             });

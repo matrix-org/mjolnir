@@ -46,9 +46,11 @@ function parseToken<T>(name: string, token: ParseEntry, parser: (source: string)
     if (!token) {
         return { error: `Missing ${name}`};
     }
-    if (typeof token === "object" && "pattern" in token) {
-        // In future versions, we *might* be smarter about patterns, but not yet.
-        token = token.pattern;
+    if (typeof token === "object") {
+        if ("pattern" in token) {
+            // In future versions, we *might* be smarter about patterns, but not yet.
+            token = token.pattern;
+        }
     }
 
     if (typeof token !== "string") {
@@ -163,7 +165,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     for (let token of optionalTokens) {
         const maybeArg = getTokenAsString(reasonParts ? "[reason]" : "[room]", token);
         if ("error" in maybeArg) {
-            return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", maybeArg.error);
+            return maybeArg;
         }
         const maybeRoom = maybeArg.ok;
         if (!reasonParts) {
