@@ -261,7 +261,7 @@ function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: numb
         // Reduce "1 day, 2 hours" => "1.XXX day" to simplify working with CSV.
         largest: 1,
     };
-    const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS, HUMANIZER_OPTIONS);
+    const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS);
     const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
     const htmlFragments = [];
     const textFragments = [];
