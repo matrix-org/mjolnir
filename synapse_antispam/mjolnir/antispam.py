@@ -162,7 +162,13 @@ class Module:
     async def check_event_for_spam(
         self, event: "synapse.events.EventBase"
     ) -> Union[bool, str]:
-        return self.antispam.check_event_for_spam(event) or self.message_max_length.check_event_for_spam(event)
+        if self.antispam.check_event_for_spam(event):
+            # The event was marked by a banlist rule.
+            return True
+        if self.message_max_length.check_event_for_spam(event):
+            # Message too long.
+            return True
+        return False # not spam.
 
     async def user_may_invite(
         self, inviter_user_id: str, invitee_user_id: str, room_id: str
