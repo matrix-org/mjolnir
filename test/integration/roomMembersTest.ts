@@ -252,7 +252,7 @@ describe("Test: Testing RoomMemberManager", function() {
         for (let array of [this.users, this.goodUsers, this.badUsers]) {
             for (let client of array || []) {
                 await client.stop();
-            }    
+            }
         }
     });
 

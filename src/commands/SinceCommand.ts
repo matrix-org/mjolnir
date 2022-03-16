@@ -103,6 +103,14 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
         mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '✅');
     }
 }
+
+// Implementation of `execSinceCommand`, counts on caller to print errors.
+//
+// This method:
+// - decodes all the arguments;
+// - resolves any room alias into a room id;
+// - attempts to execute action;
+// - in case of success, returns `{ok: undefined}`, in case of error, returns `{error: string}`.
 async function execSinceCommandAux(destinationRoomId: string, event: any, mjolnir: Mjolnir, tokens: ParseEntry[]): Promise<Result<undefined>> {
     const [dateOrDurationToken, actionToken, maxEntriesToken, ...optionalTokens] = tokens;
 
@@ -160,7 +168,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     const action: Action = actionResult.ok!;
 
     // Now list affected rooms.
-    const rooms: Set<string> = new Set();
+    const rooms: Set</* room id */string> = new Set();
     let reasonParts: string[] | undefined;
     for (let token of optionalTokens) {
         const maybeArg = getTokenAsString(reasonParts ? "[reason]" : "[room]", token);
