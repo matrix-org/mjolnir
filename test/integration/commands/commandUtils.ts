@@ -27,8 +27,8 @@ export async function getNthReply(client: MatrixClient, targetRoom: string, n: n
     if (Number.isNaN(n) || !Number.isInteger(n) || n <= 0) {
         throw new TypeError(`Invalid number of events ${n}`);
     }
-    let reactionEvents = [];
-    const addEvent = function (roomId, event) {
+    let reactionEvents: any[] = [];
+    const addEvent = function (roomId: string, event: any) {
         if (roomId !== targetRoom) return;
         if (event.type !== 'm.room.message') return;
         reactionEvents.push(event);
@@ -44,19 +44,19 @@ export async function getNthReply(client: MatrixClient, targetRoom: string, n: n
             const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
             if (in_reply_to?.event_id === targetEventId) {
                 n -= 1;
-                if (n == 0) {
+                if (n === 0) {
                     return event;
                 }
             }
         }
         return await new Promise(resolve => {
-            targetCb = function(roomId, event) {
+            targetCb = function(roomId: string, event: any) {
                 if (roomId !== targetRoom) return;
                 if (event.type !== 'm.room.message') return;
                 const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
                 if (in_reply_to?.event_id === targetEventId) {
                     n -= 1;
-                    if (n == 0) {
+                    if (n === 0) {
                         resolve(event);
                     }
                 }
@@ -82,8 +82,8 @@ export async function getNthReply(client: MatrixClient, targetRoom: string, n: n
  * @returns The reaction event.
  */
 export async function getFirstReaction(client: MatrixClient, targetRoom: string, reactionKey: string, targetEventThunk: () => Promise<string>): Promise<any> {
-    let reactionEvents = [];
-    const addEvent = function (roomId, event) {
+    let reactionEvents: any[] = [];
+    const addEvent = function (roomId: string, event: any) {
         if (roomId !== targetRoom) return;
         if (event.type !== 'm.reaction') return;
         reactionEvents.push(event);
@@ -99,7 +99,7 @@ export async function getFirstReaction(client: MatrixClient, targetRoom: string,
             }
         }
         return await new Promise((resolve, reject) => {
-            targetCb = function(roomId, event) {
+            targetCb = function(roomId: string, event: any) {
                 if (roomId !== targetRoom) return;
                 if (event.type !== 'm.reaction') return;
                 const relates_to = event.content['m.relates_to'];
