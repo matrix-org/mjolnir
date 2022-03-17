@@ -121,7 +121,9 @@ class AntiSpam(object):
 
     def check_username_for_spam(self, user_profile):
         if not self.block_usernames:
-            return True  # allowed (we aren't blocking based on usernames)
+            # /!\ NB: unlike other checks, where `True` means allowed,
+            # here `True` means "this user is a spammer".
+            return False  # allowed (we aren't blocking based on usernames)
 
         # Check whether the user ID or display name matches any of the banned
         # patterns.
