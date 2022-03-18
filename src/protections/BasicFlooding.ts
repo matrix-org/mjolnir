@@ -18,6 +18,7 @@ import { Protection } from "./IProtection";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
+import { Consequence, ConsequenceType } from "./consequence";
 import config from "../config";
 
 // if this is exceeded, we'll ban the user for spam and redact their messages
@@ -91,5 +92,7 @@ export class BasicFlooding extends Protection {
         if (forUser.length > this.settings.maxPerMinute.value * 2) {
             forUser.splice(0, forUser.length - (this.settings.maxPerMinute.value * 2) - 1);
         }
+
+        return new Consequence(ConsequenceType.ban, "flooding");
     }
 }
