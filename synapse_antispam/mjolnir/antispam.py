@@ -14,7 +14,7 @@
 # limitations under the License.
 
 import logging
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
 from synapse.module_api import UserID
@@ -125,9 +125,12 @@ class AntiSpam(object):
 
         # Check whether the user ID or display name matches any of the banned
         # patterns.
-        return self.is_user_banned(user_profile["user_id"]) or self.is_user_banned(
-            user_profile["display_name"]
-        )
+        if user_profile["display_name"] is not None and self.is_user_banned(user_profile["display_name"]):
+            return True # spam
+        if self.is_user_banned(user_profile["user_id"]):
+            return True # spam
+
+        return False # not spam.
 
     def user_may_create_room(self, user_id):
         return True  # allowed
@@ -169,5 +172,5 @@ class Module:
     ) -> bool:
         return self.antispam.user_may_invite(inviter_user_id, invitee_user_id, room_id)
 
-    async def check_username_for_spam(self, user_profile: Dict[str, str]) -> bool:
+    async def check_username_for_spam(self, user_profile: Dict[str, Optional[str]]) -> bool:
         return self.antispam.check_username_for_spam(user_profile)
