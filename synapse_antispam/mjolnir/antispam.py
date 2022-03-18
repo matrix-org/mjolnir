@@ -18,6 +18,7 @@ from typing import Dict, Union
 from .list_rule import ALL_RULE_TYPES, RECOMMENDATION_BAN
 from .ban_list import BanList
 from synapse.module_api import UserID
+from .message_max_length import MessageMaxLength
 
 logger = logging.getLogger("synapse.contrib." + __name__)
 
@@ -94,14 +95,12 @@ class AntiSpam(object):
             self.get_list_for_room(room_id).build(with_event=event)
             return False  # Ban list updates aren't spam
 
-        if not self.block_messages:
-            return False  # not spam (we aren't blocking messages)
-
-        sender = UserID.from_string(event.get("sender", ""))
-        if self.is_user_banned(sender.to_string()):
-            return True
-        if self.is_server_banned(sender.domain):
-            return True
+        if self.block_messages:
+            sender = UserID.from_string(event.get("sender", ""))
+            if self.is_user_banned(sender.to_string()):
+                return True
+            if self.is_server_banned(sender.domain):
+                return True
 
         return False  # not spam (as far as we're concerned)
 
@@ -151,6 +150,7 @@ class Module:
 
     def __init__(self, config, api):
         self.antispam = AntiSpam(config, api)
+        self.message_max_length = MessageMaxLength(config.get("message_max_length", {}), api)
         self.antispam.api.register_spam_checker_callbacks(
             check_event_for_spam=self.check_event_for_spam,
             user_may_invite=self.user_may_invite,
@@ -162,7 +162,13 @@ class Module:
     async def check_event_for_spam(
         self, event: "synapse.events.EventBase"
     ) -> Union[bool, str]:
-        return self.antispam.check_event_for_spam(event)
+        if self.antispam.check_event_for_spam(event):
+            # The event was marked by a banlist rule.
+            return True
+        if self.message_max_length.check_event_for_spam(event):
+            # Message too long.
+            return True
+        return False # not spam.
 
     async def user_may_invite(
         self, inviter_user_id: str, invitee_user_id: str, room_id: str
