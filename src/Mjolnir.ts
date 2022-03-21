@@ -871,7 +871,9 @@ export class Mjolnir {
                 break;
         }
 
-        let message = `protection ${protection.name} enacting ${ConsequenceType[consequence.type]} against ${htmlEscape(sender)}`;
+        let message = `protection ${protection.name} enacting ${ConsequenceType[consequence.type]}`
+            + ` against ${htmlEscape(sender)}`
+            + ` in ${htmlEscape(roomId)}`;
         if (consequence.reason !== undefined) {
             // even though internally-sourced, there's no promise that `consequence.reason`
             // will never have user-supplied information, so escape it
