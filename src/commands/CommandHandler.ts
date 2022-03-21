@@ -38,6 +38,8 @@ import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
 import { execKickCommand } from "./KickCommand";
 import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
+import { parse as tokenize } from "shell-quote";
+import { execSinceCommand } from "./SinceCommand";
 
 
 export const COMMAND_PREFIX = "!mjolnir";
@@ -45,6 +47,10 @@ export const COMMAND_PREFIX = "!mjolnir";
 export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
     const cmd = event['content']['body'];
     const parts = cmd.trim().split(' ').filter(p => p.trim().length > 0);
+
+    // A shell-style parser that can parse `"a b c"` (with quotes) as a single argument.
+    // We do **not** want to parse `#` as a comment start, though.
+    const tokens = tokenize(cmd.replace("#", "\\#")).slice(/* get rid of ["!mjolnir", command] */ 2);
 
     try {
         if (parts.length === 1 || parts[1] === 'status') {
@@ -109,6 +115,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execSetPowerLevelCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'shutdown' && parts[2] === 'room' && parts.length > 3) {
             return await execShutdownRoomCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'since') {
+            return await execSinceCommand(roomId, event, mjolnir, tokens);
         } else if (parts[1] === 'kick' && parts.length > 2) {
             return await execKickCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'make' && parts[2] === 'admin' && parts.length > 3) {
@@ -149,6 +157,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
+                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action (kick, ban or just show) to all users who joined a room since a given date (up to <limit> users)\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
                 "!mjolnir make admin <room alias> [user alias/ID]                    - Make the specified user or the bot itself admin of the room\n" +

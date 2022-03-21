@@ -30,6 +30,18 @@ import {
 import { Mjolnir } from "./Mjolnir";
 import config from "./config";
 import { ClientRequest, IncomingMessage } from "http";
+import { default as parseDuration } from "parse-duration";
+
+// Define a few aliases to simplify parsing durations.
+
+parseDuration["days"] = parseDuration["day"];
+parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
+parseDuration["months"] = parseDuration["month"];
+parseDuration["years"] = parseDuration["year"];
+
+// ... and reexport it
+export { parseDuration };
+
 
 export function htmlEscape(input: string): string {
     return input.replace(/["&<>]/g, (char: string) => ({

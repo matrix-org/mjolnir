@@ -10,9 +10,25 @@ import * as crypto from "crypto";
  * @param targetEventThunk A function that produces an event ID when called. This event ID is then used to listen for a reply.
  * @returns The replying event.
  */
- export async function getFirstReply(client: MatrixClient, targetRoom: string, targetEventThunk: () => Promise<string>): Promise<any> {
-    let reactionEvents = [];
-    const addEvent = function (roomId, event) {
+export async function getFirstReply(client: MatrixClient, targetRoom: string, targetEventThunk: () => Promise<string>): Promise<any> {
+    return getNthReply(client, targetRoom, 1, targetEventThunk);
+}
+
+/**
+ * Returns a promise that resolves to the nth event replying to the event produced by targetEventThunk.
+ * @param client A MatrixClient that is already in the targetRoom. We will use it to listen for the event produced by targetEventThunk.
+ * This function assumes that the start() has already been called on the client.
+ * @param targetRoom The room to listen for the reply in.
+ * @param n The number of events to wait for. Must be >= 1.
+ * @param targetEventThunk A function that produces an event ID when called. This event ID is then used to listen for a reply.
+ * @returns The replying event.
+ */
+export async function getNthReply(client: MatrixClient, targetRoom: string, n: number, targetEventThunk: () => Promise<string>): Promise<any> {
+    if (Number.isNaN(n) || !Number.isInteger(n) || n <= 0) {
+        throw new TypeError(`Invalid number of events ${n}`);
+    }
+    let reactionEvents: any[] = [];
+    const addEvent = function (roomId: string, event: any) {
         if (roomId !== targetRoom) return;
         if (event.type !== 'm.room.message') return;
         reactionEvents.push(event);
@@ -27,16 +43,22 @@ import * as crypto from "crypto";
         for (let event of reactionEvents) {
             const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
             if (in_reply_to?.event_id === targetEventId) {
-                return event;
+                n -= 1;
+                if (n === 0) {
+                    return event;
+                }
             }
         }
         return await new Promise(resolve => {
-            targetCb = function(roomId, event) {
+            targetCb = function(roomId: string, event: any) {
                 if (roomId !== targetRoom) return;
                 if (event.type !== 'm.room.message') return;
                 const in_reply_to = event.content['m.relates_to']?.['m.in_reply_to'];
                 if (in_reply_to?.event_id === targetEventId) {
-                    resolve(event)
+                    n -= 1;
+                    if (n === 0) {
+                        resolve(event);
+                    }
                 }
             }
             client.on('room.event', targetCb);
@@ -50,7 +72,6 @@ import * as crypto from "crypto";
 }
 
 
-
 /**
  * Returns a promise that resolves to an event that is reacting to the event produced by targetEventThunk.
  * @param client A MatrixClient that is already in the targetRoom that can be started to listen for the event produced by targetEventThunk.
@@ -61,8 +82,8 @@ import * as crypto from "crypto";
  * @returns The reaction event.
  */
 export async function getFirstReaction(client: MatrixClient, targetRoom: string, reactionKey: string, targetEventThunk: () => Promise<string>): Promise<any> {
-    let reactionEvents = [];
-    const addEvent = function (roomId, event) {
+    let reactionEvents: any[] = [];
+    const addEvent = function (roomId: string, event: any) {
         if (roomId !== targetRoom) return;
         if (event.type !== 'm.reaction') return;
         reactionEvents.push(event);
@@ -78,7 +99,7 @@ export async function getFirstReaction(client: MatrixClient, targetRoom: string,
             }
         }
         return await new Promise((resolve, reject) => {
-            targetCb = function(roomId, event) {
+            targetCb = function(roomId: string, event: any) {
                 if (roomId !== targetRoom) return;
                 if (event.type !== 'm.reaction') return;
                 const relates_to = event.content['m.relates_to'];

@@ -20,6 +20,7 @@
     },
     "include": [
         "./src/**/*",
-        "./test/integration/manualLaunchScript.ts"
+        "./test/integration/manualLaunchScript.ts",
+        "./test/integration/roomMembersTest.ts"
     ]
 }
