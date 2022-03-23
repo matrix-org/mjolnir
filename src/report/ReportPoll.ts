@@ -39,7 +39,7 @@ export class ReportPoll {
         }
 
         if (response.next_token !== undefined) {
-            this._from = response.event_reports;
+            this._from = response.next_token;
             await this._save(response.next_token);
         }
     }
