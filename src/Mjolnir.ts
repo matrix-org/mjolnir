@@ -43,6 +43,7 @@ import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
+import { ReportPoll } from "./report/ReportPoll";
 import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
@@ -67,6 +68,7 @@ const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
+const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 export class Mjolnir {
     private displayName: string;
@@ -97,7 +99,7 @@ export class Mjolnir {
     private webapis: WebAPIs;
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
     public taskQueue: ThrottlingQueue;
-
+    private reportPoll: ReportPoll;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -258,11 +260,12 @@ export class Mjolnir {
         const reportManager = new ReportManager(this);
         reportManager.on("report.new", this.handleReport);
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
-
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
-
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
+        this.reportPoll = new ReportPoll(client, reportManager, async (_from: number) => {
+            await client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: _from });
+        });
     }
 
     public get lists(): BanList[] {
@@ -301,6 +304,9 @@ export class Mjolnir {
             // Start the web server.
             console.log("Starting web server");
             await this.webapis.start();
+
+            const reportPollSetting: { from: number } | null = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
+            this.reportPoll.start(reportPollSetting?.from ?? 0)
 
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
