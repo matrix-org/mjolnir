@@ -68,7 +68,7 @@ export class ReportPoll {
                 60_000 // a minute in milliseconds
             );
         } else {
-            throw new InvalidStateError();
+            throw new InvalidStateError("cannot start an already started poll");
         }
     }
     public stop() {
@@ -76,7 +76,7 @@ export class ReportPoll {
             clearInterval(this.interval);
             this.interval = null;
         } else {
-            throw new InvalidStateError();
+            throw new InvalidStateError("cannot stop a poll that hasn't started");
         }
     }
 }
