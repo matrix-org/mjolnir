@@ -68,7 +68,7 @@ const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
-const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
+export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 export class Mjolnir {
     private displayName: string;
@@ -260,6 +260,7 @@ export class Mjolnir {
         const reportManager = new ReportManager(this);
         reportManager.on("report.new", this.handleReport);
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
+        this.reportPoll = new ReportPoll(this, reportManager);
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);

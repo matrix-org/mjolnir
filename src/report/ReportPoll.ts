@@ -14,14 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixClient } from "matrix-bot-sdk";
+import { Mjolnir, REPORT_POLL_EVENT_TYPE } from "../Mjolnir";
 import { ReportManager } from './ReportManager';
+import { LogLevel } from "matrix-bot-sdk";
 
 class InvalidStateError extends Error {}
 
 export class ReportPoll {
     private from = 0;
-    private interval: ReturnType<typeof setInterval> | null = null;
+    private timeout: ReturnType<typeof setTimeout> | null = null;
 
     /*
      * A class to poll synapse's report endpoint, so we can act on new reports
@@ -31,50 +32,71 @@ export class ReportPoll {
      * @param save An abstract function to persist where we got to in report reading
      */
     constructor(
-        private client: MatrixClient,
+        private mjolnir: Mjolnir,
         private manager: ReportManager,
-        private save: (a: number) => Promise<any>
     ) { }
 
-    private async getAbuseReports(): Promise<any> {
-        const response = await this.client.doRequest(
-            "GET",
-            "/_synapse/admin/v1/event_reports",
-            { from: this.from.toString() }
+    private schedulePoll() {
+        const self = this;
+        this.timeout = setTimeout(
+            function() { self.getAbuseReports() },
+            60_000 // a minute in milliseconds
         );
+    }
 
+    private async getAbuseReports(): Promise<any> {
+        let response_: {
+            event_reports: { room_id: string, event_id: string, sender: string, reason: string }[],
+            next_token: number | undefined
+        } | undefined = undefined;
+        try {
+            response_ = await this.mjolnir.client.doRequest(
+                "GET",
+                "/_synapse/admin/v1/event_reports",
+                { from: this.from.toString() }
+            );
+        } catch (ex) {
+            await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
+            this.schedulePoll();
+        }
+
+        const response = response_!;
         for (let report of response.event_reports) {
-            const event = await this.client.getEvent(report.room_id, report.event_id);
+            let event: any; // `any` because `getEvent` and `handleServerAbuseReport` also use `any`
+            try {
+                event = await this.mjolnir.client.getEvent(report.room_id, report.event_id);
+            } catch (ex) {
+                continue;
+            }
+
             await this.manager.handleServerAbuseReport({
                 roomId: report.room_id,
                 reporterId: report.sender,
                 event: event,
-                reason: report.event,
+                reason: report.reason,
             });
         }
 
         if (response.next_token !== undefined) {
             this.from = response.next_token;
-            await this.save(response.next_token);
+            await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
         }
+
+        this.schedulePoll();
     }
 
     public start(startFrom: number) {
-        if (this.interval === null) {
+        if (this.timeout === null) {
             this.from = startFrom;
-            const self = this;
-            this.interval = setInterval(
-                function() { self.getAbuseReports() },
-                60_000 // a minute in milliseconds
-            );
+            this.schedulePoll();
         } else {
             throw new InvalidStateError("cannot start an already started poll");
         }
     }
     public stop() {
-        if (this.interval !== null) {
-            clearInterval(this.interval);
-            this.interval = null;
+        if (this.timeout !== null) {
+            clearTimeout(this.timeout);
+            this.timeout = null;
         } else {
             throw new InvalidStateError("cannot stop a poll that hasn't started");
         }
