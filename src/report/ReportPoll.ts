@@ -20,22 +20,21 @@ import { ReportManager } from './ReportManager';
 class InvalidStateError extends Error {}
 
 export class ReportPoll {
-    private client: MatrixClient;
-    private manager: ReportManager;
-    private save: (a: number) => Promise<any>;
     private from = 0;
-
     private interval: ReturnType<typeof setInterval> | null = null;
 
+    /*
+     * A class to poll synapse's report endpoint, so we can act on new reports
+     *
+     * @param client The Matrix client underpinning the running Mjolnir
+     * @param manager The report manager in to which we feed new reports
+     * @param save An abstract function to persist where we got to in report reading
+     */
     constructor(
-        client: MatrixClient,
-        manager: ReportManager,
-        save: (a: number) => Promise<any>
-    ) {
-        this.client = client;
-        this.manager = manager;
-        this.save = save;
-    }
+        private client: MatrixClient,
+        private manager: ReportManager,
+        private save: (a: number) => Promise<any>
+    ) { }
 
     private async getAbuseReports(): Promise<any> {
         const response = await this.client.doRequest(
@@ -66,7 +65,7 @@ export class ReportPoll {
             const self = this;
             this.interval = setInterval(
                 function() { self.getAbuseReports() },
-                60_000
+                60_000 // a minute in milliseconds
             );
         } else {
             throw new InvalidStateError();
