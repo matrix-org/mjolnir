@@ -1,0 +1,35 @@
+# Copied from https://github.com/matrix-org/matrix-bifrost/blob/develop/.github/workflows/docker-hub-release.yml
+
+name: "Docker Hub - Release"
+
+on:
+  release:
+    types: [published]
+
+env:
+  DOCKER_NAMESPACE: matrixdotorg
+  PLATFORMS: linux/amd64
+
+jobs:
+  docker-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v2
+      - name: Get release tag
+        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: true
+          tags: |
+            ${{ env.DOCKER_NAMESPACE }}/mjolnir:${{ env.RELEASE_VERSION }}
