@@ -37,9 +37,8 @@ export class ReportPoll {
     ) { }
 
     private schedulePoll() {
-        const self = this;
         this.timeout = setTimeout(
-            function() { self.getAbuseReports() },
+            this.getAbuseReports.bind(this),
             60_000 // a minute in milliseconds
         );
     }
