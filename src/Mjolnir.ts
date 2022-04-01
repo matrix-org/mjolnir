@@ -306,8 +306,15 @@ export class Mjolnir {
             console.log("Starting web server");
             await this.webapis.start();
 
-            const reportPollSetting: { from: number } | null = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
-            this.reportPoll.start(reportPollSetting?.from ?? 0)
+            let reportPollSetting: { from: number } = { from: 0 };
+            try {
+                reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
+            } catch (err) {
+                if (err.body?.errcode !== "M_NOT_FOUND") {
+                    throw err;
+                } else { /* setting probably doesn't exist yet */ }
+            }
+            this.reportPoll.start(reportPollSetting.from);
 
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
