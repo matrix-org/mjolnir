@@ -372,6 +372,7 @@ export class Mjolnir {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
         this.webapis.stop();
+        this.reportPoll.stop();
     }
 
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
