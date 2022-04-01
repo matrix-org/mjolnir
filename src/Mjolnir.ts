@@ -320,11 +320,12 @@ export class Mjolnir {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
+                this.stop();
                 await this.logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
+                throw err;
             } catch (e) {
-                // If we failed to handle the error, just crash
-                console.error(e);
-                process.exit(1);
+                LogService.error("Mjolnir", `Failed to report startup error to the management room: ${e}`);
+                throw err;
             }
         }
     }
