@@ -61,9 +61,12 @@ export class ReportPoll {
 
         const response = response_!;
         for (let report of response.event_reports) {
-            let event: any; // `any` because `getEvent` and `handleServerAbuseReport` also use `any`
+            let event: any; // `any` because `handleServerAbuseReport` uses `any`
             try {
-                event = await this.mjolnir.client.getEvent(report.room_id, report.event_id);
+                event = (await this.mjolnir.client.doRequest(
+                    "GET",
+                    `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`
+                )).event;
             } catch (ex) {
                 continue;
             }
