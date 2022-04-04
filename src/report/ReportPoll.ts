@@ -81,7 +81,11 @@ export class ReportPoll {
 
         if (response.next_token !== undefined) {
             this.from = response.next_token;
-            await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
+            try {
+               await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
+            } catch (ex) {
+                await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
+            }
         }
 
         this.schedulePoll();
