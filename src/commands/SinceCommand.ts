@@ -26,6 +26,7 @@ const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
 enum Action {
     Kick = "kick",
     Ban = "ban",
+    Mute = "mute",
     Show = "show"
 }
 
@@ -244,7 +245,26 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                             results.bad += 1;
                         }
                     }
-                    const text_ = `Attempted to ban ${joins.length} users from room ${targetRoomId}, ${results.good} kicked, ${results.bad} failures`;
+                    const text_ = `Attempted to ban ${joins.length} users from room ${targetRoomId}, ${results.good} banned, ${results.bad} failures`;
+                    return {
+                        html: text_,
+                        text: text_
+                    }
+                }
+                case Action.Mute: {
+                    const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+
+                    let results = { good: 0, bad: 0};
+                    for (let join of joins) {
+                        try {
+                            await mjolnir.client.setUserPowerLevel(join.userId, targetRoomId, -1);
+                            results.good += 1;
+                        } catch (ex) {
+                            LogService.warn("SinceCommand", "Error while attempting to mut user", ex);
+                            results.bad += 1;
+                        }
+                    }
+                    const text_ = `Attempted to mute ${joins.length} users from room ${targetRoomId}, ${results.good} banned, ${results.bad} failures`;
                     return {
                         html: text_,
                         text: text_
