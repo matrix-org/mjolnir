@@ -19,6 +19,7 @@ import { LogLevel, LogService, RichReply } from "matrix-bot-sdk";
 import { htmlEscape, parseDuration } from "../utils";
 import { ParseEntry } from "shell-quote";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
+import { Join } from "../RoomMembers";
 
 const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
 const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
@@ -27,10 +28,14 @@ enum Action {
     Kick = "kick",
     Ban = "ban",
     Mute = "mute",
+    Unmute = "unmute",
     Show = "show"
 }
 
 type Result<T> = {ok: T} | {error: string};
+
+type userId = string;
+type Summary = { succeeded: userId[], failed: userId[] };
 
 /**
  * Attempt to parse a `ParseEntry`, as provided by the shell-style parser, using a parsing function.
@@ -103,6 +108,15 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
         // Details have already been printed.
         mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '✅');
     }
+}
+
+function formatResult(action: string, targetRoomId: string, joins: Join[], summary: Summary): {html: string, text: string} {
+    const html = `Attempted to ${action} ${joins.length} users from room ${targetRoomId}.<br/>Succeeded ${summary.succeeded.length}: <ul>${summary.succeeded.map(x => `<li>${htmlEscape(x)}</li>`).join("\n")}</ul>.<br/> Failed ${summary.failed.length}: <ul>${summary.succeeded.map(x => `<li>${htmlEscape(x)}</li>`).join("\n")}</ul>`;
+    const text = `Attempted to ${action} ${joins.length} users from room ${targetRoomId}.\nSucceeded ${summary.succeeded.length}: ${summary.succeeded.map(x => `*${htmlEscape(x)}`).join("\n")}\n Failed ${summary.failed.length}:\n${summary.succeeded.map(x => ` * ${htmlEscape(x)}`).join("\n")}`;
+    return {
+        html,
+        text
+    };
 }
 
 // Implementation of `execSinceCommand`, counts on caller to print errors.
@@ -210,65 +224,86 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
 
     for (let targetRoomId of rooms) {
         let {html, text} = await (async () => {
+            let results: Summary = { succeeded: [], failed: []};
+            const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+
             switch (action) {
                 case Action.Show: {
-                    return makeJoinStatus(mjolnir, targetRoomId, maxEntries, minDate, maxAgeMS);
+                    return makeJoinStatus(mjolnir, targetRoomId, maxEntries, minDate, maxAgeMS, joins);
                 }
                 case Action.Kick: {
-                    const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
-                    let results = { good: 0, bad: 0};
                     for (let join of joins) {
                         try {
                             await mjolnir.client.kickUser(join.userId, targetRoomId, reason);
-                            results.good += 1;
+                            results.succeeded.push(join.userId);
                         } catch (ex) {
                             LogService.warn("SinceCommand", "Error while attempting to kick user", ex);
-                            results.bad += 1;
+                            results.failed.push(join.userId);
                         }
                     }
-                    const text_ = `Attempted to kick ${joins.length} users from room ${targetRoomId}, ${results.good} kicked, ${results.bad} failures`;
-                    return {
-                        html: text_,
-                        text: text_,
-                    }
+                    // Store list of affected users, in case we need it later.
+                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.kick", "", results);
+
+                    return formatResult("kick", targetRoomId, joins, results);
                 }
                 case Action.Ban: {
-                    const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
-
-                    let results = { good: 0, bad: 0};
                     for (let join of joins) {
                         try {
                             await mjolnir.client.banUser(join.userId, targetRoomId, reason);
-                            results.good += 1;
+                            results.succeeded.push(join.userId);
                         } catch (ex) {
                             LogService.warn("SinceCommand", "Error while attempting to ban user", ex);
-                            results.bad += 1;
+                            results.failed.push(join.userId);
                         }
                     }
-                    const text_ = `Attempted to ban ${joins.length} users from room ${targetRoomId}, ${results.good} banned, ${results.bad} failures`;
-                    return {
-                        html: text_,
-                        text: text_
-                    }
+
+                    // Store list of affected users, in case we need it later.
+                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.ban", "", results);
+                    return formatResult("ban", targetRoomId, joins, results);
                 }
                 case Action.Mute: {
-                    const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+                    const powerLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>};
 
-                    let results = { good: 0, bad: 0};
                     for (let join of joins) {
-                        try {
-                            await mjolnir.client.setUserPowerLevel(join.userId, targetRoomId, -1);
-                            results.good += 1;
-                        } catch (ex) {
-                            LogService.warn("SinceCommand", "Error while attempting to mut user", ex);
-                            results.bad += 1;
+                        powerLevels.users[join.userId] = -1;
+                    }
+                    try {
+                        await mjolnir.client.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
+                        for (let join of joins) {
+                            results.succeeded.push(join.userId);
+                        }
+                    } catch (ex) {
+                        LogService.warn("SinceCommand", "Error while attempting to mute users", ex);
+                        for (let join of joins) {
+                            results.failed.push(join.userId);
                         }
                     }
-                    const text_ = `Attempted to mute ${joins.length} users from room ${targetRoomId}, ${results.good} banned, ${results.bad} failures`;
-                    return {
-                        html: text_,
-                        text: text_
+
+                    // Store list of affected users, in case we need it later.
+                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.mute", "", results);
+                    return formatResult("mute", targetRoomId, joins, results);
+                }
+                case Action.Unmute: {
+                    const powerLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>, users_default?: number};
+                    for (let join of joins) {
+                        // Restore default powerlevel.
+                        delete powerLevels.users[join.userId];
                     }
+                    try {
+                        await mjolnir.client.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
+                        for (let join of joins) {
+                            results.succeeded.push(join.userId);
+                        }
+                    } catch (ex) {
+                        LogService.warn("SinceCommand", "Error while attempting to unmute users", ex);
+                        for (let join of joins) {
+                            results.failed.push(join.userId);
+                        }
+                    }
+
+                    // Store list of affected users, in case we need it later.
+                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.unmute", "", results);
+                    return formatResult("unmute", targetRoomId, joins, results);
                 }
             }
         })();
@@ -282,7 +317,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     return {ok: undefined};
 }
 
-function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: number, minDate: Date, maxAgeMS: number): {html: string, text: string} {
+function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: number, minDate: Date, maxAgeMS: number, joins: Join[]): {html: string, text: string} {
     const HUMANIZER_OPTIONS = {
         // Reduce "1 day" => "1day" to simplify working with CSV.
         spacer: "",
@@ -290,7 +325,6 @@ function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: numb
         largest: 1,
     };
     const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS);
-    const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
     const htmlFragments = [];
     const textFragments = [];
     for (let join of joins) {

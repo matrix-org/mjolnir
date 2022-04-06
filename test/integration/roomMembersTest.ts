@@ -403,7 +403,7 @@ describe("Test: Testing RoomMemberManager", function() {
         // Create and protect rooms.
         // - room 0 remains unprotected, as witness;
         // - room 1 is protected but won't be targeted directly, also as witness.
-        const NUMBER_OF_ROOMS = 14;
+        const NUMBER_OF_ROOMS = 18;
         const roomIds: string[] = [];
         const roomAliases: string[] = [];
         const mjolnirUserId = await this.mjolnir.client.getUserId();
@@ -460,7 +460,8 @@ describe("Test: Testing RoomMemberManager", function() {
 
         enum Method {
             kick,
-            ban
+            ban,
+            mute,
         }
         const WITNESS_UNPROTECTED_ROOM_ID = roomIds[0];
         const WITNESS_ROOM_ID = roomIds[1];
@@ -486,6 +487,14 @@ describe("Test: Testing RoomMemberManager", function() {
                 n: 1,
                 method: Method.ban,
             },
+            // Mute bad users in one room, using duration syntax, no reason.
+            {
+                name: "mute with duration",
+                command: (roomId: string) => `!mjolnir since ${Date.now() - cutDate.getTime()}ms mute 100 ${roomId}`,
+                shouldAffectWitnessRoom: false,
+                n: 1,
+                method: Method.mute,
+            },
             // Kick bad users in one room, using date syntax, no reason.
             {
                 name: "kick with date",
@@ -501,6 +510,14 @@ describe("Test: Testing RoomMemberManager", function() {
                 shouldAffectWitnessRoom: false,
                 n: 1,
                 method: Method.ban,
+            },
+            // Mute bad users in one room, using date syntax, no reason.
+            {
+                name: "mute with date",
+                command: (roomId: string) => `!mjolnir since "${cutDate}" mute 100 ${roomId}`,
+                shouldAffectWitnessRoom: false,
+                n: 1,
+                method: Method.mute,
             },
 
             // Kick bad users in one room, using duration syntax, with reason.
@@ -519,6 +536,15 @@ describe("Test: Testing RoomMemberManager", function() {
                 n: 1,
                 method: Method.ban,
             },
+            // Mute bad users in one room, using duration syntax, with reason.
+            {
+                name: "mute with duration and reason",
+                command: (roomId: string) => `!mjolnir since ${Date.now() - cutDate.getTime()}ms mute 100 ${roomId} bad, bad user`,
+                shouldAffectWitnessRoom: false,
+                n: 1,
+                method: Method.mute,
+            },
+
             // Kick bad users in one room, using date syntax, with reason.
             {
                 name: "kick with date and reason",
@@ -535,6 +561,14 @@ describe("Test: Testing RoomMemberManager", function() {
                 n: 1,
                 method: Method.ban,
             },
+            // Mute bad users in one room, using date syntax, with reason.
+            {
+                name: "mute with date and reason",
+                command: (roomId: string) => `!mjolnir since "${cutDate}" mute 100 ${roomId} bad, bad user`,
+                shouldAffectWitnessRoom: false,
+                n: 1,
+                method: Method.mute,
+            },
 
             // Kick bad users in one room, using duration syntax, without reason, using alias.
             {
@@ -544,7 +578,6 @@ describe("Test: Testing RoomMemberManager", function() {
                 n: 1,
                 method: Method.kick,
             },
-
             // Kick bad users in one room, using duration syntax, with reason, using alias.
             {
                 name: "kick with duration, reason and alias",
@@ -569,12 +602,15 @@ describe("Test: Testing RoomMemberManager", function() {
             const roomAlias = roomAliases[i + 2];
             const joined = this.mjolnir.roomJoins.getUsersInRoom(roomId, start, 100);
             assert.ok(joined.length >= 2 * SAMPLE_SIZE, `We should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`);
+
+            // Run experiment.
             await getNthReply(this.mjolnir.client, this.mjolnir.managementRoomId, experiment.n, async () => {
                 const command = experiment.command(roomId, roomAlias);
                 let result = await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
                 return result;
             });
 
+            // Check post-conditions.
             const usersInRoom = await this.mjolnir.client.getJoinedRoomMembers(roomId);
             const usersInUnprotectedWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_UNPROTECTED_ROOM_ID);
             const usersInWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_ROOM_ID);
@@ -583,18 +619,29 @@ describe("Test: Testing RoomMemberManager", function() {
                 assert.ok(usersInWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in witness room`);
                 assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected witness room`);
             }
-            for (let userId of badUserIds) {
-                assert.ok(!usersInRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should NOT be in affected room`);
-                assert.equal(usersInWitnessRoom.includes(userId), !experiment.shouldAffectWitnessRoom, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectWitnessRoom ? "NOT" : "still"} be in witness room`);
-                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected witness room`);
-                const leaveEvent = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
-                switch (experiment.method) {
-                    case Method.kick:
-                        assert.equal(leaveEvent.membership, "leave");
-                        break;
-                    case Method.ban:
-                        assert.equal(leaveEvent.membership, "ban");
-                        break;
+            if (experiment.method === Method.mute) {
+                for (let userId of goodUserIds) {
+                    let canSpeak = await this.mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
+                    assert.ok(canSpeak, `After a ${experiment.name}, good user ${userId} should still be allowed to speak in the room`);
+                }
+                for (let userId of badUserIds) {
+                    let canSpeak = await this.mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
+                    assert.ok(!canSpeak, `After a ${experiment.name}, bad user ${userId} should NOT be allowed to speak in the room`);
+                }
+            } else {
+                for (let userId of badUserIds) {
+                    assert.ok(!usersInRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should NOT be in affected room`);
+                    assert.equal(usersInWitnessRoom.includes(userId), !experiment.shouldAffectWitnessRoom, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectWitnessRoom ? "NOT" : "still"} be in witness room`);
+                    assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected witness room`);
+                    const leaveEvent = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
+                    switch (experiment.method) {
+                        case Method.kick:
+                            assert.equal(leaveEvent.membership, "leave");
+                            break;
+                        case Method.ban:
+                            assert.equal(leaveEvent.membership, "ban");
+                            break;
+                    }
                 }
             }
         }
