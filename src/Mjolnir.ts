@@ -47,6 +47,7 @@ import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
+import { RoomActivityTracker } from "./queues/RoomActivityTracker";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -83,10 +84,17 @@ export class Mjolnir {
      */
     private eventRedactionQueue = new EventRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
+    /**
+     * Every room that we are joined to except the management room.
+     */
     private protectedJoinedRoomIds: string[] = [];
+    /**
+     * These are rooms that were explicitly said to be protected either in the config, or by what is present in the account data for `org.matrix.mjolnir.protected_rooms`.
+     */
     private explicitlyProtectedRoomIds: string[] = [];
-    private knownUnprotectedRooms: string[] = [];
+    private unprotectedWatchedListRooms: string[] = [];
     private webapis: WebAPIs;
+    private roomActivityTracker: RoomActivityTracker;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -167,6 +175,10 @@ export class Mjolnir {
     constructor(
         public readonly client: MatrixClient,
         public readonly managementRoomId: string,
+        /*
+         * All the rooms that Mjolnir is protecting and their permalinks.
+         * If `` is specified, then this will be all joined rooms with watched banlists we can't protect removed.
+         */
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
         // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
@@ -235,6 +247,9 @@ export class Mjolnir {
             }
         });
 
+        // Setup room activity watcher
+        this.roomActivityTracker = new RoomActivityTracker(client);
+
         // Setup Web APIs
         console.log("Creating Web APIs");
         const reportManager = new ReportManager(this);
@@ -293,6 +308,7 @@ export class Mjolnir {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
                         this.explicitlyProtectedRoomIds.push(roomId);
+                        this.roomActivityTracker.addProtectedRoom(roomId);
                     }
                 }
             } catch (e) {
@@ -372,9 +388,10 @@ export class Mjolnir {
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
         this.roomJoins.addRoom(roomId);
+        this.roomActivityTracker.addProtectedRoom(roomId);
 
-        const unprotectedIdx = this.knownUnprotectedRooms.indexOf(roomId);
-        if (unprotectedIdx >= 0) this.knownUnprotectedRooms.splice(unprotectedIdx, 1);
+        const unprotectedIdx = this.unprotectedWatchedListRooms.indexOf(roomId);
+        if (unprotectedIdx >= 0) this.unprotectedWatchedListRooms.splice(unprotectedIdx, 1);
         this.explicitlyProtectedRoomIds.push(roomId);
 
         let additionalProtectedRooms: { rooms?: string[] } | null = null;
@@ -392,6 +409,7 @@ export class Mjolnir {
     public async removeProtectedRoom(roomId: string) {
         delete this.protectedRooms[roomId];
         this.roomJoins.removeRoom(roomId);
+        this.roomActivityTracker.removeProtectedRoom(roomId);
 
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
@@ -412,15 +430,19 @@ export class Mjolnir {
         const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== this.managementRoomId);
         const oldRoomIdsSet = new Set(this.protectedJoinedRoomIds);
         const joinedRoomIdsSet = new Set(joinedRoomIds);
+        // Remove every room id that we have joined from `this.protectedRooms`.
         for (const roomId of this.protectedJoinedRoomIds) {
             delete this.protectedRooms[roomId];
+            this.roomActivityTracker.removeProtectedRoom(roomId);
             if (!joinedRoomIdsSet.has(roomId)) {
                 this.roomJoins.removeRoom(roomId);
             }
         }
         this.protectedJoinedRoomIds = joinedRoomIds;
+        // Add all joined rooms back to the permalink object
         for (const roomId of joinedRoomIds) {
             this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
+            this.roomActivityTracker.addProtectedRoom(roomId);
             if (!oldRoomIdsSet.has(roomId)) {
                 this.roomJoins.addRoom(roomId);
             }
@@ -662,7 +684,7 @@ export class Mjolnir {
         const createEvent = new CreateEvent(await this.client.getRoomStateEvent(roomId, "m.room.create", ""));
         if (createEvent.creator === await this.client.getUserId()) return; // we created it
 
-        if (!this.knownUnprotectedRooms.includes(roomId)) this.knownUnprotectedRooms.push(roomId);
+        if (!this.unprotectedWatchedListRooms.includes(roomId)) this.unprotectedWatchedListRooms.push(roomId);
         this.applyUnprotectedRooms();
 
         try {
@@ -677,8 +699,9 @@ export class Mjolnir {
     }
 
     private applyUnprotectedRooms() {
-        for (const roomId of this.knownUnprotectedRooms) {
+        for (const roomId of this.unprotectedWatchedListRooms) {
             delete this.protectedRooms[roomId];
+            this.roomActivityTracker.removeProtectedRoom(roomId);
         }
     }
 
@@ -799,6 +822,13 @@ export class Mjolnir {
     }
 
     /**
+     * @returns The protected rooms ordered by the most recently active first.
+     */
+    public protectedRoomsByActivity(): string[] {
+        return this.roomActivityTracker.protectedRoomsByActivity();
+    }
+
+    /**
      * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
      * @param verbose Whether to report any errors to the management room.
      */
@@ -809,9 +839,10 @@ export class Mjolnir {
         }
 
         let hadErrors = false;
-
-        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
-        const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const [aclErrors, banErrors] = await Promise.all([
+            applyServerAcls(this.banLists, this.protectedRoomsByActivity(), this),
+            applyUserBans(this.banLists, this.protectedRoomsByActivity(), this)
+        ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
@@ -839,8 +870,10 @@ export class Mjolnir {
         const changes = await banList.updateList();
 
         let hadErrors = false;
-        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
-        const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const [aclErrors, banErrors] = await Promise.all([
+            applyServerAcls(this.banLists, this.protectedRoomsByActivity(), this),
+            applyUserBans(this.banLists, this.protectedRoomsByActivity(), this)
+        ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");

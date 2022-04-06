@@ -1,11 +1,11 @@
 import { strict as assert } from "assert";
 
 import config from "../../src/config";
-import { newTestUser, noticeListener } from "./clientHelper";
+import { newTestUser } from "./clientHelper";
 import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
 import  BanList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/BanList";
-import { ServerAcl, ServerAclContent } from "../../src/models/ServerAcl";
-import { createBanList, getFirstReaction } from "./commands/commandUtils";
+import { ServerAcl } from "../../src/models/ServerAcl";
+import { getFirstReaction } from "./commands/commandUtils";
 import { getMessagesByUserIn } from "../../src/utils";
 
 /**
@@ -361,5 +361,82 @@ describe('Test: unbaning entities via the BanList.', function () {
         assert.equal(banList.allRules.length, 0);
         const aclAfter = await mjolnir.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         assert.equal(aclAfter.deny.length, 0, 'Should be no servers denied anymore');
+    })
+})
+
+describe.only('Test: should apply bans to the most recently active rooms first', function () {
+    it('Applies bans to the most recently active rooms first', async function () {
+        this.timeout(6000000000)
+        const mjolnir = config.RUNTIME.client!
+        const serverName: string = new UserID(await mjolnir.getUserId()).domain
+        const moderator = await newTestUser({ name: { contains: "moderator" }});
+        moderator.joinRoom(this.mjolnir.managementRoomId);
+        const mjolnirId = await mjolnir.getUserId();
+
+        // Setup some protected rooms so we can check their ACL state later.
+        const protectedRooms: string[] = [];
+        for (let i = 0; i < 10; i++) {
+            const room = await moderator.createRoom({ invite: [mjolnirId]});
+            await mjolnir.joinRoom(room);
+            await moderator.setUserPowerLevel(mjolnirId, room, 100);
+            await this.mjolnir!.addProtectedRoom(room);
+            protectedRooms.push(room);
+        }
+
+        // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
+        await this.mjolnir!.syncLists();
+        await Promise.all(protectedRooms.map(async room => {
+            const roomAcl = await mjolnir.getRoomStateEvent(room, "m.room.server_acl", "").catch(e => e.statusCode === 404 ? {deny: []} : Promise.reject(e));
+            assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
+        }));
+
+        // Flood the watched list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
+        const banListId = await moderator.createRoom({ invite: [mjolnirId] });
+        mjolnir.joinRoom(banListId);
+        this.mjolnir!.watchList(Permalinks.forRoom(banListId));
+
+        await this.mjolnir!.syncLists();
+
+        // shuffle protected rooms https://stackoverflow.com/a/12646864, we do this so we can create activity "randomly" in them.
+        for (let i = protectedRooms.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [protectedRooms[i], protectedRooms[j]] = [protectedRooms[j], protectedRooms[i]];
+        }
+        // create some activity in the same order.
+        for (const roomId of protectedRooms.slice().reverse()) {
+            await mjolnir.sendMessage(roomId, {body: `activity`, msgtype: 'm.text'});
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        // check the rooms are in the expected order
+        for (let i = 0; i < protectedRooms.length; i++) {
+            assert.equal(this.mjolnir!.protectedRoomsByActivity()[i], protectedRooms[i]);
+        }
+
+        const badServer = `evil.com`;
+        // just ban one server
+        const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*").denyServer(badServer);
+        await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule ${badServer}`);
+
+        // Wait until all the ACL events have been applied.
+        await this.mjolnir!.syncLists();
+
+        for (let i = 0; i < protectedRooms.length; i++) {
+            assert.equal(this.mjolnir!.protectedRoomsByActivity()[i], protectedRooms.at(-i - 1));
+        }
+
+        // Check that the most recently active rooms got the ACL update first.
+        let last_event_ts = 0;
+        for (const roomId of protectedRooms) {
+            let roomAclEvent: null|any;
+            // Can't be the best way to get the whole event, but ok.
+            await getMessagesByUserIn(mjolnir, mjolnirId, roomId, 1, events => roomAclEvent = events[0]);
+            const roomAcl = roomAclEvent!.content;
+            if (!acl.matches(roomAcl)) {
+                assert.fail(`Room ${roomId} doesn't have the correct ACL: ${JSON.stringify(roomAcl, null, 2)}`)
+            }
+            assert.equal(roomAclEvent.origin_server_ts > last_event_ts, true, `This room was more recently active so should have the more recent timestamp`);
+            last_event_ts = roomAclEvent.origin_server_ts;
+        }
     })
 })
