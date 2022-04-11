@@ -99,7 +99,7 @@ export class Mjolnir {
     private webapis: WebAPIs;
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
     public taskQueue: ThrottlingQueue;
-    private reportPoll: ReportPoll;
+    private reportPoll: ReportPoll | undefined;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -260,7 +260,9 @@ export class Mjolnir {
         const reportManager = new ReportManager(this);
         reportManager.on("report.new", this.handleReport);
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
-        this.reportPoll = new ReportPoll(this, reportManager);
+        if (config.pollReports) {
+            this.reportPoll = new ReportPoll(this, reportManager);
+        }
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
@@ -306,15 +308,17 @@ export class Mjolnir {
             console.log("Starting web server");
             await this.webapis.start();
 
-            let reportPollSetting: { from: number } = { from: 0 };
-            try {
-                reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
-            } catch (err) {
-                if (err.body?.errcode !== "M_NOT_FOUND") {
-                    throw err;
-                } else { /* setting probably doesn't exist yet */ }
+            if (this.reportPoll !== undefined) {
+                let reportPollSetting: { from: number } = { from: 0 };
+                try {
+                    reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
+                } catch (err) {
+                    if (err.body?.errcode !== "M_NOT_FOUND") {
+                        throw err;
+                    } else { /* setting probably doesn't exist yet */ }
+                }
+                this.reportPoll.start(reportPollSetting.from);
             }
-            this.reportPoll.start(reportPollSetting.from);
 
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
@@ -372,7 +376,7 @@ export class Mjolnir {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
         this.webapis.stop();
-        this.reportPoll.stop();
+        this.reportPoll?.stop();
     }
 
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
