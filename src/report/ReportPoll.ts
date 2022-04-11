@@ -21,6 +21,10 @@ import { LogLevel } from "matrix-bot-sdk";
 class InvalidStateError extends Error {}
 
 export class ReportPoll {
+    /*
+     * https://matrix-org.github.io/synapse/latest/admin_api/event_reports.html
+     * "from" is an opaque token that is returned from the API to paginate reports
+     */
     private from = 0;
     private timeout: ReturnType<typeof setTimeout> | null = null;
 
