@@ -1,0 +1,34 @@
+# Copied from https://github.com/matrix-org/matrix-bifrost/blob/develop/.github/workflows/docker-hub-latest.yml
+
+name: "Docker Hub - Latest"
+
+on:
+  push:
+
+env:
+  DOCKER_NAMESPACE: matrixdotorg
+  PLATFORMS: linux/amd64
+  # Only push if this is main, otherwise we just want to build
+  PUSH: ${{ github.ref == 'refs/heads/main' }}
+
+jobs:
+  docker-latest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v2
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: ${{ env.PLATFORMS }}
+          push: ${{ env.PUSH }}
+          tags: |
+            ${{ env.DOCKER_NAMESPACE }}/mjolnir:latest

@@ -120,7 +120,7 @@ modules:
       # these rooms.
       ban_lists:
          - "!roomid:example.org"
-      message_max_length:
+      #message_max_length:
          # Limit the characters in a message (event body) that a client can send in an event on this server.
          # By default there is no limit (beyond the the limit the spec enforces on event size).
          # Uncomment if you want messages to be limited to 510 characters.
