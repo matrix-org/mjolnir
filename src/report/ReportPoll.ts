@@ -47,7 +47,7 @@ export class ReportPoll {
         );
     }
 
-    private async getAbuseReports(): Promise<any> {
+    private async getAbuseReports() {
         let response_: {
             event_reports: { room_id: string, event_id: string, sender: string, reason: string }[],
             next_token: number | undefined
@@ -61,6 +61,7 @@ export class ReportPoll {
         } catch (ex) {
             await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
             this.schedulePoll();
+            return;
         }
 
         const response = response_!;
