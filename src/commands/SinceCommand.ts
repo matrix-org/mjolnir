@@ -110,9 +110,9 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
     }
 }
 
-function formatResult(action: string, targetRoomId: string, joins: Join[], summary: Summary): {html: string, text: string} {
-    const html = `Attempted to ${action} ${joins.length} users from room ${targetRoomId}.<br/>Succeeded ${summary.succeeded.length}: <ul>${summary.succeeded.map(x => `<li>${htmlEscape(x)}</li>`).join("\n")}</ul>.<br/> Failed ${summary.failed.length}: <ul>${summary.succeeded.map(x => `<li>${htmlEscape(x)}</li>`).join("\n")}</ul>`;
-    const text = `Attempted to ${action} ${joins.length} users from room ${targetRoomId}.\nSucceeded ${summary.succeeded.length}: ${summary.succeeded.map(x => `*${htmlEscape(x)}`).join("\n")}\n Failed ${summary.failed.length}:\n${summary.succeeded.map(x => ` * ${htmlEscape(x)}`).join("\n")}`;
+function formatResult(action: string, targetRoomId: string, usersInRoom: Join[], summary: Summary): {html: string, text: string} {
+    const html = `Attempted to ${action} ${usersInRoom.length} users from room ${targetRoomId}.<br/>Succeeded ${summary.succeeded.length}: <ul>${summary.succeeded.map(x => `<li>${htmlEscape(x)}</li>`).join("\n")}</ul>.<br/> Failed ${summary.failed.length}: <ul>${summary.succeeded.map(x => `<li>${htmlEscape(x)}</li>`).join("\n")}</ul>`;
+    const text = `Attempted to ${action} ${usersInRoom.length} users from room ${targetRoomId}.\nSucceeded ${summary.succeeded.length}: ${summary.succeeded.map(x => `*${htmlEscape(x)}`).join("\n")}\n Failed ${summary.failed.length}:\n${summary.succeeded.map(x => ` * ${htmlEscape(x)}`).join("\n")}`;
     return {
         html,
         text
@@ -225,14 +225,14 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     for (let targetRoomId of rooms) {
         let {html, text} = await (async () => {
             let results: Summary = { succeeded: [], failed: []};
-            const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+            const usersInRoom = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
 
             switch (action) {
                 case Action.Show: {
-                    return makeJoinStatus(mjolnir, targetRoomId, maxEntries, minDate, maxAgeMS, joins);
+                    return makeJoinStatus(mjolnir, targetRoomId, maxEntries, minDate, maxAgeMS, usersInRoom);
                 }
                 case Action.Kick: {
-                    for (let join of joins) {
+                    for (let join of usersInRoom) {
                         try {
                             await mjolnir.client.kickUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
@@ -241,13 +241,11 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                             results.failed.push(join.userId);
                         }
                     }
-                    // Store list of affected users, in case we need it later.
-                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.kick", "", results);
 
-                    return formatResult("kick", targetRoomId, joins, results);
+                    return formatResult("kick", targetRoomId, usersInRoom, results);
                 }
                 case Action.Ban: {
-                    for (let join of joins) {
+                    for (let join of usersInRoom) {
                         try {
                             await mjolnir.client.banUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
@@ -257,53 +255,47 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                         }
                     }
 
-                    // Store list of affected users, in case we need it later.
-                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.ban", "", results);
-                    return formatResult("ban", targetRoomId, joins, results);
+                    return formatResult("ban", targetRoomId, usersInRoom, results);
                 }
                 case Action.Mute: {
                     const powerLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>};
 
-                    for (let join of joins) {
+                    for (let join of usersInRoom) {
                         powerLevels.users[join.userId] = -1;
                     }
                     try {
                         await mjolnir.client.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
-                        for (let join of joins) {
+                        for (let join of usersInRoom) {
                             results.succeeded.push(join.userId);
                         }
                     } catch (ex) {
                         LogService.warn("SinceCommand", "Error while attempting to mute users", ex);
-                        for (let join of joins) {
+                        for (let join of usersInRoom) {
                             results.failed.push(join.userId);
                         }
                     }
 
-                    // Store list of affected users, in case we need it later.
-                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.mute", "", results);
-                    return formatResult("mute", targetRoomId, joins, results);
+                    return formatResult("mute", targetRoomId, usersInRoom, results);
                 }
                 case Action.Unmute: {
                     const powerLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>, users_default?: number};
-                    for (let join of joins) {
+                    for (let join of usersInRoom) {
                         // Restore default powerlevel.
                         delete powerLevels.users[join.userId];
                     }
                     try {
                         await mjolnir.client.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
-                        for (let join of joins) {
+                        for (let join of usersInRoom) {
                             results.succeeded.push(join.userId);
                         }
                     } catch (ex) {
                         LogService.warn("SinceCommand", "Error while attempting to unmute users", ex);
-                        for (let join of joins) {
+                        for (let join of usersInRoom) {
                             results.failed.push(join.userId);
                         }
                     }
 
-                    // Store list of affected users, in case we need it later.
-                    /* no need to await */ mjolnir.client.sendStateEvent(targetRoomId, "org.matrix.mjolnir.since.unmute", "", results);
-                    return formatResult("unmute", targetRoomId, joins, results);
+                    return formatResult("unmute", targetRoomId, usersInRoom, results);
                 }
             }
         })();
@@ -317,7 +309,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     return {ok: undefined};
 }
 
-function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: number, minDate: Date, maxAgeMS: number, joins: Join[]): {html: string, text: string} {
+function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: number, minDate: Date, maxAgeMS: number, usersInRoom: Join[]): {html: string, text: string} {
     const HUMANIZER_OPTIONS = {
         // Reduce "1 day" => "1day" to simplify working with CSV.
         spacer: "",
@@ -327,13 +319,13 @@ function makeJoinStatus(mjolnir: Mjolnir, targetRoomId: string, maxEntries: numb
     const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS);
     const htmlFragments = [];
     const textFragments = [];
-    for (let join of joins) {
+    for (let join of usersInRoom) {
         const durationHumanReadable = HUMANIZER.humanize(Date.now() - join.timestamp, HUMANIZER_OPTIONS);
         htmlFragments.push(`<li>${htmlEscape(join.userId)}: ${durationHumanReadable}</li>`);
         textFragments.push(`- ${join.userId}: ${durationHumanReadable}`);
     }
     return {
-        html: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries): <ul> ${htmlFragments.join()} </ul>`,
-        text: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries):\n${textFragments.join("\n")}`
+        html: `${usersInRoom.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries): <ul> ${htmlFragments.join()} </ul>`,
+        text: `${usersInRoom.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries):\n${textFragments.join("\n")}`
     }
 }
