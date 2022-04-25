@@ -41,13 +41,25 @@ export class ReportPoll {
     ) { }
 
     private schedulePoll() {
-        this.timeout = setTimeout(
-            this.getAbuseReports.bind(this),
-            60_000 // a minute in milliseconds
-        );
+        if (this.timeout === null) {
+            /*
+             * Important that we use `setTimeout` here, not `setInterval`,
+             * because if there's networking problems and `getAbuseReports`
+             * hangs for longer thank the interval, it could cause a stampede
+             * of requests when networking problems resolve
+             */
+            this.timeout = setTimeout(
+                this.getAbuseReports.bind(this),
+                60_000 // a minute in milliseconds
+            );
+        else {
+            throw new InvalidStateError("poll already scheduled");
+        }
     }
 
     private async getAbuseReports() {
+        this.timeout = null;
+
         let response_: {
             event_reports: { room_id: string, event_id: string, sender: string, reason: string }[],
             next_token: number | undefined
