@@ -18,14 +18,15 @@ import { MatrixClient } from "matrix-bot-sdk";
 /**
  * Used to keep track of protected rooms so they are always ordered for activity.
  *
- * We use the same method as Element web for this, the major disadvantage being that we sort each time we access the rooms.
+ * We use the same method as Element web for this, the major disadvantage being that we sort on each access to the room list (sort by most recently active first).
+ * We have tried to mitigate this by caching the sorted list until the activity in rooms changes again.
  * See https://github.com/matrix-org/matrix-react-sdk/blob/8a0398b632dff1a5f6cfd4bf95d78854aeadc60e/src/stores/room-list/algorithms/tag-sorting/RecentAlgorithm.ts
  *
  */
 export class RoomActivityTracker {
     private protectedRoomActivities = new Map<string/*room id*/, number/*last event timestamp*/>();
     /**
-     * A slot to cache the ordered rooms for `protectedRoomsByActivity`.
+     * A slot to cache the rooms for `protectedRoomsByActivity` ordered so the most recently active room is first.
      */
     private activeRoomsCache: null|string[] = null
     constructor(client: MatrixClient) {
@@ -37,7 +38,7 @@ export class RoomActivityTracker {
      * @param roomId The room Mjolnir is now protecting.
      */
     public addProtectedRoom(roomId: string): void {
-        this.protectedRoomActivities.set(roomId, 0);
+        this.protectedRoomActivities.set(roomId, /* epoch */ 0);
     }
 
     /**

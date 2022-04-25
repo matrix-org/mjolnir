@@ -85,7 +85,7 @@ export class Mjolnir {
     private eventRedactionQueue = new EventRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
     /**
-     * Every room that we are joined to except the management room.
+     * Every room that we are joined to except the management room. Used to implement `config.protectAllJoinedRooms`.
      */
     private protectedJoinedRoomIds: string[] = [];
     /**
@@ -177,7 +177,7 @@ export class Mjolnir {
         public readonly managementRoomId: string,
         /*
          * All the rooms that Mjolnir is protecting and their permalinks.
-         * If `` is specified, then this will be all joined rooms with watched banlists we can't protect removed.
+         * If `config.protectAllJoinedRooms` is specified, then `protectedRooms` will be all joined rooms except watched banlists that we can't protect (because they aren't curated by us).
          */
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
