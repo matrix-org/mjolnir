@@ -47,7 +47,7 @@ import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
-import { RoomActivityTracker } from "./queues/RoomActivityTracker";
+import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -94,7 +94,7 @@ export class Mjolnir {
     private explicitlyProtectedRoomIds: string[] = [];
     private unprotectedWatchedListRooms: string[] = [];
     private webapis: WebAPIs;
-    private roomActivityTracker: RoomActivityTracker;
+    private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -248,7 +248,7 @@ export class Mjolnir {
         });
 
         // Setup room activity watcher
-        this.roomActivityTracker = new RoomActivityTracker(client);
+        this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker(client);
 
         // Setup Web APIs
         console.log("Creating Web APIs");
@@ -308,7 +308,7 @@ export class Mjolnir {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
                         this.explicitlyProtectedRoomIds.push(roomId);
-                        this.roomActivityTracker.addProtectedRoom(roomId);
+                        this.protectedRoomActivityTracker.addProtectedRoom(roomId);
                     }
                 }
             } catch (e) {
@@ -388,7 +388,7 @@ export class Mjolnir {
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
         this.roomJoins.addRoom(roomId);
-        this.roomActivityTracker.addProtectedRoom(roomId);
+        this.protectedRoomActivityTracker.addProtectedRoom(roomId);
 
         const unprotectedIdx = this.unprotectedWatchedListRooms.indexOf(roomId);
         if (unprotectedIdx >= 0) this.unprotectedWatchedListRooms.splice(unprotectedIdx, 1);
@@ -409,7 +409,7 @@ export class Mjolnir {
     public async removeProtectedRoom(roomId: string) {
         delete this.protectedRooms[roomId];
         this.roomJoins.removeRoom(roomId);
-        this.roomActivityTracker.removeProtectedRoom(roomId);
+        this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
 
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
@@ -433,7 +433,7 @@ export class Mjolnir {
         // Remove every room id that we have joined from `this.protectedRooms`.
         for (const roomId of this.protectedJoinedRoomIds) {
             delete this.protectedRooms[roomId];
-            this.roomActivityTracker.removeProtectedRoom(roomId);
+            this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
             if (!joinedRoomIdsSet.has(roomId)) {
                 this.roomJoins.removeRoom(roomId);
             }
@@ -442,7 +442,7 @@ export class Mjolnir {
         // Add all joined rooms back to the permalink object
         for (const roomId of joinedRoomIds) {
             this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
-            this.roomActivityTracker.addProtectedRoom(roomId);
+            this.protectedRoomActivityTracker.addProtectedRoom(roomId);
             if (!oldRoomIdsSet.has(roomId)) {
                 this.roomJoins.addRoom(roomId);
             }
@@ -701,7 +701,7 @@ export class Mjolnir {
     private applyUnprotectedRooms() {
         for (const roomId of this.unprotectedWatchedListRooms) {
             delete this.protectedRooms[roomId];
-            this.roomActivityTracker.removeProtectedRoom(roomId);
+            this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
         }
     }
 
@@ -825,7 +825,7 @@ export class Mjolnir {
      * @returns The protected rooms ordered by the most recently active first.
      */
     public protectedRoomsByActivity(): string[] {
-        return this.roomActivityTracker.protectedRoomsByActivity();
+        return this.protectedRoomActivityTracker.protectedRoomsByActivity();
     }
 
     /**

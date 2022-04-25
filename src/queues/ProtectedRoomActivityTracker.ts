@@ -23,7 +23,7 @@ import { MatrixClient } from "matrix-bot-sdk";
  * See https://github.com/matrix-org/matrix-react-sdk/blob/8a0398b632dff1a5f6cfd4bf95d78854aeadc60e/src/stores/room-list/algorithms/tag-sorting/RecentAlgorithm.ts
  *
  */
-export class RoomActivityTracker {
+export class ProtectedRoomActivityTracker {
     private protectedRoomActivities = new Map<string/*room id*/, number/*last event timestamp*/>();
     /**
      * A slot to cache the rooms for `protectedRoomsByActivity` ordered so the most recently active room is first.
