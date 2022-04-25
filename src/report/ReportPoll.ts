@@ -52,8 +52,7 @@ export class ReportPoll {
                 this.getAbuseReports.bind(this),
                 60_000 // a minute in milliseconds
             );
-        }
-        else {
+        } else {
             throw new InvalidStateError("poll already scheduled");
         }
     }
