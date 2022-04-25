@@ -96,6 +96,11 @@ export class ReportPoll {
             });
         }
 
+        /*
+         * This API endpoint returns an opaque `next_token` number that we
+         * need to give back to subsequent requests for pagination, so here we
+         * save it in account data
+         */
         if (response.next_token !== undefined) {
             this.from = response.next_token;
             try {
