@@ -9,7 +9,7 @@ import { NumberProtectionSetting, StringProtectionSetting, StringListProtectionS
 import { newTestUser, noticeListener } from "./clientHelper";
 import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
 
-describe("Test: Protection settings", function() {
+describe("Test: Report polling", function() {
     let client;
     this.beforeEach(async function () {
         client = await newTestUser({ name: { contains: "protection-settings" }});
@@ -18,7 +18,7 @@ describe("Test: Protection settings", function() {
     this.afterEach(async function () {
         await client.stop();
     })
-    it("Mjolnir refuses to save invalid protection setting values", async function() {
+    it("Mjolnir correctly retreives a report from synapse", async function() {
         this.timeout(20000);
 
         const reportPromise = new Promise();
