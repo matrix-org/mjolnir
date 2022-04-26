@@ -632,7 +632,6 @@ describe("Test: Testing RoomMemberManager", function() {
             }),
         ]) {
             experiment.addTo(EXPERIMENTS);
-            EXPERIMENTS.push(experiment);
         }
         for (let i = 0; i < EXPERIMENTS.length; ++i) {
             const experiment = EXPERIMENTS[i];
