@@ -473,7 +473,7 @@ describe("Test: Testing RoomMemberManager", function() {
             // Defaults to `false`.
             readonly shouldAffectWitnessRoom: boolean;
             // The actual command-line.
-            readonly command: (roomId:string, roomAlias: string) => string;
+            readonly command: (roomId: string, roomAlias: string) => string;
             // The number of responses we expect to this command.
             // Defaults to `1`.
             readonly n: number;
@@ -486,7 +486,7 @@ describe("Test: Testing RoomMemberManager", function() {
 
             roomIndex: number | undefined;
 
-            constructor({name, shouldAffectWitnessRoom, command, n, method, sameRoom}: {name: string, command: (roomId:string, roomAlias: string) => string, shouldAffectWitnessRoom?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
+            constructor({name, shouldAffectWitnessRoom, command, n, method, sameRoom}: {name: string, command: (roomId: string, roomAlias: string) => string, shouldAffectWitnessRoom?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
                 this.name = name;
                 this.shouldAffectWitnessRoom = typeof shouldAffectWitnessRoom === "undefined" ? false : shouldAffectWitnessRoom;
                 this.command = command;
@@ -498,7 +498,7 @@ describe("Test: Testing RoomMemberManager", function() {
             addTo(experiments: Experiment[]) {
                 if (this.isSameRoomAsPrevious) {
                     this.roomIndex = experiments[experiments.length - 1].roomIndex;
-                } else if (experiments.length == 0) {
+                } else if (experiments.length === 0) {
                     this.roomIndex = 0;
                 } else {
                     this.roomIndex = experiments[experiments.length - 1].roomIndex! + 1;
@@ -510,7 +510,7 @@ describe("Test: Testing RoomMemberManager", function() {
         for (let experiment of [
             // Kick bad users in one room, using duration syntax, no reason.
             new Experiment({
-                name: "kick with duration",                
+                name: "kick with duration",
                 command: (roomId: string) => `!mjolnir since ${Date.now() - cutDate.getTime()}ms kick 100 ${roomId}`,
                 method: Method.kick,
             }),
