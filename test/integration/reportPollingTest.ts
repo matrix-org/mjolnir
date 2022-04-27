@@ -21,15 +21,15 @@ describe("Test: Report polling", function() {
     it("Mjolnir correctly retreives a report from synapse", async function() {
         this.timeout(20000);
 
-        const reportPromise = new Promise();
-
-        await this.mjolnir.registerProtection(new class implements IProtection {
-            name = "jYvufI";
-            description = "A test protection";
-            settings = { };
-            handleReport = async (mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) => {
-                reportPromise.resolve(null);
-            };
+        const reportPromise = new Promise(async (resolve, reject) => {
+            await this.mjolnir.registerProtection(new class implements IProtection {
+                name = "jYvufI";
+                description = "A test protection";
+                settings = { };
+                handleReport = (mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) => {
+                    resolve(null);
+                };
+            });
         });
         await this.mjolnir.enableProtection("jYvufI");
 
@@ -37,19 +37,7 @@ describe("Test: Report polling", function() {
         await this.mjolnir.client.inviteUser(await client.getUserId(), roomId);
         await client.joinRoom(roomId);
 
-        let reply = new Promise(async (resolve, reject) => {
-            const messageId = await badUser.sendMesosage(roomId, {msgtype: "m.text", body: "uwNd3q"});
-            badUser.on('room.event', (eventRoomId, event) => {
-                if (
-                    eventRoomId === roomId
-                    && event?.event_id === messageId
-                ) {
-                    resolve(messageId);
-                }
-            });
-        });
-        const eventId = await reply;
-
+        const eventId = await badUser.sendMesosage(roomId, {msgtype: "m.text", body: "uwNd3q"});
         await client.doRequest(
             "POST",
             `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(eventId)}`, "", {
