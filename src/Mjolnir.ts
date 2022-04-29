@@ -46,7 +46,6 @@ import { ReportManager } from "./report/ReportManager";
 import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
-import { RoomMemberManager } from "./RoomMembers";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -70,7 +69,6 @@ export class Mjolnir {
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
-    public readonly roomJoins: RoomMemberManager;
     public protections = new Map<string /* protection name */, Protection>();
     /**
      * This is for users who are not listed on a watchlist,
@@ -240,9 +238,6 @@ export class Mjolnir {
         const reportManager = new ReportManager(this);
         reportManager.on("report.new", this.handleReport);
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
-
-        // Setup join/leave listener
-        this.roomJoins = new RoomMemberManager(this.client);
     }
 
     public get lists(): BanList[] {
@@ -371,7 +366,6 @@ export class Mjolnir {
 
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
-        this.roomJoins.addRoom(roomId);
 
         const unprotectedIdx = this.knownUnprotectedRooms.indexOf(roomId);
         if (unprotectedIdx >= 0) this.knownUnprotectedRooms.splice(unprotectedIdx, 1);
@@ -391,7 +385,6 @@ export class Mjolnir {
 
     public async removeProtectedRoom(roomId: string) {
         delete this.protectedRooms[roomId];
-        this.roomJoins.removeRoom(roomId);
 
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
@@ -410,20 +403,12 @@ export class Mjolnir {
         if (!config.protectAllJoinedRooms) return;
 
         const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== this.managementRoomId);
-        const oldRoomIdsSet = new Set(this.protectedJoinedRoomIds);
-        const joinedRoomIdsSet = new Set(joinedRoomIds);
         for (const roomId of this.protectedJoinedRoomIds) {
             delete this.protectedRooms[roomId];
-            if (!joinedRoomIdsSet.has(roomId)) {
-                this.roomJoins.removeRoom(roomId);
-            }
         }
         this.protectedJoinedRoomIds = joinedRoomIds;
         for (const roomId of joinedRoomIds) {
             this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
-            if (!oldRoomIdsSet.has(roomId)) {
-                this.roomJoins.addRoom(roomId);
-            }
         }
 
         this.applyUnprotectedRooms();
