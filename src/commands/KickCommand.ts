@@ -18,7 +18,7 @@ import { Mjolnir } from "../Mjolnir";
 import { LogLevel } from "matrix-bot-sdk";
 import config from "../config";
 
-// !mjolnir kick <user|filter> [room] [reason]
+// !mjolnir kick <user> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const userId = parts[2];
 

@@ -605,12 +605,6 @@ export class Mjolnir {
         return list;
     }
 
-    /**
-     * Get a protection by name.
-     *
-     * @return If there is a protection with this name *and* it is enabled,
-     * return the protection.
-     */
     public getProtection(protectionName: string): Protection | null {
         return this.protections.get(protectionName) ?? null;
     }

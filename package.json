@@ -21,11 +21,9 @@
     "@types/config": "0.0.41",
     "@types/crypto-js": "^4.0.2",
     "@types/html-to-text": "^8.0.1",
-    "@types/humanize-duration": "^3.27.1",
     "@types/jsdom": "^16.2.11",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.7.10",
-    "@types/shell-quote": "1.7.1",
     "crypto-js": "^4.1.1",
     "eslint": "^7.32",
     "expect": "^27.0.6",
@@ -39,13 +37,11 @@
     "config": "^3.3.6",
     "express": "^4.17",
     "html-to-text": "^8.0.0",
-    "humanize-duration": "^3.27.1",
     "humanize-duration-ts": "^2.1.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^0.5.19",
-    "parse-duration": "^1.0.2",
-    "shell-quote": "^1.7.3"
+    "parse-duration": "^1.0.2"
   },
   "engines": {
     "node": ">=14.0.0"
