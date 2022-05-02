@@ -90,7 +90,7 @@ export class JoinWaveShortCircuit extends Protection {
             if (!config.noop) {
                 await mjolnir.client.sendStateEvent(roomId, "m.room.join_rules", "", {"join_rule": "invite"})
             } else {
-                await mjolnir.logMessage(LogLevel.WARN, "BasicFlooding", `Tried to set ${roomId} to invite-only, but Mjolnir is running in no-op mode`, roomId);
+                await mjolnir.logMessage(LogLevel.WARN, "JoinWaveShortCircuit", `Tried to set ${roomId} to invite-only, but Mjolnir is running in no-op mode`, roomId);
             }
         }
     }
