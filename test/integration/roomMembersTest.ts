@@ -258,6 +258,7 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Setup a moderator.
         this.moderator = await newTestUser({ name: { contains: "moderator" } });
+        await this.mjolnir.client.inviteUser(await this.moderator.getUserId(), this.mjolnir.managementRoomId)
         await this.moderator.joinRoom(this.mjolnir.managementRoomId);
 
         // Create a few users and two rooms.
@@ -272,9 +273,11 @@ describe("Test: Testing RoomMemberManager", function() {
         }
         const roomId1 = await this.moderator.createRoom({
             invite: userIds,
+            preset: "public_chat",
         });
         const roomId2 = await this.moderator.createRoom({
             invite: userIds,
+            preset: "public_chat",
         });
         const roomIds = [roomId1, roomId2];
 
