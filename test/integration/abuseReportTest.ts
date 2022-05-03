@@ -23,14 +23,6 @@ describe("Test: Reporting abuse", async () => {
     it('Mjölnir intercepts abuse reports', async function() {
         this.timeout(60000);
 
-        // Listen for any notices that show up.
-        let notices = [];
-        matrixClient().on("room.event", (roomId, event) => {
-            if (roomId = this.mjolnir.managementRoomId) {
-                notices.push(event);
-            }
-        });
-
         // Create a few users and a room.
         let goodUser = await newTestUser({ name: { contains: "reporting-abuse-good-user" }});
         let badUser = await newTestUser({ name: { contains: "reporting-abuse-bad-user" }});
@@ -58,85 +50,73 @@ describe("Test: Reporting abuse", async () => {
         let badEvent2Comment = `COMMENT: ${Math.random()}`;
 
         console.log("Test: Reporting abuse - send reports");
-        let reportsToFind = []
-
-        // Time to report, first without a comment, then with one.
-        try {
-            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`);
-            reportsToFind.push({
+        let reportsToFind = [
+            {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId,
                 text: badText,
                 comment: null,
-            });
-        } catch (e) {
-            console.error("Could not send first report", e.body || e);
-            throw e;
-        }
-
-        try {
-            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId2)}`, "", {
-                reason: badEvent2Comment
-            });
-            reportsToFind.push({
+            },
+            {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId2,
                 text: badText2,
                 comment: badEvent2Comment,
-            });
-        } catch (e) {
-            console.error("Could not send second report", e.body || e);
-            throw e;
-        }
-
-        try {
-            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId3)}`, "");
-            reportsToFind.push({
+            },
+            {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId3,
                 text: badText3,
                 comment: null,
-            });
-        } catch (e) {
-            console.error("Could not send third report", e.body || e);
-            throw e;
-        }
-
-        try {
-            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId4)}`, "");
-            reportsToFind.push({
+            },
+            {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId4,
                 text: null,
                 textPrefix: badText4.substring(0, 256),
                 comment: null,
-            });
-        } catch (e) {
-            console.error("Could not send fourth report", e.body || e);
-            throw e;
-        }
-
-        try {
-            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId5)}`, "");
-            reportsToFind.push({
+            },
+            {
                 reporterId: goodUserId,
                 accusedId: badUserId,
                 eventId: badEventId5,
                 text: null,
                 textPrefix: badText5.substring(0, 256).split("\n").join(" "),
                 comment: null,
-            });
-        } catch (e) {
-            console.error("Could not send fifth report", e.body || e);
-            throw e;
+            }
+        ]
+ 
+        const sendReport = async (report: any) => {
+            try {
+                await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(report.eventId)}`,
+                    null,
+                    report.comment ? { reason: report.comment } : null
+                );
+                reportsToFind.push(report);
+            } catch (e) {
+                console.error("Could not send a report", e.body || e);
+                throw e;
+            }
         }
 
-        console.log("Test: Reporting abuse - wait");
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log("Test: Reporting abuse - sending each report and waiting for them to be received");
+        let notices = [];
+        await new Promise(resolve => {
+            matrixClient().on("room.event", (roomId, event) => {
+                if (roomId = this.mjolnir.managementRoomId) {
+                    notices.push(event);
+                }
+                if (notices.length === reportsToFind.length) {
+                    resolve(notices);
+                }
+            });
+            reportsToFind.forEach(sendReport);
+        });
+
         let found = [];
         for (let toFind of reportsToFind) {
             for (let event of notices) {
@@ -246,6 +226,7 @@ describe("Test: Reporting abuse", async () => {
         // Setup Mjölnir as moderator for our room.
         await moderatorUser.inviteUser(await matrixClient().getUserId(), roomId);
         await moderatorUser.setUserPowerLevel(await matrixClient().getUserId(), roomId, 100);
+        await matrixClient().joinRoom(roomId);
 
         console.log("Test: Reporting abuse - send messages");
         // Exchange a few messages.
@@ -276,6 +257,7 @@ describe("Test: Reporting abuse", async () => {
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         let mjolnirRooms = new Set(await matrixClient().getJoinedRooms());
+        // but you invited them????
         assert.ok(mjolnirRooms.has(roomId), "Mjölnir should be a member of the room");
 
         // Find the notice
