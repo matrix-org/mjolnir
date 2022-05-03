@@ -114,7 +114,7 @@ describe("Test: standard consequences", function() {
     it("Mjolnir doesn't ban a good user", async function() {
         this.timeout(20000);
 
-        let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await goodUser.getUserId()] });
+        let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await goodUser.getUserId(), await badUser.getUserId()] });
         await badUser.joinRoom(protectedRoomId);
         await goodUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);

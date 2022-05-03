@@ -30,7 +30,7 @@ describe("Test: The make admin command", function () {
 
         await moderator.joinRoom(config.managementRoom);
         LogService.debug("makeadminTest", `Joining managementRoom: ${config.managementRoom}`);
-        let targetRoom = await moderator.createRoom({ invite: [mjolnirUserId] });
+        let targetRoom = await moderator.createRoom({ invite: [mjolnirUserId], preset: "public_chat" });
         LogService.debug("makeadminTest", `moderator creating targetRoom: ${targetRoom}; and inviting ${mjolnirUserId}`);
         await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}` });
         LogService.debug("makeadminTest", `Adding targetRoom: ${targetRoom}`);
@@ -90,7 +90,7 @@ describe("Test: The make admin command", function () {
         try {
             await moderator.start();
             powerLevels = await userA.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
-            assert.notEqual(powerLevels["users"][userBId], 100, `User B should not yet be an admin of ${targetRoom}`);            
+            assert.notEqual(powerLevels["users"][userBId], 100, `User B should not yet be an admin of ${targetRoom}`);
             await getFirstReaction(mjolnir, this.mjolnir.managementRoomId, '✅', async () => {
                 LogService.debug("makeadminTest", `Sending: !mjolnir make admin ${targetRoom} ${userBId}`);
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir make admin ${targetRoom} ${userBId}` });
