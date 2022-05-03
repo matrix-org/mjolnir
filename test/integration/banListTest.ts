@@ -28,7 +28,6 @@ async function createPolicyRule(client: MatrixClient, policyRoomId: string, poli
 
 describe("Test: Updating the BanList", function () {
     it("Calculates what has changed correctly.", async function () {
-        this.timeout(10000);
         const mjolnir = config.RUNTIME.client!
         const moderator = await newTestUser({ name: { contains: "moderator" }});
         const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
@@ -119,7 +118,6 @@ describe("Test: Updating the BanList", function () {
         assert.equal(banList.userRules.filter(r => r.entity === '@old:localhost:9999').length, 1);
     })
     it("Will remove rules with old types when they are 'soft redacted' with a different but more recent event type.", async function () {
-        this.timeout(3000);
         const mjolnir = config.RUNTIME.client!
         const moderator = await newTestUser({ name: { contains: "moderator" }});
         const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
@@ -141,7 +139,6 @@ describe("Test: Updating the BanList", function () {
         assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
     it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function () {
-        this.timeout(3000);
         const mjolnir = config.RUNTIME.client!
         const moderator = await newTestUser({ name: { contains: "moderator" }});
         const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
@@ -295,7 +292,6 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
 describe('Test: unbaning entities via the BanList.', function () {
     afterEach(function() { this.moderator?.stop(); });
     it('Will remove rules that have legacy types', async function () {
-        this.timeout(20000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
         const moderator = await newTestUser({ name: { contains: "moderator" }});
