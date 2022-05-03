@@ -21,6 +21,7 @@
     "include": [
         "./src/**/*",
         "./test/integration/manualLaunchScript.ts",
-        "./test/integration/roomMembersTest.ts"
+        "./test/integration/roomMembersTest.ts",
+        "./test/integration/banListTest.ts"
     ]
 }
