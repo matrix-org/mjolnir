@@ -343,13 +343,12 @@ export class Mjolnir {
         if (!additionalRoomIds) additionalRoomIds = [];
         if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
 
-        if (config.RUNTIME.client && (config.verboseLogging || LogLevel.INFO.includes(level))) {
+        if (config.verboseLogging || LogLevel.INFO.includes(level)) {
             let clientMessage = message;
             if (level === LogLevel.WARN) clientMessage = `⚠ | ${message}`;
             if (level === LogLevel.ERROR) clientMessage = `‼ | ${message}`;
 
-            const client = config.RUNTIME.client;
-            const managementRoomId = await client.resolveRoom(config.managementRoom);
+            const managementRoomId = await this.client.resolveRoom(config.managementRoom);
             const roomIds = [managementRoomId, ...additionalRoomIds];
 
             let evContent: TextualMessageEventContent = {
@@ -362,7 +361,7 @@ export class Mjolnir {
                 evContent = await replaceRoomIdsWithPills(this, clientMessage, new Set(roomIds), "m.notice");
             }
 
-            await client.sendMessage(managementRoomId, evContent);
+            await this.client.sendMessage(managementRoomId, evContent);
         }
 
         levelToFn[level.toString()](module, message);
