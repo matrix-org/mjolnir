@@ -20,8 +20,9 @@ import {NumberProtectionSetting} from "./ProtectionSettings";
 import {LogLevel} from "matrix-bot-sdk";
 import config from "../config";
 
-export const DEFAULT_MAX_PER_HOUR = 50;
-const ONE_HOUR = 3600_000; // 1h in ms
+const DEFAULT_MAX_PER_TIMESCALE = 50;
+const DEFAULT_TIMESCALE_MINUTES = 60;
+const ONE_MINUTE = 60_000; // 1min in ms
 
 export class JoinWaveShortCircuit extends Protection {
     requiredStatePermissions = ["m.room.join_rules"]
@@ -34,7 +35,8 @@ export class JoinWaveShortCircuit extends Protection {
     } = {};
 
     settings = {
-        maxPerHour: new NumberProtectionSetting(DEFAULT_MAX_PER_HOUR)
+        maxPer: new NumberProtectionSetting(DEFAULT_MAX_PER_TIMESCALE),
+        timescaleMinutes: new NumberProtectionSetting(DEFAULT_TIMESCALE_MINUTES)
     };
 
     constructor() {
@@ -77,15 +79,15 @@ export class JoinWaveShortCircuit extends Protection {
         }
 
         // If either the roomId bucket didn't exist, or the bucket has expired, create a new one
-        if (!this.joinBuckets[roomId] || JoinWaveShortCircuit.hasExpired(this.joinBuckets[roomId].lastBucketStart)) {
+        if (!this.joinBuckets[roomId] || this.hasExpired(this.joinBuckets[roomId].lastBucketStart)) {
             this.joinBuckets[roomId] = {
                 lastBucketStart: new Date(),
                 numberOfJoins: 0
             }
         }
 
-        if (++this.joinBuckets[roomId].numberOfJoins >= this.settings.maxPerHour.value) {
-            await mjolnir.logMessage(LogLevel.WARN, "JoinWaveShortCircuit", `Setting ${roomId} to invite-only as more than ${this.settings.maxPerHour.value} users have joined over the last hour (since ${this.joinBuckets[roomId].lastBucketStart})`, roomId);
+        if (++this.joinBuckets[roomId].numberOfJoins >= this.settings.maxPer.value) {
+            await mjolnir.logMessage(LogLevel.WARN, "JoinWaveShortCircuit", `Setting ${roomId} to invite-only as more than ${this.settings.maxPer.value} users have joined over the last ${this.settings.timescaleMinutes.value} minutes (since ${this.joinBuckets[roomId].lastBucketStart})`, roomId);
 
             if (!config.noop) {
                 await mjolnir.client.sendStateEvent(roomId, "m.room.join_rules", "", {"join_rule": "invite"})
@@ -95,27 +97,31 @@ export class JoinWaveShortCircuit extends Protection {
         }
     }
 
-    private static hasExpired(at: Date): boolean {
-        return ((new Date()).getTime() - at.getTime()) > ONE_HOUR
+    private hasExpired(at: Date): boolean {
+        return ((new Date()).getTime() - at.getTime()) > this.timescaleMilliseconds()
+    }
+
+    private timescaleMilliseconds(): number {
+        return (this.settings.timescaleMinutes.value * ONE_MINUTE)
     }
 
     public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{ html: string, text: string }> {
         const withExpired = subcommand.includes("withExpired");
         const withStart = subcommand.includes("withStart");
 
-        let html = `<b>Short Circuit join buckets (max ${this.settings.maxPerHour.value} per hour):</b><br/><ul>`;
-        let text = `Short Circuit join buckets (max ${this.settings.maxPerHour.value} per hour):\n`;
+        let html = `<b>Short Circuit join buckets (max ${this.settings.maxPer.value} per ${this.settings.timescaleMinutes.value} minutes}):</b><br/><ul>`;
+        let text = `Short Circuit join buckets (max ${this.settings.maxPer.value} per ${this.settings.timescaleMinutes.value} minutes):\n`;
 
         for (const roomId of Object.keys(this.joinBuckets)) {
             const bucket = this.joinBuckets[roomId];
-            const isExpired = JoinWaveShortCircuit.hasExpired(bucket.lastBucketStart);
+            const isExpired = this.hasExpired(bucket.lastBucketStart);
 
             if (isExpired && !withExpired) {
                 continue;
             }
 
             const startText = withStart ? ` (since ${bucket.lastBucketStart})` : "";
-            const expiredText = isExpired ? ` (bucket expired since ${new Date(bucket.lastBucketStart.getTime() + ONE_HOUR)})` : "";
+            const expiredText = isExpired ? ` (bucket expired since ${new Date(bucket.lastBucketStart.getTime() + this.timescaleMilliseconds())})` : "";
 
             html += `<li><a href="https://matrix.to/#/${roomId}">${roomId}</a>: ${bucket.numberOfJoins} joins${startText}${expiredText}.</li>`;
             text += `* ${roomId}: ${bucket.numberOfJoins} joins${startText}${expiredText}.\n`;
