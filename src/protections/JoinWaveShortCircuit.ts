@@ -68,11 +68,11 @@ export class JoinWaveShortCircuit extends Protection {
             return;
         }
 
-        const userState = event['content']['membership'];
-        const prevMembership = event['unsigned']?.['prev_content']?.['membership'] || "leave";
+        const newMembership = event['content']['membership'];
+        const prevMembership = event['unsigned']?.['prev_content']?.['membership'] || null;
 
         // We look at the previous membership to filter out profile changes
-        if (userState === 'join' && prevMembership !== "join") {
+        if (newMembership === 'join' && prevMembership !== "join") {
             // A new join, fallthrough
         } else {
             return;
