@@ -751,6 +751,7 @@ export class Mjolnir {
 
     private async verifyPermissionsIn(roomId: string): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
+        const additionalPermissions = this.requiredProtectionPermissions();
 
         try {
             const ownUserId = await this.client.getUserId();
@@ -808,6 +809,20 @@ export class Mjolnir {
                 });
             }
 
+            // Wants: Additional permissions
+
+            for (const additionalPermission of additionalPermissions) {
+                const permLevel = plDefault(events[additionalPermission], stateDefault);
+
+                if (userLevel < permLevel) {
+                    errors.push({
+                        roomId,
+                        errorMessage: `Missing power level for "${additionalPermission}" state events: ${userLevel} < ${permLevel}`,
+                        errorKind: ERROR_KIND_PERMISSION,
+                    });
+                }
+            }
+
             // Otherwise OK
         } catch (e) {
             LogService.error("Mjolnir", extractRequestError(e));
@@ -819,6 +834,10 @@ export class Mjolnir {
         }
 
         return errors;
+    }
+
+    private requiredProtectionPermissions(): Set<string> {
+        return new Set(this.enabledProtections.map((p) => p.requiredStatePermissions).flat())
     }
 
     /**
