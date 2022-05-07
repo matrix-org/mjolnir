@@ -46,9 +46,9 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                 await mjolnir.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${victim} in ${protectedRoomId}`, protectedRoomId);
 
                 if (!config.noop) {
-                    await mjolnir.client.kickUser(userId, targetRoomId, reason);
+                    await mjolnir.client.kickUser(victim, protectedRoomId, reason);
                 } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
+                    await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${victim} in ${protectedRoomId} but the bot is running in no-op mode.`, protectedRoomId);
                 }
             }
         }
