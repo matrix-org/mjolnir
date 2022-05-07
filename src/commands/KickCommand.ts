@@ -57,7 +57,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         for (const member of members) {
             const victim = member.membershipFor;
 
-            if (kickRule.test(victim)) {
+            if (kickRule.test(victim) && member.membership !== 'ban') {
                 await mjolnir.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${victim} in ${protectedRoomId}`, protectedRoomId);
 
                 if (!config.noop) {
