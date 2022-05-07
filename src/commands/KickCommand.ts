@@ -15,13 +15,28 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, MatrixGlob } from "matrix-bot-sdk";
+import { LogLevel, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import config from "../config";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    force = false;
+
     const glob = parts[2];
     let rooms = [...Object.keys(mjolnir.protectedRooms)];
+
+    if (parts[parts.length - 1] === "--force") {
+        force = true;
+        parts.pop();
+    }
+
+    if (config.commands.confirmWildcardBan && /[*?]/.test(parts)) {
+        let replyMessage = "Wildcard bans require an addition `--force` argument to confirm";
+        const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
+        reply["msgtype"] = "m.notice";
+        await mjolnir.client.sendMessage(roomId, reply);
+        return null;
+    }
 
     const kickRule = new MatrixGlob(glob);
 
