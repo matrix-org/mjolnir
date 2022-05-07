@@ -15,14 +15,16 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel } from "matrix-bot-sdk";
+import { LogLevel, MatrixGlob } from "matrix-bot-sdk";
 import config from "../config";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const userId = parts[2];
-
+    const glob = parts[2];
     let rooms = [...Object.keys(mjolnir.protectedRooms)];
+
+    const kickRule = new MatrixGlob(glob);
+
     let reason;
     if (parts.length > 3) {
         let reasonIndex = 3;
@@ -32,17 +34,23 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         }
         reason = parts.slice(reasonIndex).join(' ') || '<no reason supplied>';
     }
-    if (!reason) reason = "<none supplied>";
+    if (!reason) reason = '<none supplied>';
 
-    for (const targetRoomId of rooms) {
-        const joinedUsers = await mjolnir.client.getJoinedRoomMembers(targetRoomId);
-        if (!joinedUsers.includes(userId)) continue; // skip
+    for (const protectedRoomId of rooms) {
+        const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
 
-        await mjolnir.logMessage(LogLevel.INFO, "KickCommand", `Kicking ${userId} in ${targetRoomId} for ${reason}`, targetRoomId);
-        if (!config.noop) {
-            await mjolnir.client.kickUser(userId, targetRoomId, reason);
-        } else {
-            await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
+        for (const member of members) {
+            const victim = member.membershipFor;
+            
+            if (kickRule.test(victim)) {
+                await mjolnir.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${victim} in ${protectedRoomId}`, protectedRoomId);
+
+                if (!config.noop) {
+                    await mjolnir.client.kickUser(userId, targetRoomId, reason);
+                } else {
+                    await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
+                }
+            }
         }
     }
 
