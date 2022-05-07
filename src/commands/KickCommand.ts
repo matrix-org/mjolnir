@@ -20,7 +20,7 @@ import config from "../config";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    force = false;
+    let force = false;
 
     const glob = parts[2];
     let rooms = [...Object.keys(mjolnir.protectedRooms)];
@@ -30,12 +30,12 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         parts.pop();
     }
 
-    if (config.commands.confirmWildcardBan && /[*?]/.test(parts)) {
+    if (config.commands.confirmWildcardBan && /[*?]/.test(glob) && !force) {
         let replyMessage = "Wildcard bans require an addition `--force` argument to confirm";
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
         reply["msgtype"] = "m.notice";
         await mjolnir.client.sendMessage(roomId, reply);
-        return null;
+        return;
     }
 
     const kickRule = new MatrixGlob(glob);
