@@ -63,7 +63,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                 if (!config.noop) {
                     try {
                         await mjolnir.client.kickUser(victim, protectedRoomId, reason);
-                    } catch(e) {
+                    } catch (e) {
                         await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${victim}: ${e}`);
                     }
                 } else {
