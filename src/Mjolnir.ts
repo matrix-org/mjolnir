@@ -99,6 +99,9 @@ export class Mjolnir {
     private webapis: WebAPIs;
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
     public taskQueue: ThrottlingQueue;
+    /*
+     * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
+     */
     private reportPoll: ReportPoll | undefined;
     /**
      * Adds a listener to the client that will automatically accept invitations.
