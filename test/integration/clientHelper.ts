@@ -19,7 +19,7 @@ const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
 export async function registerUser(username: string, displayname: string, password: string, admin: boolean): Promise<void> {
     let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
     const data: {nonce: string} = await new Promise((resolve, reject) => {
-        getRequestFn()({uri: registerUrl, method: "GET", timeout: 60000}, (error, response, resBody) => {
+        getRequestFn()({uri: registerUrl, method: "GET", timeout: 60000}, (error: any, response: any, resBody: any) => {
             error ? reject(error) : resolve(JSON.parse(resBody))
         });
     });
@@ -42,7 +42,7 @@ export async function registerUser(username: string, displayname: string, passwo
                 timeout: 60000
             }
             return await new Promise((resolve, reject) => {
-                getRequestFn()(params, error => error ? reject(error) : resolve());
+                getRequestFn()(params, (error: any) => error ? reject(error) : resolve());
             });
         } catch (ex) {
             // In case of timeout or throttling, backoff and retry.
@@ -79,7 +79,7 @@ export type RegistrationOptions = {
 /**
  * Register a new test user.
  *
- * @returns A string that is both the username and password of a new user. 
+ * @returns A string that is both the username and password of a new user.
  */
 async function registerNewTestUser(options: RegistrationOptions) {
     do {
@@ -174,8 +174,8 @@ export async function resetRatelimitForUser(userId: string) {
  * @param cb The callback when a m.notice event is found in targetRoomId.
  * @returns The callback to pass to `MatrixClient.on('room.message', cb)`
  */
-export function noticeListener(targetRoomdId: string, cb) {
-    return (roomId, event) => {
+export function noticeListener(targetRoomdId: string, cb: (event: any) => void) {
+    return (roomId: string, event: any) => {
         if (roomId !== targetRoomdId) return;
         if (event?.content?.msgtype !== "m.notice") return;
             cb(event);

@@ -9,6 +9,7 @@ import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 export const mochaHooks = {
     beforeEach: [
         async function() {
+            console.error("---- entering test", JSON.stringify(this.currentTest.title)); // Makes MatrixClient error logs a bit easier to parse.
             console.log("mochaHooks.beforeEach");
             // Sometimes it takes a little longer to register users.
             this.timeout(10000)
@@ -33,6 +34,7 @@ export const mochaHooks = {
             ]);
             // remove alias from management room and leave it.
             await teardownManagementRoom(this.mjolnir.client, this.mjolnir.managementRoomId, config.managementRoom);
+            console.error("---- completed test", JSON.stringify(this.currentTest.title), "\n\n"); // Makes MatrixClient error logs a bit easier to parse.
         }
     ]
 };

@@ -48,6 +48,9 @@ interface IConfig {
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
     protectAllJoinedRooms: boolean;
+    admin?: {
+        enableMakeRoomAdminCommand?: boolean;
+    }
     commands: {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
