@@ -39,7 +39,7 @@ export abstract class Protection {
     }
 
     /*
-     * Handle a single reported event from a protecte room, to decide if we
+     * Handle a single reported event from a protected room, to decide if we
      * need to respond to it
      */
     async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
