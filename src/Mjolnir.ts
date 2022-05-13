@@ -253,7 +253,7 @@ export class Mjolnir {
         // Setup Web APIs
         console.log("Creating Web APIs");
         const reportManager = new ReportManager(this);
-        reportManager.on("report.new", this.handleReport.bind(this));
+        reportManager.on("report.new", this.handleReport);
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
 
         // Setup join/leave listener
@@ -1158,9 +1158,9 @@ export class Mjolnir {
         return await this.eventRedactionQueue.process(this, roomId);
     }
 
-    private async handleReport(e: { roomId: string, reporterId: string, event: any, reason?: string }) {
+    private async handleReport(roomId: string, reporterId: string, event: any, reason?: string) {
         for (const protection of this.enabledProtections) {
-            await protection.handleReport(this, e.roomId, e.reporterId, e.event, e.reason);
+            await protection.handleReport(this, roomId, reporterId, event, reason);
         }
     }
 }
