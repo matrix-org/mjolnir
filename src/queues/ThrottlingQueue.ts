@@ -74,19 +74,20 @@ export class ThrottlingQueue {
      * @return A promise resolved/rejected once `task` is complete.
      */
     public push<T>(task: Task<T>): Promise<T> {
-        const promise: Promise<T> = new Promise((resolve, reject) => 
-            {
-                const wrapper = async () => {
-                    try {
-                        const result: T = await task(this);
-                        resolve(result);
-                    } catch (ex) {
-                        reject(ex);
-                    };
+        // Wrap `task` into a `Promise` to inform enqueuer when
+        // the task is complete.
+        const promise: Promise<T> = new Promise((resolve, reject) => {
+            const wrapper = async () => {
+                try {
+                    const result: T = await task(this);
+                    resolve(result);
+                } catch (ex) {
+                    reject(ex);
                 };
-                this.tasks!.push(wrapper);
-                this.start();
-            });
+            };
+            this.tasks!.push(wrapper);
+            this.start();
+        });
         return promise;
     }
 
