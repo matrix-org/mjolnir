@@ -18,9 +18,9 @@ homeserver.
 
 ## Setting up
 
-See the [setup documentation](docs/config.md) for first-time setup documentation.
+See the [setup documentation](docs/setup.md) for first-time setup documentation.
 
-See the [configuration documentation](docs/config.md) for detailed information about Mjolnir's configuration.
+See the [configuration sample with documentation](config/default.yaml) for detailed information about Mjolnir's configuration.
 
 See the [synapse module documentation](docs/synapse_module.md) for information on how to setup Mjolnir as a Synapse Module.
 

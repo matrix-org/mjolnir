@@ -14,7 +14,7 @@ can also easily read logs and manage the lifecycle of these containers. (start/s
 
 Before any other steps, a configuration file must be prepared.
 
-Please go through [the configuration documentation](./config.md), grab [the sample configuration file](../config/default.yaml), download it, and rename it `production.yaml`.
+Please go through [the sample configuration file's documentation](../config/default.yaml), download it, and rename it `production.yaml`.
 
 You should go through and edit values to your liking, afterwards, pick a directory that'll be the root of all your mjolnir data files (i.e. `./mjolnir` from the home directory on your server), create a new directory called `config`, place the file there.
 

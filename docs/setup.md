@@ -18,7 +18,7 @@ It's also recommended to turn off ratelimiting for a mjolnir bot, see [matrix-or
 **Note**: To deactivate users, move aliases, shutdown rooms, Mjolnir will need to be a server
 admin, and the server needs to be Synapse.
 
-See the [config documentation](./config.md) for information about individual config keys.
+See the [sample configuration](../config/default.yaml) for documentation about individual config keys.
 
 ## Installation
 
