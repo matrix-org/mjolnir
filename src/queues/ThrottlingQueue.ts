@@ -113,7 +113,7 @@ export class ThrottlingQueue {
                 } catch (ex) {
                     return reject(ex);
                 }
-                // In case of task failure, ignore the failure (it has been 
+                // In case of task failure, ignore the failure (it has been
                 // logged by `push` already) and proceed.
                 try {
                     if (item.value) {
