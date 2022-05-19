@@ -92,50 +92,6 @@ export class ThrottlingQueue {
     }
 
     /**
-     * Push an iterator of tasks onto the queue.
-     *
-     * As long as the iterator isn't complete, new tasks from this generator
-     * will be automatically added to the queue. Task errors are logged but
-     * do not stop the iterator. Iterator errors do stop the iterator.
-     *
-     * @param source An asynchronous iterator of tasks.
-     * @return A promise resolved once `source` is exhausted or rejected once
-     * `source` throws.
-     */
-    public pull<T>(source: () => Promise<{done: boolean, value?: Task<T>}>): Promise<void> {
-        // Wrap `source` in a promise resolved once it is exhausted.
-        return new Promise((resolve, reject) => {
-            const step = async () => {
-                let item;
-                // In case of iterator failure, stop immediately and reject.
-                try {
-                    item = await source();
-                } catch (ex) {
-                    return reject(ex);
-                }
-                // In case of task failure, ignore the failure (it has been
-                // logged by `push` already) and proceed.
-                try {
-                    if (item.value) {
-                        /* do not await, or we'll create a deadlock */ this.push(item.value);
-                    }
-                } finally {
-                    // If this was the last item, resolve and stop, otherwise
-                    // rearm and wait for the next item.
-                    if (item.done) {
-                        return resolve(void(0));
-                    } else {
-                        // Since entries are executed in order, `item.value` will be completed
-                        // before we execute the next call to `step`.
-                        this.push(step);
-                    }
-                }
-            };
-            this.push(step);
-        });
-    }
-
-    /**
      * Block a queue for a number of milliseconds.
      *
      * This method is meant typically to be used by a `Task` that receives a 429 (Too Many Requests) to reschedule

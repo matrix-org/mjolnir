@@ -48,7 +48,5 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         }
     }
 
-    await mjolnir.taskQueue.push(async () => {
-        return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
-    })
+    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
