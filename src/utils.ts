@@ -121,7 +121,27 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
         }
     }
 
-    function backfill(from: string|null) {
+    /**
+     * The response returned from `backfill`
+     * See https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmessages
+     * for what the fields mean in detail. You have to read the spec even with the summary.
+     * The `chunk` contains the events in reverse-chronological order.
+     * The `end` is a token for the end of the `chunk` (where the older events are).
+     * The `start` is a token for the beginning of the `chunk` (where the most recent events are).
+     */
+    interface BackfillResponse {
+        chunk?: any[],
+        end?: string,
+        start: string
+    }
+
+    /**
+     * Call `/messages` "backwards".
+     * @param from a token that was returned previously from this API to start paginating from or
+     * if `null`, start from the most recent point in the timeline.
+     * @returns The response part of the `/messages` API, see `BackfillResponse`.
+     */
+    async function backfill(from: string|null): Promise<BackfillResponse> {
         const qs = {
             filter: JSON.stringify(roomEventFilter),
             dir: "b",
@@ -151,8 +171,8 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     // and will not provide one when there is no more history to paginate.
     let token: string|null = null;
     do {
-        const bfMessages: { chunk: any[], end?: string } = await backfill(token);
-        const lastToken: string|null = token;
+        const bfMessages: BackfillResponse = await backfill(token);
+        const previousToken: string|null = token;
         token = bfMessages['end'] ?? null;
         const events = filterEvents(bfMessages['chunk'] || []);
         // If we are using a glob, there may be no relevant events in this chunk.
@@ -160,10 +180,10 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
             await cb(events);
         }
         // This check exists only becuase of a Synapse compliance bug https://github.com/matrix-org/synapse/issues/12102.
-        // We also check after processing events as the `lastToken` can be 'null' if we are at the start of the steam
+        // We also check after processing events as the `previousToken` can be 'null' if we are at the start of the steam
         // and `token` can also be 'null' as we have paginated the entire timeline, but there would be unprocessed events in the
         // chunk that was returned in this request.
-        if (lastToken === token) {
+        if (previousToken === token) {
             LogService.debug("utils", "Backfill returned same end token - returning early.");
             return;
         }
