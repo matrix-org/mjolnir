@@ -179,7 +179,7 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
         if (events.length > 0) {
             await cb(events);
         }
-        // This check exists only becuase of a Synapse compliance bug https://github.com/matrix-org/synapse/issues/12102.
+        // This check exists only because of a Synapse compliance bug https://github.com/matrix-org/synapse/issues/12102.
         // We also check after processing events as the `previousToken` can be 'null' if we are at the start of the steam
         // and `token` can also be 'null' as we have paginated the entire timeline, but there would be unprocessed events in the
         // chunk that was returned in this request.
