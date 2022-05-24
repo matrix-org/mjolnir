@@ -122,27 +122,34 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
     }
 
     /**
-     * Note: `rooms/initialSync` is deprecated. However, there is no replacement for this API for the time being.
-     * While previous versions of this function used `/sync`, experience shows that it can grow extremely
-     * slow (4-5 minutes long) when we need to sync many large rooms, which leads to timeouts and
-     * breakage in Mjolnir, see https://github.com/matrix-org/synapse/issues/10842.
+     * The response returned from `backfill`
+     * See https://spec.matrix.org/latest/client-server-api/#get_matrixclientv3roomsroomidmessages
+     * for what the fields mean in detail. You have to read the spec even with the summary.
+     * The `chunk` contains the events in reverse-chronological order.
+     * The `end` is a token for the end of the `chunk` (where the older events are).
+     * The `start` is a token for the beginning of the `chunk` (where the most recent events are).
      */
-    function roomInitialSync() {
-        return client.doRequest("GET", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/initialSync`);
+    interface BackfillResponse {
+        chunk?: any[],
+        end?: string,
+        start: string
     }
 
-    function backfill(from: string) {
+    /**
+     * Call `/messages` "backwards".
+     * @param from a token that was returned previously from this API to start paginating from or
+     * if `null`, start from the most recent point in the timeline.
+     * @returns The response part of the `/messages` API, see `BackfillResponse`.
+     */
+    async function backfill(from: string|null): Promise<BackfillResponse> {
         const qs = {
             filter: JSON.stringify(roomEventFilter),
-            from: from,
             dir: "b",
+            ... from ? { from } : {}
         };
         LogService.info("utils", "Backfilling with token: " + from);
-        return client.doRequest("GET", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/messages`, qs);
+        return client.doRequest("GET", `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages`, qs);
     }
-
-    // Do an initial sync first to get the batch token
-    const response = await roomInitialSync();
 
     let processed = 0;
     /**
@@ -160,35 +167,27 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
         }
         return messages;
     }
-
-    // The recommended APIs for fetching events from a room is to use both rooms/initialSync then /messages.
-    // Unfortunately, this results in code that is rather hard to read, as these two APIs employ very different data structures.
-    // We prefer discarding the results from rooms/initialSync and reading only from /messages,
-    // even if it's a little slower, for the sake of code maintenance.
-    const timeline = response['messages']
-    if (timeline) {
-        // The end of the PaginationChunk has the most recent events from rooms/initialSync.
-        // This token is required be present in the PagintionChunk from rooms/initialSync.
-        let token = timeline['end']!;
-        // We check that we have the token because rooms/messages is not required to provide one
-        // and will not provide one when there is no more history to paginate.
-        while (token && processed < limit) {
-            const bfMessages = await backfill(token);
-            let lastToken = token;
-            token = bfMessages['end'];
-            if (lastToken === token) {
-                LogService.debug("utils", "Backfill returned same end token - returning early.");
-                return;
-            }
-            const events = filterEvents(bfMessages['chunk'] || []);
-            // If we are using a glob, there may be no relevant events in this chunk.
-            if (events.length > 0) {
-                await cb(events);
-            }
+    // We check that we have the token because rooms/messages is not required to provide one
+    // and will not provide one when there is no more history to paginate.
+    let token: string|null = null;
+    do {
+        const bfMessages: BackfillResponse = await backfill(token);
+        const previousToken: string|null = token;
+        token = bfMessages['end'] ?? null;
+        const events = filterEvents(bfMessages['chunk'] || []);
+        // If we are using a glob, there may be no relevant events in this chunk.
+        if (events.length > 0) {
+            await cb(events);
         }
-    } else {
-        throw new Error(`Internal Error: rooms/initialSync did not return a pagination chunk for ${roomId}, this is not normal and if it is we need to stop using it. See roomInitialSync() for why we are using it.`);
-    }
+        // This check exists only because of a Synapse compliance bug https://github.com/matrix-org/synapse/issues/12102.
+        // We also check after processing events as the `previousToken` can be 'null' if we are at the start of the steam
+        // and `token` can also be 'null' as we have paginated the entire timeline, but there would be unprocessed events in the
+        // chunk that was returned in this request.
+        if (previousToken === token) {
+            LogService.debug("utils", "Backfill returned same end token - returning early.");
+            return;
+        }
+    } while (token && processed < limit)
 }
 
 /*
