@@ -26,7 +26,7 @@ export class ThrottlingQueue {
     /**
      * The pending tasks.
      */
-    private tasks: (() => Promise<void>)[] | null;
+    private _tasks: (() => Promise<void>)[] | null;
 
     /**
      * A timeout for the next task to execute.
@@ -50,7 +50,7 @@ export class ThrottlingQueue {
     constructor(private mjolnir: Mjolnir, delayMS: number) {
         this.timeout = null;
         this.delayMS = delayMS;
-        this.tasks = [];
+        this._tasks = [];
     }
 
     /**
@@ -58,14 +58,14 @@ export class ThrottlingQueue {
      */
     public dispose() {
         this.stop();
-        this.tasks = null;
+        this._tasks = null;
     }
 
     /**
      * The number of tasks waiting to be executed.
      */
     get length(): number {
-        return this.tasks!.length;
+        return this.tasks.length;
     }
 
     /**
@@ -86,7 +86,7 @@ export class ThrottlingQueue {
                     reject(ex);
                 };
             };
-            this.tasks!.push(wrapper);
+            this.tasks.push(wrapper);
             this.start();
         });
     }
@@ -118,7 +118,7 @@ export class ThrottlingQueue {
             // Already started.
             return;
         }
-        if (!this.tasks!.length) {
+        if (!this.tasks.length) {
             // Nothing to do.
             return;
         }
@@ -168,7 +168,7 @@ export class ThrottlingQueue {
      */
     private async step() {
         // Pull task.
-        const task = this.tasks!.shift();
+        const task = this.tasks.shift();
         if (!task) {
             // Nothing to do.
             // Stop the loop until we have something to do.
@@ -187,5 +187,15 @@ export class ThrottlingQueue {
             this.stop();
             this.start();
         }
+    }
+
+    /**
+     * Return `tasks`, unless the queue has been disposed of.
+     */
+    private get tasks(): (() => Promise<void>)[] {
+        if (this._tasks == null) {
+            throw new TypeError("This Throttling Queue has been disposed of and shouldn't be used anymore");
+        }
+        return this._tasks;
     }
 }
