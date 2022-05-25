@@ -193,7 +193,7 @@ export class ThrottlingQueue {
      * Return `tasks`, unless the queue has been disposed of.
      */
     private get tasks(): (() => Promise<void>)[] {
-        if (this._tasks == null) {
+        if (this._tasks === null) {
             throw new TypeError("This Throttling Queue has been disposed of and shouldn't be used anymore");
         }
         return this._tasks;
