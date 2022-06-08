@@ -48,6 +48,7 @@ import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
+import { ThrottlingQueue } from "./queues/ThrottlingQueue";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -95,6 +96,8 @@ export class Mjolnir {
     private unprotectedWatchedListRooms: string[] = [];
     private webapis: WebAPIs;
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
+    public taskQueue: ThrottlingQueue;
+
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -258,6 +261,8 @@ export class Mjolnir {
 
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
+
+        this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
     }
 
     public get lists(): BanList[] {
