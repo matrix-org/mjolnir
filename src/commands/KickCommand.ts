@@ -65,7 +65,6 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                         await mjolnir.taskQueue.push(async () => {
                             return mjolnir.client.kickUser(victim, protectedRoomId, reason);
                         });
-                        await mjolnir.client.kickUser(victim, protectedRoomId, reason);
                     } catch (e) {
                         await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${victim}: ${e}`);
                     }
