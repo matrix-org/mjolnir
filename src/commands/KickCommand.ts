@@ -40,7 +40,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
 
     const kickRule = new MatrixGlob(glob);
 
-    let reason;
+    let reason: string | undefined;
     if (parts.length > 3) {
         let reasonIndex = 3;
         if (parts[3].startsWith("#") || parts[3].startsWith("!")) {
@@ -62,6 +62,9 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
 
                 if (!config.noop) {
                     try {
+                        await mjolnir.taskQueue.push(async () => {
+                            return mjolnir.client.kickUser(victim, protectedRoomId, reason);
+                        });
                         await mjolnir.client.kickUser(victim, protectedRoomId, reason);
                     } catch (e) {
                         await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${victim}: ${e}`);
@@ -73,5 +76,5 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         }
     }
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

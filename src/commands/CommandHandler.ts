@@ -157,7 +157,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
-                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action (kick, ban or just show) to all users who joined a room since a given date (up to <limit> users)\n" +
+                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
                 "!mjolnir make admin <room alias> [user alias/ID]                    - Make the specified user or the bot itself admin of the room\n" +
