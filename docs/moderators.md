@@ -1,6 +1,6 @@
 # Moderator's guide to Mjolnir (bot edition)
 
-Moderating a community shouldn't be difficult - Mjolnir gives you the tools to make moderation simple and 
+Moderating a community shouldn't be difficult - Mjolnir gives you the tools to make moderation simple and
 impersonal.
 
 **Note**: This guide does not apply to the Synapse module, which applies rules at the homeserver level. More
@@ -11,6 +11,7 @@ information about the Synapse module can be found in the README.
 If you're actively dealing with an incident, here's what you need to know:
 
 * Always talk to Mjolnir in your coordination room.
+* `!mjolnir room add <room>` will add a room to your "protected rooms", roms where mjolnir will propagate bans.
 * `!mjolnir ban <shortcode> user @spammer:example.org` will ban someone.
 * `!mjolnir ban <shortcode> server example.org` will ban a whole server.
 * `!mjolnir rules` will tell you what the shortcodes are for your ban lists (needed above).
@@ -19,6 +20,7 @@ If you're actively dealing with an incident, here's what you need to know:
 * `!mjolnir protections` will show you your available protections - green circles mean enabled.
 * `!mjolnir enable <protection>` to turn on a protection.
 * `!mjolnir move <room alias> <room alias/ID>` Moves a room alias to a new room ID
+* `!mjolnir verify` makes sure the bot has all required permissions to enact moderation (in all the protected rooms).
 
 ## How Mjolnir works
 

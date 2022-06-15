@@ -18,12 +18,12 @@ import { Mjolnir } from "../Mjolnir";
 import { LogLevel } from "matrix-bot-sdk";
 import config from "../config";
 
-// !mjolnir kick <user> [room] [reason]
+// !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const userId = parts[2];
 
     let rooms = [...Object.keys(mjolnir.protectedRooms)];
-    let reason;
+    let reason: string | undefined;
     if (parts.length > 3) {
         let reasonIndex = 3;
         if (parts[3].startsWith("#") || parts[3].startsWith("!")) {
@@ -40,11 +40,13 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
 
         await mjolnir.logMessage(LogLevel.INFO, "KickCommand", `Kicking ${userId} in ${targetRoomId} for ${reason}`, targetRoomId);
         if (!config.noop) {
-            await mjolnir.client.kickUser(userId, targetRoomId, reason);
+            await mjolnir.taskQueue.push(async () => {
+                return mjolnir.client.kickUser(userId, targetRoomId, reason);
+            });
         } else {
             await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${userId} in ${targetRoomId} but the bot is running in no-op mode.`, targetRoomId);
         }
     }
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

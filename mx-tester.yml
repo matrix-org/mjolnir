@@ -32,6 +32,7 @@ homeserver:
   registration_shared_secret: REGISTRATION_SHARED_SECRET
   # Make manual testing easier
   enable_registration: true
+  enable_registration_without_verification: true
 
   # We remove rc_message so we can test rate limiting,
   # but we keep the others because of https://github.com/matrix-org/synapse/issues/11785

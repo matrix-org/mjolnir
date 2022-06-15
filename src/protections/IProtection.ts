@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { AbstractProtectionSetting } from "./ProtectionSettings";
+import { Consequence } from "./consequence";
 
 /**
  * Represents a protection mechanism of sorts. Protections are intended to be
@@ -23,31 +24,32 @@ import { AbstractProtectionSetting } from "./ProtectionSettings";
  *
  * Protections are guaranteed to be run before redaction handlers.
  */
-export interface IProtection {
-    readonly name: string;
-    readonly description: string;
-    enabled: boolean;
-    settings: { [setting: string]: AbstractProtectionSetting<any, any> };
+export abstract class Protection {
+    abstract readonly name: string
+    abstract readonly description: string;
+    enabled = false;
+    readonly requiredStatePermissions: string[] = [];
+    abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
+
     /*
      * Handle a single event from a protected room, to decide if we need to
      * respond to it
      */
-    handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any>;
+    async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<Consequence | any> {
+    }
+
     /*
      * Handle a single reported event from a protecte room, to decide if we
      * need to respond to it
      */
-    handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, reason: string, event: any): Promise<any>;
-}
-export abstract class Protection implements IProtection {
-    abstract readonly name: string
-    abstract readonly description: string;
-    enabled = false;
-    abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
-    handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-        return Promise.resolve(null);
+    async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
     }
-    handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
-        return Promise.resolve(null);
+
+    /**
+     * Return status information for `!mjolnir status ${protectionName}`.
+     */
+    async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
+        // By default, protections don't have any status to show.
+        return null;
     }
 }

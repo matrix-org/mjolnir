@@ -57,9 +57,14 @@ if (config.health.healthz.enabled) {
         config.RUNTIME.client = client;
 
         bot = await Mjolnir.setupMjolnirFromConfig(client);
+    } catch (err) {
+        console.error(`Failed to setup mjolnir from the config ${config.dataPath}: ${err}`);
+        throw err;
+    }
+    try {
         await bot.start();
     } catch (err) {
-        bot?.logMessage(LogLevel.ERROR, "index", err);
-        process.exit(1);
+        console.error(`Mjolnir failed to start: ${err}`);
+        throw err;
     }
 })();
