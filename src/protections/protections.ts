@@ -33,7 +33,7 @@ export const PROTECTIONS: Protection[] = [
     new MessageIsVoice(),
     new MessageIsMedia(),
     new TrustedReporters(),
-    new PropagateRoomBan()
+    new PropagateRoomBan(),
     new DetectFederationLag(),
     new JoinWaveShortCircuit(),
 ];
