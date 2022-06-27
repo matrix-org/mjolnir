@@ -43,7 +43,7 @@ import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
-import { ReportPoll } from "./report/ReportPoll";
+import { ReportPoller } from "./report/ReportPoller";
 import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
@@ -102,7 +102,7 @@ export class Mjolnir {
     /*
      * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
      */
-    private reportPoll: ReportPoll | undefined;
+    private reportPoller?: ReportPoller;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -264,7 +264,7 @@ export class Mjolnir {
         reportManager.on("report.new", this.handleReport);
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
         if (config.pollReports) {
-            this.reportPoll = new ReportPoll(this, reportManager);
+            this.reportPoller = new ReportPoller(this, reportManager);
         }
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
@@ -311,16 +311,18 @@ export class Mjolnir {
             console.log("Starting web server");
             await this.webapis.start();
 
-            if (this.reportPoll !== undefined) {
+            if (this.reportPoller) {
                 let reportPollSetting: { from: number } = { from: 0 };
                 try {
                     reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
                 } catch (err) {
                     if (err.body?.errcode !== "M_NOT_FOUND") {
                         throw err;
-                    } else { /* setting probably doesn't exist yet */ }
+                    } else {
+                        this.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
+                    }
                 }
-                this.reportPoll.start(reportPollSetting.from);
+                this.reportPoller.start(reportPollSetting.from);
             }
 
             // Load the state.
@@ -379,7 +381,7 @@ export class Mjolnir {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
         this.webapis.stop();
-        this.reportPoll?.stop();
+        this.reportPoller?.stop();
     }
 
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {

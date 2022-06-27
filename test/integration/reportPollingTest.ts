@@ -18,7 +18,7 @@ describe("Test: Report polling", function() {
     this.afterEach(async function () {
         await client.stop();
     })
-    it("Mjolnir correctly retreives a report from synapse", async function() {
+    it("Mjolnir correctly retrieves a report from synapse", async function() {
         this.timeout(20000);
 
         const reportPromise = new Promise(async (resolve, reject) => {
@@ -27,7 +27,9 @@ describe("Test: Report polling", function() {
                 description = "A test protection";
                 settings = { };
                 handleReport = (mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) => {
-                    resolve(null);
+                    if (reason === "x5h1Je") {
+                        resolve(null);
+                    }
                 };
             });
         });
@@ -37,11 +39,11 @@ describe("Test: Report polling", function() {
         await this.mjolnir.client.inviteUser(await client.getUserId(), roomId);
         await client.joinRoom(roomId);
 
-        const eventId = await badUser.sendMesosage(roomId, {msgtype: "m.text", body: "uwNd3q"});
+        const eventId = await badUser.sendMessaage(roomId, {msgtype: "m.text", body: "uwNd3q"});
         await client.doRequest(
             "POST",
             `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(eventId)}`, "", {
-                reason: "dont like it :("
+                reason: "x5h1Je"
             }
         );
 
