@@ -269,9 +269,7 @@ export class Mjolnir {
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
-        this.reportPoll = new ReportPoll(client, reportManager, async (_from: number) => {
-            await client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: _from });
-        });
+        this.reportPoller = new ReportPoller(this, reportManager);
     }
 
     public get lists(): BanList[] {
