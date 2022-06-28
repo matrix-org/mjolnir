@@ -96,6 +96,8 @@ protectedRooms: []
 # Manually add these rooms to the protected rooms list if you want them protected.
 protectAllJoinedRooms: false
 
+backgroundDelayMS: 10
+
 # Server administration commands, these commands will only work if Mjolnir is
 # a global server administrator
 admin:

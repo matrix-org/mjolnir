@@ -33,6 +33,30 @@ export class ServerAcl {
     }
 
     /**
+     * Initialize the ServerACL with the rules from an existing ACL object retrieved from the room state.
+     * @param acl The content of a `m.room.server_acl` event.
+     */
+    public fromACL(acl: any): ServerAcl {
+        if (this.allowedServers.size !== 0 || this.deniedServers.size !== 0) {
+            throw new TypeError(`Expected this ACL to be uninitialized.`);
+        }
+        const allow = acl['allow'];
+        const deny = acl['deny'];
+        const ips = acl['allow_ip_literals'];
+
+        if (Array.isArray(allow)) {
+            allow.forEach(this.allowServer, this);
+        }
+        if (Array.isArray(deny)) {
+            deny.forEach(this.denyServer, this);
+        }
+        if (Boolean(ips)) {
+            this.allowIpAddresses();
+        }
+        return this;
+    }
+
+    /**
      * Checks the ACL for any entries that might ban ourself.
      * @returns A list of deny entries that will not ban our own homeserver.
      */
