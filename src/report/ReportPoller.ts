@@ -48,7 +48,7 @@ export class ReportPoller {
              * of requests when networking problems resolve
              */
             this.timeout = setTimeout(
-                this.getAbuseReports.bind(this),
+                this.tryGetAbuseReports.bind(this),
                 60_000 // a minute in milliseconds
             );
         } else {
@@ -57,8 +57,6 @@ export class ReportPoller {
     }
 
     private async getAbuseReports() {
-        this.timeout = null;
-
         let response_: {
             event_reports: { room_id: string, event_id: string, sender: string, reason: string }[],
             next_token: number | undefined
@@ -108,10 +106,19 @@ export class ReportPoller {
                 await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
             }
         }
+    }
+
+    private async tryGetAbuseReports() {
+        this.timeout = null;
+
+        try {
+            await this.getAbuseReports()
+        } catch (ex) {
+            await this.mjolnir.logMessage(LogLevel.ERROR, "tryGetAbuseReports", `failed to get abuse reports: ${ex}`);
+        }
 
         this.schedulePoll();
     }
-
     public start(startFrom: number) {
         if (this.timeout === null) {
             this.from = startFrom;
