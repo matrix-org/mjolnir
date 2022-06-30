@@ -74,6 +74,10 @@ export class ReportPoller {
 
         const response = response_!;
         for (let report of response.event_reports) {
+            if (!(report.room_id in this.mjolnir.protectedRooms)) {
+                continue;
+            }
+
             let event: any; // `any` because `handleServerAbuseReport` uses `any`
             try {
                 event = (await this.mjolnir.client.doRequest(
