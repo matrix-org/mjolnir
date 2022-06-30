@@ -69,7 +69,6 @@ export class ReportPoller {
             );
         } catch (ex) {
             await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
-            this.schedulePoll();
             return;
         }
 
