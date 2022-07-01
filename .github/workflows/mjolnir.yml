@@ -20,10 +20,9 @@ jobs:
       uses: actions/setup-node@v3
       with:
         node-version: '16'
-    - run: |
-        yarn install
-        yarn build
-        yarn lint
+    - run: yarn install
+    - run: yarn build
+    - run: yarn lint
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
