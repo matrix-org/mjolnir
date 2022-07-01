@@ -36,7 +36,7 @@ import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } fro
 import { execSetPowerLevelCommand } from "./SetPowerLevelCommand";
 import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
-import { execKickCommand } from "./KickCommand";
+import { execKickCommand, execServerAclCleanCommand } from "./KickCommand";
 import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
 import { parse as tokenize } from "shell-quote";
 import { execSinceCommand } from "./SinceCommand";
@@ -119,6 +119,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execSinceCommand(roomId, event, mjolnir, tokens);
         } else if (parts[1] === 'kick' && parts.length > 2) {
             return await execKickCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'acl-clean') {
+            return await execServerAclCleanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'make' && parts[2] === 'admin' && parts.length > 3) {
             return await execMakeRoomAdminCommand(roomId, event, mjolnir, parts);
         } else {
@@ -132,6 +134,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir redact <user ID> [room alias/ID] [limit]                   - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
                 "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
                 "!mjolnir kick <glob> [room alias/ID] [reason]                    - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
+                "!mjolnir acl-clean [room alias/ID]                                  - Kicks all of the users from the room or all protected rooms that whose servers are banned by the room's server ACL.\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
