@@ -364,9 +364,9 @@ describe('Test: unbaning entities via the BanList.', function () {
     })
 })
 
-describe.only('Test: should apply bans to the most recently active rooms first', function () {
+describe('Test: should apply bans to the most recently active rooms first', function () {
     it('Applies bans to the most recently active rooms first', async function () {
-        this.timeout(6000000000)
+        this.timeout(180000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
         const moderator = await newTestUser({ name: { contains: "moderator" }});
