@@ -20,20 +20,23 @@ import { LogLevel } from "matrix-bot-sdk";
 
 class InvalidStateError extends Error {}
 
+/**
+ * A class to poll synapse's report endpoint, so we can act on new reports
+ *
+ * @param mjolnir The running Mjolnir instance
+ * @param manager The report manager in to which we feed new reports
+ */
 export class ReportPoller {
-    /*
+    /**
      * https://matrix-org.github.io/synapse/latest/admin_api/event_reports.html
      * "from" is an opaque token that is returned from the API to paginate reports
      */
     private from = 0;
+    /**
+     * The currently-pending report poll
+     */
     private timeout: ReturnType<typeof setTimeout> | null = null;
 
-    /**
-     * A class to poll synapse's report endpoint, so we can act on new reports
-     *
-     * @param mjolnir The running Mjolnir instance
-     * @param manager The report manager in to which we feed new reports
-     */
     constructor(
         private mjolnir: Mjolnir,
         private manager: ReportManager,

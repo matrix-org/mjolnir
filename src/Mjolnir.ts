@@ -68,6 +68,10 @@ const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
+/**
+ * Synapse will tell us where we last got to on polling reports, so we need
+ * to store that for pagination on further polls
+ */
 export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 export class Mjolnir {
