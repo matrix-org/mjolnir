@@ -39,7 +39,7 @@ describe("Test: Report polling", function() {
         await this.mjolnir.client.inviteUser(await client.getUserId(), roomId);
         await client.joinRoom(roomId);
 
-        const eventId = await client.sendMessaage(roomId, {msgtype: "m.text", body: "uwNd3q"});
+        const eventId = await client.sendMessage(roomId, {msgtype: "m.text", body: "uwNd3q"});
         await client.doRequest(
             "POST",
             `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(eventId)}`, "", {
