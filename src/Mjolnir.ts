@@ -265,7 +265,7 @@ export class Mjolnir {
         // Setup Web APIs
         console.log("Creating Web APIs");
         const reportManager = new ReportManager(this);
-        reportManager.on("report.new", this.handleReport);
+        reportManager.on("report.new", this.handleReport.bind(this));
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
         if (config.pollReports) {
             this.reportPoller = new ReportPoller(this, reportManager);
