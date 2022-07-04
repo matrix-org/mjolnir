@@ -52,7 +52,7 @@ export class ReportPoller {
              */
             this.timeout = setTimeout(
                 this.tryGetAbuseReports.bind(this),
-                60_000 // a minute in milliseconds
+                30_000 // a minute in milliseconds
             );
         } else {
             throw new InvalidStateError("poll already scheduled");
@@ -88,6 +88,7 @@ export class ReportPoller {
                     `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`
                 )).event;
             } catch (ex) {
+                this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to get context: ${ex}`);
                 continue;
             }
 
