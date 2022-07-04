@@ -19,13 +19,14 @@ describe("Test: Report polling", function() {
         await client.stop();
     })
     it("Mjolnir correctly retrieves a report from synapse", async function() {
-        this.timeout(20000);
+        this.timeout(40000);
 
         const reportPromise = new Promise(async (resolve, reject) => {
             await this.mjolnir.registerProtection(new class implements IProtection {
                 name = "jYvufI";
                 description = "A test protection";
                 settings = { };
+                handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => { };
                 handleReport = (mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) => {
                     if (reason === "x5h1Je") {
                         resolve(null);
@@ -35,14 +36,14 @@ describe("Test: Report polling", function() {
         });
         await this.mjolnir.enableProtection("jYvufI");
 
-        const roomId = this.mjolnir.managementRoomId;
-        await this.mjolnir.client.inviteUser(await client.getUserId(), roomId);
-        await client.joinRoom(roomId);
+        let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await client.getUserId()] });
+        await client.joinRoom(protectedRoomId);
+        await this.mjolnir.addProtectedRoom(protectedRoomId);
 
-        const eventId = await client.sendMessage(roomId, {msgtype: "m.text", body: "uwNd3q"});
+        const eventId = await client.sendMessage(protectedRoomId, {msgtype: "m.text", body: "uwNd3q"});
         await client.doRequest(
             "POST",
-            `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(eventId)}`, "", {
+            `/_matrix/client/r0/rooms/${encodeURIComponent(protectedRoomId)}/report/${encodeURIComponent(eventId)}`, "", {
                 reason: "x5h1Je"
             }
         );
