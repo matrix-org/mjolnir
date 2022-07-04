@@ -235,3 +235,8 @@ web:
   abuseReporting:
     # Whether to enable this feature.
     enabled: false
+
+# Whether or not to actively poll synapse for abuse reports, to be used
+# instead of intercepting client calls to synapse's abuse endpoint, when that
+# isn't possible/practical.
+pollReports: false

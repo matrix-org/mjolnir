@@ -53,6 +53,7 @@ interface IConfig {
      * of one background task and the start of the next one.
      */
     backgroundDelayMS: number;
+    pollReports: boolean;
     admin?: {
         enableMakeRoomAdminCommand?: boolean;
     }
@@ -122,6 +123,7 @@ const defaultConfig: IConfig = {
     automaticallyRedactForReasons: ["spam", "advertising"],
     protectAllJoinedRooms: false,
     backgroundDelayMS: 500,
+    pollReports: false,
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],

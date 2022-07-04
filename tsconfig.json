@@ -22,6 +22,7 @@
         "./src/**/*",
         "./test/integration/manualLaunchScript.ts",
         "./test/integration/roomMembersTest.ts",
-        "./test/integration/banListTest.ts"
+        "./test/integration/banListTest.ts",
+        "./test/integration/reportPollingTest"
     ]
 }

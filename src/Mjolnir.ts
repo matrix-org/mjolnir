@@ -43,6 +43,7 @@ import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
+import { ReportPoller } from "./report/ReportPoller";
 import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
@@ -67,6 +68,11 @@ const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
+/**
+ * Synapse will tell us where we last got to on polling reports, so we need
+ * to store that for pagination on further polls
+ */
+export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 export class Mjolnir {
     private displayName: string;
@@ -97,7 +103,10 @@ export class Mjolnir {
     private webapis: WebAPIs;
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
     public taskQueue: ThrottlingQueue;
-
+    /*
+     * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
+     */
+    private reportPoller?: ReportPoller;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -256,12 +265,13 @@ export class Mjolnir {
         // Setup Web APIs
         console.log("Creating Web APIs");
         const reportManager = new ReportManager(this);
-        reportManager.on("report.new", this.handleReport);
+        reportManager.on("report.new", this.handleReport.bind(this));
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
-
+        if (config.pollReports) {
+            this.reportPoller = new ReportPoller(this, reportManager);
+        }
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
-
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
     }
 
@@ -301,6 +311,20 @@ export class Mjolnir {
             // Start the web server.
             console.log("Starting web server");
             await this.webapis.start();
+
+            if (this.reportPoller) {
+                let reportPollSetting: { from: number } = { from: 0 };
+                try {
+                    reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
+                } catch (err) {
+                    if (err.body?.errcode !== "M_NOT_FOUND") {
+                        throw err;
+                    } else {
+                        this.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
+                    }
+                }
+                this.reportPoller.start(reportPollSetting.from);
+            }
 
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
@@ -358,6 +382,7 @@ export class Mjolnir {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
         this.webapis.stop();
+        this.reportPoller?.stop();
     }
 
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
@@ -1163,7 +1188,7 @@ export class Mjolnir {
         return await this.eventRedactionQueue.process(this, roomId);
     }
 
-    private async handleReport(roomId: string, reporterId: string, event: any, reason?: string) {
+    private async handleReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
         for (const protection of this.enabledProtections) {
             await protection.handleReport(this, roomId, reporterId, event, reason);
         }
