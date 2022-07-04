@@ -404,22 +404,22 @@ describe("Test: Testing RoomMemberManager", function() {
         // - room 0 remains unprotected, as witness;
         // - room 1 is protected but won't be targeted directly, also as witness.
         const NUMBER_OF_ROOMS = 18;
-        const roomIds: string[] = [];
-        const roomAliases: string[] = [];
+        const allRoomIds: string[] = [];
+        const allRoomAliases: string[] = [];
         const mjolnirUserId = await this.mjolnir.client.getUserId();
         for (let i = 0; i < NUMBER_OF_ROOMS; ++i) {
             const roomId = await this.moderator.createRoom({
                 invite: [mjolnirUserId, ...goodUserIds, ...badUserIds],
             });
-            roomIds.push(roomId);
+            allRoomIds.push(roomId);
 
             const alias = `#since-test-${randomUUID()}:localhost:9999`;
             await this.moderator.createRoomAlias(alias, roomId);
-            roomAliases.push(alias);
+            allRoomAliases.push(alias);
         }
-        for (let i = 1; i < roomIds.length; ++i) {
-            // Protect all rooms except roomIds[0], as witness.
-            const roomId = roomIds[i];
+        for (let i = 1; i < allRoomIds.length; ++i) {
+            // Protect all rooms except allRoomIds[0], as witness.
+            const roomId = allRoomIds[i];
             await this.mjolnir.client.joinRoom(roomId);
             await this.moderator.setUserPowerLevel(mjolnirUserId, roomId, 100);
             await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${roomId}` });
@@ -429,8 +429,8 @@ describe("Test: Testing RoomMemberManager", function() {
         do {
             let protectedRooms = this.mjolnir.protectedRooms;
             protectedRoomsUpdated = true;
-            for (let i = 1; i < roomIds.length; ++i) {
-                const roomId = roomIds[i];
+            for (let i = 1; i < allRoomIds.length; ++i) {
+                const roomId = allRoomIds[i];
                 if (!(roomId in protectedRooms)) {
                     protectedRoomsUpdated = false;
                     await new Promise(resolve => setTimeout(resolve, 1_000));
@@ -440,7 +440,7 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Good users join before cut date.
         for (let user of this.goodUsers) {
-            for (let roomId of roomIds) {
+            for (let roomId of allRoomIds) {
                 await user.joinRoom(roomId);
             }
         }
@@ -453,10 +453,16 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Bad users join after cut date.
         for (let user of this.badUsers) {
-            for (let roomId of roomIds) {
+            for (let roomId of allRoomIds) {
                 await user.joinRoom(roomId);
             }
         }
+
+        // Let's split our room ids to aid with readability.
+        const WITNESS_UNPROTECTED_ROOM_ID = allRoomIds[0];
+        const WITNESS_ROOM_ID = allRoomIds[1];
+        const roomIds = allRoomIds.slice(2);
+        const roomAliases = allRoomAliases.slice(2);
 
         enum Method {
             kick,
@@ -464,8 +470,6 @@ describe("Test: Testing RoomMemberManager", function() {
             mute,
             unmute,
         }
-        const WITNESS_UNPROTECTED_ROOM_ID = roomIds[0];
-        const WITNESS_ROOM_ID = roomIds[1];
         class Experiment {
             // A human-readable name for the command.
             readonly name: string;
@@ -484,6 +488,9 @@ describe("Test: Testing RoomMemberManager", function() {
             // Defaults to `false`.
             readonly isSameRoomAsPrevious: boolean;
 
+            // The index of the room on which we're acting.
+            //
+            // Initialized by `addTo`.
             roomIndex: number | undefined;
 
             constructor({name, shouldAffectWitnessRoom, command, n, method, sameRoom}: {name: string, command: (roomId: string, roomAlias: string) => string, shouldAffectWitnessRoom?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
@@ -495,6 +502,9 @@ describe("Test: Testing RoomMemberManager", function() {
                 this.isSameRoomAsPrevious = typeof sameRoom === "undefined" ? false : sameRoom;
             }
 
+            // Add an experiment to the list of experiments.
+            //
+            // This is how `roomIndex` gets initialized.
             addTo(experiments: Experiment[]) {
                 if (this.isSameRoomAsPrevious) {
                     this.roomIndex = experiments[experiments.length - 1].roomIndex;
@@ -633,12 +643,28 @@ describe("Test: Testing RoomMemberManager", function() {
         ]) {
             experiment.addTo(EXPERIMENTS);
         }
+
+        // Sanity checks, before starting.
+        {
+            const usersInUnprotectedWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_UNPROTECTED_ROOM_ID);
+            const usersInWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_ROOM_ID);
+            for (let userId of goodUserIds) {
+                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `Initially, good user ${userId} should be in the unprotected witness room`);
+                assert.ok(usersInWitnessRoom.includes(userId), `Initially, good user ${userId} should be in the witness room`);
+            }    
+            for (let userId of badUserIds) {
+                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `Initially, bad user ${userId} should be in the unprotected witness room`);
+                assert.ok(usersInWitnessRoom.includes(userId), `Initially, bad user ${userId} should be in the witness room`);
+            }    
+        }
+
         for (let i = 0; i < EXPERIMENTS.length; ++i) {
             const experiment = EXPERIMENTS[i];
-            const index = experiment.roomIndex! + 1;
-            const roomId =  roomIds[index];
+            const index = experiment.roomIndex!;
+            const roomId = roomIds[index];
             const roomAlias = roomAliases[index];
             const joined = this.mjolnir.roomJoins.getUsersInRoom(roomId, start, 100);
+            console.debug(`Running experiment ${i} "${experiment.name}" in room index ${index} (${roomId} / ${roomAlias}): \`${experiment.command(roomId, roomAlias)}\``);
             assert.ok(joined.length >= 2 * SAMPLE_SIZE, `In experiment ${experiment.name}, we should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`);
 
             // Run experiment.
@@ -654,8 +680,8 @@ describe("Test: Testing RoomMemberManager", function() {
             const usersInWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_ROOM_ID);
             for (let userId of goodUserIds) {
                 assert.ok(usersInRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in affected room`);
-                assert.ok(usersInWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in witness room`);
-                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected witness room`);
+                assert.ok(usersInWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in witness room (${WITNESS_ROOM_ID})`);
+                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected witness room (${WITNESS_UNPROTECTED_ROOM_ID})`);
             }
             if (experiment.method === Method.mute) {
                 for (let userId of goodUserIds) {
