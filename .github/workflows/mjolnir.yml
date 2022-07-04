@@ -23,6 +23,17 @@ jobs:
     - run: yarn install
     - run: yarn build
     - run: yarn lint
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Specifically use node 16 like in the readme. 
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    - run: yarn install
+    - run: yarn test
   integration:
     name: Integration tests
     runs-on: ubuntu-latest
