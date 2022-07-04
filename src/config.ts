@@ -54,6 +54,7 @@ interface IConfig {
      */
     backgroundDelayMS: number;
     pollReports: boolean;
+    displayReports: boolean;
     admin?: {
         enableMakeRoomAdminCommand?: boolean;
     }
@@ -124,6 +125,7 @@ const defaultConfig: IConfig = {
     protectAllJoinedRooms: false,
     backgroundDelayMS: 500,
     pollReports: false,
+    displayReports: false,
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],
