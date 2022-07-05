@@ -134,7 +134,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir redact <user ID> [room alias/ID] [limit]                   - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
                 "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
                 "!mjolnir kick <glob> [room alias/ID] [reason]                    - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
-                "!mjolnir acl-clean [room alias/ID]                                  - Kicks all of the users from the room or all protected rooms that whose servers are banned by the room's server ACL.\n" +
+                "!mjolnir acl-clean [room alias/ID]                                  - Kicks all of the users from a room or all protected rooms (when no arguments are given) whose servers are banned by the room's server ACL event.\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
