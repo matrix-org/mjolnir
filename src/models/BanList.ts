@@ -186,7 +186,7 @@ class BanList extends EventEmitter {
      * Return all of the rules in this list that will match the provided entity.
      * If the entity is a user, then we match the domain part against server rules too.
      * @param ruleKind The type of rule for the entity e.g. `RULE_USER`.
-     * @param entity The entity to test e.g. the user id or server name.
+     * @param entity The entity to test e.g. the user id, server name or a room id.
      * @returns All of the rules that match this entity.
      */
     public rulesMatchingEntity(entity: string, ruleKind?: string): ListRule[] {

@@ -21,12 +21,12 @@ import { htmlEscape } from "../utils";
 
 /**
  * List all of the rules that match a given entity.
- * The reaso why you want to test against all rules and not just e.g. user or server is because
+ * The reason why you want to test against all rules and not just e.g. user or server is because
  * there are situations where rules of different types can ban other entities e.g. server ACL can cause users to be banned.
  * @param roomId The room the command is from.
  * @param event The event containing the command.
  * @param mjolnir A mjolnir to fetch the watched lists from.
- * @param entity e.g. a user or room id.
+ * @param entity a user, room id or server.
  * @returns When a response has been sent to the command.
  */
 export async function execRulesMatchingCommand(roomId: string, event: any, mjolnir: Mjolnir, entity: string) {
@@ -42,10 +42,14 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
         const matchesInfo = `Found ${matches.length} ` + (matches.length === 1 ? 'match:' : 'matches:');
         const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : '';
 
+        // FIXME: I feel like it already replaces pills, but
+        // just double check.
+        //await replaceRoomIdsWithPills()
         html += `<a href="${htmlEscape(list.roomRef)}">${htmlEscape(list.roomId)}</a>${shortcodeInfo} ${matchesInfo}<br/><ul>`;
         text += `${list.roomRef}${shortcodeInfo} ${matchesInfo}:\n`;
 
         for (const rule of matches) {
+            // If we know the rule kind, we will give it a readable name, otherwise just use its name.
             let ruleKind: string = rule.kind;
             if (ruleKind === RULE_USER) {
                 ruleKind = 'user';
@@ -62,8 +66,8 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
     }
 
     if (text.length === 0) {
+        html += `No results for ${htmlEscape(entity)}`;
         text += `No results for ${entity}`;
-        html += `No results for ${entity}`;
     }
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";

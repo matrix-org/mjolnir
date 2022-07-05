@@ -135,7 +135,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
                 "!mjolnir kick <user ID> [room alias/ID] [reason]                    - Kicks a user in a particular room or all protected rooms\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
-                "!mjolnir rules matching <entity>                                    - Lists the rules in use that will match this entity e.g. @foo:example.com will show all the user and server rules, including globs, that match them." +
+                "!mjolnir rules matching <user|room|server>                          - Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user." +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
