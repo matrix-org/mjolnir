@@ -401,8 +401,20 @@ describe("Test: Testing RoomMemberManager", function() {
         }
 
         // Create and protect rooms.
-        // - room 0 remains unprotected, as witness;
-        // - room 1 is protected but won't be targeted directly, also as witness.
+        //
+        // We reserve two control rooms:
+        // - room 0, also known as the "control unprotected room" is unprotected
+        //     (we're not calling `!mjolnir rooms add` for this room), so none
+        //     of the operations of `!mjolnir since` shoud affect it. We are
+        //     using it to control, at the end of each experiment, that none of
+        //     the `!mjolnir since` operations affect it.
+        // - room 1, also known as the "control protected room" is protected
+        //     (we are calling `!mjolnir rooms add` for this room), but we are
+        //     never directly requesting any `!mjolnir since` action against
+        //     this room. We are using it to control, at the end of each experiment,
+        //     that none of the `!mjolnir since` operations that should target
+        //     one single other room also affect that room. It is, however, affected
+        //     by general operations that are designed to affect all protected rooms.
         const NUMBER_OF_ROOMS = 18;
         const allRoomIds: string[] = [];
         const allRoomAliases: string[] = [];
@@ -418,7 +430,7 @@ describe("Test: Testing RoomMemberManager", function() {
             allRoomAliases.push(alias);
         }
         for (let i = 1; i < allRoomIds.length; ++i) {
-            // Protect all rooms except allRoomIds[0], as witness.
+            // Protect all rooms except allRoomIds[0], as control.
             const roomId = allRoomIds[i];
             await this.mjolnir.client.joinRoom(roomId);
             await this.moderator.setUserPowerLevel(mjolnirUserId, roomId, 100);
@@ -458,9 +470,10 @@ describe("Test: Testing RoomMemberManager", function() {
             }
         }
 
-        // Let's split our room ids to aid with readability.
-        const WITNESS_UNPROTECTED_ROOM_ID = allRoomIds[0];
-        const WITNESS_ROOM_ID = allRoomIds[1];
+        // Finally, prepare our control rooms and separate them
+        // from the regular rooms.
+        const CONTROL_UNPROTECTED_ROOM_ID = allRoomIds[0];
+        const CONTROL_PROTECTED_ID = allRoomIds[1];
         const roomIds = allRoomIds.slice(2);
         const roomAliases = allRoomAliases.slice(2);
 
@@ -473,9 +486,9 @@ describe("Test: Testing RoomMemberManager", function() {
         class Experiment {
             // A human-readable name for the command.
             readonly name: string;
-            // If `true`, this command should affect room `WITNESS_ROOM_ID`.
+            // If `true`, this command should affect room `CONTROL_PROTECTED_ID`.
             // Defaults to `false`.
-            readonly shouldAffectWitnessRoom: boolean;
+            readonly shouldAffectControlProtected: boolean;
             // The actual command-line.
             readonly command: (roomId: string, roomAlias: string) => string;
             // The number of responses we expect to this command.
@@ -493,9 +506,9 @@ describe("Test: Testing RoomMemberManager", function() {
             // Initialized by `addTo`.
             roomIndex: number | undefined;
 
-            constructor({name, shouldAffectWitnessRoom, command, n, method, sameRoom}: {name: string, command: (roomId: string, roomAlias: string) => string, shouldAffectWitnessRoom?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
+            constructor({name, shouldAffectControlProtected, command, n, method, sameRoom}: {name: string, command: (roomId: string, roomAlias: string) => string, shouldAffectControlProtected?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
                 this.name = name;
-                this.shouldAffectWitnessRoom = typeof shouldAffectWitnessRoom === "undefined" ? false : shouldAffectWitnessRoom;
+                this.shouldAffectControlProtected = typeof shouldAffectControlProtected === "undefined" ? false : shouldAffectControlProtected;
                 this.command = command;
                 this.n = typeof n === "undefined" ? 1 : n;
                 this.method = method;
@@ -596,7 +609,7 @@ describe("Test: Testing RoomMemberManager", function() {
             new Experiment({
                 name: "kick with date and reason",
                 command: (roomId: string) => `!mjolnir since "${cutDate}" kick 100 ${roomId} bad, bad user`,
-                shouldAffectWitnessRoom: false,
+                shouldAffectControlProtected: false,
                 n: 1,
                 method: Method.kick,
             }),
@@ -636,7 +649,7 @@ describe("Test: Testing RoomMemberManager", function() {
             new Experiment({
                 name: "kick with date everywhere",
                 command: () => `!mjolnir since "${cutDate}" kick 100 * bad, bad user`,
-                shouldAffectWitnessRoom: true,
+                shouldAffectControlProtected: true,
                 n: NUMBER_OF_ROOMS - 1,
                 method: Method.kick,
             }),
@@ -644,18 +657,18 @@ describe("Test: Testing RoomMemberManager", function() {
             experiment.addTo(EXPERIMENTS);
         }
 
-        // Sanity checks, before starting.
+        // Just-in-case health check, before starting.
         {
-            const usersInUnprotectedWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_UNPROTECTED_ROOM_ID);
-            const usersInWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_ROOM_ID);
+            const usersInUnprotectedControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
+            const usersInControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
-                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `Initially, good user ${userId} should be in the unprotected witness room`);
-                assert.ok(usersInWitnessRoom.includes(userId), `Initially, good user ${userId} should be in the witness room`);
-            }    
+                assert.ok(usersInUnprotectedControlProtected.includes(userId), `Initially, good user ${userId} should be in the unprotected control room`);
+                assert.ok(usersInControlProtected.includes(userId), `Initially, good user ${userId} should be in the control room`);
+            }
             for (let userId of badUserIds) {
-                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `Initially, bad user ${userId} should be in the unprotected witness room`);
-                assert.ok(usersInWitnessRoom.includes(userId), `Initially, bad user ${userId} should be in the witness room`);
-            }    
+                assert.ok(usersInUnprotectedControlProtected.includes(userId), `Initially, bad user ${userId} should be in the unprotected control room`);
+                assert.ok(usersInControlProtected.includes(userId), `Initially, bad user ${userId} should be in the control room`);
+            }
         }
 
         for (let i = 0; i < EXPERIMENTS.length; ++i) {
@@ -676,12 +689,12 @@ describe("Test: Testing RoomMemberManager", function() {
 
             // Check post-conditions.
             const usersInRoom = await this.mjolnir.client.getJoinedRoomMembers(roomId);
-            const usersInUnprotectedWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_UNPROTECTED_ROOM_ID);
-            const usersInWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_ROOM_ID);
+            const usersInUnprotectedControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
+            const usersInControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
                 assert.ok(usersInRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in affected room`);
-                assert.ok(usersInWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in witness room (${WITNESS_ROOM_ID})`);
-                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected witness room (${WITNESS_UNPROTECTED_ROOM_ID})`);
+                assert.ok(usersInControlProtected.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in control room (${CONTROL_PROTECTED_ID})`);
+                assert.ok(usersInUnprotectedControlProtected.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected control room (${CONTROL_UNPROTECTED_ROOM_ID})`);
             }
             if (experiment.method === Method.mute) {
                 for (let userId of goodUserIds) {
@@ -704,8 +717,8 @@ describe("Test: Testing RoomMemberManager", function() {
             } else {
                 for (let userId of badUserIds) {
                     assert.ok(!usersInRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should NOT be in affected room`);
-                    assert.equal(usersInWitnessRoom.includes(userId), !experiment.shouldAffectWitnessRoom, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectWitnessRoom ? "NOT" : "still"} be in witness room`);
-                    assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected witness room`);
+                    assert.equal(usersInControlProtected.includes(userId), !experiment.shouldAffectControlProtected, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectControlProtected ? "NOT" : "still"} be in control room`);
+                    assert.ok(usersInUnprotectedControlProtected.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected control room`);
                     const leaveEvent = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
                     switch (experiment.method) {
                         case Method.kick:
