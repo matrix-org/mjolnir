@@ -44,6 +44,7 @@
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^0.5.19",
+    "node": "^18.4.0",
     "parse-duration": "^1.0.2",
     "shell-quote": "^1.7.3"
   },
