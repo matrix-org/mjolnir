@@ -42,9 +42,6 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
         const matchesInfo = `Found ${matches.length} ` + (matches.length === 1 ? 'match:' : 'matches:');
         const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : '';
 
-        // FIXME: I feel like it already replaces pills, but
-        // just double check.
-        //await replaceRoomIdsWithPills()
         html += `<a href="${htmlEscape(list.roomRef)}">${htmlEscape(list.roomId)}</a>${shortcodeInfo} ${matchesInfo}<br/><ul>`;
         text += `${list.roomRef}${shortcodeInfo} ${matchesInfo}:\n`;
 
