@@ -231,7 +231,6 @@ describe('Test: We will not be able to ban ourselves via ACL.', function () {
 
 describe('Test: ACL updates will batch when rules are added in succession.', function () {
     it('Will batch ACL updates if we spam rules into a BanList', async function () {
-        this.timeout(180000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
         const moderator = await newTestUser({ name: { contains: "moderator" }});
@@ -268,6 +267,8 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             // Give them a bit of a spread over time.
             await new Promise(resolve => setTimeout(resolve, 5));
         }
+        // give the events a chance to appear in the response to `/state`, since this is a problem.
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // We do this because it should force us to wait until all the ACL events have been applied.
         // Even if that does mean the last few events will not go through batching...
@@ -364,9 +365,9 @@ describe('Test: unbaning entities via the BanList.', function () {
     })
 })
 
-describe.only('Test: should apply bans to the most recently active rooms first', function () {
+describe('Test: should apply bans to the most recently active rooms first', function () {
     it('Applies bans to the most recently active rooms first', async function () {
-        this.timeout(6000000000)
+        this.timeout(180000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
         const moderator = await newTestUser({ name: { contains: "moderator" }});

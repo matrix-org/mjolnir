@@ -401,25 +401,37 @@ describe("Test: Testing RoomMemberManager", function() {
         }
 
         // Create and protect rooms.
-        // - room 0 remains unprotected, as witness;
-        // - room 1 is protected but won't be targeted directly, also as witness.
+        //
+        // We reserve two control rooms:
+        // - room 0, also known as the "control unprotected room" is unprotected
+        //     (we're not calling `!mjolnir rooms add` for this room), so none
+        //     of the operations of `!mjolnir since` shoud affect it. We are
+        //     using it to control, at the end of each experiment, that none of
+        //     the `!mjolnir since` operations affect it.
+        // - room 1, also known as the "control protected room" is protected
+        //     (we are calling `!mjolnir rooms add` for this room), but we are
+        //     never directly requesting any `!mjolnir since` action against
+        //     this room. We are using it to control, at the end of each experiment,
+        //     that none of the `!mjolnir since` operations that should target
+        //     one single other room also affect that room. It is, however, affected
+        //     by general operations that are designed to affect all protected rooms.
         const NUMBER_OF_ROOMS = 18;
-        const roomIds: string[] = [];
-        const roomAliases: string[] = [];
+        const allRoomIds: string[] = [];
+        const allRoomAliases: string[] = [];
         const mjolnirUserId = await this.mjolnir.client.getUserId();
         for (let i = 0; i < NUMBER_OF_ROOMS; ++i) {
             const roomId = await this.moderator.createRoom({
                 invite: [mjolnirUserId, ...goodUserIds, ...badUserIds],
             });
-            roomIds.push(roomId);
+            allRoomIds.push(roomId);
 
             const alias = `#since-test-${randomUUID()}:localhost:9999`;
             await this.moderator.createRoomAlias(alias, roomId);
-            roomAliases.push(alias);
+            allRoomAliases.push(alias);
         }
-        for (let i = 1; i < roomIds.length; ++i) {
-            // Protect all rooms except roomIds[0], as witness.
-            const roomId = roomIds[i];
+        for (let i = 1; i < allRoomIds.length; ++i) {
+            // Protect all rooms except allRoomIds[0], as control.
+            const roomId = allRoomIds[i];
             await this.mjolnir.client.joinRoom(roomId);
             await this.moderator.setUserPowerLevel(mjolnirUserId, roomId, 100);
             await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${roomId}` });
@@ -429,8 +441,8 @@ describe("Test: Testing RoomMemberManager", function() {
         do {
             let protectedRooms = this.mjolnir.protectedRooms;
             protectedRoomsUpdated = true;
-            for (let i = 1; i < roomIds.length; ++i) {
-                const roomId = roomIds[i];
+            for (let i = 1; i < allRoomIds.length; ++i) {
+                const roomId = allRoomIds[i];
                 if (!(roomId in protectedRooms)) {
                     protectedRoomsUpdated = false;
                     await new Promise(resolve => setTimeout(resolve, 1_000));
@@ -440,7 +452,7 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Good users join before cut date.
         for (let user of this.goodUsers) {
-            for (let roomId of roomIds) {
+            for (let roomId of allRoomIds) {
                 await user.joinRoom(roomId);
             }
         }
@@ -453,10 +465,17 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Bad users join after cut date.
         for (let user of this.badUsers) {
-            for (let roomId of roomIds) {
+            for (let roomId of allRoomIds) {
                 await user.joinRoom(roomId);
             }
         }
+
+        // Finally, prepare our control rooms and separate them
+        // from the regular rooms.
+        const CONTROL_UNPROTECTED_ROOM_ID = allRoomIds[0];
+        const CONTROL_PROTECTED_ID = allRoomIds[1];
+        const roomIds = allRoomIds.slice(2);
+        const roomAliases = allRoomAliases.slice(2);
 
         enum Method {
             kick,
@@ -464,14 +483,12 @@ describe("Test: Testing RoomMemberManager", function() {
             mute,
             unmute,
         }
-        const WITNESS_UNPROTECTED_ROOM_ID = roomIds[0];
-        const WITNESS_ROOM_ID = roomIds[1];
         class Experiment {
             // A human-readable name for the command.
             readonly name: string;
-            // If `true`, this command should affect room `WITNESS_ROOM_ID`.
+            // If `true`, this command should affect room `CONTROL_PROTECTED_ID`.
             // Defaults to `false`.
-            readonly shouldAffectWitnessRoom: boolean;
+            readonly shouldAffectControlProtected: boolean;
             // The actual command-line.
             readonly command: (roomId: string, roomAlias: string) => string;
             // The number of responses we expect to this command.
@@ -484,17 +501,23 @@ describe("Test: Testing RoomMemberManager", function() {
             // Defaults to `false`.
             readonly isSameRoomAsPrevious: boolean;
 
+            // The index of the room on which we're acting.
+            //
+            // Initialized by `addTo`.
             roomIndex: number | undefined;
 
-            constructor({name, shouldAffectWitnessRoom, command, n, method, sameRoom}: {name: string, command: (roomId: string, roomAlias: string) => string, shouldAffectWitnessRoom?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
+            constructor({name, shouldAffectControlProtected, command, n, method, sameRoom}: {name: string, command: (roomId: string, roomAlias: string) => string, shouldAffectControlProtected?: boolean, n?: number, method: Method, sameRoom?: boolean}) {
                 this.name = name;
-                this.shouldAffectWitnessRoom = typeof shouldAffectWitnessRoom === "undefined" ? false : shouldAffectWitnessRoom;
+                this.shouldAffectControlProtected = typeof shouldAffectControlProtected === "undefined" ? false : shouldAffectControlProtected;
                 this.command = command;
                 this.n = typeof n === "undefined" ? 1 : n;
                 this.method = method;
                 this.isSameRoomAsPrevious = typeof sameRoom === "undefined" ? false : sameRoom;
             }
 
+            // Add an experiment to the list of experiments.
+            //
+            // This is how `roomIndex` gets initialized.
             addTo(experiments: Experiment[]) {
                 if (this.isSameRoomAsPrevious) {
                     this.roomIndex = experiments[experiments.length - 1].roomIndex;
@@ -586,7 +609,7 @@ describe("Test: Testing RoomMemberManager", function() {
             new Experiment({
                 name: "kick with date and reason",
                 command: (roomId: string) => `!mjolnir since "${cutDate}" kick 100 ${roomId} bad, bad user`,
-                shouldAffectWitnessRoom: false,
+                shouldAffectControlProtected: false,
                 n: 1,
                 method: Method.kick,
             }),
@@ -626,19 +649,35 @@ describe("Test: Testing RoomMemberManager", function() {
             new Experiment({
                 name: "kick with date everywhere",
                 command: () => `!mjolnir since "${cutDate}" kick 100 * bad, bad user`,
-                shouldAffectWitnessRoom: true,
+                shouldAffectControlProtected: true,
                 n: NUMBER_OF_ROOMS - 1,
                 method: Method.kick,
             }),
         ]) {
             experiment.addTo(EXPERIMENTS);
         }
+
+        // Just-in-case health check, before starting.
+        {
+            const usersInUnprotectedControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
+            const usersInControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
+            for (let userId of goodUserIds) {
+                assert.ok(usersInUnprotectedControlProtected.includes(userId), `Initially, good user ${userId} should be in the unprotected control room`);
+                assert.ok(usersInControlProtected.includes(userId), `Initially, good user ${userId} should be in the control room`);
+            }
+            for (let userId of badUserIds) {
+                assert.ok(usersInUnprotectedControlProtected.includes(userId), `Initially, bad user ${userId} should be in the unprotected control room`);
+                assert.ok(usersInControlProtected.includes(userId), `Initially, bad user ${userId} should be in the control room`);
+            }
+        }
+
         for (let i = 0; i < EXPERIMENTS.length; ++i) {
             const experiment = EXPERIMENTS[i];
-            const index = experiment.roomIndex! + 1;
-            const roomId =  roomIds[index];
+            const index = experiment.roomIndex!;
+            const roomId = roomIds[index];
             const roomAlias = roomAliases[index];
             const joined = this.mjolnir.roomJoins.getUsersInRoom(roomId, start, 100);
+            console.debug(`Running experiment ${i} "${experiment.name}" in room index ${index} (${roomId} / ${roomAlias}): \`${experiment.command(roomId, roomAlias)}\``);
             assert.ok(joined.length >= 2 * SAMPLE_SIZE, `In experiment ${experiment.name}, we should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`);
 
             // Run experiment.
@@ -650,12 +689,12 @@ describe("Test: Testing RoomMemberManager", function() {
 
             // Check post-conditions.
             const usersInRoom = await this.mjolnir.client.getJoinedRoomMembers(roomId);
-            const usersInUnprotectedWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_UNPROTECTED_ROOM_ID);
-            const usersInWitnessRoom = await this.mjolnir.client.getJoinedRoomMembers(WITNESS_ROOM_ID);
+            const usersInUnprotectedControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
+            const usersInControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
                 assert.ok(usersInRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in affected room`);
-                assert.ok(usersInWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in witness room`);
-                assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected witness room`);
+                assert.ok(usersInControlProtected.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in control room (${CONTROL_PROTECTED_ID})`);
+                assert.ok(usersInUnprotectedControlProtected.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in unprotected control room (${CONTROL_UNPROTECTED_ROOM_ID})`);
             }
             if (experiment.method === Method.mute) {
                 for (let userId of goodUserIds) {
@@ -678,8 +717,8 @@ describe("Test: Testing RoomMemberManager", function() {
             } else {
                 for (let userId of badUserIds) {
                     assert.ok(!usersInRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should NOT be in affected room`);
-                    assert.equal(usersInWitnessRoom.includes(userId), !experiment.shouldAffectWitnessRoom, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectWitnessRoom ? "NOT" : "still"} be in witness room`);
-                    assert.ok(usersInUnprotectedWitnessRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected witness room`);
+                    assert.equal(usersInControlProtected.includes(userId), !experiment.shouldAffectControlProtected, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectControlProtected ? "NOT" : "still"} be in control room`);
+                    assert.ok(usersInUnprotectedControlProtected.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected control room`);
                     const leaveEvent = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
                     switch (experiment.method) {
                         case Method.kick:

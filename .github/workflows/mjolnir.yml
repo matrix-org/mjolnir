@@ -11,10 +11,38 @@ env:
 
 jobs:
   build:
-    name: Integration tests
+    name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+
+    - name: Specifically use node 16 like in the readme. 
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    - run: yarn install
+    - run: yarn build
+    - run: yarn lint
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Specifically use node 16 like in the readme. 
+      uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    - run: yarn install
+    - run: yarn test
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '16'
     - name: install mx-tester
       run: cargo install mx-tester
     - name: Setup image
