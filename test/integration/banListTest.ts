@@ -267,6 +267,8 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             // Give them a bit of a spread over time.
             await new Promise(resolve => setTimeout(resolve, 5));
         }
+        // give the events a chance to appear in the response to `/state`, since this is a problem.
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
         // We do this because it should force us to wait until all the ACL events have been applied.
         // Even if that does mean the last few events will not go through batching...
