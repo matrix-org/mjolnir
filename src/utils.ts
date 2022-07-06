@@ -386,6 +386,9 @@ function patchMatrixClientForRetry() {
                                 // We need to retry.
                                 reject(err);
                             } else {
+                                if (attempt >= MAX_REQUEST_ATTEMPTS) {
+                                    LogService.warn('Mjolnir.client', `Retried request ${params.method} ${params.uri} ${attempt} times, giving up.`);
+                                }
                                 // No need-to-retry error? Lucky us!
                                 // Note that this may very well be an error, just not
                                 // one we need to retry.
