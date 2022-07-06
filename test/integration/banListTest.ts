@@ -231,7 +231,6 @@ describe('Test: We will not be able to ban ourselves via ACL.', function () {
 
 describe('Test: ACL updates will batch when rules are added in succession.', function () {
     it('Will batch ACL updates if we spam rules into a BanList', async function () {
-        this.timeout(180000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
         const moderator = await newTestUser({ name: { contains: "moderator" }});

@@ -5,7 +5,6 @@ import { getFirstReaction } from "./commands/commandUtils";
 
 describe("Test: throttled users can function with Mjolnir.", function () {
     it('throttled users survive being throttled by synapse', async function() {
-        this.timeout(60000);
         let throttledUser = await newTestUser({ name: { contains: "throttled" }, isThrottled: true });
         let throttledUserId = await throttledUser.getUserId();
         let targetRoom = await throttledUser.createRoom();
@@ -31,7 +30,6 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
     })
 
     it('Can still perform and respond to a redaction command', async function () {
-        this.timeout(60000);
         // Create a few users and a room.
         let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
         let badUserId = await badUser.getUserId();
