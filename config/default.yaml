@@ -240,3 +240,7 @@ web:
 # instead of intercepting client calls to synapse's abuse endpoint, when that
 # isn't possible/practical.
 pollReports: false
+
+# Whether or not new reports, received either by webapi or polling,
+# should be printed to our managementRoom.
+displayReports: true
