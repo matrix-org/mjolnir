@@ -54,6 +54,10 @@ interface IConfig {
      */
     backgroundDelayMS: number;
     pollReports: boolean;
+    /**
+     * Whether or not new reports, received either by webapi or polling,
+     * should be printed to our managementRoom.
+     */
     displayReports: boolean;
     admin?: {
         enableMakeRoomAdminCommand?: boolean;
@@ -125,7 +129,7 @@ const defaultConfig: IConfig = {
     protectAllJoinedRooms: false,
     backgroundDelayMS: 500,
     pollReports: false,
-    displayReports: false,
+    displayReports: true,
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],
