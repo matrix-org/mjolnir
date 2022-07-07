@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogService, MatrixClient } from "matrix-bot-sdk";
+import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
 import { ListRule, RECOMMENDATION_BAN } from "./ListRule";
 
@@ -180,6 +180,38 @@ class BanList extends EventEmitter {
 
     public get allRules(): ListRule[] {
         return [...this.serverRules, ...this.userRules, ...this.roomRules];
+    }
+
+    /**
+     * Return all of the rules in this list that will match the provided entity.
+     * If the entity is a user, then we match the domain part against server rules too.
+     * @param ruleKind The type of rule for the entity e.g. `RULE_USER`.
+     * @param entity The entity to test e.g. the user id, server name or a room id.
+     * @returns All of the rules that match this entity.
+     */
+    public rulesMatchingEntity(entity: string, ruleKind?: string): ListRule[] {
+        const ruleTypeOf: (entityPart: string) => string = (entityPart: string) => {
+            if (ruleKind) {
+                return ruleKind;
+            } else if (entityPart.startsWith("#") || entityPart.startsWith("#")) {
+                return RULE_ROOM;
+            } else if (entity.startsWith("@")) {
+                return RULE_USER;
+            } else {
+                return RULE_SERVER;
+            }
+        };
+
+        if (ruleTypeOf(entity) === RULE_USER) {
+            // We special case because want to see whether a server ban is preventing this user from participating too.
+            const userId = new UserID(entity);
+            return [
+                ...this.userRules.filter(rule => rule.isMatch(entity)),
+                ...this.serverRules.filter(rule => rule.isMatch(userId.domain))
+            ]
+        } else {
+            return this.rulesOfKind(ruleTypeOf(entity)).filter(rule => rule.isMatch(entity));
+        }
     }
 
     /**

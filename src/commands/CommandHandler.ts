@@ -17,7 +17,7 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import { execStatusCommand } from "./StatusCommand";
 import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
-import { execDumpRulesCommand } from "./DumpRulesCommand";
+import { execDumpRulesCommand, execRulesMatchingCommand } from "./DumpRulesCommand";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
 import { htmlEscape } from "../utils";
 import { execSyncCommand } from "./SyncCommand";
@@ -59,6 +59,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execBanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'unban' && parts.length > 2) {
             return await execUnbanCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'rules' && parts.length === 4 && parts[2] === 'matching') {
+            return await execRulesMatchingCommand(roomId, event, mjolnir, parts[3])
         } else if (parts[1] === 'rules') {
             return await execDumpRulesCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'sync') {
@@ -133,6 +135,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
                 "!mjolnir kick <glob> [room alias/ID] [reason]                    - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
+                "!mjolnir rules matching <user|room|server>                          - Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user." +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
