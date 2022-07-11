@@ -98,8 +98,9 @@ permanently from protection, remove them from the config.
 ## Trusted Reporters
 
 Mjolnir has an (optional) system in which it will poll Synapse for new reports, and when it sees sufficient
-(configurable limit) amounts of reports from trusted (configurable list) users on an given report, it will
-take a configurable action, such as redacting the message.
+amounts of reports from trusted users on an given message, it will take an action, such as redacting the message.
+
+The users to trust, the actions to take, and the thresholds needed for those actions are configurable.
 
 Prerequisites:
 * `pollReport: true` in Mjolnir config file
