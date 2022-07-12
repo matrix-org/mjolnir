@@ -36,19 +36,12 @@ let inProgress: Promise<RoomUpdateError[]> = new Promise(resolve => resolve([]))
  */
 export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // There's probably a name for what this actually is, but we only want one instance of `_applyServerAcls` to be running at any time.
-    // So we naively promise chain them.
-    let timeoutId: NodeJS.Timeout|null = null;
-    inProgress = Promise.race([
-        new Promise((resolve, reject) => {
-            inProgress.finally(() => {
-                _applyServerAcls(lists, roomIds, mjolnir).then(resolve).catch(reject)
-            })
-        }),
-        // We don't want to stop ACL being applied if for some reason one gets stuck for 10 minutes.
-        new Promise((_, reject) => timeoutId = setTimeout(() => reject(new Error("Unable to apply ACL within a reasonable time.")), 600_000))
-    ]) as Promise<RoomUpdateError[]>;
-    inProgress.then(() => clearTimeout(timeoutId!));
-    return inProgress;
+    return new Promise(resolve => {
+        mjolnir.taskQueue.push(async () => {
+            // We have to await rather than chain with .then because otherwise we will not block the task queue while we sync ACL.
+            resolve(await _applyServerAcls(lists, roomIds, mjolnir));
+        });
+    });
 }
 
 async function _applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {

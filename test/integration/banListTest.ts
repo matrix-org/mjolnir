@@ -260,7 +260,8 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         mjolnir.joinRoom(banListId);
         this.mjolnir!.watchList(Permalinks.forRoom(banListId));
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
-        for (let i = 0; i < 200; i++) {
+        const evilServerCount = 200;
+        for (let i = 0; i < evilServerCount; i++) {
             const badServer = `${i}.evil.com`;
             acl.denyServer(badServer);
             await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule #${i}`);
@@ -274,7 +275,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         // At this point we check that the state within Mjolnir is internally consistent, this is just because debugging the following
         // is a pita.
         const list: BanList = this.mjolnir.banLists[0]!;
-        assert.equal(list.serverRules.length, 200, "There should be 200 rules in here, bruh");
+        assert.equal(list.serverRules.length, evilServerCount, `There should be ${evilServerCount} rules in here`);
 
         // Check each of the protected rooms for ACL events and make sure they were batched and are correct.
         await Promise.all(protectedRooms.map(async room => {
