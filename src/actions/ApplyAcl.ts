@@ -22,6 +22,10 @@ import config from "../config";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
+// Somewhere to store a promise for the last call to `_applyServerAcls`, so that we can make sure we only run
+// it again after it has finished.
+let inProgress: Promise<RoomUpdateError[]> = new Promise(resolve => resolve([]));
+
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
@@ -31,6 +35,23 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
  * @param {Mjolnir} mjolnir The Mjolnir client to apply the ACLs with.
  */
 export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
+    // There's probably a name for what this actually is, but we only want one instance of `_applyServerAcls` to be running at any time.
+    // So we naively promise chain them.
+    let timeoutId: NodeJS.Timeout|null = null;
+    inProgress = Promise.race([
+        new Promise((resolve, reject) => {
+            inProgress.finally(() => {
+                _applyServerAcls(lists, roomIds, mjolnir).then(resolve).catch(reject)
+            })
+        }),
+        // We don't want to stop ACL being applied if for some reason one gets stuck for 10 minutes.
+        new Promise((_, reject) => timeoutId = setTimeout(() => reject(new Error("Unable to apply ACL within a reasonable time.")), 600_000))
+    ]) as Promise<RoomUpdateError[]>;
+    inProgress.then(() => clearTimeout(timeoutId!));
+    return inProgress;
+}
+
+async function _applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     const serverName: string = new UserID(await mjolnir.client.getUserId()).domain;
 
     // Construct a server ACL first
