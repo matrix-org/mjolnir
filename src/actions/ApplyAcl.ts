@@ -22,10 +22,6 @@ import config from "../config";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
-// Somewhere to store a promise for the last call to `_applyServerAcls`, so that we can make sure we only run
-// it again after it has finished.
-let inProgress: Promise<RoomUpdateError[]> = new Promise(resolve => resolve([]));
-
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
