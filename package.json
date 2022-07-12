@@ -24,6 +24,7 @@
     "@types/js-yaml": "^4.0.5",
     "@types/jsdom": "^16.2.11",
     "@types/mocha": "^9.0.0",
+    "@types/nedb": "^1.8.12",
     "@types/node": "^16.7.10",
     "@types/shell-quote": "1.7.1",
     "crypto-js": "^4.1.1",
@@ -43,7 +44,8 @@
     "humanize-duration-ts": "^2.1.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
-    "matrix-bot-sdk": "^0.5.19",
+    "matrix-appservice-bridge": "^4.0.1",
+    "nedb": "^1.8.0",
     "parse-duration": "^1.0.2",
     "shell-quote": "^1.7.3",
     "yaml": "^2.1.1"
