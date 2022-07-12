@@ -18,7 +18,6 @@ import { Mjolnir } from "../Mjolnir";
 import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
 import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
-import config from "../config";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 
 interface Arguments {
@@ -95,7 +94,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
     else if (!entity) replyMessage = "No entity found";
 
-    if (config.commands.confirmWildcardBan && /[*?]/.test(entity) && !force) {
+    if (mjolnir.config.commands.confirmWildcardBan && /[*?]/.test(entity) && !force) {
         replyMessage = "Wildcard bans require an additional `--force` argument to confirm";
     }
 
@@ -151,7 +150,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
                 if (rule.test(victim)) {
                     await mjolnir.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`, protectedRoomId);
 
-                    if (!config.noop) {
+                    if (!mjolnir.config.noop) {
                         await mjolnir.client.unbanUser(victim, protectedRoomId);
                     } else {
                         await mjolnir.logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${victim} in ${protectedRoomId} but Mjolnir is running in no-op mode`, protectedRoomId);
@@ -164,7 +163,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
 
         if (unbannedSomeone) {
             await mjolnir.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure no users were accidentally unbanned`);
-            await mjolnir.syncLists(config.verboseLogging);
+            await mjolnir.syncLists(mjolnir.config.verboseLogging);
         }
     }
 

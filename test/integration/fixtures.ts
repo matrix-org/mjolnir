@@ -14,7 +14,7 @@ export const mochaHooks = {
             // Sometimes it takes a little longer to register users.
             this.timeout(10000)
             this.managementRoomAlias = config.managementRoom;
-            this.mjolnir = await makeMjolnir();
+            this.mjolnir = await makeMjolnir(config);
             config.RUNTIME.client = this.mjolnir.client;
             await Promise.all([
                 this.mjolnir.client.setAccountData('org.matrix.mjolnir.protected_rooms', { rooms: [] }),

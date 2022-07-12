@@ -16,7 +16,6 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, MatrixGlob, RichReply } from "matrix-bot-sdk";
-import config from "../config";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -30,7 +29,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         parts.pop();
     }
 
-    if (config.commands.confirmWildcardBan && /[*?]/.test(glob) && !force) {
+    if (mjolnir.config.commands.confirmWildcardBan && /[*?]/.test(glob) && !force) {
         let replyMessage = "Wildcard bans require an addition `--force` argument to confirm";
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
         reply["msgtype"] = "m.notice";
@@ -60,7 +59,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
             if (kickRule.test(victim)) {
                 await mjolnir.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${victim} in ${protectedRoomId}`, protectedRoomId);
 
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     try {
                         await mjolnir.taskQueue.push(async () => {
                             return mjolnir.client.kickUser(victim, protectedRoomId, reason);

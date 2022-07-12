@@ -56,7 +56,7 @@ if (config.health.healthz.enabled) {
         patchMatrixClient();
         config.RUNTIME.client = client;
 
-        bot = await Mjolnir.setupMjolnirFromConfig(client);
+        bot = await Mjolnir.setupMjolnirFromConfig(client, config);
     } catch (err) {
         console.error(`Failed to setup mjolnir from the config ${config.dataPath}: ${err}`);
         throw err;
