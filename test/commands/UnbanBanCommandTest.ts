@@ -19,6 +19,7 @@ import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/BanList";
+import config from "../../src/config";
 
 function createTestMjolnir(defaultShortcode: string = null): Mjolnir {
     const client = {
@@ -29,7 +30,10 @@ function createTestMjolnir(defaultShortcode: string = null): Mjolnir {
             throw new Error("Unknown event type");
         },
     };
-    return <Mjolnir>{client};
+    return <Mjolnir>{
+        client,
+        config,
+    };
 }
 
 function createFakeEvent(command: string): any {
