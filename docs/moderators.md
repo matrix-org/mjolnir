@@ -111,7 +111,8 @@ Prerequisites:
 
 TrustedReporters supports 3 different thresholds; `alertThreshold`, `redactThreshold`, and `banThreshold`.
 By default, only `alertThreshold` is enabled, and is set to `3`. Mjolnir will only consider reports that
-take place in rooms Mjolnir is protecting.
+take place in rooms Mjolnir is protecting. `alertThreshold` is separate from Mjolnir's ability to log
+each report, which is `displayReports` in Mjolnir's config file.
 
 Make sure that anything you have sat in front of Synapse (e.g. nginx) is correctly configured to forward
 `/_synapse/admin/v1/event_reports` and `/_synapse/admin/v1/rooms/${room_id}/context/${revent_id}` to
