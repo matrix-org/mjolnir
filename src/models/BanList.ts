@@ -304,6 +304,10 @@ class BanList extends EventEmitter {
             // The reason we set the state at this point is because it is valid to want to set the state to an invalid rule
             // in order to mark a rule as deleted.
             // We always set state with the normalised state type via `kind` to de-duplicate rules.
+            if (!("unsigned" in event)) {
+                // We'll store stuff in `unsigned`, so let's make sure it exists!
+                event.unsigned = {};
+            }
             this.setState(kind, event['state_key'], event);
             const changeType: null|ChangeType = (() => {
                 if (!previousState) {
