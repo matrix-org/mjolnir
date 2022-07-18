@@ -83,7 +83,7 @@ export class WordList extends Protection {
                     return
                 }
             }
-            if (this.badWords == null) {
+            if (this.badWords === null) {
                 // Create a mega-regex from all the tiny baby regexs
                 try {
                     this.badWords = new RegExp(
@@ -93,7 +93,7 @@ export class WordList extends Protection {
                 } catch (ex) {
                     await mjolnir.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
                 }
-            }-
+            }
 
             // Perform the test
             if (message && this.badWords!.test(message)) {
