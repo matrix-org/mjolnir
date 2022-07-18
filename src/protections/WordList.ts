@@ -85,11 +85,15 @@ export class WordList extends Protection {
             }
             if (this.badWords == null) {
                 // Create a mega-regex from all the tiny baby regexs
-                this.badWords = new RegExp(
-                    "(" + mjolnir.config.protections.wordlist.words.join(")|(") + ")",
-                    "i"
-                );
-            }
+                try {
+                    this.badWords = new RegExp(
+                        "(" + mjolnir.config.protections.wordlist.words.join(")|(") + ")",
+                        "i"
+                    );
+                } catch (ex) {
+                    await mjolnir.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
+                }
+            }-
 
             // Perform the test
             if (message && this.badWords!.test(message)) {
