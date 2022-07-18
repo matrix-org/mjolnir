@@ -83,7 +83,7 @@ export class WordList extends Protection {
                     return
                 }
             }
-            if (!Boolean(this.badWords)) {
+            if (this.badWords == null) {
                 // Create a mega-regex from all the tiny baby regexs
                 this.badWords = new RegExp(
                     "(" + mjolnir.config.protections.wordlist.words.join(")|(") + ")",
