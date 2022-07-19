@@ -12,7 +12,7 @@ const TokenizrClass = Tokenizr || TokenizrModule;
 export class Lexer extends TokenizrClass {
     constructor(string: string) {
         super();
-
+        console.debug("YORIC", "Lexer", 0);
         // Ignore whitespace.
         this.rule(/\s+/, (ctx) => {
             ctx.ignore()
@@ -58,6 +58,7 @@ export class Lexer extends TokenizrClass {
         });
 
         // Dates and durations.
+        console.debug("YORIC", "Lexer", 1);
         try {
             this.rule("dateOrDuration", /(?:"([^"]+)")|(\S+)/, (ctx, match) => {
                 let content = match[1] || match[2];
