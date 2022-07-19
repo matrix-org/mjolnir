@@ -48,14 +48,14 @@ export const COMMAND_PREFIX = "!mjolnir";
 export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
     const line = event['content']['body'];
     const parts = line.trim().split(' ').filter(p => p.trim().length > 0);
-    console.debug("YORIC", "line", line);
+
     const lexer = new Lexer(line);
     lexer.token("command"); // Consume `!mjolnir`.
+    // Extract command.
     const cmd = lexer.alternatives(
         () => lexer.token("id").text,
         () => null
     );
-    console.debug("YORIC", "cmd", cmd);
 
     try {
         if (cmd === null || cmd === 'status') {

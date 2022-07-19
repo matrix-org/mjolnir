@@ -6,92 +6,98 @@ import * as TokenizrModule from "tokenizr";
 import { parseDuration } from "../utils";
 const TokenizrClass = Tokenizr || TokenizrModule;
 
+const WHITESPACE = /\s+/;
+const COMMAND = /![a-zA-Z_]+/;
+const IDENTIFIER = /[a-zA-Z_]+/;
+const USER_ID = /@[a-zA-Z0-9_.=\-/]+:\S+/;
+const GLOB_USER_ID = /@[a-zA-Z0-9_.=\-?*/]+:\S+/;
+const ROOM_ID = /![a-zA-Z0-9_.=\-/]+:\S+/;
+const ROOM_ALIAS = /#[a-zA-Z0-9_.=\-/]+:\S+/;
+const ROOM_ALIAS_OR_ID = /[#!][a-zA-Z0-9_.=\-/]+:\S+/;
+const INT = /[+-]?[0-9]+/;
+const STRING = /"((?:\\"|[^\r\n])*)"/;
+const DATE_OR_DURATION = /(?:"([^"]+)")|([^"]\S+)/;
+const STAR = /\*/;
+const ETC = /.*$/;
+
 /**
- * A lexer for common cases.
+ * A lexer for command parsing.
+ *
+ * Recommended use is `lexer.token("state")`.
  */
 export class Lexer extends TokenizrClass {
     constructor(string: string) {
         super();
-        console.debug("YORIC", "Lexer", 0);
         // Ignore whitespace.
-        this.rule(/\s+/, (ctx) => {
+        this.rule(WHITESPACE, (ctx) => {
             ctx.ignore()
         })
 
         // Command rules, e.g. `!mjolnir`
-        this.rule("command", /![a-zA-Z_]+/, (ctx) => {
+        this.rule("command", COMMAND, (ctx) => {
             ctx.accept("command");
         });
 
         // Identifier rules, used e.g. for subcommands `get`, `set` ...
-        this.rule("id", /[a-zA-Z_]+/, (ctx) => {
+        this.rule("id", IDENTIFIER, (ctx) => {
             ctx.accept("id");
         });
 
         // Users
-        this.rule("userID", /@[a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        this.rule("userID", USER_ID, (ctx) => {
             ctx.accept("userID");
         });
-        this.rule("globUserID", /@[a-zA-Z0-9_.=\-?*/]+:.+/, (ctx) => {
+        this.rule("globUserID", GLOB_USER_ID, (ctx) => {
             ctx.accept("globUserID");
         });
 
         // Rooms
-        this.rule("roomID", /![a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        this.rule("roomID", ROOM_ID, (ctx) => {
             ctx.accept("roomID");
         });
-        this.rule("roomAlias", /#[a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        this.rule("roomAlias", ROOM_ALIAS, (ctx) => {
             ctx.accept("roomAlias");
         });
-        this.rule("roomAliasOrID", /[#!][a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        this.rule("roomAliasOrID", ROOM_ALIAS_OR_ID, (ctx) => {
             ctx.accept("roomAliasOrID");
         });
 
         // Numbers.
-        this.rule("int", /[+-]?[0-9]+/, (ctx, match) => {
+        this.rule("int", INT, (ctx, match) => {
             ctx.accept("int", parseInt(match[0]))
         });
 
         // Quoted strings.
-        this.rule("string", /"((?:\\"|[^\r\n])*)"/, (ctx, match) => {
+        this.rule("string", STRING, (ctx, match) => {
             ctx.accept("string", match[1].replace(/\\"/g, "\""))
         });
 
         // Dates and durations.
-        console.debug("YORIC", "Lexer", 1);
-        try {
-            this.rule("dateOrDuration", /(?:"([^"]+)")|(\S+)/, (ctx, match) => {
-                let content = match[1] || match[2];
-                console.debug("YORIC", "Lexer", "dateOrDuration", content);
-                let date = new Date(content);
-                console.debug("YORIC", "Lexer", "dateOrDuration", "date", date);
-                if (!date || Number.isNaN(date.getDate())) {
-                    let duration = parseDuration(content);
-                    console.debug("YORIC", "Lexer", "dateOrDuration", "duration", duration);
-                    if (!duration || Number.isNaN(duration)) {
-                        ctx.reject();
-                    } else {
-                        ctx.accept("duration", duration);
-                    }
+        this.rule("dateOrDuration", DATE_OR_DURATION, (ctx, match) => {
+            let content = match[1] || match[2];
+            let date = new Date(content);
+            if (!date || Number.isNaN(date.getDate())) {
+                let duration = parseDuration(content);
+                if (!duration || Number.isNaN(duration)) {
+                    ctx.reject();
                 } else {
-                    ctx.accept("date", date);
+                    ctx.accept("duration", duration);
                 }
-            });
-        } catch (ex) {
-            console.error("YORIC", ex);
-        }
+            } else {
+                ctx.accept("date", date);
+            }
+        });
 
         // Jokers.
-        this.rule("STAR", /\*/, (ctx) => {
+        this.rule("STAR", STAR, (ctx) => {
             ctx.accept("STAR");
         });
 
         // Everything left in the string.
-        this.rule("ETC", /.*/, (ctx) => {
-            ctx.accept("ETC")
+        this.rule("ETC", ETC, (ctx, match) => {
+            ctx.accept("ETC", match[0].trim());
         });
 
-        console.debug("YORIC", "Preparing lexer", string);
         this.input(string);
     }
 

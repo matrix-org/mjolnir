@@ -77,7 +77,6 @@ function formatResult(action: string, targetRoomId: string, recentJoins: Join[],
 async function execSinceCommandAux(destinationRoomId: string, event: any, mjolnir: Mjolnir, lexer: Lexer): Promise<Result<undefined>> {
     // Attempt to parse `<date/duration>` as a date or duration.
     let dateOrDuration: Date |number = lexer.token("dateOrDuration").value;
-    console.debug("YORIC", "dateOrDuration", dateOrDuration);
     let minDate;
     let maxAgeMS;
     if (dateOrDuration instanceof Date) {
@@ -101,25 +100,28 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     if (!action) {
         return {error: `Invalid <action>. Expected one of ${JSON.stringify(Action)}`};
     }
-    console.debug("YORIC", "action", action);
 
     // Attempt to parse `<limit>` as a number.
     const maxEntries = lexer.token("int").value as number;
-    console.debug("YORIC", "maxEntries", maxEntries);
 
-    // Now list affected rooms.
+    // Parse rooms.
+    // Parse everything else as `<reason>`, stripping quotes if any have been added.
     const rooms: Set</* room id */string> = new Set();
+    let reason = "";
     do {
+
         let token = lexer.alternatives(
+            // Room
             () => lexer.token("STAR"),
             () => lexer.token("roomAliasOrID"),
+            // Reason
+            () => lexer.token("string"),
+            () => lexer.token("ETC")
         );
-        console.debug("YORIC", "token", token);
-        if (!token) {
-            // We have reached the end of rooms.
+        if (!token || token.type === "EOF") {
+            // We have reached the end of rooms, no reason.
             break;
-        }
-        if (token.type === "STAR") {
+        } else if (token.type === "STAR") {
             for (let roomId of Object.keys(mjolnir.protectedRooms)) {
                 rooms.add(roomId);
             }
@@ -131,8 +133,9 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
             }
             rooms.add(roomId);
             continue;
-        }
-        if (token.type == 'EOF') {
+        } else if (token.type === "string" || token.type === "ETC") {
+            // We have reached the end of rooms with a reason.
+            reason = token.text;
             break;
         }
     } while(true);
@@ -141,14 +144,6 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
             error: "Missing rooms. Use `*` if you wish to apply to every protected room.",
         };
     }
-    console.debug("YORIC", "rooms", rooms);
-
-    // Parse everything else as `<reason>`, stripping quotes if any have been added.
-    const reason = lexer.alternatives(
-        () => lexer.token("string"),
-        () => lexer.token("ETC")
-    )?.text || "";
-    console.debug("YORIC", "reason", reason);
 
     const progressEventId = await mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '⏳');
 

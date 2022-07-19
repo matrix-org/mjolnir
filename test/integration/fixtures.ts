@@ -12,7 +12,7 @@ export const mochaHooks = {
             console.error("---- entering test", JSON.stringify(this.currentTest.title)); // Makes MatrixClient error logs a bit easier to parse.
             console.log("mochaHooks.beforeEach");
             // Sometimes it takes a little longer to register users.
-            this.timeout(10000)
+            this.timeout(20000)
             this.managementRoomAlias = config.managementRoom;
             this.mjolnir = await makeMjolnir();
             config.RUNTIME.client = this.mjolnir.client;
