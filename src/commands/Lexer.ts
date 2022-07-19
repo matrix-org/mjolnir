@@ -18,47 +18,47 @@ export class Lexer extends TokenizrClass {
             ctx.ignore()
         })
 
+        // Command rules, e.g. `!mjolnir`
+        this.rule("command", /![a-zA-Z_]+/, (ctx) => {
+            ctx.accept("command");
+        });
+
         // Identifier rules, used e.g. for subcommands `get`, `set` ...
-        this.rule(/[a-zA-Z_]+/, (ctx) => {
+        this.rule("id", /[a-zA-Z_]+/, (ctx) => {
             ctx.accept("id");
         });
 
-        // User IDs
-        this.rule(/@[a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        // Users
+        this.rule("userID", /@[a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
             ctx.accept("userID");
         });
-        this.rule(/@[a-zA-Z0-9_.=\-?*/]+:.+/, (ctx) => {
+        this.rule("globUserID", /@[a-zA-Z0-9_.=\-?*/]+:.+/, (ctx) => {
             ctx.accept("globUserID");
         });
 
-        // User IDs
-        this.rule(/![a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        // Rooms
+        this.rule("roomID", /![a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
             ctx.accept("roomID");
         });
-        this.rule(/#[a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        this.rule("roomAlias", /#[a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
             ctx.accept("roomAlias");
         });
-        this.rule(/[#!][a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
+        this.rule("roomAliasOrID", /[#!][a-zA-Z0-9_.=\-/]+:.+/, (ctx) => {
             ctx.accept("roomAliasOrID");
         });
-        
+
         // Numbers.
-        this.rule(/[+-]?[0-9]+/, (ctx, match) => {
+        this.rule("int", /[+-]?[0-9]+/, (ctx, match) => {
             ctx.accept("int", parseInt(match[0]))
         });
 
         // Quoted strings.
-        this.rule(/"((?:\\"|[^\r\n])*)"/, (ctx, match) => {
+        this.rule("string", /"((?:\\"|[^\r\n])*)"/, (ctx, match) => {
             ctx.accept("string", match[1].replace(/\\"/g, "\""))
         });
 
-        // Arbitrary non-space content.
-        this.rule(/\S+/, (ctx) => {
-            ctx.accept("nospace");
-        });
-
         // Dates and durations.
-        this.rule(/\S+/, (ctx, match) => {
+        this.rule("dateOrDuration", /\S+/, (ctx, match) => {
             let date = new Date(match[0]);
             if (!date || Number.isNaN(date.getDate())) {
                 let duration = parseDuration(match[0]);
@@ -73,13 +73,20 @@ export class Lexer extends TokenizrClass {
         });
 
         // Jokers.
-        this.rule(/\*/, (ctx) => {
+        this.rule("STAR", /\*/, (ctx) => {
             ctx.accept("STAR");
         });
-        this.rule(/.*/, ctx => {
-            ctx.accept("EVERYTHING ELSE");
+        this.rule(/./, (ctx) => {
+            ctx.accept("ANYTHING ELSE")
         });
 
         this.input(string);
+    }
+
+    public token(state?: string): TokenizrModule.Token {
+        if (typeof state === "string") {
+            this.state(state);
+        }
+        return super.token();
     }
 }

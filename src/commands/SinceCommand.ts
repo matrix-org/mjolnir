@@ -69,15 +69,10 @@ function formatResult(action: string, targetRoomId: string, recentJoins: Join[],
 // - attempts to execute action;
 // - in case of success, returns `{ok: undefined}`, in case of error, returns `{error: string}`.
 async function execSinceCommandAux(destinationRoomId: string, event: any, mjolnir: Mjolnir, lexer: Lexer): Promise<Result<undefined>> {
-    console.debug("YORIC", "lexer", lexer);
-
     // Attempt to parse `<date/duration>` as a date or duration.
     let dateOrDurationToken: Date | number;
     try {
-        dateOrDurationToken = lexer.alternatives(
-            () => lexer.consume("date"),
-            () => lexer.consume("duration")
-        );
+        dateOrDurationToken = lexer.token("dateOrDuration").value;
     } catch (ex) {
         return { error: "Invalid <date/duration>" };
     }
@@ -93,7 +88,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     }
 
     // Attempt to parse `<action>` as Action.
-    let actionToken = lexer.consume("id").text;
+    let actionToken = lexer.token("id").text;
     let action: Action | null = null;
     for (let key in Action) {
         const maybeAction = Action[key as keyof typeof Action];
@@ -108,7 +103,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     console.debug("YORIC", "action", action);
 
     // Attempt to parse `<limit>` as a number.
-    const maxEntries = lexer.consume("int").value as number;
+    const maxEntries = lexer.token("int").value as number;
     console.debug("YORIC", "maxEntries", maxEntries);
 
     // Now list affected rooms.
@@ -116,8 +111,8 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     do {
         try {
             let token = lexer.alternatives(
-                () => lexer.consume("STAR"),
-                () => lexer.consume("roomAliasOrID"),
+                () => lexer.token("STAR"),
+                () => lexer.token("roomAliasOrID"),
             );
             if (token.type == "STAR") {
                 for (let roomId of Object.keys(mjolnir.protectedRooms)) {
@@ -147,8 +142,8 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
 
     // Parse everything else as `<reason>`, stripping quotes if any have been added.
     const reason = lexer.alternatives(
-        () => lexer.consume("string"),
-        () => lexer.consume("EVERYTHING ELSE")
+        () => lexer.token("string"),
+        () => lexer.token("EVERYTHING ELSE")
     ).text;
     console.debug("YORIC", "reason", reason);
 
