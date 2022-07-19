@@ -28,8 +28,10 @@ import { execRedactCommand } from "./RedactCommand";
 import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
-import { execDisableProtection, execEnableProtection, execListProtections, execConfigGetProtection,
-    execConfigSetProtection, execConfigAddProtection, execConfigRemoveProtection } from "./ProtectionsCommands";
+import {
+    execDisableProtection, execEnableProtection, execListProtections, execConfigGetProtection,
+    execConfigSetProtection, execConfigAddProtection, execConfigRemoveProtection
+} from "./ProtectionsCommands";
 import { execListProtectedRooms } from "./ListProtectedRoomsCommand";
 import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtectedRoomsCommand";
 import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";
@@ -43,198 +45,20 @@ import { Lexer } from "./Lexer";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
-type Command = {
-    cmd: string,
-    help: string,
-    code: (roomId: string, event: {content: {body: string}}, mjolnir: Mjolnir, parts: string[], lexer: Lexer) => Promise<any>,
-};
-const COMMANDS: Command[] = [{
-    cmd: '',
-    help: "FIXME",
-    code: (roomId, event, mjolnir, parts, lexer) => execStatusCommand(roomId, event, mjolnir, parts.slice(2))
-},
-    {
-  cmd: 'ban',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execBanCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'unban',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execUnbanCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'rules',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execRulesMatchingCommand(roomId, event, mjolnir, parts[3]),
-},
-{
-    cmd: 'rules',
-    help: "FIXME",
-    code: (roomId, event, mjolnir, parts, lexer) => execDumpRulesCommand(roomId, event, mjolnir),
-},
-    {
-  cmd: 'sync',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execSyncCommand(roomId, event, mjolnir),
-},
-    {
-  cmd: 'verify',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execPermissionCheckCommand(roomId, event, mjolnir),
-},
-    {
-  cmd: 'list',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execCreateListCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'watch',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execWatchCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'unwatch',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execUnwatchCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'redact',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execRedactCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'import',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execImportCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'default',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execSetDefaultListCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'deactivate',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execDeactivateCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'protections',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execListProtections(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'enable',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execEnableProtection(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'disable',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execDisableProtection(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'config',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execConfigSetProtection(roomId, event, mjolnir, parts.slice(3)),
-},
-    {
-  cmd: 'config',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execConfigAddProtection(roomId, event, mjolnir, parts.slice(3)),
-},
-    {
-  cmd: 'config',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execConfigRemoveProtection(roomId, event, mjolnir, parts.slice(3)),
-},
-    {
-  cmd: 'config',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execConfigGetProtection(roomId, event, mjolnir, parts.slice(3)),
-},
-    {
-  cmd: 'rooms',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execAddProtectedRoom(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'rooms',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execRemoveProtectedRoom(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'rooms',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execListProtectedRooms(roomId, event, mjolnir),
-},
-    {
-  cmd: 'move',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execMoveAliasCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'directory',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execAddRoomToDirectoryCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'directory',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execRemoveRoomFromDirectoryCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'alias',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execAddAliasCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'alias',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execRemoveAliasCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'resolve',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execResolveCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'powerlevel',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execSetPowerLevelCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'shutdown',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execShutdownRoomCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'since',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execSinceCommand(roomId, event, mjolnir, lexer),
-},
-    {
-  cmd: 'kick',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execKickCommand(roomId, event, mjolnir, parts),
-},
-    {
-  cmd: 'make',
-  help: "FIXME",
-  code: (roomId, event, mjolnir, parts, lexer) => execMakeRoomAdminCommand(roomId, event, mjolnir, parts),
-}];
-
 export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
     const line = event['content']['body'];
     const parts = line.trim().split(' ').filter(p => p.trim().length > 0);
     console.debug("YORIC", "line", line);
     const lexer = new Lexer(line);
     lexer.token("command"); // Consume `!mjolnir`.
-    const cmd = lexer.token("id").text;
+    const cmd = lexer.alternatives(
+        () => lexer.token("id").text,
+        () => null
+    );
     console.debug("YORIC", "cmd", cmd);
 
     try {
-        if (cmd === '' || cmd === 'status') {
+        if (cmd === null || cmd === 'status') {
             return await execStatusCommand(roomId, event, mjolnir, parts.slice(2));
         } else if (cmd === 'ban' && parts.length > 2) {
             return await execBanCommand(roomId, event, mjolnir, parts);

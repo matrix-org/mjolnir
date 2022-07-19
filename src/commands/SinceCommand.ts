@@ -39,7 +39,13 @@ type Summary = { succeeded: userId[], failed: userId[] };
 
 // !mjolnir since <date>/<duration> <action> <number> [...rooms] [...reason]
 export async function execSinceCommand(destinationRoomId: string, event: any, mjolnir: Mjolnir, lexer: Lexer) {
-    let result = await execSinceCommandAux(destinationRoomId, event, mjolnir, lexer);
+    let result;
+    try {
+        result = await execSinceCommandAux(destinationRoomId, event, mjolnir, lexer);
+    } catch (ex) {
+        result = { error: ex.message };
+        console.error("Error executing `since` command", ex);
+    }
     if ("error" in result) {
         mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '❌');
         mjolnir.logMessage(LogLevel.WARN, "SinceCommand", result.error);
@@ -70,21 +76,16 @@ function formatResult(action: string, targetRoomId: string, recentJoins: Join[],
 // - in case of success, returns `{ok: undefined}`, in case of error, returns `{error: string}`.
 async function execSinceCommandAux(destinationRoomId: string, event: any, mjolnir: Mjolnir, lexer: Lexer): Promise<Result<undefined>> {
     // Attempt to parse `<date/duration>` as a date or duration.
-    let dateOrDurationToken: Date | number;
-    try {
-        dateOrDurationToken = lexer.token("dateOrDuration").value;
-    } catch (ex) {
-        return { error: "Invalid <date/duration>" };
-    }
-    console.debug("YORIC", "dateOrDurationToken", dateOrDurationToken);
+    let dateOrDuration: Date |number = lexer.token("dateOrDuration").value;
+    console.debug("YORIC", "dateOrDuration", dateOrDuration);
     let minDate;
     let maxAgeMS;
-    if (dateOrDurationToken instanceof Date) {
-        minDate = dateOrDurationToken;
-        maxAgeMS = Date.now() - dateOrDurationToken.getTime() as number;
+    if (dateOrDuration instanceof Date) {
+        minDate = dateOrDuration;
+        maxAgeMS = Date.now() - dateOrDuration.getTime() as number;
     } else {
-        minDate = new Date(Date.now() - dateOrDurationToken);
-        maxAgeMS = dateOrDurationToken;
+        minDate = new Date(Date.now() - dateOrDuration);
+        maxAgeMS = dateOrDuration;
     }
 
     // Attempt to parse `<action>` as Action.
@@ -109,27 +110,29 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     // Now list affected rooms.
     const rooms: Set</* room id */string> = new Set();
     do {
-        try {
-            let token = lexer.alternatives(
-                () => lexer.token("STAR"),
-                () => lexer.token("roomAliasOrID"),
-            );
-            if (token.type == "STAR") {
-                for (let roomId of Object.keys(mjolnir.protectedRooms)) {
-                    rooms.add(roomId);
-                }
-                continue;
-            }
-            if (token.type == "roomAliasOrID") {
-                const roomId = await mjolnir.client.resolveRoom(token.text);
-                if (!(roomId in mjolnir.protectedRooms)) {
-                    return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
-                }
+        let token = lexer.alternatives(
+            () => lexer.token("STAR"),
+            () => lexer.token("roomAliasOrID"),
+        );
+        console.debug("YORIC", "token", token);
+        if (!token) {
+            // We have reached the end of rooms.
+            break;
+        }
+        if (token.type === "STAR") {
+            for (let roomId of Object.keys(mjolnir.protectedRooms)) {
                 rooms.add(roomId);
-                continue;
             }
-        } catch (ex) {
-            // If we're done with rooms, we have entered <reason>.
+            continue;
+        } else if (token.type === "roomAliasOrID") {
+            const roomId = await mjolnir.client.resolveRoom(token.text);
+            if (!(roomId in mjolnir.protectedRooms)) {
+                return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
+            }
+            rooms.add(roomId);
+            continue;
+        }
+        if (token.type == 'EOF') {
             break;
         }
     } while(true);
@@ -143,8 +146,8 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     // Parse everything else as `<reason>`, stripping quotes if any have been added.
     const reason = lexer.alternatives(
         () => lexer.token("string"),
-        () => lexer.token("EVERYTHING ELSE")
-    ).text;
+        () => lexer.token("ETC")
+    )?.text || "";
     console.debug("YORIC", "reason", reason);
 
     const progressEventId = await mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '⏳');

@@ -58,28 +58,39 @@ export class Lexer extends TokenizrClass {
         });
 
         // Dates and durations.
-        this.rule("dateOrDuration", /\S+/, (ctx, match) => {
-            let date = new Date(match[0]);
-            if (!date || Number.isNaN(date.getDate())) {
-                let duration = parseDuration(match[0]);
-                if (!duration || Number.isNaN(duration)) {
-                    ctx.reject();
+        try {
+            this.rule("dateOrDuration", /(?:"([^"]+)")|(\S+)/, (ctx, match) => {
+                let content = match[1] || match[2];
+                console.debug("YORIC", "Lexer", "dateOrDuration", content);
+                let date = new Date(content);
+                console.debug("YORIC", "Lexer", "dateOrDuration", "date", date);
+                if (!date || Number.isNaN(date.getDate())) {
+                    let duration = parseDuration(content);
+                    console.debug("YORIC", "Lexer", "dateOrDuration", "duration", duration);
+                    if (!duration || Number.isNaN(duration)) {
+                        ctx.reject();
+                    } else {
+                        ctx.accept("duration", duration);
+                    }
                 } else {
-                    ctx.accept("duration", duration);
+                    ctx.accept("date", date);
                 }
-            } else {
-                ctx.accept("date", date);
-            }
-        });
+            });
+        } catch (ex) {
+            console.error("YORIC", ex);
+        }
 
         // Jokers.
         this.rule("STAR", /\*/, (ctx) => {
             ctx.accept("STAR");
         });
-        this.rule(/./, (ctx) => {
-            ctx.accept("ANYTHING ELSE")
+
+        // Everything left in the string.
+        this.rule("ETC", /.*/, (ctx) => {
+            ctx.accept("ETC")
         });
 
+        console.debug("YORIC", "Preparing lexer", string);
         this.input(string);
     }
 
