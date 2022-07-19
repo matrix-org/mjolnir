@@ -38,90 +38,89 @@ import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
 import { execKickCommand } from "./KickCommand";
 import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
-import { parse as tokenize } from "shell-quote";
 import { execSinceCommand } from "./SinceCommand";
+import { Lexer } from "./Lexer";
 
 
 export const COMMAND_PREFIX = "!mjolnir";
 
 export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
-    const cmd = event['content']['body'];
-    const parts = cmd.trim().split(' ').filter(p => p.trim().length > 0);
-
-    // A shell-style parser that can parse `"a b c"` (with quotes) as a single argument.
-    // We do **not** want to parse `#` as a comment start, though.
-    const tokens = tokenize(cmd.replace("#", "\\#")).slice(/* get rid of ["!mjolnir", command] */ 2);
+    const line = event['content']['body'];
+    const parts = line.trim().split(' ').filter(p => p.trim().length > 0);
+    const lexer = new Lexer(line);
+    lexer.consume("command"); // Consume `!mjolnir`.
+    let cmd = parts.length === 1 ? null : lexer.consume("id").text;
 
     try {
-        if (parts.length === 1 || parts[1] === 'status') {
+        if (parts.length === 1 || cmd === 'status') {
             return await execStatusCommand(roomId, event, mjolnir, parts.slice(2));
-        } else if (parts[1] === 'ban' && parts.length > 2) {
+        } else if (cmd === 'ban' && parts.length > 2) {
             return await execBanCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'unban' && parts.length > 2) {
+        } else if (cmd === 'unban' && parts.length > 2) {
             return await execUnbanCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'rules' && parts.length === 4 && parts[2] === 'matching') {
+        } else if (cmd === 'rules' && parts.length === 4 && parts[2] === 'matching') {
             return await execRulesMatchingCommand(roomId, event, mjolnir, parts[3])
-        } else if (parts[1] === 'rules') {
+        } else if (cmd === 'rules') {
             return await execDumpRulesCommand(roomId, event, mjolnir);
-        } else if (parts[1] === 'sync') {
+        } else if (cmd === 'sync') {
             return await execSyncCommand(roomId, event, mjolnir);
-        } else if (parts[1] === 'verify') {
+        } else if (cmd === 'verify') {
             return await execPermissionCheckCommand(roomId, event, mjolnir);
-        } else if (parts.length >= 5 && parts[1] === 'list' && parts[2] === 'create') {
+        } else if (parts.length >= 5 && cmd === 'list' && parts[2] === 'create') {
             return await execCreateListCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'watch' && parts.length > 1) {
+        } else if (cmd === 'watch' && parts.length > 1) {
             return await execWatchCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'unwatch' && parts.length > 1) {
+        } else if (cmd === 'unwatch' && parts.length > 1) {
             return await execUnwatchCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'redact' && parts.length > 1) {
+        } else if (cmd === 'redact' && parts.length > 1) {
             return await execRedactCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'import' && parts.length > 2) {
+        } else if (cmd === 'import' && parts.length > 2) {
             return await execImportCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'default' && parts.length > 2) {
+        } else if (cmd === 'default' && parts.length > 2) {
             return await execSetDefaultListCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'deactivate' && parts.length > 2) {
+        } else if (cmd === 'deactivate' && parts.length > 2) {
             return await execDeactivateCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'protections') {
+        } else if (cmd === 'protections') {
             return await execListProtections(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'enable' && parts.length > 1) {
+        } else if (cmd === 'enable' && parts.length > 1) {
             return await execEnableProtection(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'disable' && parts.length > 1) {
+        } else if (cmd === 'disable' && parts.length > 1) {
             return await execDisableProtection(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'config' && parts[2] === 'set' && parts.length > 3) {
+        } else if (cmd === 'config' && parts[2] === 'set' && parts.length > 3) {
             return await execConfigSetProtection(roomId, event, mjolnir, parts.slice(3))
-        } else if (parts[1] === 'config' && parts[2] === 'add' && parts.length > 3) {
+        } else if (cmd === 'config' && parts[2] === 'add' && parts.length > 3) {
             return await execConfigAddProtection(roomId, event, mjolnir, parts.slice(3))
-        } else if (parts[1] === 'config' && parts[2] === 'remove' && parts.length > 3) {
+        } else if (cmd === 'config' && parts[2] === 'remove' && parts.length > 3) {
             return await execConfigRemoveProtection(roomId, event, mjolnir, parts.slice(3))
-        } else if (parts[1] === 'config' && parts[2] === 'get') {
+        } else if (cmd === 'config' && parts[2] === 'get') {
             return await execConfigGetProtection(roomId, event, mjolnir, parts.slice(3))
-        } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'add') {
+        } else if (cmd === 'rooms' && parts.length > 3 && parts[2] === 'add') {
             return await execAddProtectedRoom(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'remove') {
+        } else if (cmd === 'rooms' && parts.length > 3 && parts[2] === 'remove') {
             return await execRemoveProtectedRoom(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'rooms' && parts.length === 2) {
+        } else if (cmd === 'rooms' && parts.length === 2) {
             return await execListProtectedRooms(roomId, event, mjolnir);
-        } else if (parts[1] === 'move' && parts.length > 3) {
+        } else if (cmd === 'move' && parts.length > 3) {
             return await execMoveAliasCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'directory' && parts.length > 3 && parts[2] === 'add') {
+        } else if (cmd === 'directory' && parts.length > 3 && parts[2] === 'add') {
             return await execAddRoomToDirectoryCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'directory' && parts.length > 3 && parts[2] === 'remove') {
+        } else if (cmd === 'directory' && parts.length > 3 && parts[2] === 'remove') {
             return await execRemoveRoomFromDirectoryCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'alias' && parts.length > 4 && parts[2] === 'add') {
+        } else if (cmd === 'alias' && parts.length > 4 && parts[2] === 'add') {
             return await execAddAliasCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'alias' && parts.length > 3 && parts[2] === 'remove') {
+        } else if (cmd === 'alias' && parts.length > 3 && parts[2] === 'remove') {
             return await execRemoveAliasCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'resolve' && parts.length > 2) {
+        } else if (cmd === 'resolve' && parts.length > 2) {
             return await execResolveCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'powerlevel' && parts.length > 3) {
+        } else if (cmd === 'powerlevel' && parts.length > 3) {
             return await execSetPowerLevelCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'shutdown' && parts[2] === 'room' && parts.length > 3) {
+        } else if (cmd === 'shutdown' && parts[2] === 'room' && parts.length > 3) {
             return await execShutdownRoomCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'since') {
-            return await execSinceCommand(roomId, event, mjolnir, tokens);
-        } else if (parts[1] === 'kick' && parts.length > 2) {
+        } else if (cmd === 'since') {
+            return await execSinceCommand(roomId, event, mjolnir, lexer);
+        } else if (cmd === 'kick' && parts.length > 2) {
             return await execKickCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'make' && parts[2] === 'admin' && parts.length > 3) {
+        } else if (cmd === 'make' && parts[2] === 'admin' && parts.length > 3) {
             return await execMakeRoomAdminCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu

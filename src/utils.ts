@@ -434,3 +434,4 @@ export function patchMatrixClient() {
     patchMatrixClientForConciseExceptions();
     patchMatrixClientForRetry();
 }
+

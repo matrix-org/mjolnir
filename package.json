@@ -14,6 +14,7 @@
     "start:dev": "yarn build && node --async-stack-traces lib/index.js",
     "test": "ts-mocha --project ./tsconfig.json test/commands/**/*.ts",
     "test:integration": "NODE_ENV=harness ts-mocha --async-stack-traces --require test/integration/fixtures.ts --timeout 300000 --project ./tsconfig.json \"test/integration/**/*Test.ts\"",
+    "test:YORIC": "NODE_ENV=harness ts-mocha --async-stack-traces --require test/integration/fixtures.ts --timeout 300000 --project ./tsconfig.json \"test/integration/roomMembersTest.ts\"",
     "test:manual": "NODE_ENV=harness ts-node test/integration/manualLaunchScript.ts",
     "version": "sed -i '/# version automated/s/[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/'$npm_package_version'/' synapse_antispam/setup.py && git add synapse_antispam/setup.py && cat synapse_antispam/setup.py"
   },
@@ -45,7 +46,7 @@
     "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^0.5.19",
     "parse-duration": "^1.0.2",
-    "shell-quote": "^1.7.3"
+    "tokenizr": "^1.6.7"
   },
   "engines": {
     "node": ">=16.0.0"
