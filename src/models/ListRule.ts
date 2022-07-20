@@ -15,33 +15,140 @@ limitations under the License.
 */
 
 import { MatrixGlob } from "matrix-bot-sdk";
+import { EntityType } from "./PolicyList";
 
-export const RECOMMENDATION_BAN = "m.ban";
-export const RECOMMENDATION_BAN_TYPES = [RECOMMENDATION_BAN, "org.matrix.mjolnir.ban"];
+export enum Recommendation {
+    /// The rule recommends a "ban".
+    ///
+    /// The actual semantics for this "ban" may vary, e.g. room ban,
+    /// server ban, ignore user, etc. To determine the semantics for
+    /// this "ban", clients need to take into account the context for
+    /// the list, e.g. how the rule was imported.
+    Ban = "m.ban",
 
-export function recommendationToStable(recommendation: string, unstable = false): string|null {
-    if (RECOMMENDATION_BAN_TYPES.includes(recommendation)) return unstable ? RECOMMENDATION_BAN_TYPES[RECOMMENDATION_BAN_TYPES.length - 1] : RECOMMENDATION_BAN;
+    /// The rule specifies an "opinion", as a number in [-100, +100],
+    /// where +100 represents a user who is absolutely trusted and
+    /// -100 represents a user who is absolutely untrusted.
+    Opinion = "org.matrix.msc3845.opinion"
+}
+
+/**
+ * All types for `m.ban`
+ */
+const RECOMMENDATION_BAN_VARIANTS = [
+    // Stable
+    Recommendation.Ban,
+    // Unstable prefix, for compatibility.
+    "org.matrix.mjolnir.ban"
+];
+
+/**
+ * All types for `m.ban`
+ */
+const RECOMMENDATION_OPINION_VARIANTS: string[] = [
+    // Unstable
+    Recommendation.Opinion
+];
+
+export const OPINION_MIN = -100;
+export const OPINION_MAX = +100;
+
+// FIXME: This function is only ever called with a constant?
+export function recommendationToStable(recommendation: string): Recommendation | null {
+    if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) return Recommendation.Ban;
+    if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) return Recommendation.Opinion;
     return null;
 }
 
-export class ListRule {
-
+/**
+ * Representation of a rule within a Policy List.
+ */
+export abstract class ListRule {
+    /**
+     * A glob for `entity`.
+     */
     private glob: MatrixGlob;
-
-    constructor(public readonly entity: string, private action: string, public readonly reason: string, public readonly kind: string) {
+    constructor(
+        /**
+         * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+         */
+        public readonly entity: string,
+        /**
+         * A human-readable reason for this rule, for audit purposes.
+         */
+        public readonly reason: string,
+        /**
+         * The type of entity for this rule, e.g. user, server domain, etc.
+         */
+        public readonly kind: EntityType,
+        /**
+         * The recommendation for this rule, e.g. "ban" or "opinion".
+         */
+        public readonly recommendation: Recommendation | null) {
         this.glob = new MatrixGlob(entity);
     }
 
     /**
-     * The recommendation for this rule, or `null` if there is no recommendation or the recommendation is invalid.
-     * Recommendations are normalised to their stable types.
+     * Determine whether this rule should apply to a given entity.
      */
-    public get recommendation(): string|null {
-        if (RECOMMENDATION_BAN_TYPES.includes(this.action)) return RECOMMENDATION_BAN;
-        return null;
-    }
-
     public isMatch(entity: string): boolean {
         return this.glob.test(entity);
+    }
+}
+
+/**
+ * A rule representing a "ban".
+ */
+export class ListRuleBan extends ListRule {
+    constructor(
+        /**
+    * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+    */
+        public readonly entity: string,
+        /**
+         * A human-readable reason for this rule, for audit purposes.
+         */
+        public readonly reason: string,
+        /**
+         * The type of entity for this rule, e.g. user, server domain, etc.
+         */
+        public readonly kind: EntityType,
+    ) {
+        super(entity, reason, kind, Recommendation.Ban)
+    }
+}
+
+/**
+ * A rule representing an "opinion"
+ */
+export class ListRuleOpinion extends ListRule {
+    constructor(
+
+        /**
+ * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+ */
+        public readonly entity: string,
+        /**
+         * A human-readable reason for this rule, for audit purposes.
+         */
+        public readonly reason: string,
+        /**
+         * The type of entity for this rule, e.g. user, server domain, etc.
+         */
+        public readonly kind: EntityType,
+        /**
+         * A number in [-100, +100] where -100 represents the worst possible opinion
+         * on the entity (e.g. toxic user or community) and +100 represents the best
+         * possible opinion on the entity (e.g. absolute trust).
+         */
+        public readonly opinion: number
+    ) {
+        super(entity, reason, kind, Recommendation.Opinion);
+        if (!Number.isInteger(opinion)) {
+            throw new TypeError(`The opinion must be an integer, got ${opinion}`);
+        }
+        if (opinion < OPINION_MIN || opinion > OPINION_MAX) {
+            throw new TypeError(`The opinion must be within [-100, +100], got ${opinion}`);
+        }
     }
 }

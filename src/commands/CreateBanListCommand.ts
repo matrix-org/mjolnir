@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { SHORTCODE_EVENT_TYPE } from "../models/BanList";
+import { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
 import { Permalinks, RichReply } from "matrix-bot-sdk";
 
 // !mjolnir list create <shortcode> <alias localpart>
@@ -48,7 +48,7 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
         preset: "public_chat",
         room_alias_name: aliasLocalpart,
         invite: [event['sender']],
-        initial_state: [{type: SHORTCODE_EVENT_TYPE, state_key: "", content: {shortcode: shortcode}}],
+        initial_state: [{ type: SHORTCODE_EVENT_TYPE, state_key: "", content: { shortcode: shortcode } }],
         power_level_content_override: powerLevels,
     });
 
