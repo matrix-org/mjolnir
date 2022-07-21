@@ -18,7 +18,7 @@ import * as expect from "expect";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";
-import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/PolicyList";
+import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/ListRule";
 
 function createTestMjolnir(defaultShortcode: string|null = null): Mjolnir {
     const client = {
