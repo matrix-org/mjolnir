@@ -317,9 +317,9 @@ class PolicyList extends EventEmitter {
                 continue;
             }
             // It's a rule - parse it
-            const rule = ListRule.parse(event['content']);
+            const rule = ListRule.parse(event);
             if (!rule) {
-                // Invalid rule, just skip it.
+                // Invalid/unknown rule, just skip it.
                 continue;
             }
             event.unsigned.rule = rule;

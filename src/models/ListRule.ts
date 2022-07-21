@@ -52,7 +52,7 @@ export enum Recommendation {
     /// The rule specifies an "opinion", as a number in [-100, +100],
     /// where +100 represents a user who is absolutely trusted and
     /// -100 represents a user who is absolutely untrusted.
-    Opinion = "org.matrix.msc3845.opinion"
+    Opinion = "org.matrix.msc3845.opinion",
 }
 
 /**
@@ -98,7 +98,8 @@ export abstract class ListRule {
          */
         public readonly kind: EntityType,
         /**
-         * The recommendation for this rule, e.g. "ban" or "opinion".
+         * The recommendation for this rule, e.g. "ban" or "opinion", or `null`
+         * if the recommendation is one that Mjölnir doesn't understand.
          */
         public readonly recommendation: Recommendation | null) {
         this.glob = new MatrixGlob(entity);
@@ -112,8 +113,9 @@ export abstract class ListRule {
     }
 
     /**
-     * Validate and parse an event into a ListRule
+     * Validate and parse an event into a ListRule.
      *
+     * @param event An *untrusted* event.
      * @returns null if the ListRule is invalid or not recognized by Mjölnir.
      */
     public static parse(event: {type: string, content: any}): ListRule | null {
@@ -156,7 +158,9 @@ export abstract class ListRule {
             let opinion = parseInt(content['opinion'], 10);
             return new ListRuleOpinion(entity, reason, kind, opinion);
         } else {
-            return null;
+            // As long as the `recommendation` is defined, we expect
+            // that the rule is correct, just unknown.
+            return new ListRuleUnknown(entity, reason, kind, content);
         }
     }
 }
@@ -169,15 +173,15 @@ export class ListRuleBan extends ListRule {
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
          */
-        public readonly entity: string,
+        entity: string,
         /**
          * A human-readable reason for this rule, for audit purposes.
          */
-        public readonly reason: string,
+        reason: string,
         /**
          * The type of entity for this rule, e.g. user, server domain, etc.
          */
-        public readonly kind: EntityType,
+        kind: EntityType,
     ) {
         super(entity, reason, kind, Recommendation.Ban)
     }
@@ -188,19 +192,18 @@ export class ListRuleBan extends ListRule {
  */
 export class ListRuleOpinion extends ListRule {
     constructor(
-
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
          */
-        public readonly entity: string,
+        entity: string,
         /**
          * A human-readable reason for this rule, for audit purposes.
          */
-        public readonly reason: string,
+        reason: string,
         /**
          * The type of entity for this rule, e.g. user, server domain, etc.
          */
-        public readonly kind: EntityType,
+        kind: EntityType,
         /**
          * A number in [-100, +100] where -100 represents the worst possible opinion
          * on the entity (e.g. toxic user or community) and +100 represents the best
@@ -215,5 +218,31 @@ export class ListRuleOpinion extends ListRule {
         if (opinion < OPINION_MIN || opinion > OPINION_MAX) {
             throw new TypeError(`The opinion must be within [-100, +100], got ${opinion}`);
         }
+    }
+}
+
+/**
+ * Any list rule that we do not understand.
+ */
+export class ListRuleUnknown extends ListRule {
+    constructor(
+        /**
+         * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+         */
+        entity: string,
+        /**
+         * A human-readable reason for this rule, for audit purposes.
+         */
+        reason: string,
+        /**
+         * The type of entity for this rule, e.g. user, server domain, etc.
+         */
+        kind: EntityType,
+        /**
+         * The event used to create the rule.
+         */
+        public readonly content: any,
+    ) {
+        super(entity, reason, kind, null);
     }
 }
