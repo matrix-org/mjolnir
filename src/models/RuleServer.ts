@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import BanList, { ChangeType, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./PolicyList"
+import BanList, { ChangeType, ListRuleChange } from "./PolicyList"
 import * as crypto from "crypto";
 import { LogService } from "matrix-bot-sdk";
-import { ListRule } from "./ListRule";
+import { EntityType, ListRule } from "./ListRule";
 import PolicyList from "./PolicyList";
 
 export const USER_MAY_INVITE = 'user_may_invite';
@@ -281,7 +281,7 @@ function toRuleServerFormat(policyRule: ListRule): RuleServerRule[] {
         }
     }
 
-    if (policyRule.kind === RULE_USER) {
+    if (policyRule.kind === EntityType.RULE_USER) {
         // Block any messages or invites from being sent by a matching local user
         // Block any messages or invitations from being received that were sent by a matching remote user.
         return [{
@@ -292,7 +292,7 @@ function toRuleServerFormat(policyRule: ListRule): RuleServerRule[] {
             property: CHECK_EVENT_FOR_SPAM,
             sender: [makeGlob(policyRule.entity)]
         }].map(makeRule)
-    } else if (policyRule.kind === RULE_ROOM) {
+    } else if (policyRule.kind === EntityType.RULE_ROOM) {
         // Block any messages being sent or received in the room, stop invitations being sent to the room and
         // stop anyone receiving invitations from the room.
         return [{
@@ -303,7 +303,7 @@ function toRuleServerFormat(policyRule: ListRule): RuleServerRule[] {
             property: CHECK_EVENT_FOR_SPAM,
             'room_id': [makeLiteral(policyRule.entity)]
         }].map(makeRule)
-    } else if (policyRule.kind === RULE_SERVER) {
+    } else if (policyRule.kind === EntityType.RULE_SERVER) {
         // Block any invitations from the server or any new messages from the server.
         return [{
             property: USER_MAY_INVITE,

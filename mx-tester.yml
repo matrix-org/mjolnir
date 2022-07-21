@@ -10,7 +10,8 @@ up:
     - echo "Synapse is ready"
 
 run:
-  - yarn test:integration
+  # - yarn test:integration
+  - yarn test:YORIC
 
 down:
   finally:

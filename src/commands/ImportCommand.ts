@@ -16,8 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
-import { Recommendation } from "../models/ListRule";
-import { RULE_SERVER, RULE_USER, ruleTypeToStable } from "../models/PolicyList";
+import { EntityType, Recommendation } from "../models/ListRule";
 
 // !mjolnir import <room ID> <shortcode>
 export async function execImportCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -51,7 +50,7 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                let stableRule = ruleTypeToStable(RULE_USER);
+                let stableRule = EntityType.RULE_USER;
                 if (stableRule) {
                     await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
                 }
@@ -71,7 +70,7 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                let stableRule = ruleTypeToStable(RULE_SERVER);
+                let stableRule = EntityType.RULE_SERVER;
                 if (stableRule) {
                     await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
                 }

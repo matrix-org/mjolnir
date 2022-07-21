@@ -16,35 +16,9 @@ limitations under the License.
 
 import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
-import { ListRule, ListRuleBan, Recommendation } from "./ListRule";
-
-export enum EntityType {
-    RULE_USER = "m.policy.rule.user",
-    RULE_ROOM = "m.policy.rule.room",
-    RULE_SERVER = "m.policy.rule.server",
-}
-
-export const RULE_USER = EntityType.RULE_USER;
-export const RULE_ROOM = EntityType.RULE_ROOM;
-export const RULE_SERVER = EntityType.RULE_SERVER;
-
-// README! The order here matters for determining whether a type is obsolete, most recent should be first.
-// These are the current and historical types for each type of rule which were used while MSC2313 was being developed
-// and were left as an artifact for some time afterwards.
-// Most rules (as of writing) will have the prefix `m.room.rule.*` as this has been in use for roughly 2 years.
-export const USER_RULE_TYPES = [RULE_USER, "m.room.rule.user", "org.matrix.mjolnir.rule.user"];
-export const ROOM_RULE_TYPES = [RULE_ROOM, "m.room.rule.room", "org.matrix.mjolnir.rule.room"];
-export const SERVER_RULE_TYPES = [RULE_SERVER, "m.room.rule.server", "org.matrix.mjolnir.rule.server"];
-export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
+import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
-
-export function ruleTypeToStable(rule: string): EntityType | null {
-    if (USER_RULE_TYPES.includes(rule)) return RULE_USER;
-    if (ROOM_RULE_TYPES.includes(rule)) return RULE_ROOM;
-    if (SERVER_RULE_TYPES.includes(rule)) return RULE_SERVER;
-    return null;
-}
 
 export enum ChangeType {
     Added = "ADDED",
@@ -151,10 +125,10 @@ class PolicyList extends EventEmitter {
         const stateKeyMap = this.state.get(kind);
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
+                const rule = event?.unsigned?.rule;
                 // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
                 // please make sure that you *only* return rules with `m.ban` or create a different method
                 // (we don't want to accidentally ban entities).
-                const rule = event?.unsigned?.rule;
                 if (rule && rule.kind === kind && rule.recommendation === Recommendation.Ban) {
                     rules.push(rule);
                 }
@@ -343,17 +317,11 @@ class PolicyList extends EventEmitter {
                 continue;
             }
             // It's a rule - parse it
-            const content = event['content'];
-            if (!content) continue;
-
-            const entity = content['entity'];
-            const recommendation = content['recommendation'];
-            const reason = content['reason'] || '<no reason>';
-
-            if (!entity || !recommendation) {
+            const rule = ListRule.parse(event['content']);
+            if (!rule) {
+                // Invalid rule, just skip it.
                 continue;
             }
-            const rule = new ListRuleBan(entity, reason, kind);
             event.unsigned.rule = rule;
             if (changeType) {
                 changes.push({ rule, changeType, event, sender: event.sender, ...previousState ? { previousState } : {} });

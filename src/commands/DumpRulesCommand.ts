@@ -16,7 +16,7 @@ limitations under the License.
 
 import { RichReply } from "matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
-import { EntityType } from "../models/PolicyList";
+import { EntityType } from "../models/ListRule";
 import { htmlEscape } from "../utils";
 
 /**

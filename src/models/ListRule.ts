@@ -15,7 +15,30 @@ limitations under the License.
 */
 
 import { MatrixGlob } from "matrix-bot-sdk";
-import { EntityType } from "./PolicyList";
+
+export enum EntityType {
+    /// `entity` is to be parsed as a glob of users IDs
+    RULE_USER = "m.policy.rule.user",
+
+    /// `entity` is to be parsed as a glob of room IDs/aliases
+    RULE_ROOM = "m.policy.rule.room",
+
+    /// `entity` is to be parsed as a glob of server names
+    RULE_SERVER = "m.policy.rule.server",
+}
+
+export const RULE_USER = EntityType.RULE_USER;
+export const RULE_ROOM = EntityType.RULE_ROOM;
+export const RULE_SERVER = EntityType.RULE_SERVER;
+
+// README! The order here matters for determining whether a type is obsolete, most recent should be first.
+// These are the current and historical types for each type of rule which were used while MSC2313 was being developed
+// and were left as an artifact for some time afterwards.
+// Most rules (as of writing) will have the prefix `m.room.rule.*` as this has been in use for roughly 2 years.
+export const USER_RULE_TYPES = [RULE_USER, "m.room.rule.user", "org.matrix.mjolnir.rule.user"];
+export const ROOM_RULE_TYPES = [RULE_ROOM, "m.room.rule.room", "org.matrix.mjolnir.rule.room"];
+export const SERVER_RULE_TYPES = [RULE_SERVER, "m.room.rule.server", "org.matrix.mjolnir.rule.server"];
+export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
 
 export enum Recommendation {
     /// The rule recommends a "ban".
@@ -53,13 +76,6 @@ const RECOMMENDATION_OPINION_VARIANTS: string[] = [
 export const OPINION_MIN = -100;
 export const OPINION_MAX = +100;
 
-// FIXME: This function is only ever called with a constant?
-export function recommendationToStable(recommendation: string): Recommendation | null {
-    if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) return Recommendation.Ban;
-    if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) return Recommendation.Opinion;
-    return null;
-}
-
 /**
  * Representation of a rule within a Policy List.
  */
@@ -93,6 +109,55 @@ export abstract class ListRule {
      */
     public isMatch(entity: string): boolean {
         return this.glob.test(entity);
+    }
+
+    /**
+     * Validate and parse an event into a ListRule
+     *
+     * @returns null if the ListRule is invalid or not recognized by Mjölnir.
+     */
+    public static parse(event: {type: string, content: any}): ListRule | null {
+        // Parse common fields.
+        // If a field is ill-formed, discard the rule.
+        const content = event['content'];
+        if (!content || typeof content !== "object") {
+            return null;
+        }
+        const entity = content['entity'];
+        if (!entity || typeof entity !== "string") {
+            return null;
+        }
+        const recommendation = content['recommendation'];
+        if (!recommendation || typeof recommendation !== "string") {
+            return null;
+        }
+
+        const reason = content['reason'] || '<no reason>';
+        if (typeof reason !== "string") {
+            return null;
+        }
+
+        let type = event['type'];
+        let kind;
+        if (USER_RULE_TYPES.includes(type)) {
+            kind = EntityType.RULE_USER;
+        } else if (ROOM_RULE_TYPES.includes(type)) {
+            kind = EntityType.RULE_ROOM;
+        } else if (SERVER_RULE_TYPES.includes(type)) {
+            kind = EntityType.RULE_SERVER;
+        } else {
+            return null;
+        }
+
+        // From this point, we may need specific fields
+        if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) {
+            return new ListRuleBan(entity, reason, kind);
+        } else if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) {
+            let opinion = parseInt(content['opinion'], 10);
+            return new ListRuleOpinion(entity, reason, kind, opinion);
+        } else {
+            return null;
+        }
     }
 }
 

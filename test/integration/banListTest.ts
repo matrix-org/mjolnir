@@ -3,10 +3,11 @@ import { strict as assert } from "assert";
 import config from "../../src/config";
 import { newTestUser } from "./clientHelper";
 import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
-import PolicyList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/PolicyList";
+import PolicyList, { ChangeType, ListRuleChange } from "../../src/models/PolicyList";
 import { ServerAcl } from "../../src/models/ServerAcl";
 import { getFirstReaction } from "./commands/commandUtils";
 import { getMessagesByUserIn } from "../../src/utils";
+import { ALL_RULE_TYPES, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/ListRule";
 
 /**
  * Create a policy rule in a policy room.
@@ -203,8 +204,8 @@ describe('Test: We do not respond to recommendations other than m.ban in the ban
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(changes[0].sender, await mjolnir.getUserId());
         // We really don't want things that aren't m.ban to end up being accessible in these APIs.
-        assert.equal(banList.serverRules.length, 0);
-        assert.equal(banList.allRules.length, 0);
+        assert.equal(banList.serverRules.length, 0, `We should have an empty serverRules, got ${JSON.stringify(banList.serverRules)}`);
+        assert.equal(banList.allRules.length, 0, `We should have an empty allRules, got ${JSON.stringify(banList.allRules)}`);
     })
 })
 
