@@ -33,7 +33,7 @@ export enum Recommendation {
 }
 
 /**
- * All types for `m.ban`
+ * All variants of recommendation `m.ban`
  */
 const RECOMMENDATION_BAN_VARIANTS = [
     // Stable
@@ -43,7 +43,7 @@ const RECOMMENDATION_BAN_VARIANTS = [
 ];
 
 /**
- * All types for `m.ban`
+ * All variants of recommendation `m.opinion`
  */
 const RECOMMENDATION_OPINION_VARIANTS: string[] = [
     // Unstable
@@ -102,8 +102,8 @@ export abstract class ListRule {
 export class ListRuleBan extends ListRule {
     constructor(
         /**
-    * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
-    */
+         * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+         */
         public readonly entity: string,
         /**
          * A human-readable reason for this rule, for audit purposes.
@@ -125,8 +125,8 @@ export class ListRuleOpinion extends ListRule {
     constructor(
 
         /**
- * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
- */
+         * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+         */
         public readonly entity: string,
         /**
          * A human-readable reason for this rule, for audit purposes.
@@ -139,7 +139,7 @@ export class ListRuleOpinion extends ListRule {
         /**
          * A number in [-100, +100] where -100 represents the worst possible opinion
          * on the entity (e.g. toxic user or community) and +100 represents the best
-         * possible opinion on the entity (e.g. absolute trust).
+         * possible opinion on the entity (e.g. pillar of the community).
          */
         public readonly opinion: number
     ) {

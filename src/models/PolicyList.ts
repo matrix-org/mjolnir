@@ -151,6 +151,9 @@ class PolicyList extends EventEmitter {
         const stateKeyMap = this.state.get(kind);
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
+                // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
+                // please make sure that you *only* return rules with `m.ban` or create a different method
+                // (we don't want to accidentally ban entities).
                 const rule = event?.unsigned?.rule;
                 if (rule && rule.kind === kind && rule.recommendation === Recommendation.Ban) {
                     rules.push(rule);
