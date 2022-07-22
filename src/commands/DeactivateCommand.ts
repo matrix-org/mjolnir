@@ -16,20 +16,25 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
+import { Command, Lexer, Token } from "./Command";
 
 // !mjolnir deactivate <user ID>
-export async function execDeactivateCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const victim = parts[2];
+export class SetDefaultListCommand implements Command {
+    public readonly command: 'deactivate';
+    public readonly helpDescription: 'Deactivates a user ID';
+    public readonly helpArgs: '<user ID>';
+    async exec(mjolnir: Mjolnir, roomId: string, lexer: Lexer, event: any): Promise<void> {
+        const victim = lexer.token(Token.USER_ID).text;
+        const isAdmin = await mjolnir.isSynapseAdmin();
+        if (!isAdmin) {
+            const message = "I am not a Synapse administrator, or the endpoint is blocked";
+            const reply = RichReply.createFor(roomId, event, message, message);
+            reply['msgtype'] = "m.notice";
+            mjolnir.client.sendMessage(roomId, reply);
+            return;
+        }
 
-    const isAdmin = await mjolnir.isSynapseAdmin();
-    if (!isAdmin) {
-        const message = "I am not a Synapse administrator, or the endpoint is blocked";
-        const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
-        return;
+        await mjolnir.deactivateSynapseUser(victim);
+        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
     }
-
-    await mjolnir.deactivateSynapseUser(victim);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

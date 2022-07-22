@@ -30,7 +30,6 @@ import {
 import BanList, { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/BanList";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
-import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { applyUserBans } from "./actions/ApplyBan";
 import config from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
@@ -50,6 +49,7 @@ import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
+import { CommandManager } from "./commands/Command";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -79,6 +79,7 @@ export class Mjolnir {
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     public readonly roomJoins: RoomMemberManager;
+    public readonly commandManager: CommandManager;
     public protections = new Map<string /* protection name */, Protection>();
     /**
      * This is for users who are not listed on a watchlist,
@@ -202,44 +203,11 @@ export class Mjolnir {
             this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
         }
 
+        this.commandManager = new CommandManager(managementRoomId, this);
+
         // Setup bot.
 
         client.on("room.event", this.handleEvent.bind(this));
-
-        client.on("room.message", async (roomId, event) => {
-            if (roomId !== this.managementRoomId) return;
-            if (!event['content']) return;
-
-            const content = event['content'];
-            if (content['msgtype'] === "m.text" && content['body']) {
-                const prefixes = [
-                    COMMAND_PREFIX,
-                    this.localpart + ":",
-                    this.displayName + ":",
-                    await client.getUserId() + ":",
-                    this.localpart + " ",
-                    this.displayName + " ",
-                    await client.getUserId() + " ",
-                    ...config.commands.additionalPrefixes.map(p => `!${p}`),
-                    ...config.commands.additionalPrefixes.map(p => `${p}:`),
-                    ...config.commands.additionalPrefixes.map(p => `${p} `),
-                    ...config.commands.additionalPrefixes,
-                ];
-                if (config.commands.allowNoPrefix) prefixes.push("!");
-
-                const prefixUsed = prefixes.find(p => content['body'].toLowerCase().startsWith(p.toLowerCase()));
-                if (!prefixUsed) return;
-
-                // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
-                let restOfBody = content['body'].substring(prefixUsed.length);
-                if (!restOfBody.startsWith(" ")) restOfBody = ` ${restOfBody}`;
-                event['content']['body'] = COMMAND_PREFIX + restOfBody;
-                LogService.info("Mjolnir", `Command being run by ${event['sender']}: ${event['content']['body']}`);
-
-                await client.sendReadReceipt(roomId, event['event_id']);
-                return handleCommand(roomId, event, this);
-            }
-        });
 
         client.on("room.join", (roomId: string, event: any) => {
             LogService.info("Mjolnir", `Joined ${roomId}`);
@@ -257,6 +225,19 @@ export class Mjolnir {
             if (profile['displayname']) {
                 this.displayName = profile['displayname'];
             }
+        }).then(() => {
+            const prefixes = [
+                "mjolnir",
+                this.localpart,
+            ];
+            if (this.displayName) {
+                prefixes.push(this.displayName);
+            }
+            prefixes.push(...config.commands.additionalPrefixes);
+            if (config.commands.allowNoPrefix) {
+                prefixes.push("!");
+            }
+            this.commandManager.init(prefixes);
         });
 
         // Setup room activity watcher

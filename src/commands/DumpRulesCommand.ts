@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,16 @@ import { RichReply } from "matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../models/BanList";
 import { htmlEscape } from "../utils";
+import { AbstractLegacyCommand } from "./Command";
+
+export class RulesMatchingCommand extends AbstractLegacyCommand {
+    public readonly command: 'rules matching';
+    public readonly helpDescription: 'Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user.';
+    public readonly helpArgs: '<user|room|server>';
+    async legacyExec(roomID: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<void> {
+        await execRulesMatchingCommand(roomID, event, mjolnir, parts[3]);
+    }
+}
 
 /**
  * List all of the rules that match a given entity.
@@ -29,7 +39,7 @@ import { htmlEscape } from "../utils";
  * @param entity a user, room id or server.
  * @returns When a response has been sent to the command.
  */
-export async function execRulesMatchingCommand(roomId: string, event: any, mjolnir: Mjolnir, entity: string) {
+async function execRulesMatchingCommand(roomId: string, event: any, mjolnir: Mjolnir, entity: string) {
     let html = "";
     let text = "";
     for (const list of mjolnir.lists) {
@@ -71,8 +81,17 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
     return mjolnir.client.sendMessage(roomId, reply);
 }
 
+export class DumpRulesCommand extends AbstractLegacyCommand {
+    public readonly command: 'rules';
+    public readonly helpDescription: 'Lists the rules currently in use by Mjolnir';
+    public readonly helpArgs: '';
+    async legacyExec(roomID: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<void> {
+        await execDumpRulesCommand(roomID, event, mjolnir);
+    }
+}
+
 // !mjolnir rules
-export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: Mjolnir) {
+async function execDumpRulesCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     let html = "<b>Rules currently in use:</b><br/>";
     let text = "Rules currently in use:\n";
 

@@ -16,29 +16,42 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { Permalinks, RichReply } from "matrix-bot-sdk";
+import { Command, Lexer, Token } from "./Command";
 
 // !mjolnir watch <room alias or ID>
-export async function execWatchCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const list = await mjolnir.watchList(Permalinks.forRoom(parts[2]));
-    if (!list) {
-        const replyText = "Cannot watch list due to error - is that a valid room alias?";
-        const reply = RichReply.createFor(roomId, event, replyText, replyText);
-        reply["msgtype"] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
-        return;
+export class WatchCommand implements Command {
+    public readonly command: 'watch';
+    public readonly helpDescription: 'Watches a ban list';
+    public readonly helpArgs: '<room alias/ID>';
+    async exec(mjolnir: Mjolnir, roomID: string, lexer: Lexer, event: any): Promise<void> {
+        const roomAliasOrID = lexer.token(Token.ROOM_ALIAS_OR_ID).text;
+        const list = await mjolnir.watchList(Permalinks.forRoom(roomAliasOrID));
+        if (!list) {
+            const replyText = "Cannot watch list due to error - is that a valid room alias?";
+            const reply = RichReply.createFor(roomID, event, replyText, replyText);
+            reply["msgtype"] = "m.notice";
+            mjolnir.client.sendMessage(roomID, reply);
+            return;
+        }
+        await mjolnir.client.unstableApis.addReactionToEvent(roomID, event['event_id'], '✅');
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir unwatch <room alias or ID>
-export async function execUnwatchCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const list = await mjolnir.unwatchList(Permalinks.forRoom(parts[2]));
-    if (!list) {
-        const replyText = "Cannot unwatch list due to error - is that a valid room alias?";
-        const reply = RichReply.createFor(roomId, event, replyText, replyText);
-        reply["msgtype"] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
-        return;
+export class UnwatchCommand implements Command {
+    public readonly command: 'unwatch';
+    public readonly helpDescription: 'Unwatches a ban list';
+    public readonly helpArgs: '<room alias/ID>';
+    async exec(mjolnir: Mjolnir, roomID: string, lexer: Lexer, event: any): Promise<void> {
+        const roomAliasOrID = lexer.token(Token.ROOM_ALIAS_OR_ID).text;
+        const list = await mjolnir.unwatchList(Permalinks.forRoom(roomAliasOrID));
+        if (!list) {
+            const replyText = "Cannot unwatch list due to error - is that a valid room alias?";
+            const reply = RichReply.createFor(roomID, event, replyText, replyText);
+            reply["msgtype"] = "m.notice";
+            mjolnir.client.sendMessage(roomID, reply);
+            return;
+        }
+        await mjolnir.client.unstableApis.addReactionToEvent(roomID, event['event_id'], '✅');
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

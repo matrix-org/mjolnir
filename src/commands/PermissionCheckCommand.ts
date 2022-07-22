@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2022 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -15,8 +15,14 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
+import { Command, Lexer } from "./Command";
 
 // !mjolnir verify
-export async function execPermissionCheckCommand(roomId: string, event: any, mjolnir: Mjolnir) {
-    return mjolnir.verifyPermissions(true, true);
+export class PermissionCheckCommand implements Command {
+    public readonly command: 'verify';
+    public readonly helpDescription: 'Ensures Mjolnir can moderate all your rooms';
+    public readonly helpArgs: '';
+    async exec(mjolnir: Mjolnir, roomID: string, lexer: Lexer, event: any): Promise<void> {
+        await mjolnir.verifyPermissions(/* verbose = */ true, /* printRegardless = */ true);
+    }    
 }
