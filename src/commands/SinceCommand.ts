@@ -19,7 +19,7 @@ import { LogLevel, LogService, RichReply } from "matrix-bot-sdk";
 import { htmlEscape } from "../utils";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
 import { Join } from "../RoomMembers";
-import { Lexer } from "./Lexer";
+import { Lexer } from "./Command";
 
 const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
 const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);

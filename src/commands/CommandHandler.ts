@@ -38,10 +38,9 @@ import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } fro
 import { execSetPowerLevelCommand } from "./SetPowerLevelCommand";
 import { execShutdownRoomCommand } from "./ShutdownRoomCommand";
 import { execAddAliasCommand, execMoveAliasCommand, execRemoveAliasCommand, execResolveCommand } from "./AliasCommands";
-import { execKickCommand } from "./KickCommand";
 import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
 import { execSinceCommand } from "./SinceCommand";
-import { Lexer } from "./Lexer";
+import { Lexer } from "./Command";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
