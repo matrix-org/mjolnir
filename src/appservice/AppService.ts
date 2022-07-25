@@ -19,10 +19,9 @@ import { randomUUID } from "crypto";
 import { AppServiceRegistration, Bridge, Cli, Request, WeakEvent, BridgeContext, MatrixUser, UserBridgeStore, RemoteUser } from "matrix-appservice-bridge";
 // needed by appservice irc, though it looks completely dead.
 import * as Datastore from "nedb";
-import { MjolnirManager } from "./appservice/MjolnirManager";
-//import config from "./config";
-// node index.js -r -u "http://localhost:9000" # remember to add the registration! you probably want host.docker.internal if using mx-tester
-// node index.js -p 9000
+import { MjolnirManager } from ".//MjolnirManager";
+// ts-node src/appservice/AppService.ts -r -u "http://localhost:9000" # remember to add the registration to homeserver.yaml! you probably want host.docker.internal as the hostname of the appservice if using mx-tester
+// ts-node src/appservice/AppService -p 9000 # to start.
 
 class MjolnirAppService {
 
