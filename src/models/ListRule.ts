@@ -50,8 +50,10 @@ export enum Recommendation {
     Ban = "m.ban",
 
     /// The rule specifies an "opinion", as a number in [-100, +100],
-    /// where +100 represents a user who is absolutely trusted and
-    /// -100 represents a user who is absolutely untrusted.
+    /// where -100 represents a user who is considered absolutely toxic
+    /// by whoever issued this ListRule and +100 represents a user who
+    /// is considered absolutely absolutely perfect by whoever issued
+    /// this ListRule.
     Opinion = "org.matrix.msc3845.opinion",
 }
 
