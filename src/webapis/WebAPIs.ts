@@ -49,7 +49,7 @@ export class WebAPIs {
 
         // configure /report API.
         if (this.config.web.abuseReporting.enabled) {
-            console.log(`this.configuring ${API_PREFIX}/report/:room_id/:event_id...`);
+            console.log(`configuring ${API_PREFIX}/report/:room_id/:event_id...`);
             this.webController.options(`${API_PREFIX}/report/:room_id/:event_id`, async (request, response) => {
                 // reply with CORS options
                 response.header("Access-Control-Allow-Origin", "*");
@@ -66,23 +66,23 @@ export class WebAPIs {
                 response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
                 await this.handleReport({ request, response, roomId: request.params.room_id, eventId: request.params.event_id })
             });
-            console.log(`this.configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
+            console.log(`configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
         }
 
-        // this.configure ruleServer API.
+        // configure ruleServer API.
         // FIXME: Doesn't this need some kind of access control?
         // See https://github.com/matrix-org/mjolnir/issues/139#issuecomment-1012221479.
         if (this.config.web.ruleServer?.enabled) {
             const updatesUrl = `${API_PREFIX}/ruleserver/updates`;
-            LogService.info("WebAPIs", `this.configuring ${updatesUrl}...`);
+            LogService.info("WebAPIs", `configuring ${updatesUrl}...`);
             if (!this.ruleServer) {
-                throw new Error("The rule server to use has not been this.configured for the WebAPIs.");
+                throw new Error("The rule server to use has not been configured for the WebAPIs.");
             }
             const ruleServer: RuleServer = this.ruleServer;
             this.webController.get(updatesUrl, async (request, response) => {
                 await this.handleRuleServerUpdate(ruleServer, { request, response, since: request.query.since as string});
             });
-            LogService.info("WebAPIs", `this.configuring ${updatesUrl}... DONE`);
+            LogService.info("WebAPIs", `configuring ${updatesUrl}... DONE`);
         }
     }
 
