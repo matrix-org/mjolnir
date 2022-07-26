@@ -5,17 +5,16 @@ import { getFirstReaction } from "./commands/commandUtils";
 
 describe("Test: throttled users can function with Mjolnir.", function () {
     it('throttled users survive being throttled by synapse', async function() {
-        this.timeout(60000);
         let throttledUser = await newTestUser({ name: { contains: "throttled" }, isThrottled: true });
         let throttledUserId = await throttledUser.getUserId();
         let targetRoom = await throttledUser.createRoom();
         // send enough messages to hit the rate limit.
-        await Promise.all([...Array(150).keys()].map((i) => throttledUser.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Message #${i}`})));
+        await Promise.all([...Array(25).keys()].map((i) => throttledUser.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Message #${i}`})));
         let messageCount = 0;
-        await getMessagesByUserIn(throttledUser, throttledUserId, targetRoom, 150, (events) => {
+        await getMessagesByUserIn(throttledUser, throttledUserId, targetRoom, 25, (events) => {
             messageCount += events.length;
         });
-        assert.equal(messageCount, 150, "There should have been 150 messages in this room");
+        assert.equal(messageCount, 25, "There should have been 25 messages in this room");
     })
 })
 
@@ -31,7 +30,6 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
     })
 
     it('Can still perform and respond to a redaction command', async function () {
-        this.timeout(60000);
         // Create a few users and a room.
         let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
         let badUserId = await badUser.getUserId();
@@ -45,12 +43,12 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
         await badUser.joinRoom(targetRoom);
 
         // Give Mjolnir some work to do and some messages to sync through.
-        await Promise.all([...Array(100).keys()].map((i) => moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `Irrelevant Message #${i}`})));
-        await Promise.all([...Array(50).keys()].map(_ => moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: '!mjolnir status'})));
+        await Promise.all([...Array(25).keys()].map((i) => moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `Irrelevant Message #${i}`})));
+        await Promise.all([...Array(25).keys()].map(_ => moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: '!mjolnir status'})));
 
         await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir rooms add ${targetRoom}`});
 
-        await Promise.all([...Array(50).keys()].map((i) => badUser.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Bad Message #${i}`})));
+        await Promise.all([...Array(25).keys()].map((i) => badUser.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Bad Message #${i}`})));
 
         try {
             await moderator.start();
@@ -72,6 +70,6 @@ describe("Test: Mjolnir can still sync and respond to commands while throttled",
                 }
             })
         });
-        assert.equal(count, 51, "There should be exactly 51 events from the spammer in this room.");
+        assert.equal(count, 26, "There should be exactly 26 events from the spammer in this room.");
     })
 })

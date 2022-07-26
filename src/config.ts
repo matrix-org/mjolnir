@@ -48,6 +48,17 @@ interface IConfig {
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
     protectAllJoinedRooms: boolean;
+    /**
+     * Backgrounded tasks: number of milliseconds to wait between the completion
+     * of one background task and the start of the next one.
+     */
+    backgroundDelayMS: number;
+    pollReports: boolean;
+    /**
+     * Whether or not new reports, received either by webapi or polling,
+     * should be printed to our managementRoom.
+     */
+    displayReports: boolean;
     admin?: {
         enableMakeRoomAdminCommand?: boolean;
     }
@@ -116,6 +127,9 @@ const defaultConfig: IConfig = {
     fasterMembershipChecks: false,
     automaticallyRedactForReasons: ["spam", "advertising"],
     protectAllJoinedRooms: false,
+    backgroundDelayMS: 500,
+    pollReports: false,
+    displayReports: true,
     commands: {
         allowNoPrefix: false,
         additionalPrefixes: [],

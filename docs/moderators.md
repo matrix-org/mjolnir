@@ -1,6 +1,6 @@
 # Moderator's guide to Mjolnir (bot edition)
 
-Moderating a community shouldn't be difficult - Mjolnir gives you the tools to make moderation simple and 
+Moderating a community shouldn't be difficult - Mjolnir gives you the tools to make moderation simple and
 impersonal.
 
 **Note**: This guide does not apply to the Synapse module, which applies rules at the homeserver level. More
@@ -11,6 +11,7 @@ information about the Synapse module can be found in the README.
 If you're actively dealing with an incident, here's what you need to know:
 
 * Always talk to Mjolnir in your coordination room.
+* `!mjolnir room add <room>` will add a room to your "protected rooms", roms where mjolnir will propagate bans.
 * `!mjolnir ban <shortcode> user @spammer:example.org` will ban someone.
 * `!mjolnir ban <shortcode> server example.org` will ban a whole server.
 * `!mjolnir rules` will tell you what the shortcodes are for your ban lists (needed above).
@@ -19,6 +20,7 @@ If you're actively dealing with an incident, here's what you need to know:
 * `!mjolnir protections` will show you your available protections - green circles mean enabled.
 * `!mjolnir enable <protection>` to turn on a protection.
 * `!mjolnir move <room alias> <room alias/ID>` Moves a room alias to a new room ID
+* `!mjolnir verify` makes sure the bot has all required permissions to enact moderation (in all the protected rooms).
 
 ## How Mjolnir works
 
@@ -92,3 +94,26 @@ Adding protected rooms on the fly is as easy as `!mjolnir rooms add <room alias>
 which are protected with `!mjolnir rooms`, and remove a room with `!mjolnir rooms remove <room alias>`. Note
 that rooms which are listed in the config may be protected again when the bot restarts - to remove these rooms
 permanently from protection, remove them from the config.
+
+## Trusted Reporters
+
+Mjolnir has an (optional) system in which it will poll Synapse for new reports, and when it sees sufficient
+amounts of reports from trusted users on an given message, it will take an action, such as redacting the message.
+
+The users to trust, the actions to take, and the thresholds needed for those actions are configurable.
+
+Prerequisites:
+* `pollReport: true` in Mjolnir config file
+* retart Mjolnir
+* `!mjolnir enable TrustedReporters`
+* `!mjolnir config add TrustedReporters.mxids @trusteduser:example.com`
+* `!mjolnir config set TrustedReporters.alertThreshold 3`
+
+TrustedReporters supports 3 different thresholds; `alertThreshold`, `redactThreshold`, and `banThreshold`.
+By default, only `alertThreshold` is enabled, and is set to `3`. Mjolnir will only consider reports that
+take place in rooms Mjolnir is protecting. `alertThreshold` is separate from Mjolnir's ability to log
+each report, which is `displayReports` in Mjolnir's config file.
+
+Make sure that anything you have sat in front of Synapse (e.g. nginx) is correctly configured to forward
+`/_synapse/admin/v1/event_reports` and `/_synapse/admin/v1/rooms/${room_id}/context/${revent_id}` to
+Synapse, or Mjolnir will not be able to poll for new reports. Mjolnir polls for new reports every 30 seconds.

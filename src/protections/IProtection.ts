@@ -28,6 +28,7 @@ export abstract class Protection {
     abstract readonly name: string
     abstract readonly description: string;
     enabled = false;
+    readonly requiredStatePermissions: string[] = [];
     abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
 
     /*

@@ -43,10 +43,13 @@ import { Healthz } from "./health/healthz";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
+import { ReportPoller } from "./report/ReportPoller";
 import { WebAPIs } from "./webapis/WebAPIs";
 import { replaceRoomIdsWithPills } from "./utils";
 import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
+import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
+import { ThrottlingQueue } from "./queues/ThrottlingQueue";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -65,6 +68,11 @@ const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
+/**
+ * Synapse will tell us where we last got to on polling reports, so we need
+ * to store that for pagination on further polls
+ */
+export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 export class Mjolnir {
     private displayName: string;
@@ -83,10 +91,22 @@ export class Mjolnir {
      */
     private eventRedactionQueue = new EventRedactionQueue();
     private automaticRedactionReasons: MatrixGlob[] = [];
+    /**
+     * Every room that we are joined to except the management room. Used to implement `config.protectAllJoinedRooms`.
+     */
     private protectedJoinedRoomIds: string[] = [];
+    /**
+     * These are rooms that were explicitly said to be protected either in the config, or by what is present in the account data for `org.matrix.mjolnir.protected_rooms`.
+     */
     private explicitlyProtectedRoomIds: string[] = [];
-    private knownUnprotectedRooms: string[] = [];
+    private unprotectedWatchedListRooms: string[] = [];
     private webapis: WebAPIs;
+    private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
+    public taskQueue: ThrottlingQueue;
+    /*
+     * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
+     */
+    private reportPoller?: ReportPoller;
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -167,6 +187,10 @@ export class Mjolnir {
     constructor(
         public readonly client: MatrixClient,
         public readonly managementRoomId: string,
+        /*
+         * All the rooms that Mjolnir is protecting and their permalinks.
+         * If `config.protectAllJoinedRooms` is specified, then `protectedRooms` will be all joined rooms except watched banlists that we can't protect (because they aren't curated by us).
+         */
         public readonly protectedRooms: { [roomId: string]: string },
         private banLists: BanList[],
         // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
@@ -235,14 +259,20 @@ export class Mjolnir {
             }
         });
 
+        // Setup room activity watcher
+        this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker(client);
+
         // Setup Web APIs
         console.log("Creating Web APIs");
         const reportManager = new ReportManager(this);
-        reportManager.on("report.new", this.handleReport);
+        reportManager.on("report.new", this.handleReport.bind(this));
         this.webapis = new WebAPIs(reportManager, this.ruleServer);
-
+        if (config.pollReports) {
+            this.reportPoller = new ReportPoller(this, reportManager);
+        }
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.client);
+        this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
     }
 
     public get lists(): BanList[] {
@@ -282,6 +312,20 @@ export class Mjolnir {
             console.log("Starting web server");
             await this.webapis.start();
 
+            if (this.reportPoller) {
+                let reportPollSetting: { from: number } = { from: 0 };
+                try {
+                    reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
+                } catch (err) {
+                    if (err.body?.errcode !== "M_NOT_FOUND") {
+                        throw err;
+                    } else {
+                        this.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
+                    }
+                }
+                this.reportPoller.start(reportPollSetting.from);
+            }
+
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
 
@@ -293,6 +337,7 @@ export class Mjolnir {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
                         this.explicitlyProtectedRoomIds.push(roomId);
+                        this.protectedRoomActivityTracker.addProtectedRoom(roomId);
                     }
                 }
             } catch (e) {
@@ -337,6 +382,7 @@ export class Mjolnir {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.client.stop();
         this.webapis.stop();
+        this.reportPoller?.stop();
     }
 
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
@@ -371,9 +417,10 @@ export class Mjolnir {
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
         this.roomJoins.addRoom(roomId);
+        this.protectedRoomActivityTracker.addProtectedRoom(roomId);
 
-        const unprotectedIdx = this.knownUnprotectedRooms.indexOf(roomId);
-        if (unprotectedIdx >= 0) this.knownUnprotectedRooms.splice(unprotectedIdx, 1);
+        const unprotectedIdx = this.unprotectedWatchedListRooms.indexOf(roomId);
+        if (unprotectedIdx >= 0) this.unprotectedWatchedListRooms.splice(unprotectedIdx, 1);
         this.explicitlyProtectedRoomIds.push(roomId);
 
         let additionalProtectedRooms: { rooms?: string[] } | null = null;
@@ -391,6 +438,7 @@ export class Mjolnir {
     public async removeProtectedRoom(roomId: string) {
         delete this.protectedRooms[roomId];
         this.roomJoins.removeRoom(roomId);
+        this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
 
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
@@ -411,15 +459,19 @@ export class Mjolnir {
         const joinedRoomIds = (await this.client.getJoinedRooms()).filter(r => r !== this.managementRoomId);
         const oldRoomIdsSet = new Set(this.protectedJoinedRoomIds);
         const joinedRoomIdsSet = new Set(joinedRoomIds);
+        // Remove every room id that we have joined from `this.protectedRooms`.
         for (const roomId of this.protectedJoinedRoomIds) {
             delete this.protectedRooms[roomId];
+            this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
             if (!joinedRoomIdsSet.has(roomId)) {
                 this.roomJoins.removeRoom(roomId);
             }
         }
         this.protectedJoinedRoomIds = joinedRoomIds;
+        // Add all joined rooms back to the permalink object
         for (const roomId of joinedRoomIds) {
             this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
+            this.protectedRoomActivityTracker.addProtectedRoom(roomId);
             if (!oldRoomIdsSet.has(roomId)) {
                 this.roomJoins.addRoom(roomId);
             }
@@ -661,7 +713,7 @@ export class Mjolnir {
         const createEvent = new CreateEvent(await this.client.getRoomStateEvent(roomId, "m.room.create", ""));
         if (createEvent.creator === await this.client.getUserId()) return; // we created it
 
-        if (!this.knownUnprotectedRooms.includes(roomId)) this.knownUnprotectedRooms.push(roomId);
+        if (!this.unprotectedWatchedListRooms.includes(roomId)) this.unprotectedWatchedListRooms.push(roomId);
         this.applyUnprotectedRooms();
 
         try {
@@ -676,8 +728,9 @@ export class Mjolnir {
     }
 
     private applyUnprotectedRooms() {
-        for (const roomId of this.knownUnprotectedRooms) {
+        for (const roomId of this.unprotectedWatchedListRooms) {
             delete this.protectedRooms[roomId];
+            this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
         }
     }
 
@@ -727,6 +780,7 @@ export class Mjolnir {
 
     private async verifyPermissionsIn(roomId: string): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
+        const additionalPermissions = this.requiredProtectionPermissions();
 
         try {
             const ownUserId = await this.client.getUserId();
@@ -784,6 +838,20 @@ export class Mjolnir {
                 });
             }
 
+            // Wants: Additional permissions
+
+            for (const additionalPermission of additionalPermissions) {
+                const permLevel = plDefault(events[additionalPermission], stateDefault);
+
+                if (userLevel < permLevel) {
+                    errors.push({
+                        roomId,
+                        errorMessage: `Missing power level for "${additionalPermission}" state events: ${userLevel} < ${permLevel}`,
+                        errorKind: ERROR_KIND_PERMISSION,
+                    });
+                }
+            }
+
             // Otherwise OK
         } catch (e) {
             LogService.error("Mjolnir", extractRequestError(e));
@@ -797,6 +865,17 @@ export class Mjolnir {
         return errors;
     }
 
+    private requiredProtectionPermissions(): Set<string> {
+        return new Set(this.enabledProtections.map((p) => p.requiredStatePermissions).flat())
+    }
+
+    /**
+     * @returns The protected rooms ordered by the most recently active first.
+     */
+    public protectedRoomsByActivity(): string[] {
+        return this.protectedRoomActivityTracker.protectedRoomsByActivity();
+    }
+
     /**
      * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
      * @param verbose Whether to report any errors to the management room.
@@ -808,9 +887,10 @@ export class Mjolnir {
         }
 
         let hadErrors = false;
-
-        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
-        const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const [aclErrors, banErrors] = await Promise.all([
+            applyServerAcls(this.banLists, this.protectedRoomsByActivity(), this),
+            applyUserBans(this.banLists, this.protectedRoomsByActivity(), this)
+        ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
@@ -838,8 +918,10 @@ export class Mjolnir {
         const changes = await banList.updateList();
 
         let hadErrors = false;
-        const aclErrors = await applyServerAcls(this.banLists, Object.keys(this.protectedRooms), this);
-        const banErrors = await applyUserBans(this.banLists, Object.keys(this.protectedRooms), this);
+        const [aclErrors, banErrors] = await Promise.all([
+            applyServerAcls(this.banLists, this.protectedRoomsByActivity(), this),
+            applyUserBans(this.banLists, this.protectedRoomsByActivity(), this)
+        ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
         hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
@@ -1105,7 +1187,7 @@ export class Mjolnir {
         return await this.eventRedactionQueue.process(this, roomId);
     }
 
-    private async handleReport(roomId: string, reporterId: string, event: any, reason?: string) {
+    private async handleReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
         for (const protection of this.enabledProtections) {
             await protection.handleReport(this, roomId, reporterId, event, reason);
         }

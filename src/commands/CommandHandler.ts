@@ -17,7 +17,7 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import { execStatusCommand } from "./StatusCommand";
 import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
-import { execDumpRulesCommand } from "./DumpRulesCommand";
+import { execDumpRulesCommand, execRulesMatchingCommand } from "./DumpRulesCommand";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
 import { htmlEscape } from "../utils";
 import { execSyncCommand } from "./SyncCommand";
@@ -59,6 +59,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execBanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'unban' && parts.length > 2) {
             return await execUnbanCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'rules' && parts.length === 4 && parts[2] === 'matching') {
+            return await execRulesMatchingCommand(roomId, event, mjolnir, parts[3])
         } else if (parts[1] === 'rules') {
             return await execDumpRulesCommand(roomId, event, mjolnir);
         } else if (parts[1] === 'sync') {
@@ -131,8 +133,9 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]   - Removes an entity from the ban list. If apply is 'true', the users matching the glob will actually be unbanned\n" +
                 "!mjolnir redact <user ID> [room alias/ID] [limit]                   - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
                 "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
-                "!mjolnir kick <user ID> [room alias/ID] [reason]                    - Kicks a user in a particular room or all protected rooms\n" +
+                "!mjolnir kick <glob> [room alias/ID] [reason]                    - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
+                "!mjolnir rules matching <user|room|server>                          - Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user." +
                 "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
@@ -157,7 +160,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
-                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action (kick, ban or just show) to all users who joined a room since a given date (up to <limit> users)\n" +
+                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
                 "!mjolnir make admin <room alias> [user alias/ID]                    - Make the specified user or the bot itself admin of the room\n" +
