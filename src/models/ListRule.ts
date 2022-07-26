@@ -153,14 +153,17 @@ export abstract class ListRule {
             return null;
         }
 
-        // From this point, we may need specific fields
+        // From this point, we may need specific fields.
         if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) {
             return new ListRuleBan(entity, reason, kind);
         } else if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) {
-            let opinion = parseInt(content['opinion'], 10);
+            let opinion = content['opinion'];
+            if (!Number.isInteger(opinion)) {
+                return null;
+            }
             return new ListRuleOpinion(entity, reason, kind, opinion);
         } else {
-            // As long as the `recommendation` is defined, we expect
+            // As long as the `recommendation` is defined, we assume
             // that the rule is correct, just unknown.
             return new ListRuleUnknown(entity, reason, kind, content);
         }
