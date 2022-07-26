@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as http from "http";
 import { LogService } from "matrix-bot-sdk";
-// allowed to use the global configuration since there should only be one of these anyways.
+// allowed to use the global configuration since this is only intended to be used by `src/index.ts`.
 import config from '../config';
 
 export class Healthz {

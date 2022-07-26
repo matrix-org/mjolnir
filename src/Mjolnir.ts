@@ -360,7 +360,6 @@ export class Mjolnir {
             }
 
             this.currentState = STATE_RUNNING;
-            Healthz.isHealthy = true;
             await this.logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
         } catch (err) {
             try {

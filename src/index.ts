@@ -63,6 +63,7 @@ if (config.health.healthz.enabled) {
     }
     try {
         await bot.start();
+        Healthz.isHealthy = true;
     } catch (err) {
         console.error(`Mjolnir failed to start: ${err}`);
         throw err;
