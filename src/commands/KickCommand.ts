@@ -17,63 +17,80 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import config from "../config";
+import { Command, Lexer } from "./Command";
+import { Token } from "tokenizr";
 
-// !mjolnir kick <user|filter> [room] [reason]
-export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    let force = false;
+export class KickCommand implements Command {
+    command: "kick";
+    helpArgs: "<glob> [room alias/ID] [reason]";
+    helpDescription: "Kicks a user or all of those matching a glob in a particular room or all protected rooms";
+    async exec(mjolnir: Mjolnir, commandRoomId: string, lexer: Lexer, event: any): Promise<void> {
 
-    const glob = parts[2];
-    let rooms = [...Object.keys(mjolnir.protectedRooms)];
+        // Parse command-line args.
+        let globUserID = lexer.token("globUserID").text;
+        let roomAliasOrIDToken: Token | null = lexer.alternatives(
+            () => lexer.token("roomAliasOrID"),
+            () => null,
+        );
+        let reason = lexer.alternatives(
+            () => lexer.token("string"),
+            () => lexer.token("ETC")
+        ).text as string;
 
-    if (parts[parts.length - 1] === "--force") {
-        force = true;
-        parts.pop();
-    }
-
-    if (config.commands.confirmWildcardBan && /[*?]/.test(glob) && !force) {
-        let replyMessage = "Wildcard bans require an addition `--force` argument to confirm";
-        const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
-        reply["msgtype"] = "m.notice";
-        await mjolnir.client.sendMessage(roomId, reply);
-        return;
-    }
-
-    const kickRule = new MatrixGlob(glob);
-
-    let reason: string | undefined;
-    if (parts.length > 3) {
-        let reasonIndex = 3;
-        if (parts[3].startsWith("#") || parts[3].startsWith("!")) {
-            rooms = [await mjolnir.client.resolveRoom(parts[3])];
-            reasonIndex = 4;
+        const ARG_FORCE = "--force";
+        let hasForce = !config.commands.confirmWildcardBan;
+        if (reason.endsWith(ARG_FORCE)) {
+            reason = reason.slice(undefined, ARG_FORCE.length);
+            hasForce = true;
         }
-        reason = parts.slice(reasonIndex).join(' ') || '<no reason supplied>';
-    }
-    if (!reason) reason = '<none supplied>';
+        if (reason.trim().length == 0) {
+            reason = "<no reason supplied>";
+        }
 
-    for (const protectedRoomId of rooms) {
-        const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ["join"], ["ban", "leave"]);
+        // Validate args.
+        if (!hasForce && /[*?]/.test(globUserID)) {
+            let replyMessage = "Wildcard bans require an addition `--force` argument to confirm";
+            const reply = RichReply.createFor(commandRoomId, event, replyMessage, replyMessage);
+            reply["msgtype"] = "m.notice";
+            await mjolnir.client.sendMessage(commandRoomId, reply);
+            return;
+        }
 
-        for (const member of members) {
-            const victim = member.membershipFor;
+        // Compute list of rooms.
+        let rooms;
+        if (roomAliasOrIDToken) {
+            rooms = [await mjolnir.client.resolveRoom(roomAliasOrIDToken.text)];
+        } else {
+            rooms = [...Object.keys(mjolnir.protectedRooms)];
+        }
 
-            if (kickRule.test(victim)) {
-                await mjolnir.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${victim} in ${protectedRoomId}`, protectedRoomId);
+        // Proceed.
+        const kickRule = new MatrixGlob(globUserID);
 
-                if (!config.noop) {
-                    try {
-                        await mjolnir.taskQueue.push(async () => {
-                            return mjolnir.client.kickUser(victim, protectedRoomId, reason);
-                        });
-                    } catch (e) {
-                        await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${victim}: ${e}`);
+        for (const protectedRoomId of rooms) {
+            const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ["join"], ["ban", "leave"]);
+    
+            for (const member of members) {
+                const victim = member.membershipFor;
+    
+                if (kickRule.test(victim)) {
+                    await mjolnir.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${victim} in ${protectedRoomId}`, protectedRoomId);
+    
+                    if (!config.noop) {
+                        try {
+                            await mjolnir.taskQueue.push(async () => {
+                                return mjolnir.client.kickUser(victim, protectedRoomId, reason);
+                            });
+                        } catch (e) {
+                            await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${victim}: ${e}`);
+                        }
+                    } else {
+                        await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${victim} in ${protectedRoomId} but the bot is running in no-op mode.`, protectedRoomId);
                     }
-                } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${victim} in ${protectedRoomId} but the bot is running in no-op mode.`, protectedRoomId);
                 }
             }
         }
+    
+        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '✅');
     }
-
-    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

@@ -20,6 +20,7 @@ import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from
 import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
 import config from "../config";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
+import { AbstractLegacyCommand } from "./Command";
 
 interface Arguments {
     list: BanList | null;
@@ -115,7 +116,17 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
 }
 
 // !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
-export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+export class BanCommand extends AbstractLegacyCommand {
+    command: "ban";
+    helpArgs: "<list shortcode> <user|room|server> <glob> [reason]";
+    helpDescription: "Adds an entity to the ban list";
+    async legacyExec(roomID: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<void> {
+        await execBanCommand(roomID, event, mjolnir, parts);
+    }
+}
+
+// !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
+async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
 
@@ -131,8 +142,18 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
+// !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
+export class UnbanCommand extends AbstractLegacyCommand {
+    command: "unban";
+    helpDescription: "Removes an entity from the ban list. If apply is 'true', the users matching the glob will actually be unbanned\n";
+    helpArgs: "<list shortcode> <user|room|server> <glob> [apply]";
+    async legacyExec(roomID: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<void> {
+        await execUnbanCommand(roomID, event, mjolnir, parts);
+    }
+}
+
 // !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
-export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
 

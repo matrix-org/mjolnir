@@ -15,8 +15,16 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
+import { Command, Lexer } from "./Command";
 
 // !mjolnir sync
-export async function execSyncCommand(roomId: string, event: any, mjolnir: Mjolnir) {
-    return mjolnir.syncLists();
+export class SyncCommand implements Command {
+    public readonly command: 'sync';
+    public readonly helpDescription: 'Force updates of all lists and re-apply rules';
+    public readonly helpArgs: '';
+    async exec(mjolnir: Mjolnir, roomID: string, lexer: Lexer, event: any): Promise<void> {
+        await mjolnir.syncLists();
+    }    
 }
+
+
