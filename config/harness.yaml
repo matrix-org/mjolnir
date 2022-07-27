@@ -32,9 +32,9 @@ dataPath: "./test/harness/mjolnir-data/"
 # to new rooms.
 autojoinOnlyIfManager: true
 
-# If `autojoinOnlyIfManager` is false, only the members in this group can invite
+# If `autojoinOnlyIfManager` is false, only the members in this space can invite
 # the bot to new rooms.
-acceptInvitesFromGroup: '+example:example.org'
+acceptInvitesFromSpace: '!example:example.org'
 
 # If the bot is invited to a room and it won't accept the invite (due to the
 # conditions above), report it to the management room. Defaults to disabled (no
