@@ -20,6 +20,7 @@ import { Mjolnir } from "../Mjolnir";
 import config from "../config";
 import { LogLevel } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
+import { Recommendation } from "../models/PolicyRule";
 
 /**
  * Applies the member bans represented by the ban lists to the provided rooms, returning the
@@ -57,7 +58,7 @@ export async function applyUserBans(lists: PolicyList[], roomIds: string[], mjol
 
                 let banned = false;
                 for (const list of lists) {
-                    for (const userRule of list.userRules) {
+                    for (const userRule of list.getUserRules(Recommendation.Ban)) {
                         if (userRule.isMatch(member.userId)) {
                             // User needs to be banned
 

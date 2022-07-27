@@ -36,7 +36,7 @@ describe("Test: Updating the PolicyList", function() {
         const banList = new PolicyList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
-        assert.equal(banList.allRules.length, 0);
+        assert.equal(banList.getAllRules("*").length, 0);
 
         // Test adding a new rule
         await createPolicyRule(mjolnir, banListId, RULE_USER, '@added:localhost:9999', '');
@@ -44,8 +44,8 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(changes.length, 1, 'There should only be one change');
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(changes[0].sender, await mjolnir.getUserId());
-        assert.equal(banList.userRules.length, 1);
-        assert.equal(banList.allRules.length, 1);
+        assert.equal(banList.getUserRules("*").length, 1);
+        assert.equal(banList.getAllRules("*").length, 1);
 
         // Test modifiying a rule
         let originalEventId = await createPolicyRule(mjolnir, banListId, RULE_USER, '@modified:localhost:9999', '');
@@ -62,12 +62,12 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(changes[0].changeType, ChangeType.Modified);
         assert.equal(changes[0].previousState['event_id'], modifyingEventId, 'There should be a previous state event for a modified rule');
         assert.equal(changes[0].event['event_id'], modifyingAgainEventId);
-        assert.equal(banList.userRules.length, 2, 'There should be two rules, one for @modified:localhost:9999 and one for @added:localhost:9999');
+        assert.equal(banList.getUserRules("*").length, 2, 'There should be two rules, one for @modified:localhost:9999 and one for @added:localhost:9999');
 
         // Test redacting a rule
         const redactThis = await createPolicyRule(mjolnir, banListId, RULE_USER, '@redacted:localhost:9999', '');
         await banList.updateList();
-        assert.equal(banList.userRules.filter(r => r.entity === '@redacted:localhost:9999').length, 1);
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === '@redacted:localhost:9999').length, 1);
         await mjolnir.redactEvent(banListId, redactThis);
         changes = await banList.updateList();
         assert.equal(changes.length, 1);
@@ -76,13 +76,13 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(Object.keys(changes[0].event['content']).length, 0, 'Should show the new version of the event with redacted content');
         assert.notEqual(Object.keys(changes[0].previousState['content']), 0, 'Should have a copy of the unredacted state');
         assert.notEqual(changes[0].rule, undefined, 'The previous rule should be present');
-        assert.equal(banList.userRules.filter(r => r.entity === '@redacted:localhost:9999').length, 0, 'The rule should be removed.');
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === '@redacted:localhost:9999').length, 0, 'The rule should be removed.');
 
         // Test soft redaction of a rule
         const softRedactedEntity = '@softredacted:localhost:9999'
         await createPolicyRule(mjolnir, banListId, RULE_USER, softRedactedEntity, '');
         await banList.updateList();
-        assert.equal(banList.userRules.filter(r => r.entity === softRedactedEntity).length, 1);
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === softRedactedEntity).length, 1);
         await mjolnir.sendStateEvent(banListId, RULE_USER, `rule:${softRedactedEntity}`, {});
         changes = await banList.updateList();
         assert.equal(changes.length, 1);
@@ -90,34 +90,34 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(Object.keys(changes[0].event['content']).length, 0, 'Should show the new version of the event with redacted content');
         assert.notEqual(Object.keys(changes[0].previousState['content']), 0, 'Should have a copy of the unredacted state');
         assert.notEqual(changes[0].rule, undefined, 'The previous rule should be present');
-        assert.equal(banList.userRules.filter(r => r.entity === softRedactedEntity).length, 0, 'The rule should have been removed');
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === softRedactedEntity).length, 0, 'The rule should have been removed');
 
         // Now test a double soft redaction just to make sure stuff doesn't explode
         await mjolnir.sendStateEvent(banListId, RULE_USER, `rule:${softRedactedEntity}`, {});
         changes = await banList.updateList();
         assert.equal(changes.length, 0, "It shouldn't detect a double soft redaction as a change, it should be seen as adding an invalid rule.");
-        assert.equal(banList.userRules.filter(r => r.entity === softRedactedEntity).length, 0, 'The rule should have been removed');
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === softRedactedEntity).length, 0, 'The rule should have been removed');
 
         // Test that different (old) rule types will be modelled as the latest event type.
         originalEventId = await createPolicyRule(mjolnir, banListId, 'org.matrix.mjolnir.rule.user', '@old:localhost:9999', '');
         changes = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Added);
-        assert.equal(banList.userRules.filter(r => r.entity === '@old:localhost:9999').length, 1);
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === '@old:localhost:9999').length, 1);
         modifyingEventId = await createPolicyRule(mjolnir, banListId, 'm.room.rule.user', '@old:localhost:9999', 'modified reason');
         changes = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Modified);
         assert.equal(changes[0].event['event_id'], modifyingEventId);
         assert.equal(changes[0].previousState['event_id'], originalEventId, 'There should be a previous state event for a modified rule');
-        assert.equal(banList.userRules.filter(r => r.entity === '@old:localhost:9999').length, 1);
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === '@old:localhost:9999').length, 1);
         modifyingAgainEventId = await createPolicyRule(mjolnir, banListId, RULE_USER, '@old:localhost:9999', 'changes again');
         changes = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Modified);
         assert.equal(changes[0].event['event_id'], modifyingAgainEventId);
         assert.equal(changes[0].previousState['event_id'], modifyingEventId, 'There should be a previous state event for a modified rule');
-        assert.equal(banList.userRules.filter(r => r.entity === '@old:localhost:9999').length, 1);
+        assert.equal(banList.getUserRules("*").filter(r => r.entity === '@old:localhost:9999').length, 1);
     })
     it("Will remove rules with old types when they are 'soft redacted' with a different but more recent event type.", async function() {
         this.timeout(3000);
@@ -132,14 +132,14 @@ describe("Test: Updating the PolicyList", function() {
         let changes = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Added);
-        assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 1, 'There should be a rule stored that we just added...')
+        assert.equal(banList.getUserRules("*").filter(rule => rule.entity === entity).length, 1, 'There should be a rule stored that we just added...')
         let softRedactingEventId = await mjolnir.sendStateEvent(banListId, RULE_USER, `rule:${entity}`, {});
         changes = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Removed);
         assert.equal(changes[0].event['event_id'], softRedactingEventId);
         assert.equal(changes[0].previousState['event_id'], originalEventId, 'There should be a previous state event for a modified rule');
-        assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
+        assert.equal(banList.getUserRules("*").filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
     it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function() {
         this.timeout(3000);
@@ -154,7 +154,7 @@ describe("Test: Updating the PolicyList", function() {
         let changes = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Added);
-        assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 1, 'There should be a rule stored that we just added...')
+        assert.equal(banList.getUserRules("*").filter(rule => rule.entity === entity).length, 1, 'There should be a rule stored that we just added...')
         let updatedEventId = await createPolicyRule(mjolnir, banListId, RULE_USER, entity, '');
         changes = await banList.updateList();
         // If in the future you change this and it fails, it's really subjective whether this constitutes a modification, since the only thing that has changed
@@ -163,13 +163,13 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(changes[0].changeType, ChangeType.Modified);
         assert.equal(changes[0].event['event_id'], updatedEventId);
         assert.equal(changes[0].previousState['event_id'], originalEventId, 'There should be a previous state event for a modified rule');
-        assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 1, 'Only the latest version of the rule gets returned.');
+        assert.equal(banList.getUserRules("*").filter(rule => rule.entity === entity).length, 1, 'Only the latest version of the rule gets returned.');
 
         // Now we delete the old version of the rule without consequence.
         await mjolnir.sendStateEvent(banListId, 'm.room.rule.user', `rule:${entity}`, {});
         changes = await banList.updateList();
         assert.equal(changes.length, 0);
-        assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 1, 'The rule should still be active.');
+        assert.equal(banList.getUserRules("*").filter(rule => rule.entity === entity).length, 1, 'The rule should still be active.');
 
         // And we can still delete the new version of the rule.
         let softRedactingEventId = await mjolnir.sendStateEvent(banListId, RULE_USER, `rule:${entity}`, {});
@@ -178,7 +178,7 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(changes[0].changeType, ChangeType.Removed);
         assert.equal(changes[0].event['event_id'], softRedactingEventId);
         assert.equal(changes[0].previousState['event_id'], updatedEventId, 'There should be a previous state event for a modified rule');
-        assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
+        assert.equal(banList.getUserRules("*").filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
     it('Test: PolicyList Supports all entity types.', async function() {
         const mjolnir = config.RUNTIME.client!
@@ -189,7 +189,7 @@ describe("Test: Updating the PolicyList", function() {
         }
         let changes: PolicyRuleChange[] = await banList.updateList();
         assert.equal(changes.length, ALL_RULE_TYPES.length);
-        assert.equal(banList.allRules.length, ALL_RULE_TYPES.length);
+        assert.equal(banList.getAllRules("*").length, ALL_RULE_TYPES.length);
     })
 });
 
@@ -204,8 +204,8 @@ describe('Test: We do not respond to recommendations other than m.ban in the ban
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(changes[0].sender, await mjolnir.getUserId());
         // We really don't want things that aren't m.ban to end up being accessible in these APIs.
-        assert.equal(banList.serverRules.length, 0, `We should have an empty serverRules, got ${JSON.stringify(banList.serverRules)}`);
-        assert.equal(banList.allRules.length, 0, `We should have an empty allRules, got ${JSON.stringify(banList.allRules)}`);
+        assert.equal(banList.getServerRules("*").length, 0, `We should have an empty serverRules, got ${JSON.stringify(banList.getServerRules("*"))}`);
+        assert.equal(banList.getAllRules("*").length, 0, `We should have an empty allRules, got ${JSON.stringify(banList.getAllRules("*"))}`);
     })
 })
 
@@ -220,7 +220,7 @@ describe('Test: We will not be able to ban ourselves via ACL.', function() {
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, '*', '');
         // We should still intern the matching rules rule.
         let changes: PolicyRuleChange[] = await banList.updateList();
-        assert.equal(banList.serverRules.length, 3);
+        assert.equal(banList.getServerRules("*").length, 3);
         // But when we construct an ACL, we should be safe.
         const acl = new ServerAcl(serverName)
         changes.forEach(change => acl.denyServer(change.rule.entity));
@@ -335,7 +335,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
 
         await banList.updateList();
         // rules are normalized, that's why there should only be 2.
-        assert.equal(banList.allRules.length, 2);
+        assert.equal(banList.getAllRules("*").length, 2);
 
         // Check that we have setup our test properly and therefore evil.com is banned.
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*").denyServer(olderBadServer).denyServer(newerBadServer);
@@ -360,7 +360,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         await this.mjolnir!.syncLists();
         // Confirm that the server is unbanned.
         await banList.updateList();
-        assert.equal(banList.allRules.length, 0);
+        assert.equal(banList.getAllRules("*").length, 0);
         const aclAfter = await mjolnir.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         assert.equal(aclAfter.deny.length, 0, 'Should be no servers denied anymore');
     })

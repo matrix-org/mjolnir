@@ -117,20 +117,22 @@ class PolicyList extends EventEmitter {
 
     /**
      * Return all the active rules of a given kind.
-     * @param kind The type of entities we're looking for.
+     * @param type The type of entities we're looking for.
      * @returns The active PolicyRules for the ban list of that kind.
      */
-    private rulesOfKind(kind: EntityType): PolicyRule[] {
+    private rulesOfKind(type: EntityType, recommendation: Recommendation | "*"): PolicyRule[] {
         const rules: PolicyRule[] = []
-        const stateKeyMap = this.state.get(kind);
+        const stateKeyMap = this.state.get(type);
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
                 const rule = event?.unsigned?.rule;
                 // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
                 // please make sure that you *only* return rules with `m.ban` or create a different method
                 // (we don't want to accidentally ban entities).
-                if (rule && rule.kind === kind && rule.recommendation === Recommendation.Ban) {
-                    rules.push(rule);
+                if (rule && rule.kind === type) {
+                    if (recommendation === "*" ||  rule.recommendation === recommendation) {
+                        rules.push(rule);
+                    }
                 }
             }
         }
@@ -146,20 +148,20 @@ class PolicyList extends EventEmitter {
         });
     }
 
-    public get serverRules(): PolicyRule[] {
-        return this.rulesOfKind(RULE_SERVER);
+    public getServerRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return this.rulesOfKind(RULE_SERVER, recommendation);
     }
 
-    public get userRules(): PolicyRule[] {
-        return this.rulesOfKind(RULE_USER);
+    public getUserRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return this.rulesOfKind(RULE_USER, recommendation);
     }
 
-    public get roomRules(): PolicyRule[] {
-        return this.rulesOfKind(RULE_ROOM);
+    public getRoomRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return this.rulesOfKind(RULE_ROOM, recommendation);
     }
 
-    public get allRules(): PolicyRule[] {
-        return [...this.serverRules, ...this.userRules, ...this.roomRules];
+    public getAllRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return [...this.getServerRules(recommendation), ...this.getUserRules(recommendation), ...this.getRoomRules(recommendation)];
     }
 
     /**
@@ -169,7 +171,7 @@ class PolicyList extends EventEmitter {
      * @param entity The entity to test e.g. the user id, server name or a room id.
      * @returns All of the rules that match this entity.
      */
-    public rulesMatchingEntity(entity: string, ruleKind?: EntityType): PolicyRule[] {
+    public rulesMatchingEntity(entity: string, recommendation: Recommendation | "*", ruleKind?: EntityType): PolicyRule[] {
         const ruleTypeOf: (entityPart: string) => EntityType = (entityPart: string) => {
             if (ruleKind) {
                 return ruleKind;
@@ -186,11 +188,11 @@ class PolicyList extends EventEmitter {
             // We special case because want to see whether a server ban is preventing this user from participating too.
             const userId = new UserID(entity);
             return [
-                ...this.userRules.filter(rule => rule.isMatch(entity)),
-                ...this.serverRules.filter(rule => rule.isMatch(userId.domain))
+                ...this.getUserRules(recommendation).filter(rule => rule.isMatch(entity)),
+                ...this.getServerRules(recommendation).filter(rule => rule.isMatch(userId.domain))
             ]
         } else {
-            return this.rulesOfKind(ruleTypeOf(entity)).filter(rule => rule.isMatch(entity));
+            return this.rulesOfKind(ruleTypeOf(entity), recommendation).filter(rule => rule.isMatch(entity));
         }
     }
 

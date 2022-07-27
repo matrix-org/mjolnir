@@ -21,6 +21,7 @@ import { Mjolnir } from "../Mjolnir";
 import config from "../config";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
+import { Recommendation } from "../models/PolicyRule";
 
 /**
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
@@ -36,7 +37,7 @@ export async function applyServerAcls(lists: PolicyList[], roomIds: string[], mj
     // Construct a server ACL first
     const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
     for (const list of lists) {
-        for (const rule of list.serverRules) {
+        for (const rule of list.getServerRules(Recommendation.Ban)) {
             acl.denyServer(rule.entity);
         }
     }

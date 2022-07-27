@@ -71,10 +71,10 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
     text += `Protected rooms: ${Object.keys(mjolnir.protectedRooms).length}\n`;
 
     // Append list information
-    html += "<b>Subscribed ban lists:</b><br><ul>";
-    text += "Subscribed ban lists:\n";
+    html += "<b>Subscribed policy lists:</b><br><ul>";
+    text += "Subscribed policy lists:\n";
     for (const list of mjolnir.lists) {
-        const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
+        const ruleInfo = `rules: ${list.getServerRules("*").length} servers, ${list.getUserRules("*").length} users, ${list.getRoomRules("*").length} rooms`;
         html += `<li><a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
         text += `* ${list.roomRef} (${ruleInfo})\n`;
     }
