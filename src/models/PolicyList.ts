@@ -16,7 +16,7 @@ limitations under the License.
 
 import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
-import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
+import { ALL_RULE_TYPES, EntityType, PolicyRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./PolicyRule";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
@@ -26,7 +26,7 @@ export enum ChangeType {
     Modified = "MODIFIED"
 }
 
-export interface ListRuleChange {
+export interface PolicyRuleChange {
     readonly changeType: ChangeType,
     /**
      * State event that caused the change.
@@ -43,7 +43,7 @@ export interface ListRuleChange {
      * The current rule represented by the event.
      * If the rule has been removed, then this will show what the rule was.
      */
-    readonly rule: ListRule,
+    readonly rule: PolicyRule,
     /**
      * The previous state that has been changed. Only (and always) provided when the change type is `ChangeType.Removed` or `Modified`.
      * This will be a copy of the same event as `event` when a redaction has occurred and this will show its unredacted state.
@@ -53,8 +53,8 @@ export interface ListRuleChange {
 
 declare interface PolicyList {
     // PolicyList.update is emitted when the PolicyList has pulled new rules from Matrix and informs listeners of any changes.
-    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[]) => void): this
-    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[]): boolean
+    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: PolicyRuleChange[]) => void): this
+    emit(event: 'PolicyList.update', list: PolicyList, changes: PolicyRuleChange[]): boolean
     // PolicyList.batch is emitted when the PolicyList has created a batch from the events provided by `updateForEvent`.
     on(event: 'PolicyList.batch', listener: (list: PolicyList) => void): this
     emit(event: 'PolicyList.batch', list: PolicyList): boolean
@@ -118,10 +118,10 @@ class PolicyList extends EventEmitter {
     /**
      * Return all the active rules of a given kind.
      * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the PolicyList.
-     * @returns The active ListRules for the ban list of that kind.
+     * @returns The active PolicyRules for the ban list of that kind.
      */
-    private rulesOfKind(kind: string): ListRule[] {
-        const rules: ListRule[] = []
+    private rulesOfKind(kind: string): PolicyRule[] {
+        const rules: PolicyRule[] = []
         const stateKeyMap = this.state.get(kind);
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
@@ -146,19 +146,19 @@ class PolicyList extends EventEmitter {
         });
     }
 
-    public get serverRules(): ListRule[] {
+    public get serverRules(): PolicyRule[] {
         return this.rulesOfKind(RULE_SERVER);
     }
 
-    public get userRules(): ListRule[] {
+    public get userRules(): PolicyRule[] {
         return this.rulesOfKind(RULE_USER);
     }
 
-    public get roomRules(): ListRule[] {
+    public get roomRules(): PolicyRule[] {
         return this.rulesOfKind(RULE_ROOM);
     }
 
-    public get allRules(): ListRule[] {
+    public get allRules(): PolicyRule[] {
         return [...this.serverRules, ...this.userRules, ...this.roomRules];
     }
 
@@ -169,7 +169,7 @@ class PolicyList extends EventEmitter {
      * @param entity The entity to test e.g. the user id, server name or a room id.
      * @returns All of the rules that match this entity.
      */
-    public rulesMatchingEntity(entity: string, ruleKind?: string): ListRule[] {
+    public rulesMatchingEntity(entity: string, ruleKind?: string): PolicyRule[] {
         const ruleTypeOf: (entityPart: string) => string = (entityPart: string) => {
             if (ruleKind) {
                 return ruleKind;
@@ -233,8 +233,8 @@ class PolicyList extends EventEmitter {
      * and updating the model to reflect the room.
      * @returns A description of any rules that were added, modified or removed from the list as a result of this update.
      */
-    public async updateList(): Promise<ListRuleChange[]> {
-        let changes: ListRuleChange[] = [];
+    public async updateList(): Promise<PolicyRuleChange[]> {
+        let changes: PolicyRuleChange[] = [];
 
         const state = await this.client.getRoomState(this.roomId);
         for (const event of state) {
@@ -313,11 +313,11 @@ class PolicyList extends EventEmitter {
                     changeType, event, sender, rule: previousState.unsigned.rule,
                     ...previousState ? { previousState } : {}
                 });
-                // Event has no content and cannot be parsed as a ListRule.
+                // Event has no content and cannot be parsed as a PolicyRule.
                 continue;
             }
             // It's a rule - parse it
-            const rule = ListRule.parse(event);
+            const rule = PolicyRule.parse(event);
             if (!rule) {
                 // Invalid/unknown rule, just skip it.
                 continue;

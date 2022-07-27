@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
-import { EntityType, Recommendation } from "../models/ListRule";
+import { EntityType, Recommendation } from "../models/PolicyRule";
 
 // !mjolnir import <room ID> <shortcode>
 export async function execImportCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

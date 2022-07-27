@@ -27,7 +27,7 @@ import {
     TextualMessageEventContent
 } from "matrix-bot-sdk";
 
-import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
+import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/PolicyRule";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -50,7 +50,7 @@ import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
-import PolicyList, { ListRuleChange } from "./models/PolicyList";
+import PolicyList, { PolicyRuleChange } from "./models/PolicyList";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -1052,7 +1052,7 @@ export class Mjolnir {
      * @param ignoreSelf Whether to exclude changes that have been made by Mjolnir.
      * @returns true if the message was sent, false if it wasn't (because there there were no changes to report).
      */
-    private async printBanlistChanges(changes: ListRuleChange[], list: PolicyList, ignoreSelf = false): Promise<boolean> {
+    private async printBanlistChanges(changes: PolicyRuleChange[], list: PolicyList, ignoreSelf = false): Promise<boolean> {
         if (ignoreSelf) {
             const sender = await this.client.getUserId();
             changes = changes.filter(change => change.sender !== sender);

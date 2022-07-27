@@ -13,10 +13,10 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import BanList, { ChangeType, ListRuleChange } from "./PolicyList"
+import BanList, { ChangeType, PolicyRuleChange } from "./PolicyList"
 import * as crypto from "crypto";
 import { LogService } from "matrix-bot-sdk";
-import { EntityType, ListRule } from "./ListRule";
+import { EntityType, PolicyRule } from "./PolicyRule";
 import PolicyList from "./PolicyList";
 
 export const USER_MAY_INVITE = 'user_may_invite';
@@ -149,10 +149,10 @@ export default class RuleServer {
     }
 
     /**
-     * Update the rule server to reflect a ListRule change.
-     * @param change A ListRuleChange sourced from a BanList.
+     * Update the rule server to reflect a PolicyRule change.
+     * @param change A PolicyRuleChange sourced from a BanList.
      */
-    private applyRuleChange(change: ListRuleChange): void {
+    private applyRuleChange(change: PolicyRuleChange): void {
         if (change.changeType === ChangeType.Added) {
             const eventRules = new EventRules(change.event.event_id, change.event.room_id, toRuleServerFormat(change.rule), this.currentToken);
             this.addEventRules(eventRules);
@@ -208,9 +208,9 @@ export default class RuleServer {
      * Process the changes that have been made to a BanList.
      * This will ususally be called as a callback from `BanList.onChange`.
      * @param banList The BanList that the changes happened in.
-     * @param changes An array of ListRuleChanges.
+     * @param changes An array of PolicyRuleChanges.
      */
-    private update(banList: BanList, changes: ListRuleChange[]) {
+    private update(banList: BanList, changes: PolicyRuleChange[]) {
         if (changes.length > 0) {
             this.nextToken();
             changes.forEach(this.applyRuleChange, this);
@@ -257,11 +257,11 @@ export default class RuleServer {
 }
 
 /**
-* Convert a ListRule into the format that can be served by the rule server.
-* @param policyRule A ListRule to convert.
+* Convert a PolicyRule into the format that can be served by the rule server.
+* @param policyRule A PolicyRule to convert.
 * @returns An array of rules that can be served from the rule server.
 */
-function toRuleServerFormat(policyRule: ListRule): RuleServerRule[] {
+function toRuleServerFormat(policyRule: PolicyRule): RuleServerRule[] {
     function makeLiteral(literal: string) {
         return { literal }
     }

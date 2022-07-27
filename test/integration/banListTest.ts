@@ -3,11 +3,11 @@ import { strict as assert } from "assert";
 import config from "../../src/config";
 import { newTestUser } from "./clientHelper";
 import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
-import PolicyList, { ChangeType, ListRuleChange } from "../../src/models/PolicyList";
+import PolicyList, { ChangeType, PolicyRuleChange } from "../../src/models/PolicyList";
 import { ServerAcl } from "../../src/models/ServerAcl";
 import { getFirstReaction } from "./commands/commandUtils";
 import { getMessagesByUserIn } from "../../src/utils";
-import { ALL_RULE_TYPES, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/ListRule";
+import { ALL_RULE_TYPES, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/PolicyRule";
 
 /**
  * Create a policy rule in a policy room.
@@ -40,7 +40,7 @@ describe("Test: Updating the PolicyList", function() {
 
         // Test adding a new rule
         await createPolicyRule(mjolnir, banListId, RULE_USER, '@added:localhost:9999', '');
-        let changes: ListRuleChange[] = await banList.updateList();
+        let changes: PolicyRuleChange[] = await banList.updateList();
         assert.equal(changes.length, 1, 'There should only be one change');
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(changes[0].sender, await mjolnir.getUserId());
@@ -187,7 +187,7 @@ describe("Test: Updating the PolicyList", function() {
         for (let i = 0; i < ALL_RULE_TYPES.length; i++) {
             await createPolicyRule(mjolnir, banListId, ALL_RULE_TYPES[i], `*${i}*`, '');
         }
-        let changes: ListRuleChange[] = await banList.updateList();
+        let changes: PolicyRuleChange[] = await banList.updateList();
         assert.equal(changes.length, ALL_RULE_TYPES.length);
         assert.equal(banList.allRules.length, ALL_RULE_TYPES.length);
     })
@@ -199,7 +199,7 @@ describe('Test: We do not respond to recommendations other than m.ban in the ban
         const banListId = await mjolnir.createRoom();
         const banList = new PolicyList(banListId, banListId, mjolnir);
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'exmaple.org', '', { recommendation: 'something that is not m.ban' });
-        let changes: ListRuleChange[] = await banList.updateList();
+        let changes: PolicyRuleChange[] = await banList.updateList();
         assert.equal(changes.length, 1, 'There should only be one change');
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(changes[0].sender, await mjolnir.getUserId());
@@ -219,7 +219,7 @@ describe('Test: We will not be able to ban ourselves via ACL.', function() {
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'evil.com', '');
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, '*', '');
         // We should still intern the matching rules rule.
-        let changes: ListRuleChange[] = await banList.updateList();
+        let changes: PolicyRuleChange[] = await banList.updateList();
         assert.equal(banList.serverRules.length, 3);
         // But when we construct an ACL, we should be safe.
         const acl = new ServerAcl(serverName)

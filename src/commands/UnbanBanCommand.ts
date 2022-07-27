@@ -17,7 +17,7 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import PolicyList from "../models/PolicyList";
 import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
-import { Recommendation, RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
+import { Recommendation, RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/PolicyRule";
 import config from "../config";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 

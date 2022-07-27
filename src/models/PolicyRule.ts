@@ -51,9 +51,9 @@ export enum Recommendation {
 
     /// The rule specifies an "opinion", as a number in [-100, +100],
     /// where -100 represents a user who is considered absolutely toxic
-    /// by whoever issued this ListRule and +100 represents a user who
+    /// by whoever issued this PolicyRule and +100 represents a user who
     /// is considered absolutely absolutely perfect by whoever issued
-    /// this ListRule.
+    /// this PolicyRule.
     Opinion = "org.matrix.msc3845.opinion",
 }
 
@@ -81,7 +81,7 @@ export const OPINION_MAX = +100;
 /**
  * Representation of a rule within a Policy List.
  */
-export abstract class ListRule {
+export abstract class PolicyRule {
     /**
      * A glob for `entity`.
      */
@@ -115,12 +115,12 @@ export abstract class ListRule {
     }
 
     /**
-     * Validate and parse an event into a ListRule.
+     * Validate and parse an event into a PolicyRule.
      *
      * @param event An *untrusted* event.
-     * @returns null if the ListRule is invalid or not recognized by Mjölnir.
+     * @returns null if the PolicyRule is invalid or not recognized by Mjölnir.
      */
-    public static parse(event: {type: string, content: any}): ListRule | null {
+    public static parse(event: {type: string, content: any}): PolicyRule | null {
         // Parse common fields.
         // If a field is ill-formed, discard the rule.
         const content = event['content'];
@@ -155,17 +155,17 @@ export abstract class ListRule {
 
         // From this point, we may need specific fields.
         if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) {
-            return new ListRuleBan(entity, reason, kind);
+            return new PolicyRuleBan(entity, reason, kind);
         } else if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) {
             let opinion = content['opinion'];
             if (!Number.isInteger(opinion)) {
                 return null;
             }
-            return new ListRuleOpinion(entity, reason, kind, opinion);
+            return new PolicyRuleOpinion(entity, reason, kind, opinion);
         } else {
             // As long as the `recommendation` is defined, we assume
             // that the rule is correct, just unknown.
-            return new ListRuleUnknown(entity, reason, kind, content);
+            return new PolicyRuleUnknown(entity, reason, kind, content);
         }
     }
 }
@@ -173,7 +173,7 @@ export abstract class ListRule {
 /**
  * A rule representing a "ban".
  */
-export class ListRuleBan extends ListRule {
+export class PolicyRuleBan extends PolicyRule {
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
@@ -195,7 +195,7 @@ export class ListRuleBan extends ListRule {
 /**
  * A rule representing an "opinion"
  */
-export class ListRuleOpinion extends ListRule {
+export class PolicyRuleOpinion extends PolicyRule {
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
@@ -229,7 +229,7 @@ export class ListRuleOpinion extends ListRule {
 /**
  * Any list rule that we do not understand.
  */
-export class ListRuleUnknown extends ListRule {
+export class PolicyRuleUnknown extends PolicyRule {
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
