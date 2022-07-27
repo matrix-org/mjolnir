@@ -117,10 +117,10 @@ class PolicyList extends EventEmitter {
 
     /**
      * Return all the active rules of a given kind.
-     * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the PolicyList.
+     * @param kind The type of entities we're looking for.
      * @returns The active PolicyRules for the ban list of that kind.
      */
-    private rulesOfKind(kind: string): PolicyRule[] {
+    private rulesOfKind(kind: EntityType): PolicyRule[] {
         const rules: PolicyRule[] = []
         const stateKeyMap = this.state.get(kind);
         if (stateKeyMap) {
@@ -169,16 +169,16 @@ class PolicyList extends EventEmitter {
      * @param entity The entity to test e.g. the user id, server name or a room id.
      * @returns All of the rules that match this entity.
      */
-    public rulesMatchingEntity(entity: string, ruleKind?: string): PolicyRule[] {
-        const ruleTypeOf: (entityPart: string) => string = (entityPart: string) => {
+    public rulesMatchingEntity(entity: string, ruleKind?: EntityType): PolicyRule[] {
+        const ruleTypeOf: (entityPart: string) => EntityType = (entityPart: string) => {
             if (ruleKind) {
                 return ruleKind;
-            } else if (entityPart.startsWith("#") || entityPart.startsWith("#")) {
-                return RULE_ROOM;
+            } else if (entityPart.startsWith("#") || entityPart.startsWith("!")) {
+                return EntityType.RULE_ROOM;
             } else if (entity.startsWith("@")) {
-                return RULE_USER;
+                return EntityType.RULE_USER;
             } else {
-                return RULE_SERVER;
+                return EntityType.RULE_SERVER;
             }
         };
 
