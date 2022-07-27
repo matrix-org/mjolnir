@@ -44,7 +44,7 @@
     "humanize-duration-ts": "^2.1.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
-    "matrix-appservice-bridge": "^4.0.1",
+    "matrix-appservice-bridge": "^5.0.0",
     "nedb": "^1.8.0",
     "parse-duration": "^1.0.2",
     "shell-quote": "^1.7.3",

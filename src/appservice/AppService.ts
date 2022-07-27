@@ -31,7 +31,7 @@ class MjolnirAppService {
     public constructor() {
         this.bridge = new Bridge({
             homeserverUrl: "http://localhost:9999",
-            domain: "localhost",
+            domain: "localhost:9999",
             registration: "mjolnir-registration.yaml",
             controller: {
                 onUserQuery: this.onUserQuery.bind(this),
