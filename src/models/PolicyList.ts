@@ -16,7 +16,7 @@ limitations under the License.
 
 import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
-import { ALL_RULE_TYPES, EntityType, PolicyRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./PolicyRule";
+import { ALL_RULE_TYPES, EntityType, PolicyRule, PolicyRuleOpinion, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./PolicyRule";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
@@ -61,8 +61,13 @@ declare interface PolicyList {
 }
 
 /**
- * The PolicyList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
- * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
+ * A readonly view of the rules within a policy room.
+ *
+ * The interpretation of these rules is left to the client of this API, so e.g. a `m.ban` within a `PolicyList`
+ * could represent a room ban or a server ban.
+ *
+ * To update events in the policy room, send `m.policy.rule.*` events into the room. This will (eventually) cause
+ * a `/sync`, which will update the `PolicyList`.
  */
 class PolicyList extends EventEmitter {
     private shortcode: string | null = null;
@@ -167,24 +172,14 @@ class PolicyList extends EventEmitter {
     /**
      * Return all of the rules in this list that will match the provided entity.
      * If the entity is a user, then we match the domain part against server rules too.
-     * @param ruleKind The type of rule for the entity e.g. `RULE_USER`.
+     * @param ruleKind The type of rule for the entity e.g. `RULE_USER`. If unspecified, extract the type from `entity`.
      * @param entity The entity to test e.g. the user id, server name or a room id.
      * @returns All of the rules that match this entity.
      */
     public rulesMatchingEntity(entity: string, recommendation: Recommendation | "*", ruleKind?: EntityType): PolicyRule[] {
-        const ruleTypeOf: (entityPart: string) => EntityType = (entityPart: string) => {
-            if (ruleKind) {
-                return ruleKind;
-            } else if (entityPart.startsWith("#") || entityPart.startsWith("!")) {
-                return EntityType.RULE_ROOM;
-            } else if (entity.startsWith("@")) {
-                return EntityType.RULE_USER;
-            } else {
-                return EntityType.RULE_SERVER;
-            }
-        };
+        ruleKind = ruleKind || extractEntityType(entity);
 
-        if (ruleTypeOf(entity) === RULE_USER) {
+        if (ruleKind === RULE_USER) {
             // We special case because want to see whether a server ban is preventing this user from participating too.
             const userId = new UserID(entity);
             return [
@@ -192,8 +187,56 @@ class PolicyList extends EventEmitter {
                 ...this.getServerRules(recommendation).filter(rule => rule.isMatch(userId.domain))
             ]
         } else {
-            return this.rulesOfKind(ruleTypeOf(entity), recommendation).filter(rule => rule.isMatch(entity));
+            return this.rulesOfKind(ruleKind, recommendation).filter(rule => rule.isMatch(entity));
         }
+    }
+
+    /**
+     * Return the opinion for a given entity.
+     * @returns The opinion specified by this list or `0` if no opinion was defined.
+     */
+    public opinionForEntity(entity: string, ruleKind?: EntityType): number {
+        ruleKind = ruleKind || extractEntityType(entity);
+
+        // Find all rules for this entity.
+        const allRules = this.rulesMatchingEntity(entity, Recommendation.Opinion, ruleKind);
+
+        // Split across server rules and specialized rules.
+        const byGenericity: PolicyRule[][] = [
+            /* User/room rules without wildcards */ [],
+            /* User/room rules with wildcards    */ [],
+            /* Server rules without wildcards    */ [],
+            /* Server rules with wildcards       */ [],
+        ];
+        for (let rule of allRules) {
+            const baseIndex = rule.kind === EntityType.RULE_SERVER ?
+                2 : 0;
+            const finalIndex = rule.isGeneric ?
+                baseIndex + 1 : baseIndex;
+            byGenericity[finalIndex].push(rule);
+        }
+
+        // Find the most specific rule for this entity.
+        // If there is more than one, pick the most recent entry.
+        for (let rules of byGenericity) {
+            let mostRecentRule = null;
+            for (let rule of rules) {
+                if (!mostRecentRule || rule.ts > mostRecentRule.ts) {
+                    mostRecentRule = rule;
+                }
+            }
+            if (mostRecentRule) {
+                if (mostRecentRule instanceof PolicyRuleOpinion) {
+                    return mostRecentRule.opinion;
+                } else {
+                    // This should be impossible.
+                    throw new TypeError();
+                }
+            }
+        }
+
+        // By default, the opinion is 0.
+        return 0;
     }
 
     /**
@@ -402,5 +445,21 @@ class UpdateBatcher {
         // (so the latency between them is percieved as much higher by
         // the time they get checked in `this.checkBatch`, thus batching fails).
         this.checkBatch(eventId);
+    }
+}
+
+/**
+ * Extract the entity type best matching a given entity.
+ *
+ * @param entity If this entity is a user id, return `RULE_USER`. If it is a room id or alias, return `RULE_ROOM`.
+ * Otherwise, return `RULE_SERVER`.
+ */
+function extractEntityType(entity: string): EntityType {
+    if (entity.startsWith("#") || entity.startsWith("!")) {
+        return EntityType.RULE_ROOM;
+    } else if (entity.startsWith("@")) {
+        return EntityType.RULE_ROOM;
+    } else {
+        return EntityType.RULE_SERVER;
     }
 }

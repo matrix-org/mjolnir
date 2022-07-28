@@ -163,7 +163,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
 
         if (unbannedSomeone) {
             await mjolnir.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure no users were accidentally unbanned`);
-            await mjolnir.syncLists(config.verboseLogging);
+            await mjolnir.syncPolicyLists(config.verboseLogging);
         }
     }
 

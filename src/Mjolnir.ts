@@ -355,7 +355,7 @@ export class Mjolnir {
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
                 await this.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.syncLists(config.verboseLogging);
+                await this.syncPolicyLists(config.verboseLogging);
                 await this.registerProtections();
             }
 
@@ -434,7 +434,7 @@ export class Mjolnir {
         const rooms = (additionalProtectedRooms?.rooms ?? []);
         rooms.push(roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: rooms });
-        await this.syncLists(config.verboseLogging);
+        await this.syncPolicyLists(config.verboseLogging);
     }
 
     public async removeProtectedRoom(roomId: string) {
@@ -482,7 +482,7 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         if (withSync) {
-            await this.syncLists(config.verboseLogging);
+            await this.syncPolicyLists(config.verboseLogging);
         }
     }
 
@@ -882,7 +882,7 @@ export class Mjolnir {
      * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
      * @param verbose Whether to report any errors to the management room.
      */
-    public async syncLists(verbose = true) {
+    public async syncPolicyLists(verbose = true) {
         for (const list of this.policyLists) {
             const changes = await list.updateList();
             await this.printBanlistChanges(changes, list, true);
