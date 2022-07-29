@@ -27,7 +27,7 @@ import {
     TextualMessageEventContent
 } from "matrix-bot-sdk";
 
-import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
+import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, EntityType, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/PolicyRule";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -50,7 +50,7 @@ import RuleServer from "./models/RuleServer";
 import { RoomMemberManager } from "./RoomMembers";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
-import PolicyList, { ListRuleChange } from "./models/PolicyList";
+import PolicyList, { PolicyRuleChange } from "./models/PolicyList";
 
 const levelToFn = {
     [LogLevel.DEBUG.toString()]: LogService.debug,
@@ -355,7 +355,7 @@ export class Mjolnir {
             this.currentState = STATE_SYNCING;
             if (config.syncOnStartup) {
                 await this.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.syncLists(config.verboseLogging);
+                await this.syncPolicyLists(config.verboseLogging);
                 await this.registerProtections();
             }
 
@@ -434,7 +434,7 @@ export class Mjolnir {
         const rooms = (additionalProtectedRooms?.rooms ?? []);
         rooms.push(roomId);
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: rooms });
-        await this.syncLists(config.verboseLogging);
+        await this.syncPolicyLists(config.verboseLogging);
     }
 
     public async removeProtectedRoom(roomId: string) {
@@ -482,7 +482,7 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         if (withSync) {
-            await this.syncLists(config.verboseLogging);
+            await this.syncPolicyLists(config.verboseLogging);
         }
     }
 
@@ -882,7 +882,7 @@ export class Mjolnir {
      * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
      * @param verbose Whether to report any errors to the management room.
      */
-    public async syncLists(verbose = true) {
+    public async syncPolicyLists(verbose = true) {
         for (const list of this.policyLists) {
             const changes = await list.updateList();
             await this.printBanlistChanges(changes, list, true);
@@ -1052,7 +1052,7 @@ export class Mjolnir {
      * @param ignoreSelf Whether to exclude changes that have been made by Mjolnir.
      * @returns true if the message was sent, false if it wasn't (because there there were no changes to report).
      */
-    private async printBanlistChanges(changes: ListRuleChange[], list: PolicyList, ignoreSelf = false): Promise<boolean> {
+    private async printBanlistChanges(changes: PolicyRuleChange[], list: PolicyList, ignoreSelf = false): Promise<boolean> {
         if (ignoreSelf) {
             const sender = await this.client.getUserId();
             changes = changes.filter(change => change.sender !== sender);
@@ -1193,5 +1193,26 @@ export class Mjolnir {
         for (const protection of this.enabledProtections) {
             await protection.handleReport(this, roomId, reporterId, event, reason);
         }
+    }
+
+    /**
+     * Return the composite opinion for an entity.
+     *
+     * In the current implementation, we return the first opinion found in the list
+     * of policies. Future versions will support additional mechanisms for composing
+     * opinions.
+     * 
+     * @param entity 
+     * @param type 
+     * @returns The opinion or null if no list defines an opinion on this entity.
+     */
+    public opinionForEntity(entity: string, type: EntityType): number | null {
+        for (let policyList of this.policyLists) {
+            let opinion = policyList.opinionForEntity(entity, type);
+            if (opinion !== null) {
+                return opinion;
+            }
+        }
+        return null;
     }
 }

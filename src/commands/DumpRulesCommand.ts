@@ -16,7 +16,7 @@ limitations under the License.
 
 import { RichReply } from "matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
-import { EntityType } from "../models/ListRule";
+import { EntityType } from "../models/PolicyRule";
 import { htmlEscape } from "../utils";
 
 /**
@@ -33,7 +33,7 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
     let html = "";
     let text = "";
     for (const list of mjolnir.lists) {
-        const matches = list.rulesMatchingEntity(entity)
+        const matches = list.rulesMatchingEntity(entity, "*");
 
         if (matches.length === 0) {
             continue;
@@ -90,19 +90,19 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
         html += `<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:<br/><ul>`;
         text += `${list.roomRef}${shortcodeInfo}:\n`;
 
-        for (const rule of list.serverRules) {
+        for (const rule of list.getServerRules("*")) {
             hasRules = true;
             html += `<li>server (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* server (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
         }
 
-        for (const rule of list.userRules) {
+        for (const rule of list.getUserRules("*")) {
             hasRules = true;
             html += `<li>user (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* user (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
         }
 
-        for (const rule of list.roomRules) {
+        for (const rule of list.getRoomRules("*")) {
             hasRules = true;
             html += `<li>room (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* room (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;

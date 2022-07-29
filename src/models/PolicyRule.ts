@@ -51,9 +51,9 @@ export enum Recommendation {
 
     /// The rule specifies an "opinion", as a number in [-100, +100],
     /// where -100 represents a user who is considered absolutely toxic
-    /// by whoever issued this ListRule and +100 represents a user who
+    /// by whoever issued this PolicyRule and +100 represents a user who
     /// is considered absolutely absolutely perfect by whoever issued
-    /// this ListRule.
+    /// this PolicyRule.
     Opinion = "org.matrix.msc3845.opinion",
 }
 
@@ -81,11 +81,16 @@ export const OPINION_MAX = +100;
 /**
  * Representation of a rule within a Policy List.
  */
-export abstract class ListRule {
+export abstract class PolicyRule {
     /**
      * A glob for `entity`.
      */
     private glob: MatrixGlob;
+
+    /**
+     * `true` if the rule contains at least one wildcard (`?` or `*`).
+     */
+    public readonly isGeneric: boolean;
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
@@ -96,6 +101,10 @@ export abstract class ListRule {
          */
         public readonly reason: string,
         /**
+         * A Matrix timestamp for the instant this rule was issued.
+         */
+        public readonly ts: number,
+        /**
          * The type of entity for this rule, e.g. user, server domain, etc.
          */
         public readonly kind: EntityType,
@@ -103,8 +112,10 @@ export abstract class ListRule {
          * The recommendation for this rule, e.g. "ban" or "opinion", or `null`
          * if the recommendation is one that Mjölnir doesn't understand.
          */
-        public readonly recommendation: Recommendation | null) {
+        public readonly recommendation: Recommendation | null,
+    ) {
         this.glob = new MatrixGlob(entity);
+        this.isGeneric = entity.includes("?") || entity.includes("*");
     }
 
     /**
@@ -115,14 +126,18 @@ export abstract class ListRule {
     }
 
     /**
-     * Validate and parse an event into a ListRule.
+     * Validate and parse an event into a PolicyRule.
      *
      * @param event An *untrusted* event.
-     * @returns null if the ListRule is invalid or not recognized by Mjölnir.
+     * @returns null if the PolicyRule is invalid or not recognized by Mjölnir.
      */
-    public static parse(event: {type: string, content: any}): ListRule | null {
+    public static parse(event: {type: string, origin_server_ts: number, content: any}): PolicyRule | null {
         // Parse common fields.
         // If a field is ill-formed, discard the rule.
+        const ts = event['origin_server_ts'];
+        if (!ts || typeof ts !== 'number') {
+            return null;
+        }
         const content = event['content'];
         if (!content || typeof content !== "object") {
             return null;
@@ -155,17 +170,17 @@ export abstract class ListRule {
 
         // From this point, we may need specific fields.
         if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) {
-            return new ListRuleBan(entity, reason, kind);
+            return new PolicyRuleBan(entity, reason, ts, kind);
         } else if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) {
             let opinion = content['opinion'];
             if (!Number.isInteger(opinion)) {
                 return null;
             }
-            return new ListRuleOpinion(entity, reason, kind, opinion);
+            return new PolicyRuleOpinion(entity, reason, ts, kind, opinion);
         } else {
             // As long as the `recommendation` is defined, we assume
             // that the rule is correct, just unknown.
-            return new ListRuleUnknown(entity, reason, kind, content);
+            return new PolicyRuleUnknown(entity, reason, ts, kind, content);
         }
     }
 }
@@ -173,7 +188,7 @@ export abstract class ListRule {
 /**
  * A rule representing a "ban".
  */
-export class ListRuleBan extends ListRule {
+export class PolicyRuleBan extends PolicyRule {
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
@@ -184,18 +199,22 @@ export class ListRuleBan extends ListRule {
          */
         reason: string,
         /**
+         * A Matrix timestamp for the instant this rule was issued.
+         */
+        ts: number,
+        /**
          * The type of entity for this rule, e.g. user, server domain, etc.
          */
         kind: EntityType,
     ) {
-        super(entity, reason, kind, Recommendation.Ban)
+        super(entity, reason, ts, kind, Recommendation.Ban)
     }
 }
 
 /**
  * A rule representing an "opinion"
  */
-export class ListRuleOpinion extends ListRule {
+export class PolicyRuleOpinion extends PolicyRule {
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
@@ -205,6 +224,10 @@ export class ListRuleOpinion extends ListRule {
          * A human-readable reason for this rule, for audit purposes.
          */
         reason: string,
+        /**
+         * A Matrix timestamp for the instant this rule was issued.
+         */
+        ts: number,
         /**
          * The type of entity for this rule, e.g. user, server domain, etc.
          */
@@ -214,9 +237,9 @@ export class ListRuleOpinion extends ListRule {
          * on the entity (e.g. toxic user or community) and +100 represents the best
          * possible opinion on the entity (e.g. pillar of the community).
          */
-        public readonly opinion: number
+        public readonly opinion: number,
     ) {
-        super(entity, reason, kind, Recommendation.Opinion);
+        super(entity, reason, ts, kind, Recommendation.Opinion);
         if (!Number.isInteger(opinion)) {
             throw new TypeError(`The opinion must be an integer, got ${opinion}`);
         }
@@ -229,7 +252,7 @@ export class ListRuleOpinion extends ListRule {
 /**
  * Any list rule that we do not understand.
  */
-export class ListRuleUnknown extends ListRule {
+export class PolicyRuleUnknown extends PolicyRule {
     constructor(
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
@@ -240,6 +263,10 @@ export class ListRuleUnknown extends ListRule {
          */
         reason: string,
         /**
+         * A Matrix timestamp for the instant this rule was issued.
+         */
+        ts: number,
+         /**
          * The type of entity for this rule, e.g. user, server domain, etc.
          */
         kind: EntityType,
@@ -248,6 +275,6 @@ export class ListRuleUnknown extends ListRule {
          */
         public readonly content: any,
     ) {
-        super(entity, reason, kind, null);
+        super(entity, reason, ts, kind, null);
     }
 }

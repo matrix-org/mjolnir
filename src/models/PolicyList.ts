@@ -16,7 +16,7 @@ limitations under the License.
 
 import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
-import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
+import { ALL_RULE_TYPES, EntityType, PolicyRule, PolicyRuleOpinion, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./PolicyRule";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
@@ -26,7 +26,7 @@ export enum ChangeType {
     Modified = "MODIFIED"
 }
 
-export interface ListRuleChange {
+export interface PolicyRuleChange {
     readonly changeType: ChangeType,
     /**
      * State event that caused the change.
@@ -43,7 +43,7 @@ export interface ListRuleChange {
      * The current rule represented by the event.
      * If the rule has been removed, then this will show what the rule was.
      */
-    readonly rule: ListRule,
+    readonly rule: PolicyRule,
     /**
      * The previous state that has been changed. Only (and always) provided when the change type is `ChangeType.Removed` or `Modified`.
      * This will be a copy of the same event as `event` when a redaction has occurred and this will show its unredacted state.
@@ -53,16 +53,21 @@ export interface ListRuleChange {
 
 declare interface PolicyList {
     // PolicyList.update is emitted when the PolicyList has pulled new rules from Matrix and informs listeners of any changes.
-    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[]) => void): this
-    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[]): boolean
+    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: PolicyRuleChange[]) => void): this
+    emit(event: 'PolicyList.update', list: PolicyList, changes: PolicyRuleChange[]): boolean
     // PolicyList.batch is emitted when the PolicyList has created a batch from the events provided by `updateForEvent`.
     on(event: 'PolicyList.batch', listener: (list: PolicyList) => void): this
     emit(event: 'PolicyList.batch', list: PolicyList): boolean
 }
 
 /**
- * The PolicyList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
- * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
+ * A readonly view of the rules within a policy room.
+ *
+ * The interpretation of these rules is left to the client of this API, so e.g. a `m.ban` within a `PolicyList`
+ * could represent a room ban or a server ban.
+ *
+ * To update events in the policy room, send `m.policy.rule.*` events into the room. This will (eventually) cause
+ * a `/sync`, which will update the `PolicyList`.
  */
 class PolicyList extends EventEmitter {
     private shortcode: string | null = null;
@@ -117,20 +122,22 @@ class PolicyList extends EventEmitter {
 
     /**
      * Return all the active rules of a given kind.
-     * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the PolicyList.
-     * @returns The active ListRules for the ban list of that kind.
+     * @param type The type of entities we're looking for.
+     * @returns The active PolicyRules for the ban list of that kind.
      */
-    private rulesOfKind(kind: string): ListRule[] {
-        const rules: ListRule[] = []
-        const stateKeyMap = this.state.get(kind);
+    private rulesOfKind(type: EntityType, recommendation: Recommendation | "*"): PolicyRule[] {
+        const rules: PolicyRule[] = []
+        const stateKeyMap = this.state.get(type);
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
                 const rule = event?.unsigned?.rule;
                 // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
                 // please make sure that you *only* return rules with `m.ban` or create a different method
                 // (we don't want to accidentally ban entities).
-                if (rule && rule.kind === kind && rule.recommendation === Recommendation.Ban) {
-                    rules.push(rule);
+                if (rule && rule.kind === type) {
+                    if (recommendation === "*" ||  rule.recommendation === recommendation) {
+                        rules.push(rule);
+                    }
                 }
             }
         }
@@ -146,52 +153,90 @@ class PolicyList extends EventEmitter {
         });
     }
 
-    public get serverRules(): ListRule[] {
-        return this.rulesOfKind(RULE_SERVER);
+    public getServerRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return this.rulesOfKind(RULE_SERVER, recommendation);
     }
 
-    public get userRules(): ListRule[] {
-        return this.rulesOfKind(RULE_USER);
+    public getUserRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return this.rulesOfKind(RULE_USER, recommendation);
     }
 
-    public get roomRules(): ListRule[] {
-        return this.rulesOfKind(RULE_ROOM);
+    public getRoomRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return this.rulesOfKind(RULE_ROOM, recommendation);
     }
 
-    public get allRules(): ListRule[] {
-        return [...this.serverRules, ...this.userRules, ...this.roomRules];
+    public getAllRules(recommendation: Recommendation | "*"): PolicyRule[] {
+        return [...this.getServerRules(recommendation), ...this.getUserRules(recommendation), ...this.getRoomRules(recommendation)];
     }
 
     /**
      * Return all of the rules in this list that will match the provided entity.
      * If the entity is a user, then we match the domain part against server rules too.
-     * @param ruleKind The type of rule for the entity e.g. `RULE_USER`.
+     * @param ruleKind The type of rule for the entity e.g. `RULE_USER`. If unspecified, extract the type from `entity`.
      * @param entity The entity to test e.g. the user id, server name or a room id.
      * @returns All of the rules that match this entity.
      */
-    public rulesMatchingEntity(entity: string, ruleKind?: string): ListRule[] {
-        const ruleTypeOf: (entityPart: string) => string = (entityPart: string) => {
-            if (ruleKind) {
-                return ruleKind;
-            } else if (entityPart.startsWith("#") || entityPart.startsWith("#")) {
-                return RULE_ROOM;
-            } else if (entity.startsWith("@")) {
-                return RULE_USER;
-            } else {
-                return RULE_SERVER;
-            }
-        };
+    public rulesMatchingEntity(entity: string, recommendation: Recommendation | "*", ruleKind?: EntityType): PolicyRule[] {
+        ruleKind = ruleKind || extractEntityType(entity);
 
-        if (ruleTypeOf(entity) === RULE_USER) {
+        if (ruleKind === RULE_USER) {
             // We special case because want to see whether a server ban is preventing this user from participating too.
             const userId = new UserID(entity);
             return [
-                ...this.userRules.filter(rule => rule.isMatch(entity)),
-                ...this.serverRules.filter(rule => rule.isMatch(userId.domain))
+                ...this.getUserRules(recommendation).filter(rule => rule.isMatch(entity)),
+                ...this.getServerRules(recommendation).filter(rule => rule.isMatch(userId.domain))
             ]
         } else {
-            return this.rulesOfKind(ruleTypeOf(entity)).filter(rule => rule.isMatch(entity));
+            return this.rulesOfKind(ruleKind, recommendation).filter(rule => rule.isMatch(entity));
         }
+    }
+
+    /**
+     * Return the opinion for a given entity.
+     * @returns The opinion specified by this list or `null` if no opinion was defined.
+     */
+    public opinionForEntity(entity: string, ruleKind?: EntityType): number | null {
+        ruleKind = ruleKind || extractEntityType(entity);
+
+        // Find all rules for this entity.
+        const allRules = this.rulesMatchingEntity(entity, Recommendation.Opinion, ruleKind);
+
+        // Split across server rules and specialized rules.
+        const byGenericity: PolicyRule[][] = [
+            /* User/room rules without wildcards */ [],
+            /* User/room rules with wildcards    */ [],
+            /* Server rules without wildcards    */ [],
+            /* Server rules with wildcards       */ [],
+        ];
+        for (let rule of allRules) {
+            const baseIndex = rule.kind === EntityType.RULE_SERVER ?
+                2 : 0;
+            const finalIndex = rule.isGeneric ?
+                baseIndex + 1 : baseIndex;
+            byGenericity[finalIndex].push(rule);
+        }
+
+        // Find the most specific rule for this entity.
+        // If there is more than one, pick the most recent entry.
+        for (let rules of byGenericity) {
+            let mostRecentRule = null;
+            for (let rule of rules) {
+                if (!mostRecentRule || rule.ts > mostRecentRule.ts) {
+                    mostRecentRule = rule;
+                }
+            }
+            if (mostRecentRule) {
+                if (mostRecentRule instanceof PolicyRuleOpinion) {
+                    return mostRecentRule.opinion;
+                } else {
+                    // This should be impossible.
+                    throw new TypeError();
+                }
+            }
+        }
+
+        // By default, the opinion is null.
+        return null;
     }
 
     /**
@@ -233,8 +278,8 @@ class PolicyList extends EventEmitter {
      * and updating the model to reflect the room.
      * @returns A description of any rules that were added, modified or removed from the list as a result of this update.
      */
-    public async updateList(): Promise<ListRuleChange[]> {
-        let changes: ListRuleChange[] = [];
+    public async updateList(): Promise<PolicyRuleChange[]> {
+        let changes: PolicyRuleChange[] = [];
 
         const state = await this.client.getRoomState(this.roomId);
         for (const event of state) {
@@ -313,11 +358,11 @@ class PolicyList extends EventEmitter {
                     changeType, event, sender, rule: previousState.unsigned.rule,
                     ...previousState ? { previousState } : {}
                 });
-                // Event has no content and cannot be parsed as a ListRule.
+                // Event has no content and cannot be parsed as a PolicyRule.
                 continue;
             }
             // It's a rule - parse it
-            const rule = ListRule.parse(event);
+            const rule = PolicyRule.parse(event);
             if (!rule) {
                 // Invalid/unknown rule, just skip it.
                 continue;
@@ -400,5 +445,21 @@ class UpdateBatcher {
         // (so the latency between them is percieved as much higher by
         // the time they get checked in `this.checkBatch`, thus batching fails).
         this.checkBatch(eventId);
+    }
+}
+
+/**
+ * Extract the entity type best matching a given entity.
+ *
+ * @param entity If this entity is a user id, return `RULE_USER`. If it is a room id or alias, return `RULE_ROOM`.
+ * Otherwise, return `RULE_SERVER`.
+ */
+function extractEntityType(entity: string): EntityType {
+    if (entity.startsWith("#") || entity.startsWith("!")) {
+        return EntityType.RULE_ROOM;
+    } else if (entity.startsWith("@")) {
+        return EntityType.RULE_ROOM;
+    } else {
+        return EntityType.RULE_SERVER;
     }
 }
