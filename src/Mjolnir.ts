@@ -27,7 +27,7 @@ import {
     TextualMessageEventContent
 } from "matrix-bot-sdk";
 
-import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/PolicyRule";
+import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, EntityType, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/PolicyRule";
 import { applyServerAcls } from "./actions/ApplyAcl";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -1193,5 +1193,26 @@ export class Mjolnir {
         for (const protection of this.enabledProtections) {
             await protection.handleReport(this, roomId, reporterId, event, reason);
         }
+    }
+
+    /**
+     * Return the composite opinion for an entity.
+     *
+     * In the current implementation, we return the first opinion found in the list
+     * of policies. Future versions will support additional mechanisms for composing
+     * opinions.
+     * 
+     * @param entity 
+     * @param type 
+     * @returns The opinion or null if no list defines an opinion on this entity.
+     */
+    public opinionForEntity(entity: string, type: EntityType): number | null {
+        for (let policyList of this.policyLists) {
+            let opinion = policyList.opinionForEntity(entity, type);
+            if (opinion !== null) {
+                return opinion;
+            }
+        }
+        return null;
     }
 }

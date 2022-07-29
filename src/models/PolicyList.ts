@@ -193,9 +193,9 @@ class PolicyList extends EventEmitter {
 
     /**
      * Return the opinion for a given entity.
-     * @returns The opinion specified by this list or `0` if no opinion was defined.
+     * @returns The opinion specified by this list or `null` if no opinion was defined.
      */
-    public opinionForEntity(entity: string, ruleKind?: EntityType): number {
+    public opinionForEntity(entity: string, ruleKind?: EntityType): number | null {
         ruleKind = ruleKind || extractEntityType(entity);
 
         // Find all rules for this entity.
@@ -235,8 +235,8 @@ class PolicyList extends EventEmitter {
             }
         }
 
-        // By default, the opinion is 0.
-        return 0;
+        // By default, the opinion is null.
+        return null;
     }
 
     /**
