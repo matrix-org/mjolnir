@@ -230,7 +230,7 @@ describe('Test: We will not be able to ban ourselves via ACL.', function() {
 })
 
 
-describe('Test: ACL updates will batch when rules are added in succession.', function() {
+describe.only('Test: ACL updates will batch when rules are added in succession.', function() {
     it('Will batch ACL updates if we spam rules into a PolicyList', async function() {
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
@@ -275,7 +275,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
 
         // At this point we check that the state within Mjolnir is internally consistent, this is just because debugging the following
         // is a pita.
-        const list: PolicyList = this.mjolnir.banLists[0]!;
+        const list: PolicyList = this.mjolnir.policyLists[0]!;
         assert.equal(list.serverRules.length, evilServerCount, `There should be ${evilServerCount} rules in here`);
 
         // Check each of the protected rooms for ACL events and make sure they were batched and are correct.
