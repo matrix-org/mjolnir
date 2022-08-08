@@ -31,11 +31,11 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
  * @param {Mjolnir} mjolnir The Mjolnir client to apply the ACLs with.
  */
 export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
-    // There's probably a name for what this actually is, but we only want one instance of `_applyServerAcls` to be running at any time.
-    return new Promise(resolve => {
-        mjolnir.taskQueue.push(async () => {
-            // We have to await rather than chain with .then because otherwise we will not block the task queue while we sync ACL.
-            resolve(await _applyServerAcls(lists, roomIds, mjolnir));
+    // we need to provide mutual exclusion so that we do not have requests updating the m.room.server_acl event
+    // finish out of order and therefore leave the room out of sync with the policy lists.
+    return new Promise((resolve) => {
+        mjolnir.aclChain = mjolnir.aclChain.then(() => {
+            resolve(_applyServerAcls(lists, roomIds, mjolnir));
         });
     });
 }
