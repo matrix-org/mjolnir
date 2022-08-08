@@ -15,21 +15,21 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import BanList, { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/BanList";
+import PolicyList from "../models/PolicyList";
 import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
-import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
+import { Recommendation, RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
 import config from "../config";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 
 interface Arguments {
-    list: BanList | null;
+    list: PolicyList | null;
     entity: string;
     ruleType: string | null;
     reason: string;
 }
 
 // Exported for tests
-export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments|null> {
+export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments | null> {
     let defaultShortcode: string | null = null;
     try {
         const data: { shortcode: string } = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
@@ -44,7 +44,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     let argumentIndex = 2;
     let ruleType: string | null = null;
     let entity: string | null = null;
-    let list: BanList | null = null;
+    let list: PolicyList | null = null;
     let force = false;
     while (argumentIndex < 7 && argumentIndex < parts.length) {
         const arg = parts[argumentIndex++];
@@ -119,10 +119,9 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
 
-    const recommendation = recommendationToStable(RECOMMENDATION_BAN);
     const ruleContent = {
         entity: bits.entity,
-        recommendation,
+        recommendation: Recommendation.Ban,
         reason: bits.reason || '<no reason supplied>',
     };
     const stateKey = `rule:${bits.entity}`;

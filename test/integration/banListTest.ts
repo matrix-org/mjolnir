@@ -3,10 +3,11 @@ import { strict as assert } from "assert";
 import config from "../../src/config";
 import { newTestUser } from "./clientHelper";
 import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
-import  BanList, { ALL_RULE_TYPES, ChangeType, ListRuleChange, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/BanList";
+import PolicyList, { ChangeType, ListRuleChange } from "../../src/models/PolicyList";
 import { ServerAcl } from "../../src/models/ServerAcl";
 import { getFirstReaction } from "./commands/commandUtils";
 import { getMessagesByUserIn } from "../../src/utils";
+import { ALL_RULE_TYPES, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/ListRule";
 
 /**
  * Create a policy rule in a policy room.
@@ -18,7 +19,7 @@ import { getMessagesByUserIn } from "../../src/utils";
  * @param template The template to use for the policy rule event.
  * @returns The event id of the newly created policy rule.
  */
-async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = {recommendation: 'm.ban'}) {
+async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = { recommendation: 'm.ban' }) {
     return await client.sendStateEvent(policyRoomId, policyType, `rule:${entity}`, {
         entity,
         reason,
@@ -26,13 +27,13 @@ async function createPolicyRule(client: MatrixClient, policyRoomId: string, poli
     });
 }
 
-describe("Test: Updating the BanList", function () {
-    it("Calculates what has changed correctly.", async function () {
+describe("Test: Updating the PolicyList", function() {
+    it("Calculates what has changed correctly.", async function() {
         this.timeout(10000);
         const mjolnir = config.RUNTIME.client!
-        const moderator = await newTestUser({ name: { contains: "moderator" }});
-        const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
-        const banList = new BanList(banListId, banListId, mjolnir);
+        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()] });
+        const banList = new PolicyList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         assert.equal(banList.allRules.length, 0);
@@ -118,12 +119,12 @@ describe("Test: Updating the BanList", function () {
         assert.equal(changes[0].previousState['event_id'], modifyingEventId, 'There should be a previous state event for a modified rule');
         assert.equal(banList.userRules.filter(r => r.entity === '@old:localhost:9999').length, 1);
     })
-    it("Will remove rules with old types when they are 'soft redacted' with a different but more recent event type.", async function () {
+    it("Will remove rules with old types when they are 'soft redacted' with a different but more recent event type.", async function() {
         this.timeout(3000);
         const mjolnir = config.RUNTIME.client!
-        const moderator = await newTestUser({ name: { contains: "moderator" }});
-        const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
-        const banList = new BanList(banListId, banListId, mjolnir);
+        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()] });
+        const banList = new PolicyList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         const entity = '@old:localhost:9999';
@@ -140,12 +141,12 @@ describe("Test: Updating the BanList", function () {
         assert.equal(changes[0].previousState['event_id'], originalEventId, 'There should be a previous state event for a modified rule');
         assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
-    it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function () {
+    it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function() {
         this.timeout(3000);
         const mjolnir = config.RUNTIME.client!
-        const moderator = await newTestUser({ name: { contains: "moderator" }});
-        const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()]});
-        const banList = new BanList(banListId, banListId, mjolnir);
+        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const banListId = await mjolnir.createRoom({ invite: [await moderator.getUserId()] });
+        const banList = new PolicyList(banListId, banListId, mjolnir);
         mjolnir.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         const entity = '@old:localhost:9999';
@@ -179,10 +180,10 @@ describe("Test: Updating the BanList", function () {
         assert.equal(changes[0].previousState['event_id'], updatedEventId, 'There should be a previous state event for a modified rule');
         assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
-    it('Test: BanList Supports all entity types.', async function () {
+    it('Test: PolicyList Supports all entity types.', async function() {
         const mjolnir = config.RUNTIME.client!
         const banListId = await mjolnir.createRoom();
-        const banList = new BanList(banListId, banListId, mjolnir);
+        const banList = new PolicyList(banListId, banListId, mjolnir);
         for (let i = 0; i < ALL_RULE_TYPES.length; i++) {
             await createPolicyRule(mjolnir, banListId, ALL_RULE_TYPES[i], `*${i}*`, '');
         }
@@ -192,28 +193,28 @@ describe("Test: Updating the BanList", function () {
     })
 });
 
-describe('Test: We do not respond to recommendations other than m.ban in the banlist', function () {
-    it('Will not respond to a rule that has a different recommendation to m.ban (or the unstable equivalent).', async function () {
+describe('Test: We do not respond to recommendations other than m.ban in the banlist', function() {
+    it('Will not respond to a rule that has a different recommendation to m.ban (or the unstable equivalent).', async function() {
         const mjolnir = config.RUNTIME.client!
         const banListId = await mjolnir.createRoom();
-        const banList = new BanList(banListId, banListId, mjolnir);
-        await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'exmaple.org', '', {recommendation: 'something that is not m.ban'});
+        const banList = new PolicyList(banListId, banListId, mjolnir);
+        await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'exmaple.org', '', { recommendation: 'something that is not m.ban' });
         let changes: ListRuleChange[] = await banList.updateList();
         assert.equal(changes.length, 1, 'There should only be one change');
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(changes[0].sender, await mjolnir.getUserId());
         // We really don't want things that aren't m.ban to end up being accessible in these APIs.
-        assert.equal(banList.serverRules.length, 0);
-        assert.equal(banList.allRules.length, 0);
+        assert.equal(banList.serverRules.length, 0, `We should have an empty serverRules, got ${JSON.stringify(banList.serverRules)}`);
+        assert.equal(banList.allRules.length, 0, `We should have an empty allRules, got ${JSON.stringify(banList.allRules)}`);
     })
 })
 
-describe('Test: We will not be able to ban ourselves via ACL.', function () {
-    it('We do not ban ourselves when we put ourselves into the policy list.', async function () {
+describe('Test: We will not be able to ban ourselves via ACL.', function() {
+    it('We do not ban ourselves when we put ourselves into the policy list.', async function() {
         const mjolnir = config.RUNTIME.client!
         const serverName = new UserID(await mjolnir.getUserId()).domain;
         const banListId = await mjolnir.createRoom();
-        const banList = new BanList(banListId, banListId, mjolnir);
+        const banList = new PolicyList(banListId, banListId, mjolnir);
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, serverName, '');
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, 'evil.com', '');
         await createPolicyRule(mjolnir, banListId, RULE_SERVER, '*', '');
@@ -229,18 +230,18 @@ describe('Test: We will not be able to ban ourselves via ACL.', function () {
 })
 
 
-describe('Test: ACL updates will batch when rules are added in succession.', function () {
-    it('Will batch ACL updates if we spam rules into a BanList', async function () {
+describe('Test: ACL updates will batch when rules are added in succession.', function() {
+    it('Will batch ACL updates if we spam rules into a PolicyList', async function() {
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
-        const moderator = await newTestUser({ name: { contains: "moderator" }});
+        const moderator = await newTestUser({ name: { contains: "moderator" } });
         moderator.joinRoom(this.mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.getUserId();
 
         // Setup some protected rooms so we can check their ACL state later.
         const protectedRooms: string[] = [];
         for (let i = 0; i < 10; i++) {
-            const room = await moderator.createRoom({ invite: [mjolnirId]});
+            const room = await moderator.createRoom({ invite: [mjolnirId] });
             await mjolnir.joinRoom(room);
             await moderator.setUserPowerLevel(mjolnirId, room, 100);
             await this.mjolnir!.addProtectedRoom(room);
@@ -287,7 +288,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             await getMessagesByUserIn(mjolnir, mjolnirId, room, 100, events => {
                 events.forEach(event => event.type === 'm.room.server_acl' ? aclEventCount += 1 : null);
             });
-            LogService.debug('BanListTest', `aclEventCount: ${aclEventCount}`);
+            LogService.debug('PolicyListTest', `aclEventCount: ${aclEventCount}`);
             // If there's less than two then it means the ACL was updated by this test calling `this.mjolnir!.syncLists()`
             // and not the listener that detects changes to ban lists (that we want to test!).
             // It used to be 10, but it was too low, 30 seems better for CI.
@@ -296,19 +297,19 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
     })
 })
 
-describe('Test: unbaning entities via the BanList.', function () {
+describe('Test: unbaning entities via the PolicyList.', function() {
     afterEach(function() { this.moderator?.stop(); });
-    it('Will remove rules that have legacy types', async function () {
+    it('Will remove rules that have legacy types', async function() {
         this.timeout(20000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
-        const moderator = await newTestUser({ name: { contains: "moderator" }});
+        const moderator = await newTestUser({ name: { contains: "moderator" } });
         this.moderator = moderator;
         moderator.joinRoom(this.mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.getUserId();
 
         // We'll make 1 protected room to test ACLs in.
-        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId]});
+        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId] });
         await mjolnir.joinRoom(protectedRoom);
         await moderator.setUserPowerLevel(mjolnirId, protectedRoom, 100);
         await this.mjolnir!.addProtectedRoom(protectedRoom);
@@ -318,14 +319,14 @@ describe('Test: unbaning entities via the BanList.', function () {
         const roomAcl = await mjolnir.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
 
-        // Create some legacy rules on a BanList.
+        // Create some legacy rules on a PolicyList.
         const banListId = await moderator.createRoom({ invite: [mjolnirId] });
         await moderator.setUserPowerLevel(await mjolnir.getUserId(), banListId, 100);
-        await moderator.sendStateEvent(banListId, 'org.matrix.mjolnir.shortcode', '', { shortcode: "unban-test"});
+        await moderator.sendStateEvent(banListId, 'org.matrix.mjolnir.shortcode', '', { shortcode: "unban-test" });
         await mjolnir.joinRoom(banListId);
         this.mjolnir!.watchList(Permalinks.forRoom(banListId));
         // we use this to compare changes.
-        const banList = new BanList(banListId, banListId, moderator);
+        const banList = new PolicyList(banListId, banListId, moderator);
         // we need two because we need to test the case where an entity has all rule types in the list
         // and another one that only has one (so that we would hit 404 while looking up state)
         const olderBadServer = "old.evil.com"
@@ -351,7 +352,7 @@ describe('Test: unbaning entities via the BanList.', function () {
             await moderator.start();
             for (const server of [olderBadServer, newerBadServer]) {
                 await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
-                    return await moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text', body: `!mjolnir unban unban-test server ${server}`});
+                    return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir unban unban-test server ${server}` });
                 });
             }
         } finally {
@@ -368,19 +369,19 @@ describe('Test: unbaning entities via the BanList.', function () {
     })
 })
 
-describe('Test: should apply bans to the most recently active rooms first', function () {
-    it('Applies bans to the most recently active rooms first', async function () {
+describe('Test: should apply bans to the most recently active rooms first', function() {
+    it('Applies bans to the most recently active rooms first', async function() {
         this.timeout(180000)
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
-        const moderator = await newTestUser({ name: { contains: "moderator" }});
+        const moderator = await newTestUser({ name: { contains: "moderator" } });
         moderator.joinRoom(this.mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.getUserId();
 
         // Setup some protected rooms so we can check their ACL state later.
         const protectedRooms: string[] = [];
         for (let i = 0; i < 10; i++) {
-            const room = await moderator.createRoom({ invite: [mjolnirId]});
+            const room = await moderator.createRoom({ invite: [mjolnirId] });
             await mjolnir.joinRoom(room);
             await moderator.setUserPowerLevel(mjolnirId, room, 100);
             await this.mjolnir!.addProtectedRoom(room);
@@ -390,7 +391,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
         await this.mjolnir!.syncLists();
         await Promise.all(protectedRooms.map(async room => {
-            const roomAcl = await mjolnir.getRoomStateEvent(room, "m.room.server_acl", "").catch(e => e.statusCode === 404 ? {deny: []} : Promise.reject(e));
+            const roomAcl = await mjolnir.getRoomStateEvent(room, "m.room.server_acl", "").catch(e => e.statusCode === 404 ? { deny: [] } : Promise.reject(e));
             assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
         }));
 
@@ -408,7 +409,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         }
         // create some activity in the same order.
         for (const roomId of protectedRooms.slice().reverse()) {
-            await mjolnir.sendMessage(roomId, {body: `activity`, msgtype: 'm.text'});
+            await mjolnir.sendMessage(roomId, { body: `activity`, msgtype: 'm.text' });
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 
@@ -432,7 +433,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         // Check that the most recently active rooms got the ACL update first.
         let last_event_ts = 0;
         for (const roomId of protectedRooms) {
-            let roomAclEvent: null|any;
+            let roomAclEvent: null | any;
             // Can't be the best way to get the whole event, but ok.
             await getMessagesByUserIn(mjolnir, mjolnirId, roomId, 1, events => roomAclEvent = events[0]);
             const roomAcl = roomAclEvent!.content;
