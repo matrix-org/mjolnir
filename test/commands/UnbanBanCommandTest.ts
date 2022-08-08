@@ -18,16 +18,17 @@ import * as expect from "expect";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";
-import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/BanList";
 import config from "../../src/config";
+import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/ListRule";
 
-function createTestMjolnir(defaultShortcode: string = null): Mjolnir {
+function createTestMjolnir(defaultShortcode: string|null = null): Mjolnir {
     const client = {
+        // Mock `MatrixClient.getAccountData` .
         getAccountData: (eventType: string): Promise<any> => {
-            if (eventType === DEFAULT_LIST_EVENT_TYPE && defaultShortcode) {
+            if (eventType === DEFAULT_LIST_EVENT_TYPE || defaultShortcode) {
                 return Promise.resolve({shortcode: defaultShortcode});
             }
-            throw new Error("Unknown event type");
+            throw new Error(`Unknown event type ${eventType}, expected ${DEFAULT_LIST_EVENT_TYPE}`);
         },
     };
     return <Mjolnir>{
@@ -59,11 +60,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test example.org";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_SERVER);
-            expect(bits.entity).toBe("example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_SERVER);
+            expect(bits!.entity).toBe("example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect servers with ban reasons", async () => {
@@ -76,11 +77,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test example.org reason here";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBe("reason here");
-            expect(bits.ruleType).toBe(RULE_SERVER);
-            expect(bits.entity).toBe("example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBe("reason here");
+            expect(bits!.ruleType).toBe(RULE_SERVER);
+            expect(bits!.entity).toBe("example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect servers with globs", async () => {
@@ -93,11 +94,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test *.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_SERVER);
-            expect(bits.entity).toBe("*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_SERVER);
+            expect(bits!.entity).toBe("*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect servers with the type specified", async () => {
@@ -110,11 +111,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test server @*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_SERVER);
-            expect(bits.entity).toBe("@*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_SERVER);
+            expect(bits!.entity).toBe("@*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect room IDs", async () => {
@@ -127,11 +128,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test !example.org";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("!example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("!example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect room IDs with ban reasons", async () => {
@@ -144,11 +145,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test !example.org reason here";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBe("reason here");
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("!example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBe("reason here");
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("!example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect room IDs with globs", async () => {
@@ -161,11 +162,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test !*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("!*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("!*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect room aliases", async () => {
@@ -178,11 +179,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test #example.org";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("#example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("#example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect room aliases with ban reasons", async () => {
@@ -195,11 +196,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test #example.org reason here";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBe("reason here");
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("#example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBe("reason here");
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("#example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect room aliases with globs", async () => {
@@ -212,11 +213,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test #*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("#*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("#*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect rooms with the type specified", async () => {
@@ -229,11 +230,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test room @*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_ROOM);
-            expect(bits.entity).toBe("@*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_ROOM);
+            expect(bits!.entity).toBe("@*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect user IDs", async () => {
@@ -246,11 +247,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test @example.org";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_USER);
-            expect(bits.entity).toBe("@example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_USER);
+            expect(bits!.entity).toBe("@example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect user IDs with ban reasons", async () => {
@@ -263,11 +264,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test @example.org reason here";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBe("reason here");
-            expect(bits.ruleType).toBe(RULE_USER);
-            expect(bits.entity).toBe("@example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBe("reason here");
+            expect(bits!.ruleType).toBe(RULE_USER);
+            expect(bits!.entity).toBe("@example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect user IDs with globs", async () => {
@@ -280,11 +281,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test @*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_USER);
-            expect(bits.entity).toBe("@*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_USER);
+            expect(bits!.entity).toBe("@*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should be able to detect user IDs with the type specified", async () => {
@@ -297,11 +298,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test user #*.example.org --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBeFalsy();
-            expect(bits.ruleType).toBe(RULE_USER);
-            expect(bits.entity).toBe("#*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBeFalsy();
+            expect(bits!.ruleType).toBe(RULE_USER);
+            expect(bits!.entity).toBe("#*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         it("should error if wildcards used without --force", async () => {
@@ -328,11 +329,11 @@ describe("UnbanBanCommand", () => {
             const command = "!mjolnir ban test user #*.example.org reason here --force";
             const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
             expect(bits).toBeTruthy();
-            expect(bits.reason).toBe("reason here");
-            expect(bits.ruleType).toBe(RULE_USER);
-            expect(bits.entity).toBe("#*.example.org");
-            expect(bits.list).toBeDefined();
-            expect(bits.list.listShortcode).toBe("test");
+            expect(bits!.reason).toBe("reason here");
+            expect(bits!.ruleType).toBe(RULE_USER);
+            expect(bits!.entity).toBe("#*.example.org");
+            expect(bits!.list).toBeDefined();
+            expect(bits!.list!.listShortcode).toBe("test");
         });
 
         describe("[without default list]", () => {
@@ -374,11 +375,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban user test @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("test");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("test");
             });
 
             it("should not error if a list (without type) is specified", async () => {
@@ -391,11 +392,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban test @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("test");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("test");
             });
 
             it("should not error if a list (with type reversed) is specified", async () => {
@@ -408,11 +409,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban test user @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("test");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("test");
             });
         });
 
@@ -427,11 +428,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban user @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("test");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("test");
             });
 
             it("should use the default list if no list (without type) is specified", async () => {
@@ -444,11 +445,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("test");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("test");
             });
 
             it("should use the specified list if a list (with type) is specified", async () => {
@@ -461,11 +462,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban user other @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("other");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("other");
             });
 
             it("should use the specified list if a list (without type) is specified", async () => {
@@ -478,11 +479,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban other @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("other");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("other");
             });
 
             it("should not error if a list (with type reversed) is specified", async () => {
@@ -495,11 +496,11 @@ describe("UnbanBanCommand", () => {
                 const command = "!mjolnir ban other user @example:example.org";
                 const bits = await parseArguments("!a", createFakeEvent(command), mjolnir, command.split(' '));
                 expect(bits).toBeTruthy();
-                expect(bits.reason).toBeFalsy();
-                expect(bits.ruleType).toBe(RULE_USER);
-                expect(bits.entity).toBe("@example:example.org");
-                expect(bits.list).toBeDefined();
-                expect(bits.list.listShortcode).toBe("other");
+                expect(bits!.reason).toBeFalsy();
+                expect(bits!.ruleType).toBe(RULE_USER);
+                expect(bits!.entity).toBe("@example:example.org");
+                expect(bits!.list).toBeDefined();
+                expect(bits!.list!.listShortcode).toBe("other");
             });
         });
     });

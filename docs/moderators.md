@@ -94,3 +94,26 @@ Adding protected rooms on the fly is as easy as `!mjolnir rooms add <room alias>
 which are protected with `!mjolnir rooms`, and remove a room with `!mjolnir rooms remove <room alias>`. Note
 that rooms which are listed in the config may be protected again when the bot restarts - to remove these rooms
 permanently from protection, remove them from the config.
+
+## Trusted Reporters
+
+Mjolnir has an (optional) system in which it will poll Synapse for new reports, and when it sees sufficient
+amounts of reports from trusted users on an given message, it will take an action, such as redacting the message.
+
+The users to trust, the actions to take, and the thresholds needed for those actions are configurable.
+
+Prerequisites:
+* `pollReport: true` in Mjolnir config file
+* retart Mjolnir
+* `!mjolnir enable TrustedReporters`
+* `!mjolnir config add TrustedReporters.mxids @trusteduser:example.com`
+* `!mjolnir config set TrustedReporters.alertThreshold 3`
+
+TrustedReporters supports 3 different thresholds; `alertThreshold`, `redactThreshold`, and `banThreshold`.
+By default, only `alertThreshold` is enabled, and is set to `3`. Mjolnir will only consider reports that
+take place in rooms Mjolnir is protecting. `alertThreshold` is separate from Mjolnir's ability to log
+each report, which is `displayReports` in Mjolnir's config file.
+
+Make sure that anything you have sat in front of Synapse (e.g. nginx) is correctly configured to forward
+`/_synapse/admin/v1/event_reports` and `/_synapse/admin/v1/rooms/${room_id}/context/${revent_id}` to
+Synapse, or Mjolnir will not be able to poll for new reports. Mjolnir polls for new reports every 30 seconds.

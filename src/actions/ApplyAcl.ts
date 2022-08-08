@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import BanList from "../models/BanList";
+import PolicyList from "../models/PolicyList";
 import { ServerAcl } from "../models/ServerAcl";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
@@ -25,11 +25,11 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
  * Does not update the banLists before taking their rules to build the server ACL.
- * @param {BanList[]} lists The lists to construct ACLs from.
+ * @param {PolicyList[]} lists The lists to construct ACLs from.
  * @param {string[]} roomIds The room IDs to apply the ACLs in.
  * @param {Mjolnir} mjolnir The Mjolnir client to apply the ACLs with.
  */
-export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
+export async function applyServerAcls(lists: PolicyList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     const serverName: string = new UserID(await mjolnir.client.getUserId()).domain;
 
     // Construct a server ACL first
@@ -77,7 +77,7 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');
             const kind = message && message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
-            errors.push({roomId, errorMessage: message, errorKind: kind});
+            errors.push({ roomId, errorMessage: message, errorKind: kind });
         }
     }
 

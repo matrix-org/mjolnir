@@ -16,8 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
-import { RECOMMENDATION_BAN, recommendationToStable } from "../models/ListRule";
-import { RULE_SERVER, RULE_USER, ruleTypeToStable } from "../models/BanList";
+import { EntityType, Recommendation } from "../models/ListRule";
 
 // !mjolnir import <room ID> <shortcode>
 export async function execImportCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -45,14 +44,13 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
 
                 await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Adding user ${stateEvent['state_key']} to ban list`);
 
-                const recommendation = recommendationToStable(RECOMMENDATION_BAN);
                 const ruleContent = {
                     entity: stateEvent['state_key'],
-                    recommendation,
+                    recommendation: Recommendation.Ban,
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                let stableRule = ruleTypeToStable(RULE_USER);
+                let stableRule = EntityType.RULE_USER;
                 if (stableRule) {
                     await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
                 }
@@ -66,14 +64,13 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
 
                 await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Adding server ${server} to ban list`);
 
-                const recommendation = recommendationToStable(RECOMMENDATION_BAN);
                 const ruleContent = {
                     entity: server,
-                    recommendation,
+                    recommendation: Recommendation.Ban,
                     reason: reason,
                 };
                 const stateKey = `rule:${ruleContent.entity}`;
-                let stableRule = ruleTypeToStable(RULE_SERVER);
+                let stableRule = EntityType.RULE_SERVER;
                 if (stableRule) {
                     await mjolnir.client.sendStateEvent(list.roomId, stableRule, stateKey, ruleContent);
                 }
