@@ -230,7 +230,7 @@ describe('Test: We will not be able to ban ourselves via ACL.', function() {
 })
 
 
-describe.only('Test: ACL updates will batch when rules are added in succession.', function() {
+describe('Test: ACL updates will batch when rules are added in succession.', function() {
     it('Will batch ACL updates if we spam rules into a PolicyList', async function() {
         const mjolnir = config.RUNTIME.client!
         const serverName: string = new UserID(await mjolnir.getUserId()).domain
