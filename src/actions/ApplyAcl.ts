@@ -33,10 +33,10 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 export async function applyServerAcls(lists: PolicyList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // we need to provide mutual exclusion so that we do not have requests updating the m.room.server_acl event
     // finish out of order and therefore leave the room out of sync with the policy lists.
-    return new Promise((resolve) => {
-        mjolnir.aclChain = mjolnir.aclChain.then(() => {
-            resolve(_applyServerAcls(lists, roomIds, mjolnir));
-        });
+    return new Promise((resolve, reject) => {
+        mjolnir.aclChain = mjolnir.aclChain
+            .then(() => _applyServerAcls(lists, roomIds, mjolnir))
+            .then(resolve, reject);
     });
 }
 
