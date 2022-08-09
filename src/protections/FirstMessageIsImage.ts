@@ -17,7 +17,6 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
-import config from "../config";
 import { isTrueJoinEvent } from "../utils";
 
 export class FirstMessageIsImage extends Protection {
@@ -58,7 +57,7 @@ export class FirstMessageIsImage extends Protection {
             const isMedia = msgtype === 'm.image' || msgtype === 'm.video' || formattedBody.toLowerCase().includes('<img');
             if (isMedia && this.justJoined[roomId].includes(event['sender'])) {
                 await mjolnir.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     await mjolnir.client.banUser(event['sender'], roomId, "spam");
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
@@ -69,7 +68,7 @@ export class FirstMessageIsImage extends Protection {
                 this.recentlyBanned.push(event['sender']); // flag to reduce spam
 
                 // Redact the event
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);

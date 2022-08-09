@@ -16,33 +16,13 @@ limitations under the License.
 
 import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
-import { ListRule, RECOMMENDATION_BAN } from "./ListRule";
-
-export const RULE_USER = "m.policy.rule.user";
-export const RULE_ROOM = "m.policy.rule.room";
-export const RULE_SERVER = "m.policy.rule.server";
-
-// README! The order here matters for determining whether a type is obsolete, most recent should be first.
-// These are the current and historical types for each type of rule which were used while MSC2313 was being developed
-// and were left as an artifact for some time afterwards.
-// Most rules (as of writing) will have the prefix `m.room.rule.*` as this has been in use for roughly 2 years.
-export const USER_RULE_TYPES = [RULE_USER, "m.room.rule.user", "org.matrix.mjolnir.rule.user"];
-export const ROOM_RULE_TYPES = [RULE_ROOM, "m.room.rule.room", "org.matrix.mjolnir.rule.room"];
-export const SERVER_RULE_TYPES = [RULE_SERVER, "m.room.rule.server", "org.matrix.mjolnir.rule.server"];
-export const ALL_RULE_TYPES = [...USER_RULE_TYPES, ...ROOM_RULE_TYPES, ...SERVER_RULE_TYPES];
+import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
-export function ruleTypeToStable(rule: string, unstable = true): string|null {
-    if (USER_RULE_TYPES.includes(rule)) return unstable ? USER_RULE_TYPES[USER_RULE_TYPES.length - 1] : RULE_USER;
-    if (ROOM_RULE_TYPES.includes(rule)) return unstable ? ROOM_RULE_TYPES[ROOM_RULE_TYPES.length - 1] : RULE_ROOM;
-    if (SERVER_RULE_TYPES.includes(rule)) return unstable ? SERVER_RULE_TYPES[SERVER_RULE_TYPES.length - 1] : RULE_SERVER;
-    return null;
-}
-
 export enum ChangeType {
-    Added    = "ADDED",
-    Removed  = "REMOVED",
+    Added = "ADDED",
+    Removed = "REMOVED",
     Modified = "MODIFIED"
 }
 
@@ -71,28 +51,28 @@ export interface ListRuleChange {
     readonly previousState?: any,
 }
 
-declare interface BanList {
-    // BanList.update is emitted when the BanList has pulled new rules from Matrix and informs listeners of any changes.
-    on(event: 'BanList.update', listener: (list: BanList, changes: ListRuleChange[]) => void): this
-    emit(event: 'BanList.update', list: BanList, changes: ListRuleChange[]): boolean
-    // BanList.batch is emitted when the BanList has created a batch from the events provided by `updateForEvent`.
-    on(event: 'BanList.batch', listener: (list: BanList) => void): this
-    emit(event: 'BanList.batch', list: BanList): boolean
+declare interface PolicyList {
+    // PolicyList.update is emitted when the PolicyList has pulled new rules from Matrix and informs listeners of any changes.
+    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[]) => void): this
+    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[]): boolean
+    // PolicyList.batch is emitted when the PolicyList has created a batch from the events provided by `updateForEvent`.
+    on(event: 'PolicyList.batch', listener: (list: PolicyList) => void): this
+    emit(event: 'PolicyList.batch', list: PolicyList): boolean
 }
 
 /**
- * The BanList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
+ * The PolicyList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
  * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
  */
-class BanList extends EventEmitter {
-    private shortcode: string|null = null;
+class PolicyList extends EventEmitter {
+    private shortcode: string | null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
     // Batches new events from sync together before starting the process to update the list.
     private readonly batcher: UpdateBatcher;
 
     /**
-     * Construct a BanList, does not synchronize with the room.
+     * Construct a PolicyList, does not synchronize with the room.
      * @param roomId The id of the policy room, i.e. a room containing MSC2313 policies.
      * @param roomRef A sharable/clickable matrix URL that refers to the room.
      * @param client A matrix client that is used to read the state of the room when `updateList` is called.
@@ -120,7 +100,7 @@ class BanList extends EventEmitter {
     }
 
     /**
-     * Store this state event as part of the active room state for this BanList (used to cache rules).
+     * Store this state event as part of the active room state for this PolicyList (used to cache rules).
      * The state type should be normalised if it is obsolete e.g. m.room.rule.user should be stored as m.policy.rule.user.
      * @param stateType The event type e.g. m.room.policy.user.
      * @param stateKey The state key e.g. rule:@bad:matrix.org
@@ -137,7 +117,7 @@ class BanList extends EventEmitter {
 
     /**
      * Return all the active rules of a given kind.
-     * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the BanList.
+     * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the PolicyList.
      * @returns The active ListRules for the ban list of that kind.
      */
     private rulesOfKind(kind: string): ListRule[] {
@@ -149,7 +129,7 @@ class BanList extends EventEmitter {
                 // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
                 // please make sure that you *only* return rules with `m.ban` or create a different method
                 // (we don't want to accidentally ban entities).
-                if (rule && rule.kind === kind && rule.recommendation === RECOMMENDATION_BAN) {
+                if (rule && rule.kind === kind && rule.recommendation === Recommendation.Ban) {
                     rules.push(rule);
                 }
             }
@@ -160,8 +140,8 @@ class BanList extends EventEmitter {
     public set listShortcode(newShortcode: string) {
         const currentShortcode = this.shortcode;
         this.shortcode = newShortcode;
-        this.client.sendStateEvent(this.roomId, SHORTCODE_EVENT_TYPE, '', {shortcode: this.shortcode}).catch(err => {
-            LogService.error("BanList", extractRequestError(err));
+        this.client.sendStateEvent(this.roomId, SHORTCODE_EVENT_TYPE, '', { shortcode: this.shortcode }).catch(err => {
+            LogService.error("PolicyList", extractRequestError(err));
             if (this.shortcode === newShortcode) this.shortcode = currentShortcode;
         });
     }
@@ -267,7 +247,7 @@ class BanList extends EventEmitter {
                 continue;
             }
 
-            let kind: string|null = null;
+            let kind: EntityType | null = null;
             if (USER_RULE_TYPES.includes(event['type'])) {
                 kind = RULE_USER;
             } else if (ROOM_RULE_TYPES.includes(event['type'])) {
@@ -286,7 +266,7 @@ class BanList extends EventEmitter {
             // as it may be someone deleting the older versions of the rules.
             if (previousState) {
                 const logObsoleteRule = () => {
-                    LogService.info('BanList', `In BanList ${this.roomRef}, conflict between rules ${event['event_id']} (with obsolete type ${event['type']}) ` +
+                    LogService.info('PolicyList', `In PolicyList ${this.roomRef}, conflict between rules ${event['event_id']} (with obsolete type ${event['type']}) ` +
                         `and ${previousState['event_id']} (with standard type ${previousState['type']}). Ignoring rule with obsolete type.`);
                 }
                 if (kind === RULE_USER && USER_RULE_TYPES.indexOf(event['type']) > USER_RULE_TYPES.indexOf(previousState['type'])) {
@@ -305,7 +285,7 @@ class BanList extends EventEmitter {
             // in order to mark a rule as deleted.
             // We always set state with the normalised state type via `kind` to de-duplicate rules.
             this.setState(kind, event['state_key'], event);
-            const changeType: null|ChangeType = (() => {
+            const changeType: null | ChangeType = (() => {
                 if (!previousState) {
                     return ChangeType.Added;
                 } else if (previousState['event_id'] === event['event_id']) {
@@ -329,56 +309,52 @@ class BanList extends EventEmitter {
             // and so will not have been used. Removing a rule like this therefore results in no change.
             if (changeType === ChangeType.Removed && previousState?.unsigned?.rule) {
                 const sender = event.unsigned['redacted_because'] ? event.unsigned['redacted_because']['sender'] : event.sender;
-                changes.push({changeType, event, sender, rule: previousState.unsigned.rule,
-                    ... previousState ? {previousState} : {} });
+                changes.push({
+                    changeType, event, sender, rule: previousState.unsigned.rule,
+                    ...previousState ? { previousState } : {}
+                });
                 // Event has no content and cannot be parsed as a ListRule.
                 continue;
             }
             // It's a rule - parse it
-            const content = event['content'];
-            if (!content) continue;
-
-            const entity = content['entity'];
-            const recommendation = content['recommendation'];
-            const reason = content['reason'] || '<no reason>';
-
-            if (!entity || !recommendation) {
+            const rule = ListRule.parse(event);
+            if (!rule) {
+                // Invalid/unknown rule, just skip it.
                 continue;
             }
-            const rule = new ListRule(entity, recommendation, reason, kind);
             event.unsigned.rule = rule;
             if (changeType) {
-                changes.push({rule, changeType, event, sender: event.sender, ... previousState ? {previousState} : {} });
+                changes.push({ rule, changeType, event, sender: event.sender, ...previousState ? { previousState } : {} });
             }
         }
-        this.emit('BanList.update', this, changes);
+        this.emit('PolicyList.update', this, changes);
         return changes;
     }
 
     /**
-     * Inform the `BanList` about a new event from the room it is modelling.
-     * @param event An event from the room the `BanList` models to inform an instance about.
+     * Inform the `PolicyList` about a new event from the room it is modelling.
+     * @param event An event from the room the `PolicyList` models to inform an instance about.
      */
     public updateForEvent(event: { event_id: string }): void {
         this.batcher.addToBatch(event.event_id)
     }
 }
 
-export default BanList;
+export default PolicyList;
 
 /**
- * Helper class that emits a batch event on a `BanList` when it has made a batch
+ * Helper class that emits a batch event on a `PolicyList` when it has made a batch
  * out of the events given to `addToBatch`.
  */
 class UpdateBatcher {
     // Whether we are waiting for more events to form a batch.
     private isWaiting = false;
     // The latest (or most recent) event we have received.
-    private latestEventId: string|null = null;
+    private latestEventId: string | null = null;
     private readonly waitPeriodMS = 200; // 200ms seems good enough.
     private readonly maxWaitMS = 3000; // 3s is long enough to wait while batching.
 
-    constructor(private readonly banList: BanList) {
+    constructor(private readonly banList: PolicyList) {
 
     }
 
@@ -402,7 +378,7 @@ class UpdateBatcher {
             await new Promise(resolve => setTimeout(resolve, this.waitPeriodMS));
         } while ((Date.now() - start) < this.maxWaitMS && this.latestEventId !== eventId)
         this.reset();
-        this.banList.emit('BanList.batch', this.banList);
+        this.banList.emit('PolicyList.batch', this.banList);
     }
 
     /**

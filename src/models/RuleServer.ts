@@ -13,10 +13,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import BanList, { ChangeType, ListRuleChange, RULE_ROOM, RULE_SERVER, RULE_USER } from "./BanList"
+import BanList, { ChangeType, ListRuleChange } from "./PolicyList"
 import * as crypto from "crypto";
 import { LogService } from "matrix-bot-sdk";
-import { ListRule } from "./ListRule";
+import { EntityType, ListRule } from "./ListRule";
+import PolicyList from "./PolicyList";
 
 export const USER_MAY_INVITE = 'user_may_invite';
 export const CHECK_EVENT_FOR_SPAM = 'check_event_for_spam';
@@ -25,7 +26,7 @@ export const CHECK_EVENT_FOR_SPAM = 'check_event_for_spam';
  * Rules in the RuleServer format that have been produced from a single event.
  */
 class EventRules {
-    constructor (
+    constructor(
         readonly eventId: string,
         readonly roomId: string,
         readonly ruleServerRules: RuleServerRule[],
@@ -108,7 +109,7 @@ export default class RuleServer {
      * @returns The `EventRules` object describing which rules have been created based on the policy the event represents
      * or `undefined` if there are no `EventRules` associated with the event.
      */
-    private getEventRules(roomId: string, eventId: string): EventRules|undefined {
+    private getEventRules(roomId: string, eventId: string): EventRules | undefined {
         return this.rulesByEvent.get(roomId)?.get(eventId);
     }
 
@@ -118,7 +119,7 @@ export default class RuleServer {
      * @throws If there are already rules associated with the event specified in `eventRules.eventId`.
      */
     private addEventRules(eventRules: EventRules): void {
-        const {roomId, eventId, token} = eventRules;
+        const { roomId, eventId, token } = eventRules;
         if (this.rulesByEvent.get(roomId)?.has(eventId)) {
             throw new TypeError(`There is already an entry in the RuleServer for rules created from the event ${eventId}.`);
         }
@@ -136,7 +137,7 @@ export default class RuleServer {
      * @param eventRules The EventRules to stop serving from the rule server.
      */
     private stopEventRules(eventRules: EventRules): void {
-        const {eventId, roomId, token} = eventRules;
+        const { eventId, roomId, token } = eventRules;
         this.rulesByEvent.get(roomId)?.delete(eventId);
         // We expect that each row of `rulesByEvent` list of eventRules (represented by 1 row in `rulesByEvent`) to be relatively small (1-5)
         // as it can only contain eventRules added during the instant of time represented by one token.
@@ -156,7 +157,7 @@ export default class RuleServer {
             const eventRules = new EventRules(change.event.event_id, change.event.room_id, toRuleServerFormat(change.rule), this.currentToken);
             this.addEventRules(eventRules);
         } else if (change.changeType === ChangeType.Modified) {
-            const entry: EventRules|undefined = this.getEventRules(change.event.roomId, change.previousState.event_id);
+            const entry: EventRules | undefined = this.getEventRules(change.event.roomId, change.previousState.event_id);
             if (entry === undefined) {
                 LogService.error('RuleServer', `Could not find the rules for the previous modified state ${change.event['state_type']} ${change.event['state_key']} ${change.previousState?.event_id}`);
                 return;
@@ -169,7 +170,7 @@ export default class RuleServer {
             // 2) When an event has been "soft redacted" (ie we have a new event with the same state type and state_key with no content),
             // the events in the `previousState` and `event` slots of `change` will be distinct events.
             // In either case (of redaction or "soft redaction") we can use `previousState` to get the right event id to stop.
-            const entry: EventRules|undefined = this.getEventRules(change.event.room_id, change.previousState.event_id);
+            const entry: EventRules | undefined = this.getEventRules(change.event.room_id, change.previousState.event_id);
             if (entry === undefined) {
                 LogService.error('RuleServer', `Could not find the rules for the previous modified state ${change.event['state_type']} ${change.event['state_key']} ${change.previousState?.event_id}`);
                 return;
@@ -184,16 +185,16 @@ export default class RuleServer {
      * as we won't be able to serve rules that have already been interned in the BanList.
      * @param banList a BanList to watch for rule changes with.
      */
-    public watch(banList: BanList): void {
-        banList.on('BanList.update', this.banListUpdateListener);
+    public watch(banList: PolicyList): void {
+        banList.on('PolicyList.update', this.banListUpdateListener);
     }
 
     /**
      * Remove all of the rules that have been created from the policies in this banList.
      * @param banList The BanList to unwatch.
      */
-    public unwatch(banList: BanList): void {
-        banList.removeListener('BanList.update', this.banListUpdateListener);
+    public unwatch(banList: PolicyList): void {
+        banList.removeListener('PolicyList.update', this.banListUpdateListener);
         const listRules = this.rulesByEvent.get(banList.roomId);
         this.nextToken();
         if (listRules) {
@@ -221,8 +222,8 @@ export default class RuleServer {
      * @param sinceToken A token that has previously been issued by this server.
      * @returns An object with the rules that have been started and stopped since the token and a new token to poll for more rules with.
      */
-    public getUpdates(sinceToken: string | null): {start: RuleServerRule[], stop: string[], reset?: boolean, since: string} {
-        const updatesSince = <T = EventRules|string>(token: number | null, policyStore: T[][]): T[] => {
+    public getUpdates(sinceToken: string | null): { start: RuleServerRule[], stop: string[], reset?: boolean, since: string } {
+        const updatesSince = <T = EventRules | string>(token: number | null, policyStore: T[][]): T[] => {
             if (token === null) {
                 // The client is requesting for the first time, we will give them everything.
                 return policyStore.flat();
@@ -234,7 +235,7 @@ export default class RuleServer {
             }
         }
         const [serverId, since] = sinceToken ? sinceToken.split('::') : [null, null];
-        const parsedSince: number | null = since ?  parseInt(since, 10) : null;
+        const parsedSince: number | null = since ? parseInt(since, 10) : null;
         if (serverId && serverId !== this.serverId) {
             // The server has restarted, but the client has not and still has rules we can no longer account for.
             // So we have to resend them everything.
@@ -261,59 +262,59 @@ export default class RuleServer {
 * @returns An array of rules that can be served from the rule server.
 */
 function toRuleServerFormat(policyRule: ListRule): RuleServerRule[] {
-   function makeLiteral(literal: string) {
-       return {literal}
-   }
+    function makeLiteral(literal: string) {
+        return { literal }
+    }
 
-   function makeGlob(glob: string) {
-       return {glob}
-   }
+    function makeGlob(glob: string) {
+        return { glob }
+    }
 
-   function makeServerGlob(server: string) {
-       return {glob: `:${server}`}
-   }
+    function makeServerGlob(server: string) {
+        return { glob: `:${server}` }
+    }
 
-   function makeRule(checks: Checks) {
-       return {
-           id: crypto.randomUUID(),
-           checks: checks
-       }
-   }
+    function makeRule(checks: Checks) {
+        return {
+            id: crypto.randomUUID(),
+            checks: checks
+        }
+    }
 
-   if (policyRule.kind === RULE_USER) {
-       // Block any messages or invites from being sent by a matching local user
-       // Block any messages or invitations from being received that were sent by a matching remote user.
-       return [{
-           property: USER_MAY_INVITE,
-           user_id: [makeGlob(policyRule.entity)]
-       },
-       {
-           property: CHECK_EVENT_FOR_SPAM,
-           sender: [makeGlob(policyRule.entity)]
-       }].map(makeRule)
-   } else if (policyRule.kind === RULE_ROOM) {
-       // Block any messages being sent or received in the room, stop invitations being sent to the room and
-       // stop anyone receiving invitations from the room.
-       return [{
-           property: USER_MAY_INVITE,
-           'room_id': [makeLiteral(policyRule.entity)]
-       },
-       {
-           property: CHECK_EVENT_FOR_SPAM,
-           'room_id': [makeLiteral(policyRule.entity)]
-       }].map(makeRule)
-   } else if (policyRule.kind === RULE_SERVER) {
-       // Block any invitations from the server or any new messages from the server.
-       return [{
-           property: USER_MAY_INVITE,
-           user_id: [makeServerGlob(policyRule.entity)]
-       },
-       {
-           property: CHECK_EVENT_FOR_SPAM,
-           sender: [makeServerGlob(policyRule.entity)]
-       }].map(makeRule)
-   } else {
-       LogService.info('RuleServer', `Ignoring unsupported policy rule type ${policyRule.kind}`);
-       return []
-   }
+    if (policyRule.kind === EntityType.RULE_USER) {
+        // Block any messages or invites from being sent by a matching local user
+        // Block any messages or invitations from being received that were sent by a matching remote user.
+        return [{
+            property: USER_MAY_INVITE,
+            user_id: [makeGlob(policyRule.entity)]
+        },
+        {
+            property: CHECK_EVENT_FOR_SPAM,
+            sender: [makeGlob(policyRule.entity)]
+        }].map(makeRule)
+    } else if (policyRule.kind === EntityType.RULE_ROOM) {
+        // Block any messages being sent or received in the room, stop invitations being sent to the room and
+        // stop anyone receiving invitations from the room.
+        return [{
+            property: USER_MAY_INVITE,
+            'room_id': [makeLiteral(policyRule.entity)]
+        },
+        {
+            property: CHECK_EVENT_FOR_SPAM,
+            'room_id': [makeLiteral(policyRule.entity)]
+        }].map(makeRule)
+    } else if (policyRule.kind === EntityType.RULE_SERVER) {
+        // Block any invitations from the server or any new messages from the server.
+        return [{
+            property: USER_MAY_INVITE,
+            user_id: [makeServerGlob(policyRule.entity)]
+        },
+        {
+            property: CHECK_EVENT_FOR_SPAM,
+            sender: [makeServerGlob(policyRule.entity)]
+        }].map(makeRule)
+    } else {
+        LogService.info('RuleServer', `Ignoring unsupported policy rule type ${policyRule.kind}`);
+        return []
+    }
 }

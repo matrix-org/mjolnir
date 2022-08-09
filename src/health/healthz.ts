@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import config from "../config";
 import * as http from "http";
 import { LogService } from "matrix-bot-sdk";
+// allowed to use the global configuration since this is only intended to be used by `src/index.ts`.
+import config from '../config';
 
 export class Healthz {
     private static healthCode: number;

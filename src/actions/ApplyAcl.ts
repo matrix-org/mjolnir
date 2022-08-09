@@ -14,11 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import BanList from "../models/BanList";
+import PolicyList from "../models/PolicyList";
 import { ServerAcl } from "../models/ServerAcl";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
-import config from "../config";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
@@ -26,11 +25,21 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
  * Applies the server ACLs represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
  * Does not update the banLists before taking their rules to build the server ACL.
- * @param {BanList[]} lists The lists to construct ACLs from.
+ * @param {PolicyList[]} lists The lists to construct ACLs from.
  * @param {string[]} roomIds The room IDs to apply the ACLs in.
  * @param {Mjolnir} mjolnir The Mjolnir client to apply the ACLs with.
  */
-export async function applyServerAcls(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
+export async function applyServerAcls(lists: PolicyList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
+    // we need to provide mutual exclusion so that we do not have requests updating the m.room.server_acl event
+    // finish out of order and therefore leave the room out of sync with the policy lists.
+    return new Promise((resolve, reject) => {
+        mjolnir.aclChain = mjolnir.aclChain
+            .then(() => _applyServerAcls(lists, roomIds, mjolnir))
+            .then(resolve, reject);
+    });
+}
+
+async function _applyServerAcls(lists: PolicyList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     const serverName: string = new UserID(await mjolnir.client.getUserId()).domain;
 
     // Construct a server ACL first
@@ -47,7 +56,7 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
         mjolnir.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
     }
 
-    if (config.verboseLogging) {
+    if (mjolnir.config.verboseLogging) {
         // We specifically use sendNotice to avoid having to escape HTML
         await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
     }
@@ -70,7 +79,7 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
             // We specifically use sendNotice to avoid having to escape HTML
             await mjolnir.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
 
-            if (!config.noop) {
+            if (!mjolnir.config.noop) {
                 await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
             } else {
                 await mjolnir.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
@@ -78,7 +87,7 @@ export async function applyServerAcls(lists: BanList[], roomIds: string[], mjoln
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');
             const kind = message && message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
-            errors.push({roomId, errorMessage: message, errorKind: kind});
+            errors.push({ roomId, errorMessage: message, errorKind: kind });
         }
     }
 

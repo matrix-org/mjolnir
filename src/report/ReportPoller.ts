@@ -18,7 +18,7 @@ import { Mjolnir, REPORT_POLL_EVENT_TYPE } from "../Mjolnir";
 import { ReportManager } from './ReportManager';
 import { LogLevel } from "matrix-bot-sdk";
 
-class InvalidStateError extends Error {}
+class InvalidStateError extends Error { }
 
 /**
  * A class to poll synapse's report endpoint, so we can act on new reports
@@ -108,7 +108,7 @@ export class ReportPoller {
         if (response.next_token !== undefined) {
             this.from = response.next_token;
             try {
-               await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
+                await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
             } catch (ex) {
                 await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
             }
