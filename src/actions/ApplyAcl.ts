@@ -18,7 +18,6 @@ import PolicyList from "../models/PolicyList";
 import { ServerAcl } from "../models/ServerAcl";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
-import config from "../config";
 import { LogLevel, UserID } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
@@ -57,7 +56,7 @@ async function _applyServerAcls(lists: PolicyList[], roomIds: string[], mjolnir:
         mjolnir.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
     }
 
-    if (config.verboseLogging) {
+    if (mjolnir.config.verboseLogging) {
         // We specifically use sendNotice to avoid having to escape HTML
         await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
     }
@@ -80,7 +79,7 @@ async function _applyServerAcls(lists: PolicyList[], roomIds: string[], mjolnir:
             // We specifically use sendNotice to avoid having to escape HTML
             await mjolnir.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
 
-            if (!config.noop) {
+            if (!mjolnir.config.noop) {
                 await mjolnir.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
             } else {
                 await mjolnir.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);

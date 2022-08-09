@@ -3,8 +3,9 @@
  */
 
 import { makeMjolnir } from "./mjolnirSetupUtils";
+import config from '../../src/config';
 
 (async () => {
-    let mjolnir = await makeMjolnir();
+    let mjolnir = await makeMjolnir(config);
     await mjolnir.start();
 })();

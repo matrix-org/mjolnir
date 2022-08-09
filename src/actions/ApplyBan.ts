@@ -17,7 +17,6 @@ limitations under the License.
 import PolicyList from "../models/PolicyList";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
-import config from "../config";
 import { LogLevel } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
@@ -38,7 +37,7 @@ export async function applyUserBans(lists: PolicyList[], roomIds: string[], mjol
 
             let members: { userId: string, membership: string }[];
 
-            if (config.fasterMembershipChecks) {
+            if (mjolnir.config.fasterMembershipChecks) {
                 const memberIds = await mjolnir.client.getJoinedRoomMembers(roomId);
                 members = memberIds.map(u => {
                     return { userId: u, membership: "join" };
@@ -64,7 +63,7 @@ export async function applyUserBans(lists: PolicyList[], roomIds: string[], mjol
                             // We specifically use sendNotice to avoid having to escape HTML
                             await mjolnir.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
 
-                            if (!config.noop) {
+                            if (!mjolnir.config.noop) {
                                 await mjolnir.client.banUser(member.userId, roomId, userRule.reason);
                                 if (mjolnir.automaticRedactGlobs.find(g => g.test(userRule.reason.toLowerCase()))) {
                                     mjolnir.queueRedactUserMessagesIn(member.userId, roomId);

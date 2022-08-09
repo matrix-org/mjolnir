@@ -15,13 +15,11 @@ limitations under the License.
 */
 
 import { Server } from "http";
-
 import * as express from "express";
 import { LogService, MatrixClient } from "matrix-bot-sdk";
-
-import config from "../config";
 import RuleServer from "../models/RuleServer";
 import { ReportManager } from "../report/ReportManager";
+import { IConfig } from "../config";
 
 
 /**
@@ -35,7 +33,7 @@ export class WebAPIs {
     private webController: express.Express = express();
     private httpServer?: Server;
 
-    constructor(private reportManager: ReportManager, private readonly ruleServer: RuleServer|null) {
+    constructor(private reportManager: ReportManager, private readonly config: IConfig, private readonly ruleServer: RuleServer|null) {
         // Setup JSON parsing.
         this.webController.use(express.json());
     }
@@ -44,14 +42,14 @@ export class WebAPIs {
      * Start accepting requests to the Web API.
      */
     public async start() {
-        if (!config.web.enabled) {
+        if (!this.config.web.enabled) {
             return;
         }
-        this.httpServer = this.webController.listen(config.web.port, config.web.address);
+        this.httpServer = this.webController.listen(this.config.web.port, this.config.web.address);
 
-        // Configure /report API.
-        if (config.web.abuseReporting.enabled) {
-            console.log(`Configuring ${API_PREFIX}/report/:room_id/:event_id...`);
+        // configure /report API.
+        if (this.config.web.abuseReporting.enabled) {
+            console.log(`configuring ${API_PREFIX}/report/:room_id/:event_id...`);
             this.webController.options(`${API_PREFIX}/report/:room_id/:event_id`, async (request, response) => {
                 // reply with CORS options
                 response.header("Access-Control-Allow-Origin", "*");
@@ -68,15 +66,15 @@ export class WebAPIs {
                 response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
                 await this.handleReport({ request, response, roomId: request.params.room_id, eventId: request.params.event_id })
             });
-            console.log(`Configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
+            console.log(`configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
         }
 
-        // Configure ruleServer API.
+        // configure ruleServer API.
         // FIXME: Doesn't this need some kind of access control?
         // See https://github.com/matrix-org/mjolnir/issues/139#issuecomment-1012221479.
-        if (config.web.ruleServer?.enabled) {
+        if (this.config.web.ruleServer?.enabled) {
             const updatesUrl = `${API_PREFIX}/ruleserver/updates`;
-            LogService.info("WebAPIs", `Configuring ${updatesUrl}...`);
+            LogService.info("WebAPIs", `configuring ${updatesUrl}...`);
             if (!this.ruleServer) {
                 throw new Error("The rule server to use has not been configured for the WebAPIs.");
             }
@@ -84,7 +82,7 @@ export class WebAPIs {
             this.webController.get(updatesUrl, async (request, response) => {
                 await this.handleRuleServerUpdate(ruleServer, { request, response, since: request.query.since as string});
             });
-            LogService.info("WebAPIs", `Configuring ${updatesUrl}... DONE`);
+            LogService.info("WebAPIs", `configuring ${updatesUrl}... DONE`);
         }
     }
 
@@ -163,7 +161,7 @@ export class WebAPIs {
                 //    so we are not extending the abilities of Mjölnir
                 // 3. We are avoiding the use of the Synapse Admin API to ensure that
                 //    this feature can work with all homeservers, not just Synapse.
-                let reporterClient = new MatrixClient(config.rawHomeserverUrl, accessToken);
+                let reporterClient = new MatrixClient(this.config.rawHomeserverUrl, accessToken);
                 reporterClient.start = () => {
                     throw new Error("We MUST NEVER call start on the reporter client");
                 };

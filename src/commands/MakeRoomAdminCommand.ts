@@ -14,14 +14,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import config from "../config";
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "matrix-bot-sdk";
 
 // !mjolnir make admin <room> [<user ID>]
 export async function execMakeRoomAdminCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const isAdmin = await mjolnir.isSynapseAdmin();
-    if (!config.admin?.enableMakeRoomAdminCommand || !isAdmin) {
+    if (!mjolnir.config.admin?.enableMakeRoomAdminCommand || !isAdmin) {
         const message = "Either the command is disabled or I am not running as homeserver administrator.";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";

@@ -28,7 +28,6 @@ import {
     setRequestFn,
 } from "matrix-bot-sdk";
 import { Mjolnir } from "./Mjolnir";
-import config from "./config";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
 
@@ -78,7 +77,7 @@ export async function redactUserMessagesIn(mjolnir: Mjolnir, userIdOrGlob: strin
         await getMessagesByUserIn(mjolnir.client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
             for (const victimEvent of eventsToRedact) {
                 await mjolnir.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(targetRoomId, victimEvent['event_id']);
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);

@@ -17,7 +17,6 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
-import config from "../config";
 import { isTrueJoinEvent } from "../utils";
 
 export class WordList extends Protection {
@@ -25,15 +24,10 @@ export class WordList extends Protection {
     settings = {};
 
     private justJoined: { [roomId: string]: { [username: string]: Date} } = {};
-    private badWords: RegExp;
+    private badWords?: RegExp;
 
     constructor() {
         super();
-        // Create a mega-regex from all the tiny baby regexs
-        this.badWords = new RegExp(
-            "(" + config.protections.wordlist.words.join(")|(") + ")",
-            "i"
-        )
     }
 
     public get name(): string {
@@ -47,7 +41,7 @@ export class WordList extends Protection {
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
 
         const content = event['content'] || {};
-        const minsBeforeTrusting = config.protections.wordlist.minutesBeforeTrusting;
+        const minsBeforeTrusting = mjolnir.config.protections.wordlist.minutesBeforeTrusting;
 
         if (minsBeforeTrusting > 0) {
             if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
@@ -89,19 +83,29 @@ export class WordList extends Protection {
                     return
                 }
             }
-
+            if (this.badWords === null) {
+                // Create a mega-regex from all the tiny baby regexs
+                try {
+                    this.badWords = new RegExp(
+                        "(" + mjolnir.config.protections.wordlist.words.join(")|(") + ")",
+                        "i"
+                    );
+                } catch (ex) {
+                    await mjolnir.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
+                }
+            }
 
             // Perform the test
-            if (message && this.badWords.test(message)) {
+            if (message && this.badWords!.test(message)) {
                 await mjolnir.logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     await mjolnir.client.banUser(event['sender'], roomId, "Word list violation");
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
 
                 // Redact the event
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);

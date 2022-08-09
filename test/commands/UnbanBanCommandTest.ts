@@ -18,6 +18,7 @@ import * as expect from "expect";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";
+import config from "../../src/config";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/ListRule";
 
 function createTestMjolnir(defaultShortcode: string|null = null): Mjolnir {
@@ -30,7 +31,10 @@ function createTestMjolnir(defaultShortcode: string|null = null): Mjolnir {
             throw new Error(`Unknown event type ${eventType}, expected ${DEFAULT_LIST_EVENT_TYPE}`);
         },
     };
-    return <Mjolnir>{client};
+    return <Mjolnir>{
+        client,
+        config,
+    };
 }
 
 function createFakeEvent(command: string): any {
