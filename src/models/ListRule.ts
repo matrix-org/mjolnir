@@ -78,6 +78,13 @@ const RECOMMENDATION_OPINION_VARIANTS: string[] = [
 export const OPINION_MIN = -100;
 export const OPINION_MAX = +100;
 
+interface MatrixStateEvent {
+    type: string,
+    content: any,
+    event_id: string,
+    state_key: string,
+}
+
 /**
  * Representation of a rule within a Policy List.
  */
@@ -87,6 +94,10 @@ export abstract class ListRule {
      */
     private glob: MatrixGlob;
     constructor(
+        /**
+         * The event source for the rule.
+         */
+        public readonly sourceEvent: MatrixStateEvent,
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
          */
@@ -120,7 +131,7 @@ export abstract class ListRule {
      * @param event An *untrusted* event.
      * @returns null if the ListRule is invalid or not recognized by Mjölnir.
      */
-    public static parse(event: {type: string, content: any}): ListRule | null {
+    public static parse(event: MatrixStateEvent): ListRule | null {
         // Parse common fields.
         // If a field is ill-formed, discard the rule.
         const content = event['content'];
@@ -155,17 +166,17 @@ export abstract class ListRule {
 
         // From this point, we may need specific fields.
         if (RECOMMENDATION_BAN_VARIANTS.includes(recommendation)) {
-            return new ListRuleBan(entity, reason, kind);
+            return new ListRuleBan(event, entity, reason, kind);
         } else if (RECOMMENDATION_OPINION_VARIANTS.includes(recommendation)) {
             let opinion = content['opinion'];
             if (!Number.isInteger(opinion)) {
                 return null;
             }
-            return new ListRuleOpinion(entity, reason, kind, opinion);
+            return new ListRuleOpinion(event, entity, reason, kind, opinion);
         } else {
             // As long as the `recommendation` is defined, we assume
             // that the rule is correct, just unknown.
-            return new ListRuleUnknown(entity, reason, kind, content);
+            return new ListRuleUnknown(event, entity, reason, kind, content);
         }
     }
 }
@@ -175,6 +186,10 @@ export abstract class ListRule {
  */
 export class ListRuleBan extends ListRule {
     constructor(
+        /**
+         * The event source for the rule.
+         */
+        sourceEvent: MatrixStateEvent,
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
          */
@@ -188,7 +203,7 @@ export class ListRuleBan extends ListRule {
          */
         kind: EntityType,
     ) {
-        super(entity, reason, kind, Recommendation.Ban)
+        super(sourceEvent, entity, reason, kind, Recommendation.Ban)
     }
 }
 
@@ -197,6 +212,10 @@ export class ListRuleBan extends ListRule {
  */
 export class ListRuleOpinion extends ListRule {
     constructor(
+        /**
+         * The event source for the rule.
+         */
+        sourceEvent: MatrixStateEvent,
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
          */
@@ -216,7 +235,7 @@ export class ListRuleOpinion extends ListRule {
          */
         public readonly opinion: number
     ) {
-        super(entity, reason, kind, Recommendation.Opinion);
+        super(sourceEvent, entity, reason, kind, Recommendation.Opinion);
         if (!Number.isInteger(opinion)) {
             throw new TypeError(`The opinion must be an integer, got ${opinion}`);
         }
@@ -231,6 +250,10 @@ export class ListRuleOpinion extends ListRule {
  */
 export class ListRuleUnknown extends ListRule {
     constructor(
+        /**
+         * The event source for the rule.
+         */
+        sourceEvent: MatrixStateEvent,
         /**
          * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
          */
@@ -248,6 +271,6 @@ export class ListRuleUnknown extends ListRule {
          */
         public readonly content: any,
     ) {
-        super(entity, reason, kind, null);
+        super(sourceEvent, entity, reason, kind, null);
     }
 }
