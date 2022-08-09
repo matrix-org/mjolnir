@@ -261,19 +261,22 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         mjolnir.joinRoom(banListId);
         this.mjolnir!.watchList(Permalinks.forRoom(banListId));
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
-        for (let i = 0; i < 200; i++) {
+        const evilServerCount = 200;
+        for (let i = 0; i < evilServerCount; i++) {
             const badServer = `${i}.evil.com`;
             acl.denyServer(badServer);
             await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule #${i}`);
             // Give them a bit of a spread over time.
             await new Promise(resolve => setTimeout(resolve, 5));
         }
-        // give the events a chance to appear in the response to `/state`, since this is a problem.
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
         // We do this because it should force us to wait until all the ACL events have been applied.
         // Even if that does mean the last few events will not go through batching...
         await this.mjolnir!.syncLists();
+
+        // At this point we check that the state within Mjolnir is internally consistent, this is just because debugging the following
+        // is a pita.
+        const list: PolicyList = this.mjolnir.policyLists[0]!;
+        assert.equal(list.serverRules.length, evilServerCount, `There should be ${evilServerCount} rules in here`);
 
         // Check each of the protected rooms for ACL events and make sure they were batched and are correct.
         await Promise.all(protectedRooms.map(async room => {
