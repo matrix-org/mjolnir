@@ -103,6 +103,15 @@ export class Mjolnir {
     private webapis: WebAPIs;
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
     public taskQueue: ThrottlingQueue;
+    /**
+     * Used to provide mutual exclusion when synchronizing rooms with the state of a policy list.
+     * This is because requests operating with rules from an older version of the list that are slow
+     * could race & give the room an inconsistent state. An example is if we add multiple m.policy.rule.server rules,
+     * which would cause several requests to a room to send a new m.room.server_acl event.
+     * These requests could finish in any order, which has left rooms with an inconsistent server_acl event
+     * until Mjolnir synchronises the room with its policy lists again, which can be in the region of hours.
+     */
+    public aclChain: Promise<void> = Promise.resolve();
     /*
      * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
      */
