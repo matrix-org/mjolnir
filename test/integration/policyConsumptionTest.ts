@@ -1,6 +1,7 @@
 import { strict as assert } from "assert";
 
 import { newTestUser } from "./clientHelper";
+import { Mjolnir } from "../../src/Mjolnir";
 import config from "../../src/config";
 import { getRequestFn, LogService, MatrixClient } from "matrix-bot-sdk";
 import { createBanList, getFirstReaction } from "./commands/commandUtils";
@@ -8,9 +9,9 @@ import { createBanList, getFirstReaction } from "./commands/commandUtils";
 /**
  * Get a copy of the rules from the ruleserver.
  */
-async function currentRules(address: string, port: number): Promise<{ start: object, stop: object, since: string }> {
+async function currentRules(mjolnir: Mjolnir): Promise<{ start: object, stop: object, since: string }> {
     return await new Promise((resolve, reject) => getRequestFn()({
-        uri: `http://${address}:${port}/api/1/ruleserver/updates/`,
+        uri: `http://${mjolnir.config.web.address}:${mjolnir.config.web.port}/api/1/ruleserver/updates/`,
         method: "GET"
     }, (error, response, body) => {
         if (error) {
@@ -25,8 +26,8 @@ async function currentRules(address: string, port: number): Promise<{ start: obj
  * Wait for the rules to change as a result of the thunk. The returned promise will resolve when the rules being served have changed.
  * @param thunk Should cause the rules the RuleServer is serving to change some way.
  */
-async function waitForRuleChange(address: string, port: number, thunk): Promise<void> {
-    const initialRules = await currentRules(address, port);
+async function waitForRuleChange(mjolnir: Mjolnir, thunk): Promise<void> {
+    const initialRules = await currentRules(mjolnir);
     let rules = initialRules;
     // We use JSON.stringify like this so that it is pretty printed in the log and human readable.
     LogService.debug('policyConsumptionTest', `Rules before we wait for them to change: ${JSON.stringify(rules, null, 2)}`);
@@ -35,7 +36,7 @@ async function waitForRuleChange(address: string, port: number, thunk): Promise<
         await new Promise<void>(resolve => {
             setTimeout(resolve, 500);
         })
-        rules = await currentRules(address, port);
+        rules = await currentRules(mjolnir);
     };
     // The problem is, we have no idea how long a consumer will take to process the changed rules.
     // We know the pull peroid is 1 second though.
@@ -49,9 +50,7 @@ describe("Test: that policy lists are consumed by the associated synapse module"
     this.afterEach(async function () {
         if(this.config.web.ruleServer.enabled) {
             this.timeout(5000)
-            LogService.debug('policyConsumptionTest', `Rules at end of test ${JSON.stringify(await currentRules(
-                this.config.web.address, this.mjolnir.config.web.port
-            ), null, 2)}`);
+            LogService.debug('policyConsumptionTest', `Rules at end of test ${JSON.stringify(await currentRules(this.mjolnir), null, 2)}`);
             const mjolnir = config.RUNTIME.client!;
             // Clear any state associated with the account.
             await mjolnir.setAccountData('org.matrix.mjolnir.watched_lists', {
