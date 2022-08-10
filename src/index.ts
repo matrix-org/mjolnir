@@ -28,22 +28,24 @@ import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
 import { patchMatrixClient } from "./utils";
 
-config.RUNTIME = {};
-
-LogService.setLogger(new RichConsoleLogger());
-LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
-
-LogService.info("index", "Starting bot...");
-
-Healthz.isHealthy = false; // start off unhealthy
-if (config.health.healthz.enabled) {
-    Healthz.listen();
-}
 
 (async function () {
+    const config = config_read();
+
+    config.RUNTIME = {};
+
+    LogService.setLogger(new RichConsoleLogger());
+    LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
+
+    LogService.info("index", "Starting bot...");
+
+    Healthz.isHealthy = false; // start off unhealthy
+    if (config.health.healthz.enabled) {
+        Healthz.listen();
+    }
+
     let bot: Mjolnir | null = null;
     try {
-        const config = config_read();
         const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
         const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
 
