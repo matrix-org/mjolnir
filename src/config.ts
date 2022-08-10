@@ -170,7 +170,7 @@ const defaultConfig: IConfig = {
 };
 
 export function read(): IConfig {
-    const content = fs.readFileSync(`./config/${process.env.NODE_ENV}.yaml`, "utf8");
+    const content = fs.readFileSync(`./config/${process.env.NODE_ENV || 'default'}.yaml`, "utf8");
     const parsed = load(content);
     const config = {...defaultConfig, ...(parsed as object)} as IConfig;
     return config;
