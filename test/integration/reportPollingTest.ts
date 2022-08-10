@@ -5,7 +5,7 @@ import { newTestUser } from "./clientHelper";
 describe("Test: Report polling", function() {
     let client;
     this.beforeEach(async function () {
-        client = await newTestUser({ name: { contains: "protection-settings" }});
+        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "protection-settings" }});
     })
     it("Mjolnir correctly retrieves a report from synapse", async function() {
         this.timeout(40000);

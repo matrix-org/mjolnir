@@ -23,7 +23,7 @@ import {
     RichConsoleLogger,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
-import config from "./config";
+import { read as config_read } from "./config";
 import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
 import { patchMatrixClient } from "./utils";
@@ -43,6 +43,7 @@ if (config.health.healthz.enabled) {
 (async function () {
     let bot: Mjolnir | null = null;
     try {
+        const config = config_read();
         const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
         const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
 

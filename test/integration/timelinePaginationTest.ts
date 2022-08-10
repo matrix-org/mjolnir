@@ -10,9 +10,9 @@ describe("Test: timeline pagination", function () {
     it('does not paginate across the entire room history while backfilling.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser({ name: { contains: "spammer" }});
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" }});
         let badUserId = await badUser.getUserId();
-        let moderator = await newTestUser({ name: { contains: "moderator" }});
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" }});
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId()]});
         await badUser.joinRoom(targetRoom);
 
@@ -39,9 +39,9 @@ describe("Test: timeline pagination", function () {
     })
     it('does not call the callback with an empty array when there are no relevant events', async function() {
         this.timeout(60000);
-        let badUser = await newTestUser({ name: { contains: "spammer" }});
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" }});
         let badUserId = await badUser.getUserId();
-        let moderator = await newTestUser({ name: { contains: "moderator" }});
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" }});
         let targetRoom = await moderator.createRoom();
         // send some irrelevant messages
         await Promise.all([...Array(200).keys()].map((i) => moderator.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Irrelevant Message #${i}`})));
@@ -54,9 +54,9 @@ describe("Test: timeline pagination", function () {
     })
     it("The limit provided is respected", async function() {
         this.timeout(60000);
-        let badUser = await newTestUser({ name: { contains: "spammer" }});
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" }});
         let badUserId = await badUser.getUserId();
-        let moderator = await newTestUser({ name: { contains: "moderator" }});
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" }});
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId()]});
         await badUser.joinRoom(targetRoom);
         // send some bad person messages
@@ -83,7 +83,7 @@ describe("Test: timeline pagination", function () {
     });
     it("Gives the events to the callback ordered by youngest first (even more important when the limit is reached halfway through a chunk).", async function() {
         this.timeout(60000);
-        let moderator = await newTestUser({ name: { contains: "moderator" }});
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" }});
         let moderatorId = await moderator.getUserId();
         let targetRoom = await moderator.createRoom();
         for (let i = 0; i < 20; i++) {

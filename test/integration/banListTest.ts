@@ -30,7 +30,7 @@ describe("Test: Updating the PolicyList", function() {
     it("Calculates what has changed correctly.", async function() {
         this.timeout(10000);
         const mjolnir: Mjolnir = this.mjolnir!
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
         mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
@@ -121,7 +121,7 @@ describe("Test: Updating the PolicyList", function() {
     it("Will remove rules with old types when they are 'soft redacted' with a different but more recent event type.", async function() {
         this.timeout(3000);
         const mjolnir: Mjolnir = this.mjolnir!
-        const moderator = await newTestUser({ name: { contains: "moderator" }} );
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" }} );
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
         mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
@@ -142,7 +142,7 @@ describe("Test: Updating the PolicyList", function() {
     })
     it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function() {
         const mjolnir: Mjolnir = this.mjolnir!
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
         mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
@@ -232,7 +232,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
     it('Will batch ACL updates if we spam rules into a PolicyList', async function() {
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         moderator.joinRoom(this.mjolnir.client.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
 
@@ -300,7 +300,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
     it('Will remove rules that have legacy types', async function() {
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         this.moderator = moderator;
         await moderator.joinRoom(mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
@@ -372,7 +372,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         this.timeout(180000)
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         moderator.joinRoom(mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
 
