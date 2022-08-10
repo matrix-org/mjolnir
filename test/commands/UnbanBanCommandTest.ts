@@ -18,10 +18,11 @@ import * as expect from "expect";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";
-import config from "../../src/config";
+import { read as config_read } from "../../src/config";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/ListRule";
 
 function createTestMjolnir(defaultShortcode: string|null = null): Mjolnir {
+    const config = config_read();
     const client = {
         // Mock `MatrixClient.getAccountData` .
         getAccountData: (eventType: string): Promise<any> => {
