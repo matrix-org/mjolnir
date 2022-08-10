@@ -226,7 +226,8 @@ export async function replaceRoomIdsWithPills(mjolnir: Mjolnir, text: string, ro
         const regexRoomId = new RegExp(escapeRegex(roomId), "g");
         content.body = content.body.replace(regexRoomId, alias);
         if (content.formatted_body) {
-            content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${Permalinks.forRoom(alias, viaServers)}">${alias}</a>`);
+            const permalink = Permalinks.forRoom(alias, alias !== roomId ? [] : viaServers);
+            content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${permalink}">${alias}</a>`);
         }
     }
 

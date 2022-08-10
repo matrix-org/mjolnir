@@ -26,7 +26,7 @@ describe("Test: utils", function() {
         const ourHomeserver = new UserID(await this.mjolnir.client.getUserId()).domain;
         assert.equal(
             out.formatted_body,
-            `it's fun here in <a href="https://matrix.to/#/${managementRoomAlias}?via=${ourHomeserver}">${managementRoomAlias}</a>`
+            `it's fun here in <a href="https://matrix.to/#/${managementRoomAlias}">${managementRoomAlias}</a>`
         );
     });
 });
