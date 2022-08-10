@@ -1,6 +1,5 @@
 import { HmacSHA1 } from "crypto-js";
 import { getRequestFn, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
-import config from '../../src/config';
 
 const REGISTRATION_ATTEMPTS = 10;
 const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
