@@ -20,7 +20,7 @@ describe("Test: utils", function() {
         const out = await replaceRoomIdsWithPills(
             this.mjolnir,
             `it's fun here in ${this.mjolnir.managementRoomId}`,
-            new Set([this.mjolnir.managementRoomId])
+            new Set([this.mjolnir.managementRoomId, "!myfaketestid:example.com"])
         );
 
         const ourHomeserver = new UserID(await this.mjolnir.client.getUserId()).domain;
