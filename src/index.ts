@@ -23,14 +23,14 @@ import {
     RichConsoleLogger,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
-import { read as config_read } from "./config";
+import { read as configRead } from "./config";
 import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
 import { patchMatrixClient } from "./utils";
 
 
 (async function () {
-    const config = config_read();
+    const config = configRead();
 
     config.RUNTIME = {};
 

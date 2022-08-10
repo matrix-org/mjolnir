@@ -1,4 +1,4 @@
-import { read as config_read } from "../../src/config";
+import { read as configRead } from "../../src/config";
 import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 
 // When Mjolnir starts (src/index.ts) it clobbers the config by resolving the management room
@@ -13,7 +13,7 @@ export const mochaHooks = {
             console.log("mochaHooks.beforeEach");
             // Sometimes it takes a little longer to register users.
             this.timeout(10000);
-            const config = this.config = config_read();
+            const config = this.config = configRead();
             this.managementRoomAlias = config.managementRoom;
             this.mjolnir = await makeMjolnir(config);
             config.RUNTIME.client = this.mjolnir.client;
