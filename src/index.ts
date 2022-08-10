@@ -39,9 +39,10 @@ import { patchMatrixClient } from "./utils";
 
     LogService.info("index", "Starting bot...");
 
-    Healthz.isHealthy = false; // start off unhealthy
+    const healthz = new Healthz(config);
+    healthz.isHealthy = false; // start off unhealthy
     if (config.health.healthz.enabled) {
-        Healthz.listen();
+        healthz.listen();
     }
 
     let bot: Mjolnir | null = null;
@@ -66,7 +67,7 @@ import { patchMatrixClient } from "./utils";
     }
     try {
         await bot.start();
-        Healthz.isHealthy = true;
+        healthz.isHealthy = true;
     } catch (err) {
         console.error(`Mjolnir failed to start: ${err}`);
         throw err;
