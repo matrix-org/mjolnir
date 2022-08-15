@@ -238,7 +238,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
 
         // Setup some protected rooms so we can check their ACL state later.
         const protectedRooms: string[] = [];
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 5; i++) {
             const room = await moderator.createRoom({ invite: [mjolnirId] });
             await mjolnir.client.joinRoom(room);
             await moderator.setUserPowerLevel(mjolnirId, room, 100);
@@ -306,7 +306,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         const mjolnirId = await mjolnir.client.getUserId();
 
         // We'll make 1 protected room to test ACLs in.
-        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId], name: "Look for me" });
+        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId] });
         await mjolnir.client.joinRoom(protectedRoom);
         await moderator.setUserPowerLevel(mjolnirId, protectedRoom, 100);
         await mjolnir.addProtectedRoom(protectedRoom);
