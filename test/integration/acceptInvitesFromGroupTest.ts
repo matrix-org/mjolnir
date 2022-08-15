@@ -1,10 +1,10 @@
-import { strict as assert } from "assert";
-
+import { MatrixClient } from "matrix-bot-sdk";
+import { Mjolnir } from "../../src/Mjolnir"
 import config from "../../src/config";
 import { newTestUser } from "./clientHelper";
 
 describe("Test: Accept Invites From Space", function() {
-    let client;
+    let client: MatrixClient|undefined;
     this.beforeEach(async function () {
         client = await newTestUser({ name: { contains: "spacee" }});
         await client.start();
@@ -15,11 +15,13 @@ describe("Test: Accept Invites From Space", function() {
     it("Mjolnir should accept an invite from a user in a nominated Space", async function() {
         this.timeout(20000);
 
-        const mjolnirUserId = await this.mjolnir.client.getUserId();
+        const mjolnir: Mjolnir = this.mjolnir!;
+        const mjolnirUserId = await mjolnir.client.getUserId();
 
         const space = await client.createSpace({
             name: "mjolnir space invite test",
             invites: [mjolnirUserId],
+            isPublic: false
         });
 
         await this.mjolnir.client.joinRoom(space.roomId);
