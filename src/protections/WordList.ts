@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { Protection } from "./IProtection";
+import { Consequence } from "./consequence";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { isTrueJoinEvent } from "../utils";
@@ -95,8 +96,15 @@ export class WordList extends Protection {
                 }
             }
 
-            // Perform the test
-            if (message && this.badWords!.test(message)) {
+            if (!message) {
+                return;
+            }
+
+            const matches = message.match(this.badWords!);
+            if (matches) {
+                return new Consequence({ban: true, redact: true, reason: `bad word: ${matches[0]}`})
+
+/*
                 await mjolnir.logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.banUser(event['sender'], roomId, "Word list violation");
@@ -110,6 +118,7 @@ export class WordList extends Protection {
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
+*/
             }
         }
     }

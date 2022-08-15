@@ -35,7 +35,7 @@ import { applyUserBans } from "./actions/ApplyBan";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { Protection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
-import { ConsequenceType, Consequence } from "./protections/consequence";
+import { Consequence } from "./protections/consequence";
 import { ProtectionSettingValidationError } from "./protections/ProtectionSettings";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
@@ -951,18 +951,22 @@ export class Mjolnir {
     }
 
     private async handleConsequence(protection: Protection, roomId: string, eventId: string, sender: string, consequence: Consequence) {
-        switch (consequence.type) {
-            case ConsequenceType.alert:
-                break;
-            case ConsequenceType.redact:
-                await this.client.redactEvent(roomId, eventId, "abuse detected");
-                break;
-            case ConsequenceType.ban:
-                await this.client.banUser(sender, roomId, "abuse detected");
-                break;
+        let met: string[] = [];
+
+        if (consequence.alert) {
+            met.push("alert");
+        }
+        if (consequence.ban) {
+            met.push("ban");
+            await this.client.banUser(sender, roomId, "abuse detected");
+        }
+        if (consequence.redact) {
+            met.push("redact");
+            await this.client.redactEvent(roomId, eventId, "abuse detected");
         }
 
-        let message = `protection ${protection.name} enacting ${ConsequenceType[consequence.type]}`
+        let message = `protection ${protection.name} enacting`
+            + ` ${met.join(", ")}`
             + ` against ${htmlEscape(sender)}`
             + ` in ${htmlEscape(roomId)}`;
         if (consequence.reason !== undefined) {
@@ -977,7 +981,7 @@ export class Mjolnir {
             [CONSEQUENCE_EVENT_DATA]: {
                 who: sender,
                 room: roomId,
-                type: ConsequenceType[consequence.type]
+                types: met,
             }
         });
     }
