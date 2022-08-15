@@ -68,7 +68,11 @@ export class ReportPoller {
             response_ = await this.mjolnir.client.doRequest(
                 "GET",
                 "/_synapse/admin/v1/event_reports",
-                { from: this.from.toString() }
+                {
+                    // short for direction: forward; i.e. show newest last
+                    dir: "f",
+                    from: this.from.toString()
+                }
             );
         } catch (ex) {
             await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
