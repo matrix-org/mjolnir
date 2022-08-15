@@ -141,7 +141,6 @@ describe("Test: Updating the PolicyList", function() {
         assert.equal(banList.userRules.filter(rule => rule.entity === entity).length, 0, 'The rule should no longer be stored.');
     })
     it("A rule of the most recent type won't be deleted when an old rule is deleted for the same entity.", async function() {
-        this.timeout(3000);
         const mjolnir: Mjolnir = this.mjolnir!
         const moderator = await newTestUser({ name: { contains: "moderator" } });
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
@@ -299,22 +298,22 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
 describe('Test: unbaning entities via the PolicyList.', function() {
     afterEach(function() { this.moderator?.stop(); });
     it('Will remove rules that have legacy types', async function() {
-        this.timeout(20000)
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
         const moderator = await newTestUser({ name: { contains: "moderator" } });
         this.moderator = moderator;
-        moderator.joinRoom(mjolnir.managementRoomId);
+        await moderator.joinRoom(mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
 
         // We'll make 1 protected room to test ACLs in.
-        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId] });
+        const protectedRoom = await moderator.createRoom({ invite: [mjolnirId], name: "Look for me" });
         await mjolnir.client.joinRoom(protectedRoom);
         await moderator.setUserPowerLevel(mjolnirId, protectedRoom, 100);
         await mjolnir.addProtectedRoom(protectedRoom);
 
         // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
         await mjolnir.syncLists();
+        // If this is not present, then it means the room isn't being protected, which is really bad.
         const roomAcl = await mjolnir.client.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
 
@@ -323,7 +322,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         await moderator.setUserPowerLevel(await mjolnir.client.getUserId(), banListId, 100);
         await moderator.sendStateEvent(banListId, 'org.matrix.mjolnir.shortcode', '', { shortcode: "unban-test" });
         await mjolnir.client.joinRoom(banListId);
-        this.mjolnir!.watchList(Permalinks.forRoom(banListId));
+        await mjolnir.watchList(Permalinks.forRoom(banListId));
         // we use this to compare changes.
         const banList = new PolicyList(banListId, banListId, moderator);
         // we need two because we need to test the case where an entity has all rule types in the list
@@ -350,8 +349,8 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         try {
             await moderator.start();
             for (const server of [olderBadServer, newerBadServer]) {
-                await getFirstReaction(moderator, this.mjolnir.managementRoomId, '✅', async () => {
-                    return await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir unban unban-test server ${server}` });
+                await getFirstReaction(moderator, mjolnir.managementRoomId, '✅', async () => {
+                    return await moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir unban unban-test server ${server}` });
                 });
             }
         } finally {
@@ -359,7 +358,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         }
 
         // Wait for mjolnir to sync protected rooms to update ACL.
-        await this.mjolnir!.syncLists();
+        await mjolnir.syncLists();
         // Confirm that the server is unbanned.
         await banList.updateList();
         assert.equal(banList.allRules.length, 0);
