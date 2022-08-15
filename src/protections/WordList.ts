@@ -103,22 +103,6 @@ export class WordList extends Protection {
             const matches = message.match(this.badWords!);
             if (matches) {
                 return new Consequence({ban: true, redact: true, reason: `bad word: ${matches[0]}`})
-
-/*
-                await mjolnir.logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
-                if (!mjolnir.config.noop) {
-                    await mjolnir.client.banUser(event['sender'], roomId, "Word list violation");
-                } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-                }
-
-                // Redact the event
-                if (!mjolnir.config.noop) {
-                    await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
-                } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-                }
-*/
             }
         }
     }
