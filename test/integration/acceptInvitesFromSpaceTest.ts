@@ -5,7 +5,7 @@ import { newTestUser } from "./clientHelper";
 describe("Test: Accept Invites From Space", function() {
     let client: MatrixClient|undefined;
     this.beforeEach(async function () {
-        client = await newTestUser({ name: { contains: "spacee" }});
+        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "spacee" }});
         await client.start();
     })
     this.afterEach(async function () {
