@@ -28,7 +28,7 @@ describe("Test: DetectFederationLag protection", function() {
         await this.mjolnir.enableProtection("DetectFederationLag");
 
         // Setup a moderator.
-        this.moderator = await newTestUser({ name: { contains: "moderator" } });
+        this.moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         await this.moderator.joinRoom(this.mjolnir.managementRoomId);
 
         const SETTINGS = {

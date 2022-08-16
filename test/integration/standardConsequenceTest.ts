@@ -1,6 +1,5 @@
 import { strict as assert } from "assert";
 
-import config from "../../src/config";
 import { Mjolnir } from "../../src/Mjolnir";
 import { IProtection } from "../../src/protections/IProtection";
 import { newTestUser, noticeListener } from "./clientHelper";
@@ -11,8 +10,8 @@ describe("Test: standard consequences", function() {
     let badUser;
     let goodUser;
     this.beforeEach(async function () {
-        badUser = await newTestUser({ name: { contains: "standard-consequences" }});
-        goodUser = await newTestUser({ name: { contains: "standard-consequences" }});
+        badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "standard-consequences" }});
+        goodUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "standard-consequences" }});
         await badUser.start();
         await goodUser.start();
     })

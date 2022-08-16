@@ -3,9 +3,10 @@
  */
 
 import { makeMjolnir } from "./mjolnirSetupUtils";
-import config from '../../src/config';
+import { read as configRead } from '../../src/config';
 
 (async () => {
+    const config = configRead();
     let mjolnir = await makeMjolnir(config);
     await mjolnir.start();
 })();

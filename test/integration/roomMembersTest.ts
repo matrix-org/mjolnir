@@ -257,7 +257,7 @@ describe("Test: Testing RoomMemberManager", function() {
         const start = new Date(Date.now() - 10_000);
 
         // Setup a moderator.
-        this.moderator = await newTestUser({ name: { contains: "moderator" } });
+        this.moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         await this.mjolnir.client.inviteUser(await this.moderator.getUserId(), this.mjolnir.managementRoomId)
         await this.moderator.joinRoom(this.mjolnir.managementRoomId);
 
@@ -265,7 +265,7 @@ describe("Test: Testing RoomMemberManager", function() {
         this.users = [];
         const SAMPLE_SIZE = 10;
         for (let i = 0; i < SAMPLE_SIZE; ++i) {
-            this.users.push(await newTestUser({ name: { contains: `user_${i}_room_member_test` } }));
+            this.users.push(await newTestUser(this.config.homeserverUrl, { name: { contains: `user_${i}_room_member_test` } }));
         }
         const userIds = [];
         for (let client of this.users) {
@@ -380,7 +380,7 @@ describe("Test: Testing RoomMemberManager", function() {
         const start = new Date(Date.now() - 10_000);
 
         // Setup a moderator.
-        this.moderator = await newTestUser({ name: { contains: "moderator" } });
+        this.moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         await this.moderator.joinRoom(this.mjolnir.managementRoomId);
 
         // Create a few users.
@@ -388,8 +388,8 @@ describe("Test: Testing RoomMemberManager", function() {
         this.badUsers = [];
         const SAMPLE_SIZE = 10;
         for (let i = 0; i < SAMPLE_SIZE; ++i) {
-            this.goodUsers.push(await newTestUser({ name: { contains: `good_user_${i}_room_member_test` } }));
-            this.badUsers.push(await newTestUser({ name: { contains: `bad_user_${i}_room_member_test` } }));
+            this.goodUsers.push(await newTestUser(this.config.homeserverUrl, { name: { contains: `good_user_${i}_room_member_test` } }));
+            this.badUsers.push(await newTestUser(this.config.homeserverUrl, { name: { contains: `bad_user_${i}_room_member_test` } }));
         }
         const goodUserIds: string[] = [];
         const badUserIds: string[] = [];

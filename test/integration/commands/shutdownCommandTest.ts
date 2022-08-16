@@ -5,7 +5,7 @@ import { newTestUser } from "../clientHelper";
 describe("Test: shutdown command", function() {
     let client;
     this.beforeEach(async function () {
-        client = await newTestUser({ name: { contains: "shutdown-command" }});
+        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "shutdown-command" }});
         await client.start();
     })
     this.afterEach(async function () {
