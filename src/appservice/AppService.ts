@@ -23,7 +23,7 @@ import { MjolnirManager } from ".//MjolnirManager";
 // ts-node src/appservice/AppService.ts -r -u "http://localhost:9000" # remember to add the registration to homeserver.yaml! you probably want host.docker.internal as the hostname of the appservice if using mx-tester
 // ts-node src/appservice/AppService -p 9000 # to start.
 
-class MjolnirAppService {
+export class MjolnirAppService {
 
     public readonly bridge: Bridge;
     private readonly mjolnirManager: MjolnirManager = new MjolnirManager();
@@ -51,7 +51,22 @@ class MjolnirAppService {
             // we're only doing this because it's complaining about missing profiles.
             // actually the user id wasn't even right, so this might not be necessary anymore.
             await mjIntent.ensureProfile('Mjolnir');
-            this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent);
+
+            if (!managementRoomId) {
+                managementRoomId = (await mjIntent.createRoom({
+                    createAsClient: true,
+                    options: {
+                        preset: 'private_chat',
+                        invite: [requestingUserId],
+                        name: `${requestingUserId}'s mjolnir`
+                    }
+                })).room_id;
+            } else {
+                const requesterIntent = await this.bridge.getIntent(requestingUserId);
+                await requesterIntent.invite(managementRoomId, await mjIntent.matrixClient.getUserId());
+            }
+
+            this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent.matrixClient);
             // Technically the mjolnir is a remote user, but also not because it's matrix-matrix.
             //const mjAsRemote = new RemoteUser(mjIntent.userId)
             //const bridgeStore = this.bridge.getUserStore()!;
@@ -65,7 +80,7 @@ class MjolnirAppService {
     public onUserQuery (queriedUser: MatrixUser) {
         return {}; // auto-provision users with no additonal data
     }
-    
+
     // is it ok for this to be async? seems a bit dodge.
     // it should be BridgeRequestEvent not whatever this is
     public async onEvent(request: Request<WeakEvent>, context: BridgeContext) {
@@ -75,7 +90,7 @@ class MjolnirAppService {
         const mxEvent = request.getData();
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
-                await this.provisionNewMjolnir(mxEvent.sender);
+                await this.provisionNewMjolnir(mxEvent.sender, undefined);
             }
         }
         this.mjolnirManager.onEvent(request, context);

@@ -1,6 +1,6 @@
-import * from "request";
+import * as request from "request";
+import * as express from "express";
 import { MjolnirAppService } from "./AppService";
-import { MjolnirManager } from "./MjolnirManager";
 
 export class Api {
     private httpdConfig: express.Express = express();
@@ -8,7 +8,6 @@ export class Api {
     constructor(
         private homeserver: string,
         private appService: MjolnirAppService,
-        private manager: MjolnirManager,
     ) {}
 
     private resolveAccessToken(accessToken: string): Promise<string> {
@@ -16,7 +15,7 @@ export class Api {
             request({
                 url: `${this.homeserver}/_matrix/federation/v1/openid/userinfo`,
                 qs: { access_token: accessToken },
-            }, (err, response, body) => {
+            }, (err, homeserver_response, body) => {
                 if (err) {
                     reject(null);
                 }
@@ -26,6 +25,7 @@ export class Api {
                     response = JSON.parse(body);
                 } catch (e) {
                     reject(null);
+                    return;
                 }
 
                 resolve(response.sub);
@@ -38,7 +38,7 @@ export class Api {
         this.httpdConfig.get("/list", this.pathList);
         this.httpdConfig.post("/create", this.pathCreate);
 
-        const httpServer = this.httpdConfig.listen(port);
+        this.httpdConfig.listen(port);
     }
 
     private async pathGet(request: express.Request, response: express.Response) {
@@ -54,7 +54,7 @@ export class Api {
             return;
         }
 
-        const userId = await this.resolveAccesstoken(accessToken);
+        //const userId = await this.resolveAccessToken(accessToken);
         // doesn't exist yet
         //if (!this.appService.canSeeMjolnir(userId, mjolnirId)) {
         if (false) {
@@ -75,7 +75,7 @@ export class Api {
             return;
         }
 
-        const userId = await this.resolveAccessToken(accessToken);
+        //const userId = await this.resolveAccessToken(accessToken);
         // doesn't exist yet
         //const existing = this.appService.listForUser(userId);
         const existing = ["@mjolnir_12345:matrix.org", "@mjolnir_12346:matrix.org"];

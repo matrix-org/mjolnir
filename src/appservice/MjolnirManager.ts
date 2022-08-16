@@ -1,8 +1,8 @@
 import { Mjolnir } from "../Mjolnir";
-import { Intent, Request, WeakEvent, BridgeContext } from "matrix-appservice-bridge";
+import { Request, WeakEvent, BridgeContext } from "matrix-appservice-bridge";
 import { IConfig, setDefaults } from "../config";
 import { SHORTCODE_EVENT_TYPE } from "../models/BanList";
-import { Permalinks } from "matrix-bot-sdk";
+import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 
 export class MjolnirManager {
     private readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
@@ -11,7 +11,7 @@ export class MjolnirManager {
         return setDefaults({managementRoom});
     }
 
-    public async createNew(requestingUserId: string, managementRoomId: string|undefined, intent: Intent) {
+    public async createNew(requestingUserId: string, managementRoomId: string, client: MatrixClient) {
         // FIXME: We should be creating the intent here and generating the id surely?
         // rather than externally...
         // FIXME: We need to verify that we haven't stored a mjolnir already if we aren't doing the above.
@@ -19,19 +19,9 @@ export class MjolnirManager {
         // get mjolnir list wroking by just avoiding it for now and see if protections work
         // and bans.
         // Find out trade offs of changing mjolnir to make it work vs making new subcomponent of mjolnir.
-        if (managementRoomId === undefined) {
-            managementRoomId = (await intent.createRoom({
-                createAsClient: true,
-                options: {
-                    preset: 'private_chat',
-                    invite: [requestingUserId],
-                    name: `${requestingUserId}'s mjolnir`
-                }
-            })).room_id;
-        }
-        const managedMjolnir = new ManagedMjolnir(intent, await Mjolnir.setupMjolnirFromConfig(intent.matrixClient, this.getDefaultMjolnirConfig(managementRoomId)));
+        const managedMjolnir = new ManagedMjolnir(await Mjolnir.setupMjolnirFromConfig(client, this.getDefaultMjolnirConfig(managementRoomId)));
         await managedMjolnir.moveMeSomewhereCommonAndStopImplementingFunctionalityOnACommandFirstBasis(requestingUserId, 'list')
-        this.mjolnirs.set(intent.userId, managedMjolnir);
+        this.mjolnirs.set(await client.getUserId(), managedMjolnir);
     }
 
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
@@ -45,10 +35,7 @@ export class MjolnirManager {
 // Isolating this mjolnir is going to require provisioning an access token just for this user to be useful.
 // We can use fork and node's IPC to inform the process of matrix evnets.
 export class ManagedMjolnir {
-    
-
-    public constructor(private readonly intent: Intent, private readonly mjolnir: Mjolnir) {
-    }
+    public constructor(private readonly mjolnir: Mjolnir) { }
 
     public async onEvent(request: Request<WeakEvent>) {
         // phony sync.
@@ -61,7 +48,7 @@ export class ManagedMjolnir {
             // room.join requires us to know the joined rooms before so lol.
         }
         if (mxEvent['type'] === 'm.room.member') {
-            if (mxEvent['content']['membership'] === 'invite' && mxEvent.state_key === this.intent.userId) {
+            if (mxEvent['content']['membership'] === 'invite' && mxEvent.state_key === await this.mjolnir.client.getUserId()) {
                 this.mjolnir.client.emit('room.invite', mxEvent.room_id, mxEvent);
             }
         }
@@ -83,7 +70,7 @@ export class ManagedMjolnir {
             "redact": 50,
             "state_default": 50,
             "users": {
-                [this.intent.userId]: 100,
+                [await this.mjolnir.client.getUserId()]: 100,
                 [mjolnirOwnerId]: 50
             },
             "users_default": 0,
