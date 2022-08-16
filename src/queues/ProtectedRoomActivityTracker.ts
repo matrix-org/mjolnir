@@ -39,6 +39,7 @@ export class ProtectedRoomActivityTracker {
      */
     public addProtectedRoom(roomId: string): void {
         this.protectedRoomActivities.set(roomId, /* epoch */ 0);
+        this.activeRoomsCache = null;
     }
 
     /**
@@ -47,6 +48,7 @@ export class ProtectedRoomActivityTracker {
      */
     public removeProtectedRoom(roomId: string): void {
         this.protectedRoomActivities.delete(roomId);
+        this.activeRoomsCache = null;
     }
 
     /**
