@@ -1,6 +1,5 @@
 import { MatrixClient } from "matrix-bot-sdk";
 import { Mjolnir } from "../../src/Mjolnir"
-import config from "../../src/config";
 import { newTestUser } from "./clientHelper";
 
 describe("Test: Accept Invites From Space", function() {
@@ -27,8 +26,8 @@ describe("Test: Accept Invites From Space", function() {
         await this.mjolnir.client.joinRoom(space.roomId);
 
         // we're mutating a static object, which may affect other tests :(
-        config.autojoinOnlyIfManager = false;
-        config.acceptInvitesFromSpace = space.roomId;
+        mjolnir.config.autojoinOnlyIfManager = false;
+        mjolnir.config.acceptInvitesFromGroup = space.roomId;
 
         const promise = new Promise(async (resolve, reject) => {
             const newRoomId = await client.createRoom({ invite: [mjolnirUserId] });
