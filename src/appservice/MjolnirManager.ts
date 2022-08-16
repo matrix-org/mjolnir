@@ -11,7 +11,7 @@ export class MjolnirManager {
         return setDefaults({managementRoom});
     }
 
-    public async createNew(requestingUserId: string, intent: Intent) {
+    public async createNew(requestingUserId: string, managementRoomId: string|undefined, intent: Intent) {
         // FIXME: We should be creating the intent here and generating the id surely?
         // rather than externally...
         // FIXME: We need to verify that we haven't stored a mjolnir already if we aren't doing the above.
@@ -19,18 +19,19 @@ export class MjolnirManager {
         // get mjolnir list wroking by just avoiding it for now and see if protections work
         // and bans.
         // Find out trade offs of changing mjolnir to make it work vs making new subcomponent of mjolnir.
-        const managementRoomId = (await intent.createRoom({
-            createAsClient: true,
-            options: {
-                preset: 'private_chat',
-                invite: [requestingUserId],
-                name: `${requestingUserId}'s mjolnir`
-            }
-        })).room_id;
+        if (managementRoomId === undefined) {
+            managementRoomId = (await intent.createRoom({
+                createAsClient: true,
+                options: {
+                    preset: 'private_chat',
+                    invite: [requestingUserId],
+                    name: `${requestingUserId}'s mjolnir`
+                }
+            })).room_id;
+        }
         const managedMjolnir = new ManagedMjolnir(intent, await Mjolnir.setupMjolnirFromConfig(intent.matrixClient, this.getDefaultMjolnirConfig(managementRoomId)));
         await managedMjolnir.moveMeSomewhereCommonAndStopImplementingFunctionalityOnACommandFirstBasis(requestingUserId, 'list')
         this.mjolnirs.set(intent.userId, managedMjolnir);
-        
     }
 
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {

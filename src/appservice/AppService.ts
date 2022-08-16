@@ -41,7 +41,7 @@ class MjolnirAppService {
         });
     }
 
-    public async provisionNewMjolnir(requestingUserId: string) {
+    public async provisionNewMjolnir(requestingUserId: string, managementRoomId: string|undefined) {
         // FIXME: we need to restrict who can do it (special list? ban remote users?)
         const issuedMjolnirs = await this.bridge.getUserStore()!.getRemoteUsersFromMatrixId(requestingUserId);
         if (issuedMjolnirs.length === 0) {
@@ -51,7 +51,7 @@ class MjolnirAppService {
             // we're only doing this because it's complaining about missing profiles.
             // actually the user id wasn't even right, so this might not be necessary anymore.
             await mjIntent.ensureProfile('Mjolnir');
-            this.mjolnirManager.createNew(requestingUserId, mjIntent);
+            this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent);
             // Technically the mjolnir is a remote user, but also not because it's matrix-matrix.
             //const mjAsRemote = new RemoteUser(mjIntent.userId)
             //const bridgeStore = this.bridge.getUserStore()!;

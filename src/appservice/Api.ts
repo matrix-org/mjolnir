@@ -89,13 +89,11 @@ export class Api {
             return;
         }
 
-        const managementRoom = request.params.query["roomId"] || null;
+        const managementRoom = request.params.query["roomId"];
 
         const userId = await this.resolveAccessToken(accessToken);
         const mjolnirId = this.appService.provisionNewMjolnir(
-            userId,
-            // method doesn't take a managementRoom yet
-            //managementRoom,
+            userId, managementRoom,
         );
 
         // privisionNewMjolnir can't fail yet, but it should be able to
