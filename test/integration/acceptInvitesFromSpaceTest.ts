@@ -27,9 +27,9 @@ describe("Test: Accept Invites From Space", function() {
 
         // we're mutating a static object, which may affect other tests :(
         mjolnir.config.autojoinOnlyIfManager = false;
-        mjolnir.config.acceptInvitesFromGroup = space.roomId;
+        mjolnir.config.acceptInvitesFromSpace = space.roomId;
 
-        const promise = new Promise(async (resolve, reject) => {
+        const promise = new Promise(async resolve => {
             const newRoomId = await client.createRoom({ invite: [mjolnirUserId] });
             client.on("room.event", (roomId, event) => {
                 if (

@@ -123,7 +123,7 @@ export class Mjolnir {
      * @param {string} options.managementRoom The room to report ignored invitations to if `recordIgnoredInvites` is true.
      * @param {boolean} options.recordIgnoredInvites Whether to report invites that will be ignored to the `managementRoom`.
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
-     * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
+     * @param {string} options.acceptInvitesFromSpace A space of users to accept invites from, ignores invites form users not in this space.
      */
     private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options: { [key: string]: any }) {
         client.on("room.invite", async (roomId: string, inviteEvent: any) => {
