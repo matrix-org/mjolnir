@@ -50,7 +50,7 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
 
 async function configureMjolnir(config: IConfig) {
     try {
-        await registerUser(config.pantalaimon.username, config.pantalaimon.username, config.pantalaimon.password, true)
+        await registerUser(config.homeserverUrl, config.pantalaimon.username, config.pantalaimon.username, config.pantalaimon.password, true)
     } catch (e) {
         if (e?.body?.errcode === 'M_USER_IN_USE') {
             console.log(`${config.pantalaimon.username} already registered, skipping`);
@@ -79,7 +79,7 @@ export async function makeMjolnir(config: IConfig): Promise<Mjolnir> {
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
-    await overrideRatelimitForUser(await client.getUserId());
+    await overrideRatelimitForUser(config.homeserverUrl, await client.getUserId());
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
     let mj = await Mjolnir.setupMjolnirFromConfig(client, config);

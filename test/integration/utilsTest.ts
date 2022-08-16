@@ -8,11 +8,13 @@ describe("Test: utils", function() {
     it("replaceRoomIdsWithPills correctly turns a room ID in to a pill", async function() {
         this.timeout(20000);
 
+        const managementRoomAlias = this.config.managementRoom;
+
         await this.mjolnir.client.sendStateEvent(
             this.mjolnir.managementRoomId,
             "m.room.canonical_alias",
             "",
-            { alias: config.managementRoom }
+            { alias: managementRoomAlias }
         );
 
         const out = await replaceRoomIdsWithPills(
@@ -24,7 +26,7 @@ describe("Test: utils", function() {
         const ourHomeserver = new UserID(await this.mjolnir.client.getUserId()).domain;
         assert.equal(
             out.formatted_body,
-            `it's fun here in <a href="https://matrix.to/#/${config.managementRoom}?via=${ourHomeserver}">${config.managementRoom}</a>`
+            `it's fun here in <a href="https://matrix.to/#/${managementRoomAlias}?via=${ourHomeserver}">${managementRoomAlias}</a>`
         );
     });
 });

@@ -1,6 +1,5 @@
 ﻿import { strict as assert } from "assert";
 
-import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
 import { LogService } from "matrix-bot-sdk";
@@ -16,20 +15,20 @@ describe("Test: The make admin command", function () {
 
     it('Mjölnir make the bot self room administrator', async function () {
         this.timeout(90000);
-        if (!config.admin?.enableMakeRoomAdminCommand) {
+        if (!this.config.admin?.enableMakeRoomAdminCommand) {
             done();
         }
-        const mjolnir = config.RUNTIME.client!;
+        const mjolnir = this.config.RUNTIME.client!;
         const mjolnirUserId = await mjolnir.getUserId();
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
-        const userA = await newTestUser({ name: { contains: "a" } });
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
+        const userA = await newTestUser(this.config.homeserverUrl, { name: { contains: "a" } });
         const userAId = await userA.getUserId();
         this.moderator = moderator;
         this.userA = userA;
         let powerLevels: any;
 
-        await moderator.joinRoom(config.managementRoom);
-        LogService.debug("makeadminTest", `Joining managementRoom: ${config.managementRoom}`);
+        await moderator.joinRoom(this.config.managementRoom);
+        LogService.debug("makeadminTest", `Joining managementRoom: ${this.config.managementRoom}`);
         let targetRoom = await moderator.createRoom({ invite: [mjolnirUserId], preset: "public_chat" });
         LogService.debug("makeadminTest", `moderator creating targetRoom: ${targetRoom}; and inviting ${mjolnirUserId}`);
         await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}` });
@@ -57,14 +56,14 @@ describe("Test: The make admin command", function () {
 
     it('Mjölnir make the tester room administrator', async function () {
         this.timeout(90000);
-        if (!config.admin?.enableMakeRoomAdminCommand) {
+        if (!this.config.admin?.enableMakeRoomAdminCommand) {
             done();
         }
-        const mjolnir = config.RUNTIME.client!;
-        const moderator = await newTestUser({ name: { contains: "moderator" } });
-        const userA = await newTestUser({ name: { contains: "a" } });
-        const userB = await newTestUser({ name: { contains: "b" } });
-        const userC = await newTestUser({ name: { contains: "c" } });
+        const mjolnir = this.config.RUNTIME.client!;
+        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
+        const userA = await newTestUser(this.config.homeserverUrl, { name: { contains: "a" } });
+        const userB = await newTestUser(this.config.homeserverUrl, { name: { contains: "b" } });
+        const userC = await newTestUser(this.config.homeserverUrl, { name: { contains: "c" } });
         const userBId = await userB.getUserId();
         const userCId = await userC.getUserId();
         this.moderator = moderator;

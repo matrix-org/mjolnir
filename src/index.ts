@@ -23,24 +23,28 @@ import {
     RichConsoleLogger,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
-import config from "./config";
+import { read as configRead } from "./config";
 import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
 import { patchMatrixClient } from "./utils";
 
-config.RUNTIME = {};
-
-LogService.setLogger(new RichConsoleLogger());
-LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
-
-LogService.info("index", "Starting bot...");
-
-Healthz.isHealthy = false; // start off unhealthy
-if (config.health.healthz.enabled) {
-    Healthz.listen();
-}
 
 (async function () {
+    const config = configRead();
+
+    config.RUNTIME = {};
+
+    LogService.setLogger(new RichConsoleLogger());
+    LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
+
+    LogService.info("index", "Starting bot...");
+
+    const healthz = new Healthz(config);
+    healthz.isHealthy = false; // start off unhealthy
+    if (config.health.healthz.enabled) {
+        healthz.listen();
+    }
+
     let bot: Mjolnir | null = null;
     try {
         const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
@@ -63,7 +67,7 @@ if (config.health.healthz.enabled) {
     }
     try {
         await bot.start();
-        Healthz.isHealthy = true;
+        healthz.isHealthy = true;
     } catch (err) {
         console.error(`Mjolnir failed to start: ${err}`);
         throw err;

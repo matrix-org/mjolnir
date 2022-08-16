@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as config from "config";
+import * as fs from "fs";
+import { load } from "js-yaml";
 import { MatrixClient } from "matrix-bot-sdk";
 
 /**
@@ -168,5 +169,9 @@ const defaultConfig: IConfig = {
     },
 };
 
-const finalConfig = <IConfig>Object.assign({}, defaultConfig, config);
-export default finalConfig;
+export function read(): IConfig {
+    const content = fs.readFileSync(`./config/${process.env.NODE_ENV || 'default'}.yaml`, "utf8");
+    const parsed = load(content);
+    const config = {...defaultConfig, ...(parsed as object)} as IConfig;
+    return config;
+}
