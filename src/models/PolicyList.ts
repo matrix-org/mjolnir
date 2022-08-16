@@ -64,11 +64,12 @@ declare interface PolicyList {
  * The PolicyList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
  * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
  *
- * You can inform the PolicyList about new events in a room with the `updateForEvent`, this will eventually
- * cause the PolicyList to synchronize itself with the room if it doesn't know about that state event.
- * Each time the PolicyList has finished synchronizing, it will emit the `'PolicyList.update'` event on itself as an EventEmitter.
+ * The policy list needs to be updated manually, it has no way of knowing about new events in it's modelled matrix room on its own.
+ * You can inform the PolicyList about new events in the matrix side of policy room with the `updateForEvent`, this will eventually
+ * cause the PolicyList to update its view of the room (via `updateList`) if it doesn't know about that state event.
+ * Each time the PolicyList has finished updating, it will emit the `'PolicyList.update'` event on itself as an EventEmitter.
  *
- * Implementation note: The reason why the PolicyList has to synchronize via a call to `/state` is because
+ * Implementation note: The reason why the PolicyList has to update via a call to `/state` is because
  * you cannot rely on the timeline portion of `/sync` to provide a consistent view of the room state as you
  * receive events in stream order.
  */
