@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import * as fs from "fs";
+import * as path from "path";
 import { load } from "js-yaml";
 import { MatrixClient } from "matrix-bot-sdk";
 
@@ -173,7 +174,7 @@ export function read(): IConfig {
     const config_dir = process.env.NODE_CONFIG_DIR || "./config";
     const config_file = `${process.env.NODE_ENV || "default"}.yaml`
 
-    const content = fs.readFileSync(`${config_dir}/${config_file}`, "utf8");
+    const content = fs.readFileSync(path.join(config_dir, config_file), "utf8");
     const parsed = load(content);
     const config = {...defaultConfig, ...(parsed as object)} as IConfig;
     return config;
