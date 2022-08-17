@@ -36,7 +36,7 @@ export interface IConfig {
         password: string;
     };
     dataPath: string;
-    acceptInvitesFromGroup: string;
+    acceptInvitesFromSpace: string;
     autojoinOnlyIfManager: boolean;
     recordIgnoredInvites: boolean;
     managementRoom: string;
@@ -115,7 +115,7 @@ const defaultConfig: IConfig = {
         password: "",
     },
     dataPath: "/data/storage",
-    acceptInvitesFromGroup: '+example:example.org',
+    acceptInvitesFromSpace: '!noop:example.org',
     autojoinOnlyIfManager: false,
     recordIgnoredInvites: false,
     managementRoom: "!noop:example.org",

@@ -123,7 +123,7 @@ export class Mjolnir {
      * @param {string} options.managementRoom The room to report ignored invitations to if `recordIgnoredInvites` is true.
      * @param {boolean} options.recordIgnoredInvites Whether to report invites that will be ignored to the `managementRoom`.
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
-     * @param {string} options.acceptInvitesFromGroup A group of users to accept invites from, ignores invites form users not in this group.
+     * @param {string} options.acceptInvitesFromSpace A space of users to accept invites from, ignores invites form users not in this space.
      */
     private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options: { [key: string]: any }) {
         client.on("room.invite", async (roomId: string, inviteEvent: any) => {
@@ -147,9 +147,18 @@ export class Mjolnir {
                 const managers = await client.getJoinedRoomMembers(mjolnir.managementRoomId);
                 if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             } else {
-                const groupMembers = await client.unstableApis.getGroupUsers(options.acceptInvitesFromGroup);
-                const userIds = groupMembers.map(m => m.user_id);
-                if (!userIds.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
+                const spaceId = await client.resolveRoom(options.acceptInvitesFromSpace);
+                const spaceUserIds = await client.getJoinedRoomMembers(spaceId)
+                    .catch(async e => {
+                        if (e.body?.errcode === "M_FORBIDDEN") {
+                            await mjolnir.logMessage(LogLevel.ERROR, 'Mjolnir', `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`);
+                            await client.joinRoom(spaceId);
+                            return await client.getJoinedRoomMembers(spaceId);
+                        } else {
+                            return Promise.reject(e);
+                        }
+                    });
+                if (!spaceUserIds.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             }
 
             return client.joinRoom(roomId);
