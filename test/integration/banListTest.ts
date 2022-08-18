@@ -33,7 +33,7 @@ describe("Test: Updating the PolicyList", function() {
         const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
-        mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
+        await mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         assert.equal(banList.allRules.length, 0);
 
@@ -124,7 +124,7 @@ describe("Test: Updating the PolicyList", function() {
         const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" }} );
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
-        mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
+        await mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         const entity = '@old:localhost:9999';
         let originalEventId = await createPolicyRule(mjolnir.client, banListId, 'm.room.rule.user', entity, '');
@@ -145,7 +145,7 @@ describe("Test: Updating the PolicyList", function() {
         const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         const banListId = await mjolnir.client.createRoom({ invite: [await moderator.getUserId()] });
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
-        mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
+        await mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         const entity = '@old:localhost:9999';
         let originalEventId = await createPolicyRule(mjolnir.client, banListId, 'm.room.rule.user', entity, '');
@@ -233,7 +233,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
         const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
-        moderator.joinRoom(this.mjolnir.client.managementRoomId);
+        await moderator.joinRoom(mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
 
         // Setup some protected rooms so we can check their ACL state later.
@@ -256,8 +256,8 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
 
         // Flood the watched list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
         const banListId = await moderator.createRoom({ invite: [mjolnirId] });
-        mjolnir.client.joinRoom(banListId);
-        mjolnir.watchList(Permalinks.forRoom(banListId));
+        await mjolnir.client.joinRoom(banListId);
+        await mjolnir.watchList(Permalinks.forRoom(banListId));
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
         const evilServerCount = 200;
         for (let i = 0; i < evilServerCount; i++) {
@@ -373,7 +373,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
         const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
-        moderator.joinRoom(mjolnir.managementRoomId);
+        await moderator.joinRoom(mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
 
         // Setup some protected rooms so we can check their ACL state later.
@@ -395,8 +395,8 @@ describe('Test: should apply bans to the most recently active rooms first', func
 
         // Flood the watched list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
         const banListId = await moderator.createRoom({ invite: [mjolnirId] });
-        mjolnir.client.joinRoom(banListId);
-        mjolnir.watchList(Permalinks.forRoom(banListId));
+        await mjolnir.client.joinRoom(banListId);
+        await mjolnir.watchList(Permalinks.forRoom(banListId));
 
         await mjolnir.syncLists();
 
