@@ -5,7 +5,7 @@ import { newTestUser } from "./clientHelper";
 import { getFirstReply, getNthReply } from "./commands/commandUtils";
 
 describe("Test: Testing RoomMemberManager", function() {
-    it("RoomMemberManager counts correctly when we call handleEvent manually", function() {
+    it("RoomMemberManager counts correctly when we call handleEvent manually", async function() {
         let manager: RoomMemberManager = this.mjolnir.roomJoins;
         let start = new Date(Date.now() - 100_000_000);
         const ROOMS = [
@@ -30,7 +30,7 @@ describe("Test: Testing RoomMemberManager", function() {
                     membership: "join"
                 }
             };
-            manager.handleEvent(ROOMS[i % ROOMS.length], event, joinDate(i));
+            await manager.handleEvent(ROOMS[i % ROOMS.length], event, joinDate(i));
         }
 
         {
@@ -71,8 +71,8 @@ describe("Test: Testing RoomMemberManager", function() {
                     }
                 }
             };
-            manager.handleEvent(ROOMS[0], event, leaveDate(i));
-            manager.handleEvent(ROOMS[1], event, leaveDate(i));
+            await manager.handleEvent(ROOMS[0], event, leaveDate(i));
+            await manager.handleEvent(ROOMS[1], event, leaveDate(i));
         }
 
         // Let's see if we have properly updated the joins/leaves
@@ -120,7 +120,7 @@ describe("Test: Testing RoomMemberManager", function() {
                 }
             };
             const room = ROOMS[i * 9 % 2];
-            manager.handleEvent(room, event, rejoinDate(i * 9));
+            await manager.handleEvent(room, event, rejoinDate(i * 9));
         }
 
         // Let's see if we have properly updated the joins/leaves
