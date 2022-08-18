@@ -23,24 +23,24 @@ const TRIGGER_INTERVALS: { [key: string]: number } = {
 };
 
 export default class ErrorCache {
-    private static roomsToErrors: { [roomId: string]: { [kind: string]: number } } = {};
+    private roomsToErrors: { [roomId: string]: { [kind: string]: number } } = {};
 
-    private constructor() {
+    constructor() {
     }
 
-    public static resetError(roomId: string, kind: string) {
-        if (!ErrorCache.roomsToErrors[roomId]) {
-            ErrorCache.roomsToErrors[roomId] = {};
+    public resetError(roomId: string, kind: string) {
+        if (!this.roomsToErrors[roomId]) {
+            this.roomsToErrors[roomId] = {};
         }
-        ErrorCache.roomsToErrors[roomId][kind] = 0;
+        this.roomsToErrors[roomId][kind] = 0;
     }
 
-    public static triggerError(roomId: string, kind: string): boolean {
-        if (!ErrorCache.roomsToErrors[roomId]) {
-            ErrorCache.roomsToErrors[roomId] = {};
+    public triggerError(roomId: string, kind: string): boolean {
+        if (!this.roomsToErrors[roomId]) {
+            this.roomsToErrors[roomId] = {};
         }
 
-        const triggers = ErrorCache.roomsToErrors[roomId];
+        const triggers = this.roomsToErrors[roomId];
         if (!triggers[kind]) {
             triggers[kind] = 0;
         }

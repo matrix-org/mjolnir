@@ -13,11 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { LogLevel } from "matrix-bot-sdk"
+import { LogLevel, MatrixClient } from "matrix-bot-sdk"
 import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
 import { Mjolnir } from "../Mjolnir";
+import ManagementRoomOutput from "../ManagementRoom";
 
 export interface QueuedRedaction {
     /** The room which the redaction will take place in. */
@@ -27,7 +28,7 @@ export interface QueuedRedaction {
      * Called by the EventRedactionQueue.
      * @param client A MatrixClient to use to carry out the redaction.
      */
-    redact(mjolnir: Mjolnir): Promise<void>
+    redact(client: MatrixClient, managementRoom: ManagementRoomOutput): Promise<void>
     /**
      * Used to test whether the redaction is the equivalent to another redaction.
      * @param redaction Another QueuedRedaction to test if this redaction is an equivalent to.
@@ -47,9 +48,9 @@ export class RedactUserInRoom implements QueuedRedaction {
         this.roomId = roomId;
     }
 
-    public async redact(mjolnir: Mjolnir) {
-        await mjolnir.logMessage(LogLevel.DEBUG, "Mjolnir", `Redacting events from ${this.userId} in room ${this.roomId}.`);
-        await redactUserMessagesIn(mjolnir, this.userId, [this.roomId]);
+    public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
+        await managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `Redacting events from ${this.userId} in room ${this.roomId}.`);
+        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId]);
     }
 
     public redactionEqual(redaction: QueuedRedaction): boolean {
@@ -107,12 +108,12 @@ export class EventRedactionQueue {
      * @param limitToRoomId If the roomId is provided, only redactions for that room will be processed.
      * @returns A description of any errors encountered by each QueuedRedaction that was processed.
      */
-    public async process(mjolnir: Mjolnir, limitToRoomId?: string): Promise<RoomUpdateError[]> {
+    public async process(client: MatrixClient, managementRoom: ManagementRoomOutput, limitToRoomId?: string): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
         const redact = async (currentBatch: QueuedRedaction[]) => {
             for (const redaction of currentBatch) {
                 try {
-                    await redaction.redact(mjolnir);
+                    await redaction.redact(client, managementRoom);
                 } catch (e) {
                     let roomError: RoomUpdateError;
                     if (e.roomId && e.errorMessage && e.errorKind) {
