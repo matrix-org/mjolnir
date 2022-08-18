@@ -1,6 +1,5 @@
 import { HmacSHA1 } from "crypto-js";
 import { getRequestFn, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
-import config from "../../src/config";
 
 const REGISTRATION_ATTEMPTS = 10;
 const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
@@ -16,8 +15,8 @@ const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
  * @param admin True to make the user an admin, false otherwise.
  * @returns The response from synapse.
  */
-export async function registerUser(username: string, displayname: string, password: string, admin: boolean): Promise<void> {
-    let registerUrl = `${config.homeserverUrl}/_synapse/admin/v1/register`
+export async function registerUser(homeserver: string, username: string, displayname: string, password: string, admin: boolean): Promise<void> {
+    let registerUrl = `${homeserver}/_synapse/admin/v1/register`
     const data: {nonce: string} = await new Promise((resolve, reject) => {
         getRequestFn()({uri: registerUrl, method: "GET", timeout: 60000}, (error: any, response: any, resBody: any) => {
             error ? reject(error) : resolve(JSON.parse(resBody))
@@ -81,7 +80,7 @@ export type RegistrationOptions = {
  *
  * @returns A string that is both the username and password of a new user.
  */
-async function registerNewTestUser(options: RegistrationOptions) {
+async function registerNewTestUser(homeserver: string, options: RegistrationOptions) {
     do {
         let username;
         if ("exact" in options.name) {
@@ -90,7 +89,7 @@ async function registerNewTestUser(options: RegistrationOptions) {
             username = `mjolnir-test-user-${options.name.contains}${Math.floor(Math.random() * 100000)}`
         }
         try {
-            await registerUser(username, username, username, Boolean(options.isAdmin));
+            await registerUser(homeserver, username, username, username, Boolean(options.isAdmin));
             return username;
         } catch (e) {
             if (e?.body?.errcode === 'M_USER_IN_USE') {
@@ -113,13 +112,13 @@ async function registerNewTestUser(options: RegistrationOptions) {
  *
  * @returns A new `MatrixClient` session for a unique test user.
  */
-export async function newTestUser(options: RegistrationOptions): Promise<MatrixClient> {
-    const username = await registerNewTestUser(options);
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
+export async function newTestUser(homeserver: string, options: RegistrationOptions): Promise<MatrixClient> {
+    const username = await registerNewTestUser(homeserver, options);
+    const pantalaimon = new PantalaimonClient(homeserver, new MemoryStorageProvider());
     const client = await pantalaimon.createClientWithCredentials(username, username);
     if (!options.isThrottled) {
         let userId = await client.getUserId();
-        await overrideRatelimitForUser(userId);
+        await overrideRatelimitForUser(homeserver, userId);
     }
     return client;
 }
@@ -130,12 +129,12 @@ let _globalAdminUser: MatrixClient;
  * Get a client that can perform synapse admin API actions.
  * @returns A client logged in with an admin user.
  */
-async function getGlobalAdminUser(): Promise<MatrixClient> {
+async function getGlobalAdminUser(homeserver: string): Promise<MatrixClient> {
     // Initialize global admin user if needed.
     if (!_globalAdminUser) {
         const USERNAME = "mjolnir-test-internal-admin-user";
         try {
-            await registerUser(USERNAME, USERNAME, USERNAME, true);
+            await registerUser(homeserver, USERNAME, USERNAME, USERNAME, true);
         } catch (e) {
             if (e.isAxiosError && e?.response?.data?.errcode === 'M_USER_IN_USE') {
                 // Then we've already registered the user in a previous run and that is ok.
@@ -143,7 +142,7 @@ async function getGlobalAdminUser(): Promise<MatrixClient> {
                 throw e;
             }
         }
-        _globalAdminUser = await new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
+        _globalAdminUser = await new PantalaimonClient(homeserver, new MemoryStorageProvider()).createClientWithCredentials(USERNAME, USERNAME);
     }
     return _globalAdminUser;
 }
@@ -152,8 +151,8 @@ async function getGlobalAdminUser(): Promise<MatrixClient> {
  * Disable ratelimiting for this user in Synapse.
  * @param userId The user to disable ratelimiting for, has to include both the server part and local part.
  */
-export async function overrideRatelimitForUser(userId: string) {
-    await (await getGlobalAdminUser()).doRequest("POST", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null, {
+export async function overrideRatelimitForUser(homeserver: string, userId: string) {
+    await (await getGlobalAdminUser(homeserver)).doRequest("POST", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null, {
         "messages_per_second": 0,
         "burst_count": 0
     });
@@ -163,8 +162,8 @@ export async function overrideRatelimitForUser(userId: string) {
  * Put back the default ratelimiting for this user in Synapse.
  * @param userId The user to use default ratelimiting for, has to include both the server part and local part.
  */
-export async function resetRatelimitForUser(userId: string) {
-    await (await getGlobalAdminUser()).doRequest("DELETE", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null);
+export async function resetRatelimitForUser(homeserver: string, userId: string) {
+    await (await getGlobalAdminUser(homeserver)).doRequest("DELETE", `/_synapse/admin/v1/users/${userId}/override_ratelimit`, null);
 }
 
 

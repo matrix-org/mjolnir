@@ -34,9 +34,9 @@ dataPath: "/data/storage"
 # If true (the default), Mjolnir will only accept invites from users present in managementRoom.
 autojoinOnlyIfManager: true
 
-# If `autojoinOnlyIfManager` is false, only the members in this group can invite
+# If `autojoinOnlyIfManager` is false, only the members in this space can invite
 # the bot to new rooms.
-acceptInvitesFromGroup: "+example:example.org"
+acceptInvitesFromSpace: "!example:example.org"
 
 # Whether Mjolnir should report ignored invites to the management room (if autojoinOnlyIfManager is true).
 recordIgnoredInvites: false

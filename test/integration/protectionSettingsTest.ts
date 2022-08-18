@@ -1,6 +1,5 @@
 import { strict as assert } from "assert";
 
-import config from "../../src/config";
 import { Mjolnir } from "../../src/Mjolnir";
 import { IProtection } from "../../src/protections/IProtection";
 import { PROTECTIONS } from "../../src/protections/protections";
@@ -12,7 +11,7 @@ import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
 describe("Test: Protection settings", function() {
     let client;
     this.beforeEach(async function () {
-        client = await newTestUser({ name: { contains: "protection-settings" }});
+        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "protection-settings" }});
         await client.start();
     })
     this.afterEach(async function () {
@@ -59,7 +58,7 @@ describe("Test: Protection settings", function() {
     });
     it("Mjolnir responds to !set correctly", async function() {
         this.timeout(20000);
-        await client.joinRoom(config.managementRoom);
+        await client.joinRoom(this.config.managementRoom);
 
         await this.mjolnir.registerProtection(new class implements IProtection {
             name = "JY2TPN";
@@ -84,7 +83,7 @@ describe("Test: Protection settings", function() {
     });
     it("Mjolnir adds a value to a list setting", async function() {
         this.timeout(20000);
-        await client.joinRoom(config.managementRoom);
+        await client.joinRoom(this.config.managementRoom);
 
         await this.mjolnir.registerProtection(new class implements IProtection {
             name = "r33XyT";
@@ -108,7 +107,7 @@ describe("Test: Protection settings", function() {
     });
     it("Mjolnir removes a value from a list setting", async function() {
         this.timeout(20000);
-        await client.joinRoom(config.managementRoom);
+        await client.joinRoom(this.config.managementRoom);
 
         await this.mjolnir.registerProtection(new class implements IProtection {
             name = "oXzT0E";
@@ -133,7 +132,7 @@ describe("Test: Protection settings", function() {
     });
     it("Mjolnir will change a protection setting in-place", async function() {
         this.timeout(20000);
-        await client.joinRoom(config.managementRoom);
+        await client.joinRoom(this.config.managementRoom);
 
         await this.mjolnir.registerProtection(new class implements IProtection {
             name = "d0sNrt";

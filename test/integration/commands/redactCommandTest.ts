@@ -1,6 +1,5 @@
 import { strict as assert } from "assert";
 
-import config from "../../../src/config";
 import { newTestUser } from "../clientHelper";
 import { getMessagesByUserIn } from "../../../src/utils";
 import { LogService } from "matrix-bot-sdk";
@@ -13,19 +12,19 @@ import { getFirstReaction } from "./commandUtils";
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id and a room id.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer-needs-redacting" } });
         let badUserId = await badUser.getUserId();
-        const mjolnir = config.RUNTIME.client!
+        const mjolnir = this.config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser({ name: { contains: "moderator" } });
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         this.moderator = moderator;
-        await moderator.joinRoom(config.managementRoom);
+        await moderator.joinRoom(this.config.managementRoom);
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
         await moderator.setUserPowerLevel(mjolnirUserId, targetRoom, 100);
         await badUser.joinRoom(targetRoom);
         moderator.sendMessage(this.mjolnir.managementRoomId, {msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}`});
 
-        LogService.debug("redactionTest", `targetRoom: ${targetRoom}, managementRoom: ${config.managementRoom}`);
+        LogService.debug("redactionTest", `targetRoom: ${targetRoom}, managementRoom: ${this.config.managementRoom}`);
         // Sandwich irrelevant messages in bad messages.
         await badUser.sendMessage(targetRoom, {msgtype: 'm.text', body: "Very Bad Stuff"});
         await Promise.all([...Array(50).keys()].map((i) => moderator.sendMessage(targetRoom, {msgtype: 'm.text.', body: `Irrelevant Message #${i}`})));
@@ -58,13 +57,13 @@ import { getFirstReaction } from "./commandUtils";
     it('Mjölnir redacts all of the events sent by a spammer when instructed to by giving their id in multiple rooms.', async function() {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer-needs-redacting" } });
         let badUserId = await badUser.getUserId();
-        const mjolnir = config.RUNTIME.client!
+        const mjolnir = this.config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser({ name: { contains: "moderator" } });
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         this.moderator = moderator;
-        await moderator.joinRoom(config.managementRoom);
+        await moderator.joinRoom(this.config.managementRoom);
         let targetRooms: string[] = [];
         for (let i = 0; i < 5; i++) {
             let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
@@ -107,12 +106,12 @@ import { getFirstReaction } from "./commandUtils";
     it("Redacts a single event when instructed to.", async function () {
         this.timeout(60000);
         // Create a few users and a room.
-        let badUser = await newTestUser({ name: { contains: "spammer-needs-redacting" } });
-        const mjolnir = config.RUNTIME.client!
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer-needs-redacting" } });
+        const mjolnir = this.config.RUNTIME.client!
         let mjolnirUserId = await mjolnir.getUserId();
-        let moderator = await newTestUser({ name: { contains: "moderator" } });
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         this.moderator = moderator;
-        await moderator.joinRoom(config.managementRoom);
+        await moderator.joinRoom(this.config.managementRoom);
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId]});
         await moderator.setUserPowerLevel(mjolnirUserId, targetRoom, 100);
         await badUser.joinRoom(targetRoom);

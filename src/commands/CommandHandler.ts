@@ -28,8 +28,10 @@ import { execRedactCommand } from "./RedactCommand";
 import { execImportCommand } from "./ImportCommand";
 import { execSetDefaultListCommand } from "./SetDefaultBanListCommand";
 import { execDeactivateCommand } from "./DeactivateCommand";
-import { execDisableProtection, execEnableProtection, execListProtections, execConfigGetProtection,
-    execConfigSetProtection, execConfigAddProtection, execConfigRemoveProtection } from "./ProtectionsCommands";
+import {
+    execDisableProtection, execEnableProtection, execListProtections, execConfigGetProtection,
+    execConfigSetProtection, execConfigAddProtection, execConfigRemoveProtection
+} from "./ProtectionsCommands";
 import { execListProtectedRooms } from "./ListProtectedRoomsCommand";
 import { execAddProtectedRoom, execRemoveProtectedRoom } from "./AddRemoveProtectedRoomsCommand";
 import { execAddRoomToDirectoryCommand, execRemoveRoomFromDirectoryCommand } from "./AddRemoveRoomFromDirectoryCommand";

@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 import { extractRequestError, LogLevel, LogService, Permalinks } from "matrix-bot-sdk";
-import config from "../config";
 import { Mjolnir } from "../Mjolnir";
 
 /**
@@ -43,7 +42,7 @@ export class UnlistedUserRedactionQueue {
             const permalink = Permalinks.forEvent(roomId, event['event_id']);
             try {
                 LogService.info("AutomaticRedactionQueue", `Redacting event because the user is listed as bad: ${permalink}`)
-                if (!config.noop) {
+                if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id']);
                 } else {
                     await mjolnir.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);

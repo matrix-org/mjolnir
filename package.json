@@ -18,10 +18,10 @@
     "version": "sed -i '/# version automated/s/[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/'$npm_package_version'/' synapse_antispam/setup.py && git add synapse_antispam/setup.py && cat synapse_antispam/setup.py"
   },
   "devDependencies": {
-    "@types/config": "0.0.41",
     "@types/crypto-js": "^4.0.2",
     "@types/html-to-text": "^8.0.1",
     "@types/humanize-duration": "^3.27.1",
+    "@types/js-yaml": "^4.0.5",
     "@types/jsdom": "^16.2.11",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.7.10",
@@ -36,7 +36,6 @@
     "typescript-formatter": "^7.2"
   },
   "dependencies": {
-    "config": "^3.3.6",
     "express": "^4.17",
     "html-to-text": "^8.0.0",
     "humanize-duration": "^3.27.1",
@@ -45,7 +44,8 @@
     "jsdom": "^16.6.0",
     "matrix-bot-sdk": "^0.5.19",
     "parse-duration": "^1.0.2",
-    "shell-quote": "^1.7.3"
+    "shell-quote": "^1.7.3",
+    "yaml": "^2.1.1"
   },
   "engines": {
     "node": ">=16.0.0"

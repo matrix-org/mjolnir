@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import config from "../config";
 import { Protection } from "./IProtection";
 import { MXIDListProtectionSetting, NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
@@ -83,7 +82,7 @@ export class TrustedReporters extends Protection {
 
 
         if (met.length > 0) {
-            await mjolnir.client.sendMessage(config.managementRoom, {
+            await mjolnir.client.sendMessage(mjolnir.config.managementRoom, {
                 msgtype: "m.notice",
                 body: `message ${event.id} reported by ${[...reporters].join(', ')}. `
                     + `actions: ${met.join(', ')}`

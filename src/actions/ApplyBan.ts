@@ -14,21 +14,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import BanList from "../models/BanList";
+import PolicyList from "../models/PolicyList";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { Mjolnir } from "../Mjolnir";
-import config from "../config";
 import { LogLevel } from "matrix-bot-sdk";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 
 /**
  * Applies the member bans represented by the ban lists to the provided rooms, returning the
  * room IDs that could not be updated and their error.
- * @param {BanList[]} lists The lists to determine bans from.
+ * @param {PolicyList[]} lists The lists to determine bans from.
  * @param {string[]} roomIds The room IDs to apply the bans in.
  * @param {Mjolnir} mjolnir The Mjolnir client to apply the bans with.
  */
-export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
+export async function applyUserBans(lists: PolicyList[], roomIds: string[], mjolnir: Mjolnir): Promise<RoomUpdateError[]> {
     // We can only ban people who are not already banned, and who match the rules.
     const errors: RoomUpdateError[] = [];
     for (const roomId of roomIds) {
@@ -38,15 +37,15 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
 
             let members: { userId: string, membership: string }[];
 
-            if (config.fasterMembershipChecks) {
+            if (mjolnir.config.fasterMembershipChecks) {
                 const memberIds = await mjolnir.client.getJoinedRoomMembers(roomId);
                 members = memberIds.map(u => {
-                    return {userId: u, membership: "join"};
+                    return { userId: u, membership: "join" };
                 });
             } else {
                 const state = await mjolnir.client.getRoomState(roomId);
                 members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']).map(s => {
-                    return {userId: s['state_key'], membership: s['content'] ? s['content']['membership'] : 'leave'};
+                    return { userId: s['state_key'], membership: s['content'] ? s['content']['membership'] : 'leave' };
                 });
             }
 
@@ -64,7 +63,7 @@ export async function applyUserBans(lists: BanList[], roomIds: string[], mjolnir
                             // We specifically use sendNotice to avoid having to escape HTML
                             await mjolnir.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
 
-                            if (!config.noop) {
+                            if (!mjolnir.config.noop) {
                                 await mjolnir.client.banUser(member.userId, roomId, userRule.reason);
                                 if (mjolnir.automaticRedactGlobs.find(g => g.test(userRule.reason.toLowerCase()))) {
                                     mjolnir.queueRedactUserMessagesIn(member.userId, roomId);

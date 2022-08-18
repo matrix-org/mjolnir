@@ -20,8 +20,6 @@ import { htmlToText } from "html-to-text";
 import { htmlEscape } from "../utils";
 import { JSDOM } from 'jsdom';
 import { EventEmitter } from 'events';
-
-import config from "../config";
 import { Mjolnir } from "../Mjolnir";
 
 /// Regexp, used to extract the action label from an action reaction
@@ -115,7 +113,7 @@ export class ReportManager extends EventEmitter {
      */
     public async handleServerAbuseReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
         this.emit("report.new", { roomId: roomId, reporterId: reporterId, event: event, reason: reason });
-        if (config.displayReports) {
+        if (this.mjolnir.config.displayReports) {
             return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: this.mjolnir.managementRoomId });
         }
     }

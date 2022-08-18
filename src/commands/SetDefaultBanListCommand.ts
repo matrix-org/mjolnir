@@ -31,6 +31,6 @@ export async function execSetDefaultListCommand(roomId: string, event: any, mjol
         return;
     }
 
-    await mjolnir.client.setAccountData(DEFAULT_LIST_EVENT_TYPE, {shortcode});
+    await mjolnir.client.setAccountData(DEFAULT_LIST_EVENT_TYPE, { shortcode });
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

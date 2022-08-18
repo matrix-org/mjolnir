@@ -14,28 +14,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import config from "../config";
 import * as http from "http";
 import { LogService } from "matrix-bot-sdk";
+import { IConfig } from "../config";
+// allowed to use the global configuration since this is only intended to be used by `src/index.ts`.
 
 export class Healthz {
-    private static healthCode: number;
+    private healthCode: number;
 
-    public static set isHealthy(val: boolean) {
-        Healthz.healthCode = val ? config.health.healthz.healthyStatus : config.health.healthz.unhealthyStatus;
+    constructor(private config: IConfig) { }
+
+    public set isHealthy(val: boolean) {
+        this.healthCode = val ? this.config.health.healthz.healthyStatus : this.config.health.healthz.unhealthyStatus;
     }
 
-    public static get isHealthy(): boolean {
-        return Healthz.healthCode === config.health.healthz.healthyStatus;
+    public get isHealthy(): boolean {
+        return this.healthCode === this.config.health.healthz.healthyStatus;
     }
 
-    public static listen() {
+    public listen() {
         const server = http.createServer((req, res) => {
-            res.writeHead(Healthz.healthCode);
-            res.end(`health code: ${Healthz.healthCode}`);
+            res.writeHead(this.healthCode);
+            res.end(`health code: ${this.healthCode}`);
         });
-        server.listen(config.health.healthz.port, config.health.healthz.address, () => {
-            LogService.info("Healthz", `Listening for health requests on ${config.health.healthz.address}:${config.health.healthz.port}`);
+        server.listen(this.config.health.healthz.port, this.config.health.healthz.address, () => {
+            LogService.info("Healthz", `Listening for health requests on ${this.config.health.healthz.address}:${this.config.health.healthz.port}`);
         });
     }
 }
