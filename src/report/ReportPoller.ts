@@ -31,7 +31,7 @@ export class ReportPoller {
      * https://matrix-org.github.io/synapse/latest/admin_api/event_reports.html
      * "from" is an opaque token that is returned from the API to paginate reports
      */
-    private from = 0;
+    private from: number | null = null;
     /**
      * The currently-pending report poll
      */
@@ -60,19 +60,24 @@ export class ReportPoller {
     }
 
     private async getAbuseReports() {
+        let params: { dir: string, from?: number} = {
+            // short for direction: forward; i.e. show newest last
+            dir: "f",
+        }
+        if (this.from !== null) {
+            params["from"] = this.from;
+        }
+
         let response_: {
             event_reports: { room_id: string, event_id: string, sender: string, reason: string }[],
-            next_token: number | undefined
+            next_token: number | undefined,
+            total: number,
         } | undefined;
         try {
             response_ = await this.mjolnir.client.doRequest(
                 "GET",
                 "/_synapse/admin/v1/event_reports",
-                {
-                    // short for direction: forward; i.e. show newest last
-                    dir: "f",
-                    from: this.from.toString()
-                }
+                params,
             );
         } catch (ex) {
             await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
@@ -80,6 +85,7 @@ export class ReportPoller {
         }
 
         const response = response_!;
+
         for (let report of response.event_reports) {
             if (!(report.room_id in this.mjolnir.protectedRooms)) {
                 continue;
@@ -104,18 +110,29 @@ export class ReportPoller {
             });
         }
 
-        /*
-         * This API endpoint returns an opaque `next_token` number that we
-         * need to give back to subsequent requests for pagination, so here we
-         * save it in account data
-         */
-        if (response.next_token !== undefined) {
-            this.from = response.next_token;
-            try {
-                await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
-            } catch (ex) {
-                await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
-            }
+        let from;
+        if (this.from === null) {
+            /*
+             * If this is our first call to this endpoint, we want to skip to
+             * the end of available reports, so we'll only consider reports
+             * that happened after we supported report polling.
+             */
+            from = response.total;
+        } else {
+            /*
+             * If there are more pages for us to read, this endpoint will
+             * return an opaque `next_token` number that we want to provide
+             * on the next endpoint call. If not, we're on the last page,
+             * which means we want to skip to the end of this page.
+             */
+            from = response.next_token ?? this.from + response.event_reports.length;
+        }
+
+        this.from = from;
+        try {
+            await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: from });
+        } catch (ex) {
+            await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
         }
     }
 
