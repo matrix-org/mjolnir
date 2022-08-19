@@ -1009,7 +1009,7 @@ export class Mjolnir {
         const policyList = this.policyLists.find(list => list.roomId === roomId);
         if (policyList !== undefined) {
             if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
-                policyList.updateForEvent(event)
+                policyList.updateForEvent(event.event_id)
             }
         }
 

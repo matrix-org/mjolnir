@@ -63,13 +63,28 @@ declare interface PolicyList {
 /**
  * The PolicyList caches all of the rules that are active in a policy room so Mjolnir can refer to when applying bans etc.
  * This cannot be used to update events in the modeled room, it is a readonly model of the policy room.
+ *
+ * The policy list needs to be updated manually, it has no way of knowing about new events in it's modelled matrix room on its own.
+ * You can inform the PolicyList about new events in the matrix side of policy room with the `updateForEvent`, this will eventually
+ * cause the PolicyList to update its view of the room (via `updateList`) if it doesn't know about that state event.
+ * Each time the PolicyList has finished updating, it will emit the `'PolicyList.update'` event on itself as an EventEmitter.
+ *
+ * Implementation note: The reason why the PolicyList has to update via a call to `/state` is because
+ * you cannot rely on the timeline portion of `/sync` to provide a consistent view of the room state as you
+ * receive events in stream order.
  */
 class PolicyList extends EventEmitter {
     private shortcode: string | null = null;
     // A map of state events indexed first by state type and then state keys.
     private state: Map<string, Map<string, any>> = new Map();
+    /**
+     * Allow us to detect whether we have updated the state for this event.
+     */
+    private stateByEventId: Map<string /* event id */, any> = new Map();
     // Batches new events from sync together before starting the process to update the list.
     private readonly batcher: UpdateBatcher;
+    // Events that we have already informed the batcher about, that we haven't loaded from the room state yet.
+    private batchedEvents = new Set<string /* event id */>();
 
     /**
      * Construct a PolicyList, does not synchronize with the room.
@@ -113,6 +128,7 @@ class PolicyList extends EventEmitter {
         } else {
             this.state.set(stateType, new Map().set(stateKey, event));
         }
+        this.stateByEventId.set(event.event_id, event);
     }
 
     /**
@@ -195,6 +211,23 @@ class PolicyList extends EventEmitter {
     }
 
     /**
+     * Ban an entity with Recommendation.Ban from the list.
+     * @param ruleType The type of rule e.g. RULE_USER.
+     * @param entity The entity to ban.
+     * @param reason A reason we are banning them.
+     */
+    public async banEntity(ruleType: string, entity: string, reason?: string): Promise<void> {
+        // '@' at the beginning of state keys is reserved.
+        const stateKey = ruleType === RULE_USER ? '_' + entity.substring(1) : entity;
+        const event_id = await this.client.sendStateEvent(this.roomId, ruleType, stateKey, {
+            entity,
+            recommendation: Recommendation.Ban,
+            reason: reason || '<no reason supplied>',
+        });
+        this.updateForEvent(event_id);
+    }
+
+    /**
      * Remove all rules in the banList for this entity that have the same state key (as when we ban them)
      * by searching for rules that have legacy state types.
      * @param ruleType The normalized (most recent) type for this rule e.g. `RULE_USER`.
@@ -202,7 +235,6 @@ class PolicyList extends EventEmitter {
      * @returns true if any rules were removed and the entity was unbanned, otherwise false because there were no rules.
      */
     public async unbanEntity(ruleType: string, entity: string): Promise<boolean> {
-        const stateKey = `rule:${entity}`;
         let typesToCheck = [ruleType];
         switch (ruleType) {
             case RULE_USER:
@@ -215,17 +247,26 @@ class PolicyList extends EventEmitter {
                 typesToCheck = ROOM_RULE_TYPES;
                 break;
         }
-        // We can't cheat and check our state cache because we normalize the event types to the most recent version.
-        const typesToRemove = (await Promise.all(
-            typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
-                .then(_ => stateType) // We need the state type as getRoomState only returns the content, not the top level.
-                .catch(e => e.statusCode === 404 ? null : Promise.reject(e))))
-        ).filter(e => e); // remove nulls. I don't know why TS still thinks there can be nulls after this??
-        if (typesToRemove.length === 0) {
-            return false;
+        const sendNullState = async (stateType: string, stateKey: string) => {
+            const event_id = await this.client.sendStateEvent(this.roomId, stateType, stateKey, {});
+            this.updateForEvent(event_id);
         }
-        await Promise.all(typesToRemove.map(stateType => this.client.sendStateEvent(this.roomId, stateType!, stateKey, {})));
-        return true;
+        const removeRule = async (rule: ListRule): Promise<void> => {
+            const stateKey = rule.sourceEvent.state_key;
+            // We can't cheat and check our state cache because we normalize the event types to the most recent version.
+            const typesToRemove = (await Promise.all(
+                typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
+                    .then(_ => stateType) // We need the state type as getRoomState only returns the content, not the top level.
+                    .catch(e => e.statusCode === 404 ? null : Promise.reject(e))))
+                ).filter(e => e); // remove nulls. I don't know why TS still thinks there can be nulls after this??
+            if (typesToRemove.length === 0) {
+                return;
+            }
+            await Promise.all(typesToRemove.map(stateType => sendNullState(stateType!, stateKey)));
+        }
+        const rules = this.rulesMatchingEntity(entity, ruleType);
+        await Promise.all(rules.map(removeRule));
+        return rules.length > 0;
     }
 
     /**
@@ -305,6 +346,11 @@ class PolicyList extends EventEmitter {
                 }
             })();
 
+            // Clear out any events that we were informed about via updateForEvent.
+            if (changeType !== null) {
+                this.batchedEvents.delete(event.event_id)
+            }
+
             // If we haven't got any information about what the rule used to be, then it wasn't a valid rule to begin with
             // and so will not have been used. Removing a rule like this therefore results in no change.
             if (changeType === ChangeType.Removed && previousState?.unsigned?.rule) {
@@ -328,6 +374,13 @@ class PolicyList extends EventEmitter {
             }
         }
         this.emit('PolicyList.update', this, changes);
+        if (this.batchedEvents.keys.length !== 0) {
+            // The only reason why this isn't a TypeError is because we need to know about this when it happens, because it means
+            // we're probably doing something wrong, on the other hand, if someone messes with a server implementation and
+            // strange things happen where events appear in /sync sooner than they do in /state (which would be outrageous)
+            // we don't want Mjolnir to stop working properly. Though, I am not confident a burried warning is going to alert us.
+            LogService.warn("PolicyList", "The policy list is being informed about events that it cannot find in the room state, this is really bad and you should seek help.");
+        }
         return changes;
     }
 
@@ -335,8 +388,12 @@ class PolicyList extends EventEmitter {
      * Inform the `PolicyList` about a new event from the room it is modelling.
      * @param event An event from the room the `PolicyList` models to inform an instance about.
      */
-    public updateForEvent(event: { event_id: string }): void {
-        this.batcher.addToBatch(event.event_id)
+    public updateForEvent(eventId: string): void {
+        if (this.stateByEventId.has(eventId) || this.batchedEvents.has(eventId)) {
+            return; // we already know about this event.
+        }
+        this.batcher.addToBatch(eventId);
+        this.batchedEvents.add(eventId);
     }
 }
 

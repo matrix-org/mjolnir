@@ -18,8 +18,8 @@ import { ALL_RULE_TYPES, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../..
  * @param template The template to use for the policy rule event.
  * @returns The event id of the newly created policy rule.
  */
-async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = { recommendation: 'm.ban' }) {
-    return await client.sendStateEvent(policyRoomId, policyType, `rule:${entity}`, {
+async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = { recommendation: 'm.ban' }, stateKey = `rule:${entity}`) {
+    return await client.sendStateEvent(policyRoomId, policyType, stateKey, {
         entity,
         reason,
         ...template,
@@ -327,18 +327,19 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         const banList = new PolicyList(banListId, banListId, moderator);
         // we need two because we need to test the case where an entity has all rule types in the list
         // and another one that only has one (so that we would hit 404 while looking up state)
-        const olderBadServer = "old.evil.com"
-        const newerBadServer = "new.evil.com"
+        const olderBadServer = "old.evil.example"
+        const newerBadServer = "new.evil.example"
         await Promise.all(SERVER_RULE_TYPES.map(type => createPolicyRule(moderator, banListId, type, olderBadServer, 'gregg rulz ok')));
         await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'this is bad sort it out.');
+        await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'hidden with a non-standard state key', undefined, "rule_1");
         // Wait for the ACL event to be applied to our protected room.
         await this.mjolnir!.syncLists();
 
         await banList.updateList();
-        // rules are normalized, that's why there should only be 2.
-        assert.equal(banList.allRules.length, 2);
+        // rules are normalized by rule type, that's why there should only be 3.
+        assert.equal(banList.allRules.length, 3);
 
-        // Check that we have setup our test properly and therefore evil.com is banned.
+        // Check that we have setup our test properly and therefore evil.example is banned.
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*").denyServer(olderBadServer).denyServer(newerBadServer);
         const protectedAcl = await mjolnir.client.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         if (!acl.matches(protectedAcl)) {
