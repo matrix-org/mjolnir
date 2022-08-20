@@ -22,7 +22,9 @@ import { WordList } from "./WordList";
 import { MessageIsVoice } from "./MessageIsVoice";
 import { MessageIsMedia } from "./MessageIsMedia";
 import { TrustedReporters } from "./TrustedReporters";
+import { PropagateRoomBan } from './PropagateRoomBan';
 import { JoinWaveShortCircuit } from "./JoinWaveShortCircuit";
+
 
 export const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -31,6 +33,7 @@ export const PROTECTIONS: Protection[] = [
     new MessageIsVoice(),
     new MessageIsMedia(),
     new TrustedReporters(),
+    new PropagateRoomBan(),
     new DetectFederationLag(),
     new JoinWaveShortCircuit(),
 ];
