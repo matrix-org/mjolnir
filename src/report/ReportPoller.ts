@@ -74,8 +74,12 @@ export class ReportPoller {
                     from: this.from.toString()
                 }
             );
-        } catch (ex) {
-            await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
+        } catch (ex1) {
+            try {
+                await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex1}`);
+            } catch (ex2) {
+                // failed to log. what do?
+            }
             return;
         }
 
@@ -91,8 +95,12 @@ export class ReportPoller {
                     "GET",
                     `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`
                 )).event;
-            } catch (ex) {
-                this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to get context: ${ex}`);
+            } catch (ex1) {
+                try {
+                    this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to get context: ${ex1}`);
+                } catch (ex2) {
+                    // failed to log. what do?
+                }
                 continue;
             }
 
@@ -113,8 +121,12 @@ export class ReportPoller {
             this.from = response.next_token;
             try {
                 await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
-            } catch (ex) {
-                await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
+            } catch (ex1) {
+                try {
+                    await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex1}`);
+                } catch (ex2) {
+                    // failed to log. what do?
+                }
             }
         }
     }
@@ -124,8 +136,12 @@ export class ReportPoller {
 
         try {
             await this.getAbuseReports()
-        } catch (ex) {
-            await this.mjolnir.logMessage(LogLevel.ERROR, "tryGetAbuseReports", `failed to get abuse reports: ${ex}`);
+        } catch (ex1) {
+            try {
+                await this.mjolnir.logMessage(LogLevel.ERROR, "tryGetAbuseReports", `failed to get abuse reports: ${ex1}`);
+            } catch (ex2) {
+                // failed to log. what do?
+            }
         }
 
         this.schedulePoll();
