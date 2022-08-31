@@ -16,8 +16,6 @@ limitations under the License.
 
 import { extractRequestError, LogLevel, LogService, MatrixClient, MessageType, Permalinks, TextualMessageEventContent, UserID } from "matrix-bot-sdk";
 import { IConfig } from "./config";
-import ErrorCache from "./ErrorCache";
-import { RoomUpdateError } from "./models/RoomUpdateError";
 import { htmlEscape } from "./utils";
 
 const levelToFn = {
@@ -102,7 +100,7 @@ export default class ManagementRoomOutput {
                 format: "org.matrix.custom.html",
             };
             if (!isRecursive) {
-                evContent = await this.replaceRoomIdsWithPills(this, clientMessage, new Set(roomIds), "m.notice");
+                evContent = await this.replaceRoomIdsWithPills(clientMessage, new Set(roomIds), "m.notice");
             }
 
             await client.sendMessage(this.managementRoomId, evContent);

@@ -15,19 +15,13 @@ limitations under the License.
 */
 
 import {
-    extractRequestError,
     LogLevel,
     LogService,
     MatrixClient,
     MatrixGlob,
-    MessageType,
-    Permalinks,
-    TextualMessageEventContent,
-    UserID,
     getRequestFn,
     setRequestFn,
 } from "matrix-bot-sdk";
-import { Mjolnir } from "./Mjolnir";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
 import ManagementRoomOutput from "./ManagementRoom";

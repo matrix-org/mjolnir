@@ -20,19 +20,19 @@ import { extractRequestError, LogLevel, LogService } from "matrix-bot-sdk";
 // !mjolnir rooms add <room alias/ID>
 export async function execAddProtectedRoom(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const protectedRoomId = await mjolnir.client.joinRoom(parts[3]);
-    await mjolnir.addProtectedRoom(protectedRoomId);
+    await mjolnir.protectedRoomsTracker.addProtectedRoom(protectedRoomId);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir rooms remove <room alias/ID>
 export async function execRemoveProtectedRoom(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const protectedRoomId = await mjolnir.client.resolveRoom(parts[3]);
-    await mjolnir.removeProtectedRoom(protectedRoomId);
+    await mjolnir.protectedRoomsTracker.removeProtectedRoom(protectedRoomId);
     try {
         await mjolnir.client.leaveRoom(protectedRoomId);
     } catch (e) {
         LogService.warn("AddRemoveProtectedRoomsCommand", extractRequestError(e));
-        await mjolnir.logMessage(LogLevel.WARN, "AddRemoveProtectedRoomsCommand", `Failed to leave ${protectedRoomId} - the room is no longer being protected, but the bot could not leave`, protectedRoomId);
+        await mjolnir.managementRoom.logMessage(LogLevel.WARN, "AddRemoveProtectedRoomsCommand", `Failed to leave ${protectedRoomId} - the room is no longer being protected, but the bot could not leave`, protectedRoomId);
     }
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

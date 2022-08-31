@@ -75,13 +75,13 @@ export class ReportPoller {
                 }
             );
         } catch (ex) {
-            await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
+            await this.mjolnir.managementRoom.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
             return;
         }
 
         const response = response_!;
         for (let report of response.event_reports) {
-            if (!(report.room_id in this.mjolnir.protectedRooms)) {
+            if (!this.mjolnir.protectedRoomsTracker.isProtectedRoom(report.room_id)) {
                 continue;
             }
 
@@ -92,7 +92,7 @@ export class ReportPoller {
                     `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`
                 )).event;
             } catch (ex) {
-                this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to get context: ${ex}`);
+                this.mjolnir.managementRoom.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to get context: ${ex}`);
                 continue;
             }
 
@@ -114,7 +114,7 @@ export class ReportPoller {
             try {
                 await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
             } catch (ex) {
-                await this.mjolnir.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
+                await this.mjolnir.managementRoom.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
             }
         }
     }
@@ -125,7 +125,7 @@ export class ReportPoller {
         try {
             await this.getAbuseReports()
         } catch (ex) {
-            await this.mjolnir.logMessage(LogLevel.ERROR, "tryGetAbuseReports", `failed to get abuse reports: ${ex}`);
+            await this.mjolnir.managementRoom.logMessage(LogLevel.ERROR, "tryGetAbuseReports", `failed to get abuse reports: ${ex}`);
         }
 
         this.schedulePoll();

@@ -67,8 +67,9 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
             break;
     }
 
-    html += `<b>Protected rooms: </b> ${Object.keys(mjolnir.protectedRooms).length}<br/>`;
-    text += `Protected rooms: ${Object.keys(mjolnir.protectedRooms).length}\n`;
+    const protectedRooms = [...mjolnir.protectedRoomsTracker.protectedRooms];
+    html += `<b>Protected rooms: </b> ${protectedRooms.length}<br/>`;
+    text += `Protected rooms: ${protectedRooms.length}\n`;
 
     // Append list information
     html += "<b>Subscribed ban lists:</b><br><ul>";
@@ -91,7 +92,7 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
 
 async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const protectionName = parts[0];
-    const protection = mjolnir.getProtection(protectionName);
+    const protection = mjolnir.protectionManager.getProtection(protectionName);
     let text;
     let html;
     if (!protection) {
@@ -156,7 +157,7 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
                 text: `Cannot resolve room \`${targetRoomAliasOrId}\`.`
             }
         }
-        const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+        const joins = mjolnir.protectedRoomsTracker.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
         const htmlFragments = [];
         const textFragments = [];
         for (let join of joins) {

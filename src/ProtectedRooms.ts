@@ -22,9 +22,13 @@ import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
 import PolicyList, { ListRuleChange } from "./models/PolicyList";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ServerAcl } from "./models/ServerAcl";
+import { ProtectionManager } from "./protections/protections";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
+import { RoomMemberManager } from "./RoomMembers";
 import { htmlEscape } from "./utils";
+
+const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 
 /**
  * When you consider spaces https://github.com/matrix-org/mjolnir/issues/283
@@ -37,9 +41,6 @@ import { htmlEscape } from "./utils";
  * as in future we might want to borrow this class to represent a space. 
  */
 export class ProtectedRooms {
-
-    private protectedRooms = new Set</* room id */string>();
-
     private policyLists: PolicyList[];
 
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
@@ -53,6 +54,31 @@ export class ProtectedRooms {
     private readonly errorCache = new ErrorCache();
 
     private automaticRedactionReasons: MatrixGlob[] = [];
+
+    /**
+     * A list of rooms that we watch and protect.
+     */
+    private readonly _protectedRooms = new Map</* room id */string, /* perma url */ string>();
+    public get protectedRooms(): Iterable<string> {
+        return this._protectedRooms.keys();
+    }
+
+    /**
+     * A list of rooms that we watch but do not protect.
+     */
+    private _unprotectedWatchedListRooms: string[] = [];
+    public get unprotectedWatchedListRooms(): ReadonlyArray<string> {
+        return this._unprotectedWatchedListRooms;
+    }
+
+    /**
+     * These are rooms that were explicitly said to be protected either in the config, or by what is present in the account data for `org.matrix.mjolnir.protected_rooms`.
+     */
+    private _explicitlyProtectedRoomIds: string[] = [];
+    public get explicitlyProtectedRoomIds(): ReadonlyArray<string> {
+        return this._explicitlyProtectedRoomIds;
+    }
+    public readonly roomJoins: RoomMemberManager;
 
     /**
      * Used to provide mutual exclusion when synchronizing rooms with the state of a policy list.
@@ -69,10 +95,37 @@ export class ProtectedRooms {
         private readonly clientUserId: string,
         private readonly managementRoomId: string,
         private readonly managementRoom: ManagementRoomOutput,
+        private readonly protections: ProtectionManager,
         private readonly config: IConfig,
+        protectedRooms: string[],
     ) {
+        this._explicitlyProtectedRoomIds = protectedRooms;
+
+        for (const reason of this.config.automaticallyRedactForReasons) {
+            this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
+        }
+
         // Setup room activity watcher
         this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker(client);
+
+        // Setup join/leave listener
+        this.roomJoins = new RoomMemberManager(this.client);
+    }
+
+    public async start() {
+        try {
+            const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+            if (data && data['rooms']) {
+                for (const roomId of data['rooms']) {
+                    this.addProtectedRoom(roomId);
+                }
+            }
+        } catch (e) {
+            LogService.warn("ProtectedRooms", extractRequestError(e));
+        }
+        for (const roomId of this._unprotectedWatchedListRooms) {
+            this.removeProtectedRoom(roomId);
+        }
     }
 
     public queueRedactUserMessagesIn(userId: string, roomId: string) {
@@ -110,7 +163,7 @@ export class ProtectedRooms {
             // power levels were updated - recheck permissions
             this.errorCache.resetError(roomId, ERROR_KIND_PERMISSION);
             await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
-            const errors = await this.verifyPermissionsIn(roomId);
+            const errors = await this.protections.verifyPermissionsIn(roomId);
             const hadErrors = await this.printActionResult(errors);
             if (!hadErrors) {
                 await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
@@ -161,19 +214,53 @@ export class ProtectedRooms {
     }
 
     public async addProtectedRoom(roomId: string): Promise<void> {
-        if (this.protectedRooms.has(roomId)) {
+        if (this._protectedRooms.has(roomId)) {
             // we need to protect ourselves form syncing all the lists unnecessarily
             // as Mjolnir does call this method repeatedly.
             return;
         }
-        this.protectedRooms.add(roomId);
+        this._protectedRooms.set(roomId, Permalinks.forRoom(roomId));
+        this._explicitlyProtectedRoomIds.push(roomId);
         this.protectedRoomActivityTracker.addProtectedRoom(roomId);
+        this.roomJoins.addRoom(roomId);
+
+        const unprotectedIdx = this._unprotectedWatchedListRooms.indexOf(roomId);
+        if (unprotectedIdx >= 0) this._unprotectedWatchedListRooms.splice(unprotectedIdx, 1);
+        this._explicitlyProtectedRoomIds.push(roomId);
+
+        let additionalProtectedRooms: { rooms?: string[] } | null = null;
+        try {
+            additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+        } catch (e) {
+            LogService.warn("Mjolnir", extractRequestError(e));
+        }
+        const rooms = (additionalProtectedRooms?.rooms ?? []);
+        rooms.push(roomId);
+        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: rooms });
+
         await this.syncLists(this.config.verboseLogging);
     }
 
-    public removeProtectedRoom(roomId: string): void {
+    public async removeProtectedRoom(roomId: string) {
         this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
-        this.protectedRooms.delete(roomId);
+        this._protectedRooms.delete(roomId);
+        this.roomJoins.removeRoom(roomId);
+
+        const idx = this._explicitlyProtectedRoomIds.indexOf(roomId);
+        if (idx >= 0) this._explicitlyProtectedRoomIds.splice(idx, 1);
+
+        let additionalProtectedRooms: { rooms?: string[] } | null = null;
+        try {
+            additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+        } catch (e) {
+            LogService.warn("Mjolnir", extractRequestError(e));
+        }
+        additionalProtectedRooms = { rooms: additionalProtectedRooms?.rooms?.filter(r => r !== roomId) ?? [] };
+        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
+    }
+
+    public isProtectedRoom(roomId: string): boolean {
+        return this._protectedRooms.has(roomId);
     }
 
     /**
@@ -182,7 +269,7 @@ export class ProtectedRooms {
      * @param policyList The `PolicyList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    private async syncWithPolicyList(policyList: PolicyList): Promise<void> {
+    public async syncWithPolicyList(policyList: PolicyList): Promise<void> {
         // this bit can move away into a listener.
         const changes = await policyList.updateList();
 
@@ -445,8 +532,8 @@ export class ProtectedRooms {
 
     public async verifyPermissions(verbose = true, printRegardless = false) {
         const errors: RoomUpdateError[] = [];
-        for (const roomId of Object.keys(this.protectedRooms)) {
-            errors.push(...(await this.verifyPermissionsIn(roomId)));
+        for (const roomId of this._protectedRooms.keys()) {
+            errors.push(...(await this.protections.verifyPermissionsIn(roomId)));
         }
 
         const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:", printRegardless);
@@ -462,90 +549,11 @@ export class ProtectedRooms {
         }
     }
 
-    private async verifyPermissionsIn(roomId: string): Promise<RoomUpdateError[]> {
-        const errors: RoomUpdateError[] = [];
-        const additionalPermissions = this.requiredProtectionPermissions();
-
-        try {
-            const ownUserId = await this.client.getUserId();
-
-            const powerLevels = await this.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
-            if (!powerLevels) {
-                // noinspection ExceptionCaughtLocallyJS
-                throw new Error("Missing power levels state event");
-            }
-
-            function plDefault(val: number | undefined | null, def: number): number {
-                if (!val && val !== 0) return def;
-                return val;
-            }
-
-            const users = powerLevels['users'] || {};
-            const events = powerLevels['events'] || {};
-            const usersDefault = plDefault(powerLevels['users_default'], 0);
-            const stateDefault = plDefault(powerLevels['state_default'], 50);
-            const ban = plDefault(powerLevels['ban'], 50);
-            const kick = plDefault(powerLevels['kick'], 50);
-            const redact = plDefault(powerLevels['redact'], 50);
-
-            const userLevel = plDefault(users[ownUserId], usersDefault);
-            const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
-
-            // Wants: ban, kick, redact, m.room.server_acl
-
-            if (userLevel < ban) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for bans: ${userLevel} < ${ban}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-            if (userLevel < kick) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for kicks: ${userLevel} < ${kick}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-            if (userLevel < redact) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for redactions: ${userLevel} < ${redact}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-            if (userLevel < aclLevel) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for server ACLs: ${userLevel} < ${aclLevel}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-
-            // Wants: Additional permissions
-
-            for (const additionalPermission of additionalPermissions) {
-                const permLevel = plDefault(events[additionalPermission], stateDefault);
-
-                if (userLevel < permLevel) {
-                    errors.push({
-                        roomId,
-                        errorMessage: `Missing power level for "${additionalPermission}" state events: ${userLevel} < ${permLevel}`,
-                        errorKind: ERROR_KIND_PERMISSION,
-                    });
-                }
-            }
-
-            // Otherwise OK
-        } catch (e) {
-            LogService.error("Mjolnir", extractRequestError(e));
-            errors.push({
-                roomId,
-                errorMessage: e.message || (e.body ? e.body.error : '<no message>'),
-                errorKind: ERROR_KIND_FATAL,
-            });
+    public addUnprotectedWatchedListRoom(roomId: string) {
+        if (this._unprotectedWatchedListRooms.includes(roomId)) {
+            return;
         }
-
-        return errors;
+        this._unprotectedWatchedListRooms.push(roomId);
+        this.removeProtectedRoom(roomId);
     }
 }

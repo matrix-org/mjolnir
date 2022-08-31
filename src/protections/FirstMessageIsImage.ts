@@ -56,11 +56,11 @@ export class FirstMessageIsImage extends Protection {
             const formattedBody = content['formatted_body'] || '';
             const isMedia = msgtype === 'm.image' || msgtype === 'm.video' || formattedBody.toLowerCase().includes('<img');
             if (isMedia && this.justJoined[roomId].includes(event['sender'])) {
-                await mjolnir.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
+                await mjolnir.managementRoom.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.banUser(event['sender'], roomId, "spam");
                 } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.managementRoom.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
 
                 if (this.recentlyBanned.includes(event['sender'])) return; // already handled (will be redacted)
@@ -71,7 +71,7 @@ export class FirstMessageIsImage extends Protection {
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.managementRoom.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }

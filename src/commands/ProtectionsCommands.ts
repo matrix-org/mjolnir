@@ -22,7 +22,7 @@ import { isListSetting } from "../protections/ProtectionSettings";
 // !mjolnir enable <protection>
 export async function execEnableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     try {
-        await mjolnir.enableProtection(parts[2]);
+        await mjolnir.protectionManager.enableProtection(parts[2]);
         await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
     } catch (e) {
         LogService.error("ProtectionsCommands", extractRequestError(e));
@@ -50,8 +50,8 @@ enum ConfigAction {
  */
 async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], action: ConfigAction): Promise<string> {
     const [protectionName, ...settingParts] = parts[0].split(".");
-    const protection = mjolnir.protections.get(protectionName);
-    if (protection === undefined) {
+    const protection = mjolnir.protectionManager.getProtection(protectionName);
+    if (!protection) {
         return `Unknown protection ${protectionName}`;
     }
 
@@ -83,7 +83,7 @@ async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], ac
     }
 
     try {
-        await mjolnir.setProtectionSettings(protectionName, { [settingName]: value });
+        await mjolnir.protectionManager.setProtectionSettings(protectionName, { [settingName]: value });
     } catch (e) {
         return `Failed to set setting: ${e.message}`;
     }
@@ -139,7 +139,7 @@ export async function execConfigRemoveProtection(roomId: string, event: any, mjo
  * !mjolnir get [protection name]
  */
 export async function execConfigGetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    let pickProtections = Object.keys(mjolnir.protections);
+    let pickProtections = Object.keys(mjolnir.protectionManager.protections);
 
     if (parts.length < 3) {
         // no specific protectionName provided, show all of them.
@@ -163,7 +163,7 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
     let anySettings = false;
 
     for (const protectionName of pickProtections) {
-        const protectionSettings = mjolnir.protections.get(protectionName)?.settings ?? {};
+        const protectionSettings = mjolnir.protectionManager.getProtection(protectionName)?.settings ?? {};
 
         if (Object.keys(protectionSettings).length === 0) {
             continue;
@@ -196,18 +196,18 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
 
 // !mjolnir disable <protection>
 export async function execDisableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    await mjolnir.disableProtection(parts[2]);
+    await mjolnir.protectionManager.disableProtection(parts[2]);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir protections
 export async function execListProtections(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const enabledProtections = mjolnir.enabledProtections.map(p => p.name);
+    const enabledProtections = mjolnir.protectionManager.enabledProtections.map(p => p.name);
 
     let html = "Available protections:<ul>";
     let text = "Available protections:\n";
 
-    for (const [protectionName, protection] of mjolnir.protections) {
+    for (const [protectionName, protection] of mjolnir.protectionManager.protections) {
         const emoji = enabledProtections.includes(protectionName) ? '🟢 (enabled)' : '🔴 (disabled)';
         html += `<li>${emoji} <code>${protectionName}</code> - ${protection.description}</li>`;
         text += `* ${emoji} ${protectionName} - ${protection.description}\n`;

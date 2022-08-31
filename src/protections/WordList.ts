@@ -91,24 +91,24 @@ export class WordList extends Protection {
                         "i"
                     );
                 } catch (ex) {
-                    await mjolnir.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
+                    await mjolnir.managementRoom.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
                 }
             }
 
             // Perform the test
             if (message && this.badWords!.test(message)) {
-                await mjolnir.logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
+                await mjolnir.managementRoom.logMessage(LogLevel.WARN, "WordList", `Banning ${event['sender']} for word list violation in ${roomId}.`);
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.banUser(event['sender'], roomId, "Word list violation");
                 } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.managementRoom.logMessage(LogLevel.WARN, "WordList", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
 
                 // Redact the event
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
                 } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.managementRoom.logMessage(LogLevel.WARN, "WordList", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }
