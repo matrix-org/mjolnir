@@ -1,14 +1,16 @@
 import { Mjolnir } from "../Mjolnir";
 import { Request, WeakEvent, BridgeContext } from "matrix-appservice-bridge";
-import { IConfig, setDefaults } from "../config";
-import { SHORTCODE_EVENT_TYPE } from "../models/BanList";
+import { IConfig, read as configRead } from "../config";
+import { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 
 export class MjolnirManager {
     private readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
 
     public getDefaultMjolnirConfig(managementRoom: string): IConfig {
-        return setDefaults({managementRoom});
+        let config = configRead();
+        config.managementRoom = managementRoom;
+        return config;
     }
 
     public async createNew(requestingUserId: string, managementRoomId: string, client: MatrixClient) {
