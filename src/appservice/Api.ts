@@ -46,13 +46,13 @@ export class Api {
     private async pathGet(request: express.Request, response: express.Response) {
         const accessToken = request.query["openId"];
         if (accessToken === undefined) {
-            response.status(401);
+            response.status(401).send("unauthorised");
             return;
         }
 
         const mjolnirId = request.query["mxid"];
         if (mjolnirId === undefined) {
-            response.status(400);
+            response.status(400).send("invalid request");
             return;
         }
 
@@ -73,7 +73,7 @@ export class Api {
     private async pathList(request: express.Request, response: express.Response) {
         const accessToken = request.query["openId"];
         if (accessToken === undefined) {
-            response.status(401);
+            response.status(401).send("unauthorised");
             return;
         }
 
@@ -87,7 +87,7 @@ export class Api {
     private async pathCreate(request: express.Request, response: express.Response) {
         const accessToken = request.body["openId"];
         if (accessToken === undefined) {
-            response.status(401);
+            response.status(401).send("unauthorised");
             return;
         }
 
