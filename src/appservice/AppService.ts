@@ -20,6 +20,7 @@ import { AppServiceRegistration, Bridge, Cli, Request, WeakEvent, BridgeContext,
 // needed by appservice irc, though it looks completely dead.
 import * as Datastore from "nedb";
 import { MjolnirManager } from ".//MjolnirManager";
+import { Api } from "./Api";
 // ts-node src/appservice/AppService.ts -r -u "http://localhost:9000" # remember to add the registration to homeserver.yaml! you probably want host.docker.internal as the hostname of the appservice if using mx-tester
 // ts-node src/appservice/AppService -p 9000 # to start.
 
@@ -29,6 +30,7 @@ export class MjolnirAppService {
     private readonly mjolnirManager: MjolnirManager = new MjolnirManager();
 
     public constructor() {
+        new Api("http://localhost:9999", this).start(9001);
         this.bridge = new Bridge({
             homeserverUrl: "http://localhost:9999",
             domain: "localhost:9999",

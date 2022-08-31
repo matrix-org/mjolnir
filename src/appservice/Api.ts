@@ -34,6 +34,8 @@ export class Api {
     }
 
     public start(port: number) {
+        this.httpdConfig.use(express.json());
+
         this.httpdConfig.get("/get", this.pathGet);
         this.httpdConfig.get("/list", this.pathList);
         this.httpdConfig.post("/create", this.pathCreate);
@@ -42,13 +44,13 @@ export class Api {
     }
 
     private async pathGet(request: express.Request, response: express.Response) {
-        const accessToken = request.params.query["openId"];
+        const accessToken = request.query["openId"];
         if (accessToken === undefined) {
             response.status(401);
             return;
         }
 
-        const mjolnirId = request.params.query["mxid"];
+        const mjolnirId = request.query["mxid"];
         if (mjolnirId === undefined) {
             response.status(400);
             return;
@@ -69,7 +71,7 @@ export class Api {
     }
 
     private async pathList(request: express.Request, response: express.Response) {
-        const accessToken = request.params.query["openId"];
+        const accessToken = request.query["openId"];
         if (accessToken === undefined) {
             response.status(401);
             return;
@@ -83,7 +85,7 @@ export class Api {
     }
 
     private async pathCreate(request: express.Request, response: express.Response) {
-        const accessToken = request.params.query["openId"];
+        const accessToken = request.body["openId"];
         if (accessToken === undefined) {
             response.status(401);
             return;
