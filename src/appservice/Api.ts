@@ -91,17 +91,13 @@ export class Api {
             return;
         }
 
-        const managementRoom = request.params.query["roomId"];
-
         const userId = await this.resolveAccessToken(accessToken);
-        const mjolnirId = this.appService.provisionNewMjolnir(
-            userId, managementRoom,
-        );
+        const [mjolnirId, managementRoom] = await this.appService.provisionNewMjolnir(userId);
 
         // privisionNewMjolnir can't fail yet, but it should be able to
         //if (mjolnirId === null) {
         //}
 
-        response.status(200).json({ mxid: mjolnirId });
+        response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
     }
 }

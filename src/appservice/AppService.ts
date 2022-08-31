@@ -43,7 +43,7 @@ export class MjolnirAppService {
         });
     }
 
-    public async provisionNewMjolnir(requestingUserId: string, managementRoomId: string|undefined) {
+    public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
         // FIXME: we need to restrict who can do it (special list? ban remote users?)
         const issuedMjolnirs = await this.bridge.getUserStore()!.getRemoteUsersFromMatrixId(requestingUserId);
         if (issuedMjolnirs.length === 0) {
@@ -54,19 +54,14 @@ export class MjolnirAppService {
             // actually the user id wasn't even right, so this might not be necessary anymore.
             await mjIntent.ensureProfile('Mjolnir');
 
-            if (!managementRoomId) {
-                managementRoomId = (await mjIntent.createRoom({
-                    createAsClient: true,
-                    options: {
-                        preset: 'private_chat',
-                        invite: [requestingUserId],
-                        name: `${requestingUserId}'s mjolnir`
-                    }
-                })).room_id;
-            } else {
-                const requesterIntent = await this.bridge.getIntent(requestingUserId);
-                await requesterIntent.invite(managementRoomId, await mjIntent.matrixClient.getUserId());
-            }
+            const managementRoomId = (await mjIntent.createRoom({
+                createAsClient: true,
+                options: {
+                    preset: 'private_chat',
+                    invite: [requestingUserId],
+                    name: `${requestingUserId}'s mjolnir`
+                }
+            })).room_id;
 
             this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent.matrixClient);
             // Technically the mjolnir is a remote user, but also not because it's matrix-matrix.
@@ -74,6 +69,7 @@ export class MjolnirAppService {
             //const bridgeStore = this.bridge.getUserStore()!;
             //bridgeStore.setRemoteUser()
             await this.bridge.getUserStore()!.linkUsers(new MatrixUser(requestingUserId), new RemoteUser(mjIntent.userId));
+            return [mjIntent.userId, managementRoomId];
         } else {
             throw new Error(`User: ${requestingUserId} has already provisioned ${issuedMjolnirs.length} mjolnirs.`);
         }
@@ -92,7 +88,7 @@ export class MjolnirAppService {
         const mxEvent = request.getData();
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
-                await this.provisionNewMjolnir(mxEvent.sender, undefined);
+                await this.provisionNewMjolnir(mxEvent.sender);
             }
         }
         this.mjolnirManager.onEvent(request, context);
