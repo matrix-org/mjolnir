@@ -26,10 +26,6 @@ import {
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
-import { Protection } from "./protections/IProtection";
-import { PROTECTIONS } from "./protections/protections";
-import { Consequence } from "./protections/consequence";
-import { ProtectionSettingValidationError } from "./protections/ProtectionSettings";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
@@ -41,6 +37,7 @@ import { IConfig } from "./config";
 import PolicyList from "./models/PolicyList";
 import { ProtectedRooms } from "./ProtectedRooms";
 import ManagementRoomOutput from "./ManagementRoom";
+import { ProtectionManager } from "./protections/protections";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -48,10 +45,8 @@ export const STATE_SYNCING = "syncing";
 export const STATE_RUNNING = "running";
 
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
-const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
-const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
-const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
+
 /**
  * Synapse will tell us where we last got to on polling reports, so we need
  * to store that for pagination on further polls
@@ -62,7 +57,6 @@ export class Mjolnir {
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
-    public protections = new Map<string /* protection name */, Protection>();
     /**
      * This is for users who are not listed on a watchlist,
      * but have been flagged by the automatic spam detection as suispicous
@@ -85,6 +79,10 @@ export class Mjolnir {
      * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
      */
     private reportPoller?: ReportPoller;
+
+    public readonly protectionManager: ProtectionManager;
+    public readonly reportManager: ReportManager;
+
     /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixClient} client
@@ -245,13 +243,14 @@ export class Mjolnir {
 
         // Setup Web APIs
         console.log("Creating Web APIs");
-        const reportManager = new ReportManager(this);
-        reportManager.on("report.new", this.handleReport.bind(this));
-        this.webapis = new WebAPIs(reportManager, this.config, this.ruleServer);
+        this.reportManager = new ReportManager(this);
+        this.webapis = new WebAPIs(this.reportManager, this.config, this.ruleServer);
         if (config.pollReports) {
-            this.reportPoller = new ReportPoller(this, reportManager);
+            this.reportPoller = new ReportPoller(this, this.reportManager);
         }
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
+
+        this.protectionManager = new ProtectionManager(this);
     }
 
     public get lists(): PolicyList[] {
@@ -260,10 +259,6 @@ export class Mjolnir {
 
     public get state(): string {
         return this.currentState;
-    }
-
-    public get enabledProtections(): Protection[] {
-        return [...this.protections.values()].filter(p => p.enabled);
     }
 
     /**
@@ -323,14 +318,14 @@ export class Mjolnir {
 
             if (this.config.verifyPermissionsOnStartup) {
                 await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
-                await this.verifyPermissions(this.config.verboseLogging);
+                await this.protectedRoomsTracker.verifyPermissions(this.config.verboseLogging);
             }
 
             this.currentState = STATE_SYNCING;
             if (this.config.syncOnStartup) {
                 await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.registerProtections();
                 await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
+                await this.protectionManager.start();
             }
 
             this.currentState = STATE_RUNNING;
@@ -428,167 +423,10 @@ export class Mjolnir {
         this.applyUnprotectedRooms();
 
         if (withSync) {
-            await this.syncLists(this.config.verboseLogging);
+            await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
         }
     }
 
-    /*
-     * Take all the builtin protections, register them to set their enabled (or not) state and
-     * update their settings with any saved non-default values
-     */
-    private async registerProtections() {
-        for (const protection of PROTECTIONS) {
-            try {
-                await this.registerProtection(protection);
-            } catch (e) {
-                LogService.warn("Mjolnir", extractRequestError(e));
-            }
-        }
-    }
-
-    /*
-     * Make a list of the names of enabled protections and save them in a state event
-     */
-    private async saveEnabledProtections() {
-        const protections = this.enabledProtections.map(p => p.name);
-        await this.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
-    }
-    /*
-     * Enable a protection by name and persist its enable state in to a state event
-     *
-     * @param name The name of the protection whose settings we're enabling
-     */
-    public async enableProtection(name: string) {
-        const protection = this.protections.get(name);
-        if (protection !== undefined) {
-            protection.enabled = true;
-            await this.saveEnabledProtections();
-        }
-    }
-    /*
-     * Disable a protection by name and remove it from the persistent list of enabled protections
-     *
-     * @param name The name of the protection whose settings we're disabling
-     */
-    public async disableProtection(name: string) {
-        const protection = this.protections.get(name);
-        if (protection !== undefined) {
-            protection.enabled = false;
-            await this.saveEnabledProtections();
-        }
-    }
-
-    /*
-     * Read org.matrix.mjolnir.setting state event, find any saved settings for
-     * the requested protectionName, then iterate and validate against their parser
-     * counterparts in Protection.settings and return those which validate
-     *
-     * @param protectionName The name of the protection whose settings we're reading
-     * @returns Every saved setting for this protectionName that has a valid value
-     */
-    public async getProtectionSettings(protectionName: string): Promise<{ [setting: string]: any }> {
-        let savedSettings: { [setting: string]: any } = {}
-        try {
-            savedSettings = await this.client.getRoomStateEvent(
-                this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
-            );
-        } catch {
-            // setting does not exist, return empty object
-            return {};
-        }
-
-        const settingDefinitions = this.protections.get(protectionName)?.settings ?? {};
-        const validatedSettings: { [setting: string]: any } = {}
-        for (let [key, value] of Object.entries(savedSettings)) {
-            if (
-                // is this a setting name with a known parser?
-                key in settingDefinitions
-                // is the datatype of this setting's value what we expect?
-                && typeof (settingDefinitions[key].value) === typeof (value)
-                // is this setting's value valid for the setting?
-                && settingDefinitions[key].validate(value)
-            ) {
-                validatedSettings[key] = value;
-            } else {
-                await this.managementRoom.logMessage(
-                    LogLevel.WARN,
-                    "getProtectionSetting",
-                    `Tried to read ${protectionName}.${key} and got invalid value ${value}`
-                );
-            }
-        }
-        return validatedSettings;
-    }
-
-    /*
-     * Takes an object of settings we want to change and what their values should be,
-     * check that their values are valid, combine them with current saved settings,
-     * then save the amalgamation to a state event
-     *
-     * @param protectionName Which protection these settings belong to
-     * @param changedSettings The settings to change and their values
-     */
-    public async setProtectionSettings(protectionName: string, changedSettings: { [setting: string]: any }): Promise<any> {
-        const protection = this.protections.get(protectionName);
-        if (protection === undefined) {
-            return;
-        }
-
-        const validatedSettings: { [setting: string]: any } = await this.getProtectionSettings(protectionName);
-
-        for (let [key, value] of Object.entries(changedSettings)) {
-            if (!(key in protection.settings)) {
-                throw new ProtectionSettingValidationError(`Failed to find protection setting by name: ${key}`);
-            }
-            if (typeof (protection.settings[key].value) !== typeof (value)) {
-                throw new ProtectionSettingValidationError(`Invalid type for protection setting: ${key} (${typeof (value)})`);
-            }
-            if (!protection.settings[key].validate(value)) {
-                throw new ProtectionSettingValidationError(`Invalid value for protection setting: ${key} (${value})`);
-            }
-            validatedSettings[key] = value;
-        }
-
-        await this.client.sendStateEvent(
-            this.managementRoomId, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
-        );
-    }
-
-    /*
-     * Given a protection object; add it to our list of protections, set whether it is enabled
-     * and update its settings with any saved non-default values.
-     *
-     * @param protection The protection object we want to register
-     */
-    public async registerProtection(protection: Protection) {
-        this.protections.set(protection.name, protection)
-
-        let enabledProtections: { enabled: string[] } | null = null;
-        try {
-            enabledProtections = await this.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
-        } catch {
-            // this setting either doesn't exist, or we failed to read it (bad network?)
-            // TODO: retry on certain failures?
-        }
-        protection.enabled = enabledProtections?.enabled.includes(protection.name) ?? false;
-
-        const savedSettings = await this.getProtectionSettings(protection.name);
-        for (let [key, value] of Object.entries(savedSettings)) {
-            // this.getProtectionSettings() validates this data for us, so we don't need to
-            protection.settings[key].setValue(value);
-        }
-    }
-    /*
-     * Given a protection object; remove it from our list of protections.
-     *
-     * @param protection The protection object we want to unregister
-     */
-    public unregisterProtection(protectionName: string) {
-        if (!(protectionName in this.protections)) {
-            throw new Error("Failed to find protection by name: " + protectionName);
-        }
-        this.protections.delete(protectionName);
-    }
 
     /**
      * Helper for constructing `PolicyList`s and making sure they have the right listeners set up.
@@ -602,16 +440,6 @@ export class Mjolnir {
         await list.updateList();
         this.policyLists.push(list);
         return list;
-    }
-
-    /**
-     * Get a protection by name.
-     *
-     * @return If there is a protection with this name *and* it is enabled,
-     * return the protection.
-     */
-    public getProtection(protectionName: string): Protection | null {
-        return this.protections.get(protectionName) ?? null;
     }
 
     public async watchList(roomRef: string): Promise<PolicyList | null> {
@@ -707,45 +535,6 @@ export class Mjolnir {
         }
     }
 
-
-
-    private requiredProtectionPermissions(): Set<string> {
-        return new Set(this.enabledProtections.map((p) => p.requiredStatePermissions).flat())
-    }
-
-    private async handleConsequences(protection: Protection, roomId: string, eventId: string, sender: string, consequences: Consequence[]) {
-        for (const consequence of consequences) {
-            try {
-                if (consequence.name === "alert") {
-                    /* take no additional action, just print the below message to management room */
-                } else if (consequence.name === "ban") {
-                    await this.client.banUser(sender, roomId, "abuse detected");
-                } else if (consequence.name === "redact") {
-                    await this.client.redactEvent(roomId, eventId, "abuse detected");
-                } else {
-                    throw new Error(`unknown consequence ${consequence.name}`);
-                }
-
-                let message = `protection ${protection.name} enacting`
-                    + ` ${consequence.name}`
-                    + ` against ${htmlEscape(sender)}`
-                    + ` in ${htmlEscape(roomId)}`
-                    + ` (reason: ${htmlEscape(consequence.reason)})`;
-                await this.client.sendMessage(this.managementRoomId, {
-                    msgtype: "m.notice",
-                    body: message,
-                    [CONSEQUENCE_EVENT_DATA]: {
-                        who: sender,
-                        room: roomId,
-                        types: [consequence.name],
-                    }
-                });
-            } catch (e) {
-                await this.logMessage(LogLevel.ERROR, "handleConsequences", `Failed to enact ${consequence.name} consequence: ${e}`);
-            }
-        }
-    }
-
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
         if (roomId === this.managementRoomId) {
@@ -766,35 +555,6 @@ export class Mjolnir {
             if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
                 policyList.updateForEvent(event.event_id)
             }
-        }
-
-        if (roomId in this.protectedRooms) {
-            if (event['sender'] === await this.client.getUserId()) return; // Ignore ourselves
-
-            // Iterate all the enabled protections
-            for (const protection of this.enabledProtections) {
-                let consequences: Consequence[] | undefined = undefined;
-                try {
-                    consequences = await protection.handleEvent(this, roomId, event);
-                } catch (e) {
-                    const eventPermalink = Permalinks.forEvent(roomId, event['event_id']);
-                    LogService.error("Mjolnir", "Error handling protection: " + protection.name);
-                    LogService.error("Mjolnir", "Failed event: " + eventPermalink);
-                    LogService.error("Mjolnir", extractRequestError(e));
-                    await this.client.sendNotice(this.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
-                    continue;
-                }
-
-                if (consequences !== undefined) {
-                    await this.handleConsequences(protection, roomId, event["event_id"], event["sender"], consequences);
-                }
-            }
-
-            // Run the event handlers - we always run this after protections so that the protections
-            // can flag the event for redaction.
-            await this.unlistedUserRedactionHandler.handleEvent(roomId, event, this);
-
-
         }
     }
 
@@ -838,12 +598,6 @@ export class Mjolnir {
             });
         } catch (e) {
             return extractRequestError(e);
-        }
-    }
-
-    private async handleReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
-        for (const protection of this.enabledProtections) {
-            await protection.handleReport(this, roomId, reporterId, event, reason);
         }
     }
 }

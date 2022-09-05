@@ -22,6 +22,7 @@ import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
 import PolicyList, { ListRuleChange } from "./models/PolicyList";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ServerAcl } from "./models/ServerAcl";
+import { ProtectionManager } from "./protections/protections";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { RoomMemberManager } from "./RoomMembers";
@@ -72,6 +73,7 @@ export class ProtectedRooms {
         private readonly clientUserId: string,
         private readonly managementRoomId: string,
         private readonly managementRoom: ManagementRoomOutput,
+        private readonly protections: ProtectionManager,
         private readonly config: IConfig,
     ) {
         for (const reason of this.config.automaticallyRedactForReasons) {
@@ -120,7 +122,7 @@ export class ProtectedRooms {
             // power levels were updated - recheck permissions
             this.errorCache.resetError(roomId, ERROR_KIND_PERMISSION);
             await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
-            const errors = await this.verifyPermissionsIn(roomId);
+            const errors = await this.protections.verifyPermissionsIn(roomId);
             const hadErrors = await this.printActionResult(errors);
             if (!hadErrors) {
                 await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
@@ -472,90 +474,6 @@ export class ProtectedRooms {
         }
     }
 
-    private async verifyPermissionsIn(roomId: string): Promise<RoomUpdateError[]> {
-        const errors: RoomUpdateError[] = [];
-        const additionalPermissions = this.requiredProtectionPermissions();
-
-        try {
-            const ownUserId = await this.client.getUserId();
-
-            const powerLevels = await this.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
-            if (!powerLevels) {
-                // noinspection ExceptionCaughtLocallyJS
-                throw new Error("Missing power levels state event");
-            }
-
-            function plDefault(val: number | undefined | null, def: number): number {
-                if (!val && val !== 0) return def;
-                return val;
-            }
-
-            const users = powerLevels['users'] || {};
-            const events = powerLevels['events'] || {};
-            const usersDefault = plDefault(powerLevels['users_default'], 0);
-            const stateDefault = plDefault(powerLevels['state_default'], 50);
-            const ban = plDefault(powerLevels['ban'], 50);
-            const kick = plDefault(powerLevels['kick'], 50);
-            const redact = plDefault(powerLevels['redact'], 50);
-
-            const userLevel = plDefault(users[ownUserId], usersDefault);
-            const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
-
-            // Wants: ban, kick, redact, m.room.server_acl
-
-            if (userLevel < ban) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for bans: ${userLevel} < ${ban}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-            if (userLevel < kick) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for kicks: ${userLevel} < ${kick}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-            if (userLevel < redact) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for redactions: ${userLevel} < ${redact}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-            if (userLevel < aclLevel) {
-                errors.push({
-                    roomId,
-                    errorMessage: `Missing power level for server ACLs: ${userLevel} < ${aclLevel}`,
-                    errorKind: ERROR_KIND_PERMISSION,
-                });
-            }
-
-            // Wants: Additional permissions
-
-            for (const additionalPermission of additionalPermissions) {
-                const permLevel = plDefault(events[additionalPermission], stateDefault);
-
-                if (userLevel < permLevel) {
-                    errors.push({
-                        roomId,
-                        errorMessage: `Missing power level for "${additionalPermission}" state events: ${userLevel} < ${permLevel}`,
-                        errorKind: ERROR_KIND_PERMISSION,
-                    });
-                }
-            }
-
-            // Otherwise OK
-        } catch (e) {
-            LogService.error("Mjolnir", extractRequestError(e));
-            errors.push({
-                roomId,
-                errorMessage: e.message || (e.body ? e.body.error : '<no message>'),
-                errorKind: ERROR_KIND_FATAL,
-            });
         }
-
-        return errors;
     }
 }

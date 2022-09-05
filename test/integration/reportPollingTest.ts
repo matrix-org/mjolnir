@@ -16,7 +16,7 @@ describe("Test: Report polling", function() {
 
         const eventId = await client.sendMessage(protectedRoomId, {msgtype: "m.text", body: "uwNd3q"});
         await new Promise(async resolve => {
-            await this.mjolnir.registerProtection(new class implements IProtection {
+            await this.mjolnir.protectionManager.registerProtection(new class implements IProtection {
                 name = "jYvufI";
                 description = "A test protection";
                 settings = { };
@@ -27,7 +27,7 @@ describe("Test: Report polling", function() {
                     }
                 };
             });
-            await this.mjolnir.enableProtection("jYvufI");
+            await this.mjolnir.protectionManager.enableProtection("jYvufI");
             await client.doRequest(
                 "POST",
                 `/_matrix/client/r0/rooms/${encodeURIComponent(protectedRoomId)}/report/${encodeURIComponent(eventId)}`, "", {

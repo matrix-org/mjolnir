@@ -91,7 +91,7 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
 
 async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const protectionName = parts[0];
-    const protection = mjolnir.getProtection(protectionName);
+    const protection = mjolnir.protectionManager.getProtection(protectionName);
     let text;
     let html;
     if (!protection) {
