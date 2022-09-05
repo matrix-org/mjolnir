@@ -20,35 +20,25 @@ import {
     LogLevel,
     LogService,
     MatrixClient,
-    MatrixGlob,
     MembershipEvent,
     Permalinks,
-    UserID,
-    TextualMessageEventContent
 } from "matrix-bot-sdk";
 
-import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
-import { applyServerAcls } from "./actions/ApplyAcl";
-import { RoomUpdateError } from "./models/RoomUpdateError";
+import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
-import { applyUserBans } from "./actions/ApplyBan";
-import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import { Protection } from "./protections/IProtection";
 import { PROTECTIONS } from "./protections/protections";
 import { Consequence } from "./protections/consequence";
 import { ProtectionSettingValidationError } from "./protections/ProtectionSettings";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
-import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { ReportPoller } from "./report/ReportPoller";
 import { WebAPIs } from "./webapis/WebAPIs";
 import RuleServer from "./models/RuleServer";
-import { RoomMemberManager } from "./RoomMembers";
-import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
 import { IConfig } from "./config";
-import PolicyList, { ListRuleChange } from "./models/PolicyList";
+import PolicyList from "./models/PolicyList";
 import { ProtectedRooms } from "./ProtectedRooms";
 import ManagementRoomOutput from "./ManagementRoom";
 
@@ -72,7 +62,6 @@ export class Mjolnir {
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
-    public readonly roomJoins: RoomMemberManager;
     public protections = new Map<string /* protection name */, Protection>();
     /**
      * This is for users who are not listed on a watchlist,
@@ -83,15 +72,15 @@ export class Mjolnir {
      * Every room that we are joined to except the management room. Used to implement `config.protectAllJoinedRooms`.
      */
     private protectedJoinedRoomIds: string[] = [];
-    private protectedRoomsTracker: ProtectedRooms;
     /**
      * These are rooms that were explicitly said to be protected either in the config, or by what is present in the account data for `org.matrix.mjolnir.protected_rooms`.
      */
     private explicitlyProtectedRoomIds: string[] = [];
     private unprotectedWatchedListRooms: string[] = [];
+    public readonly protectedRoomsTracker: ProtectedRooms; // FIXME: Construct
     private webapis: WebAPIs;
     public taskQueue: ThrottlingQueue;
-    private managementRoom: ManagementRoomOutput;
+    public readonly managementRoom: ManagementRoomOutput;
     /*
      * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
      */
@@ -131,7 +120,7 @@ export class Mjolnir {
                 const spaceUserIds = await client.getJoinedRoomMembers(spaceId)
                     .catch(async e => {
                         if (e.body?.errcode === "M_FORBIDDEN") {
-                            await mjolnir.logMessage(LogLevel.ERROR, 'Mjolnir', `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`);
+                            await mjolnir.managementRoom.logMessage(LogLevel.ERROR, 'Mjolnir', `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`);
                             await client.joinRoom(spaceId);
                             return await client.getJoinedRoomMembers(spaceId);
                         } else {
@@ -177,7 +166,7 @@ export class Mjolnir {
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
         const mjolnir = new Mjolnir(client, managementRoomId, config, protectedRooms, policyLists, ruleServer);
-        await mjolnir.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
+        await mjolnir.managementRoom.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
     }
@@ -196,10 +185,6 @@ export class Mjolnir {
         public readonly ruleServer: RuleServer | null,
     ) {
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
-
-        for (const reason of this.config.automaticallyRedactForReasons) {
-            this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
-        }
 
         // Setup bot.
 
@@ -266,8 +251,6 @@ export class Mjolnir {
         if (config.pollReports) {
             this.reportPoller = new ReportPoller(this, reportManager);
         }
-        // Setup join/leave listener
-        this.roomJoins = new RoomMemberManager(this.client);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
     }
 
@@ -346,8 +329,8 @@ export class Mjolnir {
             this.currentState = STATE_SYNCING;
             if (this.config.syncOnStartup) {
                 await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.syncLists(this.config.verboseLogging);
                 await this.registerProtections();
+                await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
             }
 
             this.currentState = STATE_RUNNING;
@@ -615,7 +598,7 @@ export class Mjolnir {
     private async addPolicyList(roomId: string, roomRef: string): Promise<PolicyList> {
         const list = new PolicyList(roomId, roomRef, this.client);
         this.ruleServer?.watch(list);
-        list.on('PolicyList.batch', this.syncWithPolicyList.bind(this));
+        list.on('PolicyList.batch', (...args) => this.protectedRoomsTracker.syncWithPolicyList(...args));
         await list.updateList();
         this.policyLists.push(list);
         return list;

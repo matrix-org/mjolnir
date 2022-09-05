@@ -24,8 +24,8 @@ describe("Test: Reporting abuse", async () => {
         this.timeout(60000);
 
         // Listen for any notices that show up.
-        let notices = [];
-        matrixClient().on("room.event", (roomId, event) => {
+        let notices: any[] = [];
+        matrixClient()!.on("room.event", (roomId, event) => {
             if (roomId = this.mjolnir.managementRoomId) {
                 notices.push(event);
             }

@@ -17,7 +17,6 @@ import { LogLevel, MatrixClient } from "matrix-bot-sdk"
 import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
-import { Mjolnir } from "../Mjolnir";
 import ManagementRoomOutput from "../ManagementRoom";
 
 export interface QueuedRedaction {

@@ -45,10 +45,10 @@ export class UnlistedUserRedactionQueue {
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id']);
                 } else {
-                    await mjolnir.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
+                    await mjolnir.managementRoom.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
                 }
             } catch (e) {
-                mjolnir.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
+                mjolnir.managementRoom.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
                 LogService.warn("AutomaticRedactionQueue", extractRequestError(e));
             }
         }

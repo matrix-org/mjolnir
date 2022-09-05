@@ -24,6 +24,7 @@ import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ServerAcl } from "./models/ServerAcl";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
+import { RoomMemberManager } from "./RoomMembers";
 import { htmlEscape } from "./utils";
 
 /**
@@ -54,6 +55,8 @@ export class ProtectedRooms {
 
     private automaticRedactionReasons: MatrixGlob[] = [];
 
+    public readonly roomJoins: RoomMemberManager;
+
     /**
      * Used to provide mutual exclusion when synchronizing rooms with the state of a policy list.
      * This is because requests operating with rules from an older version of the list that are slow
@@ -71,8 +74,15 @@ export class ProtectedRooms {
         private readonly managementRoom: ManagementRoomOutput,
         private readonly config: IConfig,
     ) {
+        for (const reason of this.config.automaticallyRedactForReasons) {
+            this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
+        }
+
         // Setup room activity watcher
         this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker(client);
+
+        // Setup join/leave listener
+        this.roomJoins = new RoomMemberManager(this.client);
     }
 
     public queueRedactUserMessagesIn(userId: string, roomId: string) {
@@ -182,7 +192,7 @@ export class ProtectedRooms {
      * @param policyList The `PolicyList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    private async syncWithPolicyList(policyList: PolicyList): Promise<void> {
+    public async syncWithPolicyList(policyList: PolicyList): Promise<void> {
         // this bit can move away into a listener.
         const changes = await policyList.updateList();
 
