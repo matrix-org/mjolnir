@@ -30,10 +30,10 @@ export class MjolnirAppService {
     private readonly mjolnirManager: MjolnirManager = new MjolnirManager();
 
     public constructor() {
-        new Api("http://localhost:9999", this).start(9001);
+        new Api("http://localhost:8081", this).start(9001);
         this.bridge = new Bridge({
-            homeserverUrl: "http://localhost:9999",
-            domain: "localhost:9999",
+            homeserverUrl: "http://localhost:8081",
+            domain: "localhost:8081",
             registration: "mjolnir-registration.yaml",
             controller: {
                 onUserQuery: this.onUserQuery.bind(this),

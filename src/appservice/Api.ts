@@ -1,5 +1,6 @@
 import * as request from "request";
 import * as express from "express";
+import * as bodyParser from "body-parser";
 import { MjolnirAppService } from "./AppService";
 
 export class Api {
@@ -34,11 +35,11 @@ export class Api {
     }
 
     public start(port: number) {
-        this.httpdConfig.use(express.json());
+        this.httpdConfig.use(bodyParser.json());
 
-        this.httpdConfig.get("/get", this.pathGet);
-        this.httpdConfig.get("/list", this.pathList);
-        this.httpdConfig.post("/create", this.pathCreate);
+        this.httpdConfig.get("/get", this.pathGet.bind(this));
+        this.httpdConfig.get("/list", this.pathList.bind(this));
+        this.httpdConfig.post("/create", this.pathCreate.bind(this));
 
         this.httpdConfig.listen(port);
     }
@@ -92,6 +93,11 @@ export class Api {
         }
 
         const userId = await this.resolveAccessToken(accessToken);
+        if (userId === null) {
+            response.status(4401).send("unauthorised");
+            return;
+        }
+
         const [mjolnirId, managementRoom] = await this.appService.provisionNewMjolnir(userId);
 
         // privisionNewMjolnir can't fail yet, but it should be able to
