@@ -33,7 +33,7 @@ export class MjolnirAppService {
         new Api("http://localhost:8081", this).start(9001);
         this.bridge = new Bridge({
             homeserverUrl: "http://localhost:8081",
-            domain: "localhost:8081",
+            domain: "localhost:9999",
             registration: "mjolnir-registration.yaml",
             controller: {
                 onUserQuery: this.onUserQuery.bind(this),
