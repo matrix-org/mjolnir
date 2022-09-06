@@ -265,7 +265,7 @@ export class ProtectionManager {
     }
 
     private async handleEvent(roomId: string, event: any) {
-        if (roomId in this.mjolnir.protectedRoomsTracker.protectedRooms) {
+        if (roomId in this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
             if (event['sender'] === await this.mjolnir.client.getUserId()) return; // Ignore ourselves
 
             // Iterate all the enabled protections

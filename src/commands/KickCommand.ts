@@ -22,7 +22,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
     let force = false;
 
     const glob = parts[2];
-    let rooms = [...Object.keys(mjolnir.protectedRoomsTracker.protectedRooms)];
+    let rooms = mjolnir.protectedRoomsTracker.getProtectedRooms();
 
     if (parts[parts.length - 1] === "--force") {
         force = true;

@@ -23,7 +23,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
     const level = Math.round(Number(parts[3]));
     const inRoom = parts[4];
 
-    let targetRooms = inRoom ? [await mjolnir.client.resolveRoom(inRoom)] : [...mjolnir.protectedRoomsTracker.protectedRooms];
+    let targetRooms = inRoom ? [await mjolnir.client.resolveRoom(inRoom)] : mjolnir.protectedRoomsTracker.getProtectedRooms();
 
     for (const targetRoomId of targetRooms) {
         try {

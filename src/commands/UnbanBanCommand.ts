@@ -133,7 +133,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
         const rule = new MatrixGlob(bits.entity);
         await mjolnir.managementRoom.logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
-        for (const protectedRoomId of mjolnir.protectedRoomsTracker.protectedRooms) {
+        for (const protectedRoomId of mjolnir.protectedRoomsTracker.getProtectedRooms()) {
             const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
             await mjolnir.managementRoom.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Found ${members.length} banned user(s)`);
             for (const member of members) {

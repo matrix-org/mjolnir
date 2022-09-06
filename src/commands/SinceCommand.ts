@@ -185,7 +185,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     // Now list affected rooms.
     const rooms: Set</* room id */string> = new Set();
     let reasonParts: string[] | undefined;
-    const protectedRooms = new Set(mjolnir.protectedRoomsTracker.protectedRooms);
+    const protectedRooms = new Set(mjolnir.protectedRoomsTracker.getProtectedRooms());
     for (let token of optionalTokens) {
         const maybeArg = getTokenAsString(reasonParts ? "[reason]" : "[room]", token);
         if ("error" in maybeArg) {
@@ -195,7 +195,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
         if (!reasonParts) {
             // If we haven't reached the reason yet, attempt to use `maybeRoom` as a room.
             if (maybeRoom === "*") {
-                for (let roomId of mjolnir.protectedRoomsTracker.protectedRooms) {
+                for (let roomId of mjolnir.protectedRoomsTracker.getProtectedRooms()) {
                     rooms.add(roomId);
                 }
                 continue;
@@ -226,7 +226,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     for (let targetRoomId of rooms) {
         let {html, text} = await (async () => {
             let results: Summary = { succeeded: [], failed: []};
-            const recentJoins = mjolnir.protectedRoomsTracker.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
+            const recentJoins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
 
             switch (action) {
                 case Action.Show: {

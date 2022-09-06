@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoom";
@@ -25,7 +25,6 @@ import { ServerAcl } from "./models/ServerAcl";
 import { ProtectionManager } from "./protections/protections";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
-import { RoomMemberManager } from "./RoomMembers";
 import { htmlEscape } from "./utils";
 
 /**
@@ -88,6 +87,14 @@ export class ProtectedRooms {
 
     public get automaticRedactGlobs(): MatrixGlob[] {
         return this.automaticRedactionReasons;
+    }
+
+    public getProtectedRooms () {
+        return [...this.protectedRooms.keys()]
+    }
+
+    public isProtectedRoom(roomId: string): boolean {
+        return this.protectedRooms.has(roomId);
     }
 
     /**
@@ -452,8 +459,8 @@ export class ProtectedRooms {
 
     public async verifyPermissions(verbose = true, printRegardless = false) {
         const errors: RoomUpdateError[] = [];
-        for (const roomId of Object.keys(this.protectedRooms)) {
-            errors.push(...(await this.verifyPermissionsIn(roomId)));
+        for (const roomId of this.protectedRooms) {
+            errors.push(...(await this.protections.verifyPermissionsIn(roomId)));
         }
 
         const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:", printRegardless);
@@ -466,9 +473,6 @@ export class ProtectedRooms {
                 format: "org.matrix.custom.html",
                 formatted_body: html,
             });
-        }
-    }
-
         }
     }
 }

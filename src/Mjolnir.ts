@@ -507,10 +507,14 @@ export class Mjolnir {
         await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
     }
 
+    /**
+     * So this is called to retroactively remove protected rooms from Mjolnir's internal model of joined rooms.
+     * This is really shit and needs to be changed asap. Unacceptable even.
+     */
     private applyUnprotectedRooms() {
         for (const roomId of this.unprotectedWatchedListRooms) {
             delete this.protectedRooms[roomId];
-            this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
+            this.protectedRoomsTracker.removeProtectedRoom(roomId);
         }
     }
 
