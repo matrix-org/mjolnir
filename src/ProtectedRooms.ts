@@ -36,7 +36,7 @@ import { htmlEscape } from "./utils";
  * and implicitly a bunch of lists.
  * 
  * It's important not to tie this to the one group of rooms that a mjolnir may watch too much
- * as in future we might want to borrow this class to represent a space. 
+ * as in future we might want to borrow this class to represent a space.
  */
 export class ProtectedRooms {
 
@@ -56,8 +56,6 @@ export class ProtectedRooms {
 
     private automaticRedactionReasons: MatrixGlob[] = [];
 
-    public readonly roomJoins: RoomMemberManager;
-
     /**
      * Used to provide mutual exclusion when synchronizing rooms with the state of a policy list.
      * This is because requests operating with rules from an older version of the list that are slow
@@ -66,7 +64,7 @@ export class ProtectedRooms {
      * These requests could finish in any order, which has left rooms with an inconsistent server_acl event
      * until Mjolnir synchronises the room with its policy lists again, which can be in the region of hours.
      */
-    public aclChain: Promise<void> = Promise.resolve();
+    private aclChain: Promise<void> = Promise.resolve();
 
     constructor(
         private readonly client: MatrixClient,
@@ -82,9 +80,6 @@ export class ProtectedRooms {
 
         // Setup room activity watcher
         this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker(client);
-
-        // Setup join/leave listener
-        this.roomJoins = new RoomMemberManager(this.client);
     }
 
     public queueRedactUserMessagesIn(userId: string, roomId: string) {

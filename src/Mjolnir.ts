@@ -38,12 +38,14 @@ import PolicyList from "./models/PolicyList";
 import { ProtectedRooms } from "./ProtectedRooms";
 import ManagementRoomOutput from "./ManagementRoom";
 import { ProtectionManager } from "./protections/protections";
+import { RoomMemberManager } from "./RoomMembers";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
 export const STATE_SYNCING = "syncing";
 export const STATE_RUNNING = "running";
 
+const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
@@ -57,6 +59,7 @@ export class Mjolnir {
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
+    public readonly roomJoins: RoomMemberManager;
     /**
      * This is for users who are not listed on a watchlist,
      * but have been flagged by the automatic spam detection as suispicous
@@ -248,6 +251,8 @@ export class Mjolnir {
         if (config.pollReports) {
             this.reportPoller = new ReportPoller(this, this.reportManager);
         }
+        // Setup join/leave listener
+        this.roomJoins = new RoomMemberManager(this.client);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
 
         this.protectionManager = new ProtectionManager(this);
@@ -307,7 +312,6 @@ export class Mjolnir {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
                         this.explicitlyProtectedRoomIds.push(roomId);
-                        this.protectedRoomActivityTracker.addProtectedRoom(roomId);
                     }
                 }
             } catch (e) {
