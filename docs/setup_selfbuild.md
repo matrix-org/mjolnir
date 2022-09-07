@@ -7,9 +7,26 @@ cd mjolnir
 yarn install
 yarn build
 
-# Copy and edit the config. It *is* recommended to change the data path.
+# Edit the config.
+# You probably should change `dataPath`.
+nano config/default.yaml
+
+node lib/index.js
+```
+
+Or, if you wish to use a different configuration file, e.g. `development.yaml`
+
+```bash
+git clone https://github.com/matrix-org/mjolnir.git
+cd mjolnir
+
+yarn install
+yarn build
+
+# Edit the config.
+# You probably should change `dataPath`.
 cp config/default.yaml config/development.yaml
 nano config/development.yaml
 
-node lib/index.js
+NODE_ENV=development node lib/index.js
 ```

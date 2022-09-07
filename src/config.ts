@@ -170,12 +170,36 @@ const defaultConfig: IConfig = {
     },
 };
 
-export function read(): IConfig {
+export function read(checkConfigured = true): IConfig {
     const config_dir = process.env.NODE_CONFIG_DIR || "./config";
-    const config_file = `${process.env.NODE_ENV || "default"}.yaml`
-
-    const content = fs.readFileSync(path.join(config_dir, config_file), "utf8");
+    let config_path;
+    for (let key of [
+        process.env.NODE_ENV,
+        "production",
+        "default"
+    ]) {
+        if (!key) {
+            continue;
+        }
+        const candidate_path = path.join(config_dir, `${key}.yaml`);
+        if (!fs.existsSync(candidate_path)) {
+            continue;
+        }
+        config_path = candidate_path;
+        break;
+    }
+    if (!config_path) {
+        throw new Error("Could not find any valid configuration file");
+    }
+    const content = fs.readFileSync(config_path, "utf8");
     const parsed = load(content);
     const config = {...defaultConfig, ...(parsed as object)} as IConfig;
+    if (checkConfigured && config.accessToken === "YOUR_TOKEN_HERE") {
+        // A small check to simplify the error message in case
+        // the configuration file hasn't been modified.
+        throw new Error(`Invalid access token in configuration file ${config_path}. `
+            + "This usually indicates that Mjölnir's configuration file was not setup "
+            + "or that Mjölnir is using the wrong configuration file.");
+    }
     return config;
 }
