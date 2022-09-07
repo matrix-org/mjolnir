@@ -5,11 +5,12 @@ import { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 
 export class MjolnirManager {
-    private readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
+    public readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
 
     public getDefaultMjolnirConfig(managementRoom: string): IConfig {
         let config = configRead();
         config.managementRoom = managementRoom;
+        config.protectedRooms = [];
         return config;
     }
 
@@ -54,6 +55,13 @@ export class ManagedMjolnir {
                 this.mjolnir.client.emit('room.invite', mxEvent.room_id, mxEvent);
             }
         }
+    }
+
+    public async joinRoom(roomId: string) {
+        await this.mjolnir.client.joinRoom(roomId);
+    }
+    public async addProtectedRoom(roomId: string) {
+        await this.mjolnir.addProtectedRoom(roomId);
     }
 
     public async moveMeSomewhereCommonAndStopImplementingFunctionalityOnACommandFirstBasis(mjolnirOwnerId: string, shortcode: string) {

@@ -40,6 +40,7 @@ export class Api {
         this.httpdConfig.get("/get", this.pathGet.bind(this));
         this.httpdConfig.get("/list", this.pathList.bind(this));
         this.httpdConfig.post("/create", this.pathCreate.bind(this));
+        this.httpdConfig.post("/join", this.pathJoin.bind(this));
 
         this.httpdConfig.listen(port);
     }
@@ -92,9 +93,15 @@ export class Api {
             return;
         }
 
+        const roomId = request.body["roomId"];
+        if (roomId === undefined) {
+            response.status(400).send("invalid request");
+            return;
+        }
+
         const userId = await this.resolveAccessToken(accessToken);
         if (userId === null) {
-            response.status(4401).send("unauthorised");
+            response.status(401).send("unauthorised");
             return;
         }
 
@@ -105,5 +112,42 @@ export class Api {
         //}
 
         response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
+    }
+
+    private async pathJoin(request: express.Request, response: express.Response) {
+        const accessToken = request.body["openId"];
+        if (accessToken === undefined) {
+            response.status(401).send("unauthorised");
+            return;
+        }
+
+        const userId = await this.resolveAccessToken(accessToken);
+        if (userId === null) {
+            response.status(401).send("unauthorised");
+            return;
+        }
+
+        const mjolnirId = request.body["mxid"];
+        if (mjolnirId === undefined) {
+            response.status(400).send("invalid request");
+            return;
+        }
+
+        const roomId = request.body["roomId"];
+        if (roomId === undefined) {
+            response.status(400).send("invalid request");
+            return;
+        }
+
+        const mjolnir = this.appService.mjolnirManager.mjolnirs.get(mjolnirId);
+        if (mjolnir === undefined) {
+            response.status(400).send("unknown mjolnir mxid");
+            return;
+        }
+
+        await mjolnir.joinRoom(roomId);
+        await mjolnir.addProtectedRoom(roomId);
+
+        response.status(200).json({});
     }
 }

@@ -27,7 +27,7 @@ import { Api } from "./Api";
 export class MjolnirAppService {
 
     public readonly bridge: Bridge;
-    private readonly mjolnirManager: MjolnirManager = new MjolnirManager();
+    public readonly mjolnirManager: MjolnirManager = new MjolnirManager();
 
     public constructor() {
         new Api("http://localhost:8081", this).start(9001);
