@@ -103,6 +103,7 @@ new Cli({
         reg.setAppServiceToken(AppServiceRegistration.generateToken());
         reg.setSenderLocalpart("mjolnir");
         reg.addRegexPattern("users", "@mjolnir_.*", true);
+        reg.setRateLimited(false);
         callback(reg);
     },
     run: function(port: number) {
