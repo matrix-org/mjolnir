@@ -74,7 +74,7 @@ export class Mjolnir {
      */
     private explicitlyProtectedRoomIds: string[] = [];
     private unprotectedWatchedListRooms: string[] = [];
-    public readonly protectedRoomsTracker: ProtectedRooms; // FIXME: Construct
+    public readonly protectedRoomsTracker: ProtectedRooms;
     private webapis: WebAPIs;
     public taskQueue: ThrottlingQueue;
     public readonly managementRoom: ManagementRoomOutput;
@@ -166,7 +166,7 @@ export class Mjolnir {
         }
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
-        const mjolnir = new Mjolnir(client, managementRoomId, config, protectedRooms, policyLists, ruleServer);
+        const mjolnir = new Mjolnir(client, await client.getUserId(), managementRoomId, config, protectedRooms, policyLists, ruleServer);
         await mjolnir.managementRoom.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
@@ -174,6 +174,7 @@ export class Mjolnir {
 
     constructor(
         public readonly client: MatrixClient,
+        private readonly clientUserId: string,
         public readonly managementRoomId: string,
         public readonly config: IConfig,
         /*
@@ -256,6 +257,10 @@ export class Mjolnir {
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
 
         this.protectionManager = new ProtectionManager(this);
+
+        this.managementRoom = new ManagementRoomOutput(managementRoomId, client, config);
+        const protections = new ProtectionManager(this);
+        this.protectedRoomsTracker = new ProtectedRooms(client, clientUserId, managementRoomId, this.managementRoom, protections, config);
     }
 
     public get lists(): PolicyList[] {
@@ -319,6 +324,7 @@ export class Mjolnir {
             }
             await this.buildWatchedPolicyLists();
             this.applyUnprotectedRooms();
+            await this.protectionManager.start();
 
             if (this.config.verifyPermissionsOnStartup) {
                 await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
@@ -329,7 +335,6 @@ export class Mjolnir {
             if (this.config.syncOnStartup) {
                 await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
-                await this.protectionManager.start();
             }
 
             this.currentState = STATE_RUNNING;
@@ -361,6 +366,7 @@ export class Mjolnir {
     public async addProtectedRoom(roomId: string) {
         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
         this.roomJoins.addRoom(roomId);
+        this.protectedRoomsTracker.addProtectedRoom(roomId);
 
         const unprotectedIdx = this.unprotectedWatchedListRooms.indexOf(roomId);
         if (unprotectedIdx >= 0) this.unprotectedWatchedListRooms.splice(unprotectedIdx, 1);
@@ -380,6 +386,7 @@ export class Mjolnir {
     public async removeProtectedRoom(roomId: string) {
         delete this.protectedRooms[roomId];
         this.roomJoins.removeRoom(roomId);
+        this.protectedRoomsTracker.removeProtectedRoom(roomId);
 
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
@@ -410,7 +417,10 @@ export class Mjolnir {
             if (!joinedRoomIdsSet.has(roomId)) {
                 // Then we have left this room.
                 delete this.protectedRooms[roomId];
-                this.protectedRoomsTracker.removeProtectedRoom(roomId);
+                // FIXME: THere is clearly a discrepency between "a protected room" a room we would like to protect
+                // and a room that we are protecting right now.
+                // If we leave a room that has explicitly been protected, we probably don't want to update
+                // the account data etc.
                 this.roomJoins.removeRoom(roomId);
             }
         }
@@ -420,7 +430,6 @@ export class Mjolnir {
                 // Then we have joined this room
                 this.roomJoins.addRoom(roomId);
                 this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
-                await this.protectedRoomsTracker.addProtectedRoom(roomId);
             }
         }
 
@@ -443,6 +452,7 @@ export class Mjolnir {
         list.on('PolicyList.batch', (...args) => this.protectedRoomsTracker.syncWithPolicyList(...args));
         await list.updateList();
         this.policyLists.push(list);
+        this.protectedRoomsTracker.watchList(list);
         return list;
     }
 
@@ -478,6 +488,7 @@ export class Mjolnir {
         if (list) {
             this.policyLists.splice(this.policyLists.indexOf(list), 1);
             this.ruleServer?.unwatch(list);
+            this.protectedRoomsTracker.unwatchList(list);
         }
 
         await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
@@ -563,6 +574,10 @@ export class Mjolnir {
             if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
                 policyList.updateForEvent(event.event_id)
             }
+        }
+
+        if (event.sender !== this.clientUserId) {
+            this.protectedRoomsTracker.handleEvent(roomId, event);
         }
     }
 

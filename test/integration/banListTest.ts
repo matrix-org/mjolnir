@@ -242,7 +242,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             const room = await moderator.createRoom({ invite: [mjolnirId] });
             await mjolnir.client.joinRoom(room);
             await moderator.setUserPowerLevel(mjolnirId, room, 100);
-            await mjolnir.protectedRoomsTracker.addProtectedRoom(room);
+            await mjolnir.addProtectedRoom(room);
             protectedRooms.push(room);
         }
 
@@ -309,7 +309,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         const protectedRoom = await moderator.createRoom({ invite: [mjolnirId] });
         await mjolnir.client.joinRoom(protectedRoom);
         await moderator.setUserPowerLevel(mjolnirId, protectedRoom, 100);
-        await mjolnir.protectedRoomsTracker.addProtectedRoom(protectedRoom);
+        await mjolnir.addProtectedRoom(protectedRoom);
 
         // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
         await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
@@ -333,7 +333,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'this is bad sort it out.');
         await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'hidden with a non-standard state key', undefined, "rule_1");
         // Wait for the ACL event to be applied to our protected room.
-        await this.mjolnir!.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists();
 
         await banList.updateList();
         // rules are normalized by rule type, that's why there should only be 3.
@@ -370,6 +370,8 @@ describe('Test: unbaning entities via the PolicyList.', function() {
 
 describe('Test: should apply bans to the most recently active rooms first', function() {
     it('Applies bans to the most recently active rooms first', async function() {
+        // FIXME: This test is no insufficient as the activity tracker no longer sees
+        // Mjolnir's own events.
         this.timeout(180000)
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
@@ -383,7 +385,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
             const room = await moderator.createRoom({ invite: [mjolnirId] });
             await mjolnir.client.joinRoom(room);
             await moderator.setUserPowerLevel(mjolnirId, room, 100);
-            await mjolnir.protectedRoomsTracker.addProtectedRoom(room);
+            await mjolnir.addProtectedRoom(room);
             protectedRooms.push(room);
         }
 

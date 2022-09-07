@@ -41,7 +41,7 @@ export class ProtectedRooms {
 
     private protectedRooms = new Set</* room id */string>();
 
-    private policyLists: PolicyList[];
+    private policyLists: PolicyList[] = [];
 
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
 
@@ -70,7 +70,13 @@ export class ProtectedRooms {
         private readonly clientUserId: string,
         private readonly managementRoomId: string,
         private readonly managementRoom: ManagementRoomOutput,
-        private readonly protections: ProtectionManager,
+        /**
+         * The protection manager is only used to verify the persmissions
+         * required are correct for this set of rooms.
+         * The protection manager is not really compatible with this abstraction yet
+         * because of a direct dependency on the protection manager in Mjolnir commands.  
+         */
+        private readonly protectionManager: ProtectionManager,
         private readonly config: IConfig,
     ) {
         for (const reason of this.config.automaticallyRedactForReasons) {
@@ -78,7 +84,7 @@ export class ProtectedRooms {
         }
 
         // Setup room activity watcher
-        this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker(client);
+        this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker();
     }
 
     public queueRedactUserMessagesIn(userId: string, roomId: string) {
@@ -95,6 +101,16 @@ export class ProtectedRooms {
 
     public isProtectedRoom(roomId: string): boolean {
         return this.protectedRooms.has(roomId);
+    }
+
+    public watchList(policyList: PolicyList): void {
+        if (!this.policyLists.includes(policyList)) {
+            this.policyLists.push(policyList);
+        }
+    }
+
+    public unwatchList(policyList: PolicyList): void {
+        this.policyLists = this.policyLists.filter(list => list.roomId !== policyList.roomId);
     }
 
     /**
@@ -120,11 +136,12 @@ export class ProtectedRooms {
         if (event['sender'] === this.clientUserId) {
             throw new TypeError("`ProtectedRooms::handleEvent` should not be used to inform about events sent by mjolnir.");
         }
+        this.protectedRoomActivityTracker.handleEvent(roomId, event);
         if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
             // power levels were updated - recheck permissions
             this.errorCache.resetError(roomId, ERROR_KIND_PERMISSION);
             await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
-            const errors = await this.protections.verifyPermissionsIn(roomId);
+            const errors = await this.protectionManager.verifyPermissionsIn(roomId);
             const hadErrors = await this.printActionResult(errors);
             if (!hadErrors) {
                 await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
@@ -460,7 +477,7 @@ export class ProtectedRooms {
     public async verifyPermissions(verbose = true, printRegardless = false) {
         const errors: RoomUpdateError[] = [];
         for (const roomId of this.protectedRooms) {
-            errors.push(...(await this.protections.verifyPermissionsIn(roomId)));
+            errors.push(...(await this.protectionManager.verifyPermissionsIn(roomId)));
         }
 
         const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:", printRegardless);

@@ -70,7 +70,7 @@ export class ProtectionManager {
             }
         }
     }
-    
+
     /*
      * Given a protection object; add it to our list of protections, set whether it is enabled
      * and update its settings with any saved non-default values.
@@ -102,7 +102,7 @@ export class ProtectionManager {
      * @param protection The protection object we want to unregister
      */
     public unregisterProtection(protectionName: string) {
-        if (!(protectionName in this._protections)) {
+        if (!(this._protections.has(protectionName))) {
             throw new Error("Failed to find protection by name: " + protectionName);
         }
         this._protections.delete(protectionName);
@@ -175,7 +175,8 @@ export class ProtectionManager {
     public getProtection(protectionName: string): Protection | null {
         return this._protections.get(protectionName) ?? null;
     }
-    
+
+
     /*
      * Disable a protection by name and remove it from the persistent list of enabled protections
      *
@@ -265,7 +266,7 @@ export class ProtectionManager {
     }
 
     private async handleEvent(roomId: string, event: any) {
-        if (roomId in this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
+        if (this.mjolnir.protectedRoomsTracker.getProtectedRooms().includes(roomId)) {
             if (event['sender'] === await this.mjolnir.client.getUserId()) return; // Ignore ourselves
 
             // Iterate all the enabled protections
@@ -385,7 +386,6 @@ export class ProtectionManager {
         return errors;
     }
 
-    // FIXME: Hook up
     private async handleReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
         for (const protection of this.enabledProtections) {
             await protection.handleReport(this.mjolnir, roomId, reporterId, event, reason);

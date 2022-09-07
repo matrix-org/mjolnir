@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { MatrixClient } from "matrix-bot-sdk";
 
 /**
  * Used to keep track of protected rooms so they are always ordered for activity.
@@ -29,9 +28,6 @@ export class ProtectedRoomActivityTracker {
      * A slot to cache the rooms for `protectedRoomsByActivity` ordered so the most recently active room is first.
      */
     private activeRoomsCache: null|string[] = null
-    constructor(client: MatrixClient) {
-        client.on('room.event', this.handleEvent.bind(this));
-    }
 
     /**
      * Inform the tracker that a new room is being protected by Mjolnir.
@@ -55,6 +51,7 @@ export class ProtectedRoomActivityTracker {
      * Inform the tracker of a new event in a room, so that the internal ranking of rooms can be updated
      * @param roomId The room the new event is in.
      * @param event The new event.
+     *
      */
     public handleEvent(roomId: string, event: any): void {
         const last_origin_server_ts = this.protectedRoomActivities.get(roomId);
