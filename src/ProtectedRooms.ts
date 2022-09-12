@@ -33,7 +33,7 @@ import { htmlEscape } from "./utils";
  * and then you find out which lists apply to them.
  * This is important because right now we have a collection of rooms
  * and implicitly a bunch of lists.
- * 
+ *
  * It's important not to tie this to the one group of rooms that a mjolnir may watch too much
  * as in future we might want to borrow this class to represent a space.
  */
@@ -74,7 +74,7 @@ export class ProtectedRooms {
          * The protection manager is only used to verify the persmissions
          * required are correct for this set of rooms.
          * The protection manager is not really compatible with this abstraction yet
-         * because of a direct dependency on the protection manager in Mjolnir commands.  
+         * because of a direct dependency on the protection manager in Mjolnir commands.
          */
         private readonly protectionManager: ProtectionManager,
         private readonly config: IConfig,
@@ -260,59 +260,58 @@ export class ProtectedRooms {
     }
 
     private async _applyServerAcls(lists: PolicyList[], roomIds: string[]): Promise<RoomUpdateError[]> {
-    const serverName: string = new UserID(await this.client.getUserId()).domain;
+        const serverName: string = new UserID(await this.client.getUserId()).domain;
 
-    // Construct a server ACL first
-    const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
-    for (const list of lists) {
-        for (const rule of list.serverRules) {
-            acl.denyServer(rule.entity);
+        // Construct a server ACL first
+        const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
+        for (const list of lists) {
+            for (const rule of list.serverRules) {
+                acl.denyServer(rule.entity);
+            }
         }
-    }
 
-    const finalAcl = acl.safeAclContent();
+        const finalAcl = acl.safeAclContent();
 
-    if (finalAcl.deny.length !== acl.literalAclContent().deny.length) {
-        this.managementRoom.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
-    }
+        if (finalAcl.deny.length !== acl.literalAclContent().deny.length) {
+            this.managementRoom.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
+        }
 
-    if (this.config.verboseLogging) {
-        // We specifically use sendNotice to avoid having to escape HTML
-        await this.client.sendNotice(this.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
-    }
+        if (this.config.verboseLogging) {
+            // We specifically use sendNotice to avoid having to escape HTML
+            await this.client.sendNotice(this.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
+        }
 
-    const errors: RoomUpdateError[] = [];
-    for (const roomId of roomIds) {
-        try {
-            await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
-
+        const errors: RoomUpdateError[] = [];
+        for (const roomId of roomIds) {
             try {
-                const currentAcl = await this.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
-                if (acl.matches(currentAcl)) {
-                    await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
-                    continue;
+                await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
+
+                try {
+                    const currentAcl = await this.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
+                    if (acl.matches(currentAcl)) {
+                        await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
+                        continue;
+                    }
+                } catch (e) {
+                    // ignore - assume no ACL
+                }
+
+                // We specifically use sendNotice to avoid having to escape HTML
+                await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
+
+                if (!this.config.noop) {
+                    await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
+                } else {
+                    await this.managementRoom.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             } catch (e) {
-                // ignore - assume no ACL
+                const message = e.message || (e.body ? e.body.error : '<no message>');
+                const kind = message && message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
+                errors.push({ roomId, errorMessage: message, errorKind: kind });
             }
-
-            // We specifically use sendNotice to avoid having to escape HTML
-            await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
-
-            if (!this.config.noop) {
-                await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
-            } else {
-                await this.managementRoom.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-            }
-        } catch (e) {
-            const message = e.message || (e.body ? e.body.error : '<no message>');
-            const kind = message && message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
-            errors.push({ roomId, errorMessage: message, errorKind: kind });
         }
+        return errors;
     }
-
-    return errors;
-}
 
     /**
     * Applies the member bans represented by the ban lists to the provided rooms, returning the
@@ -431,7 +430,7 @@ export class ProtectedRooms {
         await this.client.sendMessage(this.managementRoomId, message);
         return true;
     }
-    
+
     private async printActionResult(errors: RoomUpdateError[], title: string | null = null, logAnyways = false) {
         if (errors.length <= 0) return false;
 
