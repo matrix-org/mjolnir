@@ -63,7 +63,7 @@ export class MjolnirAppService {
                 }
             })).room_id;
 
-            this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent.matrixClient);
+            await this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent.matrixClient);
             // Technically the mjolnir is a remote user, but also not because it's matrix-matrix.
             //const mjAsRemote = new RemoteUser(mjIntent.userId)
             //const bridgeStore = this.bridge.getUserStore()!;
