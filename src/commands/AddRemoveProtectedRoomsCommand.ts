@@ -20,14 +20,14 @@ import { extractRequestError, LogLevel, LogService } from "matrix-bot-sdk";
 // !mjolnir rooms add <room alias/ID>
 export async function execAddProtectedRoom(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const protectedRoomId = await mjolnir.client.joinRoom(parts[3]);
-    await mjolnir.protectedRoomsTracker.addProtectedRoom(protectedRoomId);
+    await mjolnir.addProtectedRoom(protectedRoomId);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir rooms remove <room alias/ID>
 export async function execRemoveProtectedRoom(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const protectedRoomId = await mjolnir.client.resolveRoom(parts[3]);
-    await mjolnir.protectedRoomsTracker.removeProtectedRoom(protectedRoomId);
+    await mjolnir.removeProtectedRoom(protectedRoomId);
     try {
         await mjolnir.client.leaveRoom(protectedRoomId);
     } catch (e) {
