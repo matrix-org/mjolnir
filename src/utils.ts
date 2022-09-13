@@ -24,7 +24,7 @@ import {
 } from "matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
-import ManagementRoomOutput from "./ManagementRoom";
+import ManagementRoomOutput from "./ManagementRoomOutput";
 
 // Define a few aliases to simplify parsing durations.
 

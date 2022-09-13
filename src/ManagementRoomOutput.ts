@@ -25,7 +25,7 @@ const levelToFn = {
     [LogLevel.ERROR.toString()]: LogService.error,
 };
 
-export default class ManagementRoomOutput {    
+export default class ManagementRoomOutput {
 
     constructor(
         private readonly managementRoomId: string,

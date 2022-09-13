@@ -36,7 +36,7 @@ import { ThrottlingQueue } from "./queues/ThrottlingQueue";
 import { IConfig } from "./config";
 import PolicyList from "./models/PolicyList";
 import { ProtectedRooms } from "./ProtectedRooms";
-import ManagementRoomOutput from "./ManagementRoom";
+import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 

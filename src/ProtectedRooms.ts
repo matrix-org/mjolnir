@@ -17,7 +17,7 @@ limitations under the License.
 import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
-import ManagementRoomOutput from "./ManagementRoom";
+import ManagementRoomOutput from "./ManagementRoomOutput";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
 import PolicyList, { ListRuleChange } from "./models/PolicyList";
 import { RoomUpdateError } from "./models/RoomUpdateError";
