@@ -22,7 +22,7 @@ import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
 import PolicyList, { ListRuleChange } from "./models/PolicyList";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ServerAcl } from "./models/ServerAcl";
-import { ProtectionManager } from "./protections/protections";
+import { ProtectionManager } from "./protections/ProtectionManager";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { htmlEscape } from "./utils";

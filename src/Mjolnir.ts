@@ -37,7 +37,7 @@ import { IConfig } from "./config";
 import PolicyList from "./models/PolicyList";
 import { ProtectedRooms } from "./ProtectedRooms";
 import ManagementRoomOutput from "./ManagementRoom";
-import { ProtectionManager } from "./protections/protections";
+import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 
 export const STATE_NOT_STARTED = "not_started";
