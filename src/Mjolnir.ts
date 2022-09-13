@@ -401,11 +401,8 @@ export class Mjolnir {
         await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
     }
 
-    // need to brewritten to add/remove from a ProtectedRooms instance.
+    // See https://github.com/matrix-org/mjolnir/issues/370.
     private async resyncJoinedRooms(withSync = true) {
-        // this is really terrible!
-        // what the fuck does it do???
-        // just fix it bloody hell mate.
         if (!this.config.protectAllJoinedRooms) return;
 
         const joinedRoomIds = (await this.client.getJoinedRooms())
@@ -417,10 +414,6 @@ export class Mjolnir {
             if (!joinedRoomIdsSet.has(roomId)) {
                 // Then we have left this room.
                 delete this.protectedRooms[roomId];
-                // FIXME: THere is clearly a discrepency between "a protected room" a room we would like to protect
-                // and a room that we are protecting right now.
-                // If we leave a room that has explicitly been protected, we probably don't want to update
-                // the account data etc.
                 this.roomJoins.removeRoom(roomId);
             }
         }
