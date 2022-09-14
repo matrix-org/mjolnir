@@ -75,8 +75,8 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
     text += "Subscribed ban lists:\n";
     for (const list of mjolnir.lists) {
         const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
-        html += `<li><a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
-        text += `* ${list.roomRef} (${ruleInfo})\n`;
+        html += `<li>${htmlEscape(list.listShortcode)} @ <a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
+        text += `* ${list.listShortcode} @ ${list.roomRef} (${ruleInfo})\n`;
     }
     if (mjolnir.lists.length === 0) {
         html += "<li><i>None</i></li>";
