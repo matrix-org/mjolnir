@@ -25,6 +25,9 @@ const levelToFn = {
     [LogLevel.ERROR.toString()]: LogService.error,
 };
 
+/**
+ * Allows the different componenets of mjolnir to send messages back to the management room without introducing a dependency on the entirity of a `Mjolnir` instance.
+ */
 export default class ManagementRoomOutput {
 
     constructor(
@@ -35,7 +38,7 @@ export default class ManagementRoomOutput {
 
     }
 
-    /*
+    /**
      * Take an arbitrary string and a set of room IDs, and return a
      * TextualMessageEventContent whose plaintext component replaces those room
      * IDs with their canonical aliases, and whose html component replaces those
@@ -55,6 +58,7 @@ export default class ManagementRoomOutput {
             format: "org.matrix.custom.html",
         };
 
+        // Though spec doesn't say so, room ids that have slashes in them are accepted by Synapse and Dendrite unfortunately for us.
         const escapeRegex = (v: string): string => {
             return v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         };
@@ -73,13 +77,22 @@ export default class ManagementRoomOutput {
             content.body = content.body.replace(regexRoomId, alias);
             if (content.formatted_body) {
                 const permalink = Permalinks.forRoom(alias, alias !== roomId ? [] : viaServers);
-                content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${permalink}">${alias}</a>`);
+                content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${permalink}">${htmlEscape(alias)}</a>`);
             }
         }
 
         return content;
     }
 
+    /**
+     * Log a message to the management room and the console, replaces any room ids in additionalRoomIds with pills.
+     *
+     * @param level Used to determine whether to hide the message or not depending on `config.verboseLogging`.
+     * @param module Used to help find where in the source the message is coming from (when logging to the console).
+     * @param message The message we want to log.
+     * @param additionalRoomIds The roomIds in the message that we want to be replaced by room pills.
+     * @param isRecursive Whether logMessage is being called from logMessage.
+     */
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
         if (!additionalRoomIds) additionalRoomIds = [];
         if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
