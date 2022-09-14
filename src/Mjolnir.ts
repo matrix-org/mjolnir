@@ -77,7 +77,10 @@ export class Mjolnir {
     public readonly protectedRoomsTracker: ProtectedRooms;
     private webapis: WebAPIs;
     public taskQueue: ThrottlingQueue;
-    public readonly managementRoom: ManagementRoomOutput;
+    /**
+     * Reporting back to the management room.
+     */
+    public readonly managementRoomOutput: ManagementRoomOutput;
     /*
      * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
      */
@@ -121,7 +124,7 @@ export class Mjolnir {
                 const spaceUserIds = await client.getJoinedRoomMembers(spaceId)
                     .catch(async e => {
                         if (e.body?.errcode === "M_FORBIDDEN") {
-                            await mjolnir.managementRoom.logMessage(LogLevel.ERROR, 'Mjolnir', `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`);
+                            await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, 'Mjolnir', `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`);
                             await client.joinRoom(spaceId);
                             return await client.getJoinedRoomMembers(spaceId);
                         } else {
@@ -167,7 +170,7 @@ export class Mjolnir {
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
         const mjolnir = new Mjolnir(client, await client.getUserId(), managementRoomId, config, protectedRooms, policyLists, ruleServer);
-        await mjolnir.managementRoom.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
+        await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
     }
@@ -258,9 +261,9 @@ export class Mjolnir {
 
         this.protectionManager = new ProtectionManager(this);
 
-        this.managementRoom = new ManagementRoomOutput(managementRoomId, client, config);
+        this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, client, config);
         const protections = new ProtectionManager(this);
-        this.protectedRoomsTracker = new ProtectedRooms(client, clientUserId, managementRoomId, this.managementRoom, protections, config);
+        this.protectedRoomsTracker = new ProtectedRooms(client, clientUserId, managementRoomId, this.managementRoomOutput, protections, config);
     }
 
     public get lists(): PolicyList[] {
@@ -300,7 +303,7 @@ export class Mjolnir {
                     if (err.body?.errcode !== "M_NOT_FOUND") {
                         throw err;
                     } else {
-                        this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
+                        this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
                     }
                 }
                 this.reportPoller.start(reportPollSetting.from);
@@ -309,7 +312,7 @@ export class Mjolnir {
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
 
-            await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
+            await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
             try {
                 const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
@@ -327,24 +330,24 @@ export class Mjolnir {
             await this.protectionManager.start();
 
             if (this.config.verifyPermissionsOnStartup) {
-                await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
+                await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
                 await this.protectedRoomsTracker.verifyPermissions(this.config.verboseLogging);
             }
 
             this.currentState = STATE_SYNCING;
             if (this.config.syncOnStartup) {
-                await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
+                await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
                 await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
             }
 
             this.currentState = STATE_RUNNING;
-            await this.managementRoom.logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
+            await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
         } catch (err) {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
                 this.stop();
-                await this.managementRoom.logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
+                await this.managementRoomOutput.logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
                 throw err;
             } catch (e) {
                 LogService.error("Mjolnir", `Failed to report startup error to the management room: ${e}`);
@@ -507,7 +510,7 @@ export class Mjolnir {
             // Ignore - probably haven't warned about it yet
         }
 
-        await this.managementRoom.logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
+        await this.managementRoomOutput.logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
         await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
     }
 

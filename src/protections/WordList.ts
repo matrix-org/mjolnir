@@ -92,7 +92,7 @@ export class WordList extends Protection {
                         "i"
                     );
                 } catch (ex) {
-                    await mjolnir.managementRoom.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
+                    await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
                 }
             }
 

@@ -66,7 +66,7 @@ export class ProtectionManager {
             try {
                 await this.registerProtection(protection);
             } catch (e) {
-                this.mjolnir.managementRoom.logMessage(LogLevel.WARN, "ProtectionManager", extractRequestError(e));
+                this.mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "ProtectionManager", extractRequestError(e));
             }
         }
     }
@@ -222,7 +222,7 @@ export class ProtectionManager {
             ) {
                 validatedSettings[key] = value;
             } else {
-                await this.mjolnir.managementRoom.logMessage(
+                await this.mjolnir.managementRoomOutput.logMessage(
                     LogLevel.WARN,
                     "getProtectionSetting",
                     `Tried to read ${protectionName}.${key} and got invalid value ${value}`

@@ -69,7 +69,7 @@ export class ProtectedRooms {
         private readonly client: MatrixClient,
         private readonly clientUserId: string,
         private readonly managementRoomId: string,
-        private readonly managementRoom: ManagementRoomOutput,
+        private readonly managementRoomOutput: ManagementRoomOutput,
         /**
          * The protection manager is only used to verify the persmissions
          * required are correct for this set of rooms.
@@ -122,7 +122,7 @@ export class ProtectedRooms {
      * @returns The list of errors encountered, for reporting to the management room.
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
-        return await this.eventRedactionQueue.process(this.client, this.managementRoom, roomId);
+        return await this.eventRedactionQueue.process(this.client, this.managementRoomOutput, roomId);
     }
 
     /**
@@ -140,11 +140,11 @@ export class ProtectedRooms {
         if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
             // power levels were updated - recheck permissions
             this.errorCache.resetError(roomId, ERROR_KIND_PERMISSION);
-            await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
+            await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
             const errors = await this.protectionManager.verifyPermissionsIn(roomId);
             const hadErrors = await this.printActionResult(errors);
             if (!hadErrors) {
-                await this.managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
+                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
             }
             return;
         } else if (event['type'] === "m.room.member") {
@@ -273,7 +273,7 @@ export class ProtectedRooms {
         const finalAcl = acl.safeAclContent();
 
         if (finalAcl.deny.length !== acl.literalAclContent().deny.length) {
-            this.managementRoom.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
+            this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
         }
 
         if (this.config.verboseLogging) {
@@ -284,12 +284,12 @@ export class ProtectedRooms {
         const errors: RoomUpdateError[] = [];
         for (const roomId of roomIds) {
             try {
-                await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
+                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
 
                 try {
                     const currentAcl = await this.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
                     if (acl.matches(currentAcl)) {
-                        await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
+                        await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
                         continue;
                     }
                 } catch (e) {
@@ -297,12 +297,12 @@ export class ProtectedRooms {
                 }
 
                 // We specifically use sendNotice to avoid having to escape HTML
-                await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
+                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
 
                 if (!this.config.noop) {
                     await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
                 } else {
-                    await this.managementRoom.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             } catch (e) {
                 const message = e.message || (e.body ? e.body.error : '<no message>');
@@ -326,7 +326,7 @@ export class ProtectedRooms {
         for (const roomId of roomIds) {
             try {
                 // We specifically use sendNotice to avoid having to escape HTML
-                await this.managementRoom.logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`, roomId);
+                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`, roomId);
 
                 let members: { userId: string, membership: string }[];
 
@@ -354,7 +354,7 @@ export class ProtectedRooms {
                                 // User needs to be banned
 
                                 // We specifically use sendNotice to avoid having to escape HTML
-                                await this.managementRoom.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
+                                await this.managementRoomOutput.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
 
                                 if (!this.config.noop) {
                                     await this.client.banUser(member.userId, roomId, userRule.reason);
@@ -362,7 +362,7 @@ export class ProtectedRooms {
                                         this.queueRedactUserMessagesIn(member.userId, roomId);
                                     }
                                 } else {
-                                    await this.managementRoom.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                                    await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                                 }
 
                                 banned = true;

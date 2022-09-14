@@ -62,11 +62,11 @@ export class BasicFlooding extends Protection {
         }
 
         if (messageCount >= this.settings.maxPerMinute.value) {
-            await mjolnir.managementRoom.logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`, roomId);
+            await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "BasicFlooding", `Banning ${event['sender']} in ${roomId} for flooding (${messageCount} messages in the last minute)`, roomId);
             if (!mjolnir.config.noop) {
                 await mjolnir.client.banUser(event['sender'], roomId, "spam");
             } else {
-                await mjolnir.managementRoom.logMessage(LogLevel.WARN, "BasicFlooding", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "BasicFlooding", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }
 
             if (this.recentlyBanned.includes(event['sender'])) return; // already handled (will be redacted)
@@ -79,7 +79,7 @@ export class BasicFlooding extends Protection {
                     await mjolnir.client.redactEvent(roomId, eventId, "spam");
                 }
             } else {
-                await mjolnir.managementRoom.logMessage(LogLevel.WARN, "BasicFlooding", `Tried to redact messages for ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "BasicFlooding", `Tried to redact messages for ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }
 
             // Free up some memory now that we're ready to handle it elsewhere

@@ -30,7 +30,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
             await mjolnir.client.setUserPowerLevel(victim, targetRoomId, level);
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');
-            await mjolnir.managementRoom.logMessage(LogLevel.ERROR, "SetPowerLevelCommand", `Failed to set power level of ${victim} to ${level} in ${targetRoomId}: ${message}`, targetRoomId);
+            await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "SetPowerLevelCommand", `Failed to set power level of ${victim} to ${level} in ${targetRoomId}: ${message}`, targetRoomId);
             LogService.error("SetPowerLevelCommand", extractRequestError(e));
         }
     }

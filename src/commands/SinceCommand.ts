@@ -100,7 +100,7 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
     let result = await execSinceCommandAux(destinationRoomId, event, mjolnir, tokens);
     if ("error" in result) {
         mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '❌');
-        mjolnir.managementRoom.logMessage(LogLevel.WARN, "SinceCommand", result.error);
+        mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", result.error);
         const reply = RichReply.createFor(destinationRoomId, event, result.error, htmlEscape(result.error));
         reply["msgtype"] = "m.notice";
         /* no need to await */ mjolnir.client.sendMessage(destinationRoomId, reply);
@@ -202,7 +202,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
             } else if (maybeRoom.startsWith("#") || maybeRoom.startsWith("!")) {
                 const roomId = await mjolnir.client.resolveRoom(maybeRoom);
                 if (!protectedRooms.has(roomId)) {
-                    return mjolnir.managementRoom.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
+                    return mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
                 }
                 rooms.add(roomId);
                 continue;
