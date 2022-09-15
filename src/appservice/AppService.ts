@@ -40,6 +40,7 @@ export class MjolnirAppService {
                 onEvent: this.onEvent.bind(this),
             },
             userStore: new UserBridgeStore(new Datastore()),
+            suppressEcho: false,
         });
     }
 
