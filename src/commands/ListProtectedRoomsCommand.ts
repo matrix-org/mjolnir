@@ -19,7 +19,6 @@ import { Permalinks, RichReply } from "matrix-bot-sdk";
 
 // !mjolnir rooms
 export async function execListProtectedRooms(roomId: string, event: any, mjolnir: Mjolnir) {
-    // FIXME: this isn't good.
     const rooms = mjolnir.protectedRoomsTracker.getProtectedRooms();
     let html = `<b>Protected rooms (${rooms.length}):</b><br/><ul>`;
     let text = `Protected rooms (${rooms.length}):\n`;
