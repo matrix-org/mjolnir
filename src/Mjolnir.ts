@@ -85,8 +85,13 @@ export class Mjolnir {
      * Config-enabled polling of reports in Synapse, so Mjolnir can react to reports
      */
     private reportPoller?: ReportPoller;
-
+    /**
+     * Store the protections being used by Mjolnir.
+     */
     public readonly protectionManager: ProtectionManager;
+    /**
+     * Handle user reports from the homeserver.
+     */
     public readonly reportManager: ReportManager;
 
     /**
