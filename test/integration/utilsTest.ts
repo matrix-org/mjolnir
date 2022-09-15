@@ -5,7 +5,7 @@ import ManagementRoomOutput from "../../src/ManagementRoomOutput";
 describe("Test: utils", function() {
     it("replaceRoomIdsWithPills correctly turns a room ID in to a pill", async function() {
         const managementRoomAlias = this.config.managementRoom;
-        const managementRoomOutput: ManagementRoomOutput = this.mjolnir.managementRoom;
+        const managementRoomOutput: ManagementRoomOutput = this.mjolnir.managementRoomOutput;
         await this.mjolnir.client.sendStateEvent(
             this.mjolnir.managementRoomId,
             "m.room.canonical_alias",
