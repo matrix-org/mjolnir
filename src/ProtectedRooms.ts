@@ -28,21 +28,32 @@ import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTrac
 import { htmlEscape } from "./utils";
 
 /**
- * When you consider spaces https://github.com/matrix-org/mjolnir/issues/283
- * rather than indexing rooms via some collection, you instead have rooms
- * and then you find out which lists apply to them.
- * This is important because right now we have a collection of rooms
- * and implicitly a bunch of lists.
+ * This class aims to synchronize `m.ban` rules in a set of policy lists with
+ * a set of rooms by applying member bans and server ACL to them.
  *
- * It's important not to tie this to the one group of rooms that a mjolnir may watch too much
- * as in future we might want to borrow this class to represent a space.
+ * It is important to understand that the use of `m.ban` in the lists that `ProtectedRooms` watch
+ * are interpreted to be the final decision about whether to ban a user and are a synchronization tool.
+ * This is different to watching a community curated list to be informed about reputation information and then making
+ * some sort of decision and is not the purpose of this class (as of writing, Mjolnir does not have a way to do this, we want it to).
+ * The outcome of that decision process (which should take place in other components)
+ * will likely be whether or not to create an `m.ban` rule in a list watched by
+ * your protected rooms.
+ *
+ * It is also important not to tie this to the one group of rooms that a mjolnir may watch
+ * as in future we might want to borrow this class to represent a space https://github.com/matrix-org/mjolnir/issues/283.
  */
 export class ProtectedRooms {
 
     private protectedRooms = new Set</* room id */string>();
 
+    /**
+     * These are the `m.bans` we want to synchronize across this set of rooms.
+     */
     private policyLists: PolicyList[] = [];
 
+    /**
+     * Tracks the rooms so that the most recently active rooms can be synchronized first.
+     */
     private protectedRoomActivityTracker: ProtectedRoomActivityTracker;
 
     /**
@@ -53,6 +64,11 @@ export class ProtectedRooms {
 
     private readonly errorCache = new ErrorCache();
 
+    /**
+     * These are globs that are matched against the reason of an `m.ban` recommendation against a user.
+     * If a rule matches a user in a room, and a glob from here matches that rule's reason, then we will redact
+     * all of the messages from that user.
+     */
     private automaticRedactionReasons: MatrixGlob[] = [];
 
     /**
@@ -71,8 +87,8 @@ export class ProtectedRooms {
         private readonly managementRoomId: string,
         private readonly managementRoomOutput: ManagementRoomOutput,
         /**
-         * The protection manager is only used to verify the persmissions
-         * required are correct for this set of rooms.
+         * The protection manager is only used to verify the permissions
+         * that the protection manager requires are correct for this set of rooms.
          * The protection manager is not really compatible with this abstraction yet
          * because of a direct dependency on the protection manager in Mjolnir commands.
          */
@@ -87,6 +103,14 @@ export class ProtectedRooms {
         this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker();
     }
 
+    /**
+     * Queue a user's messages in a room for redaction once we have stopped synchronizing bans
+     * over the protected rooms.
+     *
+     * Nit: it probably should just called RedactUser and the queue is a hidden detail but whatever.
+     * @param userId The user whose messages we want to redact.
+     * @param roomId The room we want to redact them in.
+     */
     public queueRedactUserMessagesIn(userId: string, roomId: string) {
         this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
     }
