@@ -45,6 +45,9 @@ const PROTECTIONS: Protection[] = [
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
 
+/**
+ * This is responsible for informing protections about relevant events and handle standard consequences.
+ */
 export class ProtectionManager {
     private _protections = new Map<string /* protection name */, Protection>();
     get protections(): Readonly<Map<string /* protection name */, Protection>> {
@@ -71,9 +74,9 @@ export class ProtectionManager {
         }
     }
 
-    /*
-     * Given a protection object; add it to our list of protections, set whether it is enabled
-     * and update its settings with any saved non-default values.
+    /**
+     * Given a protection object; add it to our list of protections, set it up if it has been enabled previously (in account data)
+     * and update its settings with any saved non-default values. See `ENABLED_PROTECTIONS_EVENT_TYPE`.
      *
      * @param protection The protection object we want to register
      */
