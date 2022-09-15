@@ -1,6 +1,6 @@
 import { strict as assert } from "assert";
 import { LogLevel } from "matrix-bot-sdk";
-import ManagementRoomOutput from "../../src/ManagementRoom";
+import ManagementRoomOutput from "../../src/ManagementRoomOutput";
 
 describe("Test: utils", function() {
     it("replaceRoomIdsWithPills correctly turns a room ID in to a pill", async function() {
