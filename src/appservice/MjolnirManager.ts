@@ -89,6 +89,7 @@ export class ManagedMjolnir {
         const listRoomId = await this.mjolnir.client.createRoom({
             preset: "public_chat",
             invite: [mjolnirOwnerId],
+            name: `${mjolnirOwnerId}'s policy room`,
             initial_state: [{type: SHORTCODE_EVENT_TYPE, state_key: "", content: {shortcode: shortcode}}],
             power_level_content_override: powerLevels,
         });
