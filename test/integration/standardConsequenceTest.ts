@@ -34,7 +34,7 @@ describe("Test: standard consequences", function() {
             settings = { };
             handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
                 if (event.content.body === "ngmWkF") {
-                    return new ConsequenceRedact("asd");
+                    return [new ConsequenceRedact("asd")];
                 }
             };
         });
@@ -78,7 +78,7 @@ describe("Test: standard consequences", function() {
             settings = { };
             handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
                 if (event.content.body === "7Uga3d") {
-                    return new ConsequenceBan("asd");
+                    return [new ConsequenceBan("asd")];
                 }
             };
         });
@@ -125,7 +125,7 @@ describe("Test: standard consequences", function() {
             settings = { };
             handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
                 if (event.content.body === "8HUnwb") {
-                    return new ConsequenceBan("asd");
+                    return [new ConsequenceBan("asd")];
                 }
             };
         });
