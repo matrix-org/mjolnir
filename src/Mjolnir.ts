@@ -965,7 +965,7 @@ export class Mjolnir {
             let message = `protection ${protection.name} enacting`
                 + ` ${consequence.name}`
                 + ` against ${htmlEscape(sender)}`
-                + ` in ${htmlEscape(roomId)}`;
+                + ` in ${htmlEscape(roomId)}`
                 + ` (reason: ${htmlEscape(consequence.reason)})`;
             await this.client.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
