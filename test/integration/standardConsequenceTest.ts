@@ -5,7 +5,7 @@ import { Mjolnir } from "../../src/Mjolnir";
 import { IProtection } from "../../src/protections/IProtection";
 import { newTestUser, noticeListener } from "./clientHelper";
 import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
-import { Consequence } from "../../src/protections/consequence";
+import { ConsequenceBan, ConsequenceRedact } from "../../src/protections/consequence";
 
 describe("Test: standard consequences", function() {
     let badUser;
@@ -34,7 +34,7 @@ describe("Test: standard consequences", function() {
             settings = { };
             handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
                 if (event.content.body === "ngmWkF") {
-                    return new Consequence({ redact: true, reason: "asd" });
+                    return new ConsequenceRedact("asd");
                 }
             };
         });
@@ -78,7 +78,7 @@ describe("Test: standard consequences", function() {
             settings = { };
             handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
                 if (event.content.body === "7Uga3d") {
-                    return new Consequence({ ban: true, reason: "asd" });
+                    return new ConsequenceBan("asd");
                 }
             };
         });
@@ -125,7 +125,7 @@ describe("Test: standard consequences", function() {
             settings = { };
             handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => {
                 if (event.content.body === "8HUnwb") {
-                    return new Consequence({ ban: true, reason: "asd" });
+                    return new ConsequenceBan("asd");
                 }
             };
         });

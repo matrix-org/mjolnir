@@ -35,7 +35,7 @@ export abstract class Protection {
      * Handle a single event from a protected room, to decide if we need to
      * respond to it
      */
-    async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<Consequence | any> {
+    async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<Consequence[] | any> {
     }
 
     /*

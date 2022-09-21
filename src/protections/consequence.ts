@@ -1,28 +1,44 @@
-
 export class Consequence {
-    public alert: boolean;
-    public ban: boolean;
-    public redact: boolean;
-    public reason?: string;
-
     /*
-     * Action to take upon detection of abuse and an optional explanation of the detection
+     * A requested action to take against a user after detected abuse
      *
-     * @param alert Whether this Consequence should create an alert
-     * @param ban Whether this Consequence should create a ban
-     * @param redact Whether this Consequence should create a redaction
+     * @param name The name of the consequence being requested
      * @param reason Brief explanation of why we're taking an action, printed to management room.
      *  this will be HTML escaped before printing, just in case it has user-provided data
      */
-    constructor({ alert = false, ban = false, redact = false, reason }: {
-        alert?: boolean,
-        ban?: boolean,
-        redact?: boolean,
-        reason?: string,
-    }) {
-        this.alert = alert;
-        this.ban = ban;
-        this.redact = redact;
-        this.reason = reason;
+    constructor(public name: string, public reason: string) { }
+}
+
+export class ConsequenceAlert extends Consequence {
+    /*
+     * Request an alert to be created after detected abuse
+     *
+     * @param reason Brief explanation of why we're taking an action, printed to management room.
+     *  this will be HTML escaped before printing, just in case it has user-provided data
+     */
+    constructor(reason: string) {
+        super("alert", reason);
+    }
+}
+export class ConsequenceRedact extends Consequence {
+    /*
+     * Request a message redaction after detected abuse
+     *
+     * @param reason Brief explanation of why we're taking an action, printed to management room.
+     *  this will be HTML escaped before printing, just in case it has user-provided data
+     */
+    constructor(reason: string) {
+        super("redact", reason);
+    }
+}
+export class ConsequenceBan extends Consequence {
+    /*
+     * Request a ban after detected abuse
+     *
+     * @param reason Brief explanation of why we're taking an action, printed to management room.
+     *  this will be HTML escaped before printing, just in case it has user-provided data
+     */
+    constructor(reason: string) {
+        super("ban", reason);
     }
 }

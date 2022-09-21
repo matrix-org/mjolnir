@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Protection } from "./IProtection";
-import { Consequence } from "./consequence";
+import { ConsequenceBan, ConsequenceRedact } from "./consequence";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "matrix-bot-sdk";
 import { isTrueJoinEvent } from "../utils";
@@ -102,7 +102,8 @@ export class WordList extends Protection {
 
             const matches = message.match(this.badWords!);
             if (matches) {
-                return new Consequence({ban: true, redact: true, reason: `bad word: ${matches[0]}`})
+                const reason = `bad word: ${matches[0]}`;
+                return [new ConsequenceBan(reason), new ConsequenceRedact(reason)];
             }
         }
     }
