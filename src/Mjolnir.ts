@@ -951,22 +951,22 @@ export class Mjolnir {
     }
 
     private async handleConsequence(protection: Protection, roomId: string, eventId: string, sender: string, consequence: Consequence) {
-        let met: string[] = [];
+        let whichConsequences: string[] = [];
 
         if (consequence.alert) {
-            met.push("alert");
+            whichConsequences.push("alert");
         }
         if (consequence.ban) {
-            met.push("ban");
+            whichConsequences.push("ban");
             await this.client.banUser(sender, roomId, "abuse detected");
         }
         if (consequence.redact) {
-            met.push("redact");
+            whichConsequences.push("redact");
             await this.client.redactEvent(roomId, eventId, "abuse detected");
         }
 
         let message = `protection ${protection.name} enacting`
-            + ` ${met.join(", ")}`
+            + ` ${whichConsequences.join(", ")}`
             + ` against ${htmlEscape(sender)}`
             + ` in ${htmlEscape(roomId)}`;
         if (consequence.reason !== undefined) {
@@ -981,7 +981,7 @@ export class Mjolnir {
             [CONSEQUENCE_EVENT_DATA]: {
                 who: sender,
                 room: roomId,
-                types: met,
+                types: whichConsequences,
             }
         });
     }
