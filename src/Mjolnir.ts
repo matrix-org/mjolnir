@@ -951,17 +951,14 @@ export class Mjolnir {
     }
 
     private async handleConsequences(protection: Protection, roomId: string, eventId: string, sender: string, consequences: Consequence[]) {
-        for (var consequence of consequences) {
+        for (const consequence of consequences) {
             if (consequence.name === "alert") {
                 /* take no additional action, just print the below message to management room */
-            }
-            else if (consequence.name === "ban") {
+            } else if (consequence.name === "ban") {
                 await this.client.banUser(sender, roomId, "abuse detected");
-            }
-            else if (consequence.name === "redact") {
+            } else if (consequence.name === "redact") {
                 await this.client.redactEvent(roomId, eventId, "abuse detected");
-            }
-            else {
+            } else {
                 throw new Error(`unknown consequence ${consequence.name}`);
             }
 
