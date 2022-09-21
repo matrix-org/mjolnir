@@ -73,6 +73,10 @@ export class Mjolnir {
      * These are rooms that were explicitly said to be protected either in the config, or by what is present in the account data for `org.matrix.mjolnir.protected_rooms`.
      */
     private explicitlyProtectedRoomIds: string[] = [];
+    /**
+     * These are rooms that we have joined to watch the list, but don't have permission to protect.
+     * These are eventually are exluded from `protectedRooms` in `applyUnprotectedRooms` via `resyncJoinedRooms`.
+     */
     private unprotectedWatchedListRooms: string[] = [];
     public readonly protectedRoomsTracker: ProtectedRooms;
     private webapis: WebAPIs;
@@ -433,6 +437,8 @@ export class Mjolnir {
                 this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
             }
         }
+        // update our internal representation of joined rooms.
+        this.protectedJoinedRoomIds = joinedRoomIds;
 
         this.applyUnprotectedRooms();
 
