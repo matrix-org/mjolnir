@@ -952,30 +952,34 @@ export class Mjolnir {
 
     private async handleConsequences(protection: Protection, roomId: string, eventId: string, sender: string, consequences: Consequence[]) {
         for (const consequence of consequences) {
-            if (consequence.name === "alert") {
-                /* take no additional action, just print the below message to management room */
-            } else if (consequence.name === "ban") {
-                await this.client.banUser(sender, roomId, "abuse detected");
-            } else if (consequence.name === "redact") {
-                await this.client.redactEvent(roomId, eventId, "abuse detected");
-            } else {
-                throw new Error(`unknown consequence ${consequence.name}`);
-            }
-
-            let message = `protection ${protection.name} enacting`
-                + ` ${consequence.name}`
-                + ` against ${htmlEscape(sender)}`
-                + ` in ${htmlEscape(roomId)}`
-                + ` (reason: ${htmlEscape(consequence.reason)})`;
-            await this.client.sendMessage(this.managementRoomId, {
-                msgtype: "m.notice",
-                body: message,
-                [CONSEQUENCE_EVENT_DATA]: {
-                    who: sender,
-                    room: roomId,
-                    types: [consequence.name],
+            try {
+                if (consequence.name === "alert") {
+                    /* take no additional action, just print the below message to management room */
+                } else if (consequence.name === "ban") {
+                    await this.client.banUser(sender, roomId, "abuse detected");
+                } else if (consequence.name === "redact") {
+                    await this.client.redactEvent(roomId, eventId, "abuse detected");
+                } else {
+                    throw new Error(`unknown consequence ${consequence.name}`);
                 }
-            });
+
+                let message = `protection ${protection.name} enacting`
+                    + ` ${consequence.name}`
+                    + ` against ${htmlEscape(sender)}`
+                    + ` in ${htmlEscape(roomId)}`
+                    + ` (reason: ${htmlEscape(consequence.reason)})`;
+                await this.client.sendMessage(this.managementRoomId, {
+                    msgtype: "m.notice",
+                    body: message,
+                    [CONSEQUENCE_EVENT_DATA]: {
+                        who: sender,
+                        room: roomId,
+                        types: [consequence.name],
+                    }
+                });
+            } catch (e) {
+                await this.logMessage(LogLevel.ERROR, "handleConsequences", `Failed to enact ${consequence.name} consequence: ${e}`);
+            }
         }
     }
 
