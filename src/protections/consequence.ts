@@ -1,23 +1,44 @@
-
-/*
- * Distinct individual actions that can be caused as a result of detected abuse
- */
-export enum ConsequenceType {
-    // effectively a no-op. just tell the management room
-    alert,
-    // redact the event that triggered this consequence
-    redact,
-    // ban the user that sent the event that triggered this consequence
-    ban
-}
-
 export class Consequence {
     /*
-     * Action to take upon detection of abuse and an optional explanation of the detection
+     * A requested action to take against a user after detected abuse
      *
-     * @param type Action to take
+     * @param name The name of the consequence being requested
      * @param reason Brief explanation of why we're taking an action, printed to management room.
      *  this will be HTML escaped before printing, just in case it has user-provided data
      */
-    constructor(public readonly type: ConsequenceType, public readonly reason?: string) {}
+    constructor(public name: string, public reason: string) { }
+}
+
+export class ConsequenceAlert extends Consequence {
+    /*
+     * Request an alert to be created after detected abuse
+     *
+     * @param reason Brief explanation of why we're taking an action, printed to management room.
+     *  this will be HTML escaped before printing, just in case it has user-provided data
+     */
+    constructor(reason: string) {
+        super("alert", reason);
+    }
+}
+export class ConsequenceRedact extends Consequence {
+    /*
+     * Request a message redaction after detected abuse
+     *
+     * @param reason Brief explanation of why we're taking an action, printed to management room.
+     *  this will be HTML escaped before printing, just in case it has user-provided data
+     */
+    constructor(reason: string) {
+        super("redact", reason);
+    }
+}
+export class ConsequenceBan extends Consequence {
+    /*
+     * Request a ban after detected abuse
+     *
+     * @param reason Brief explanation of why we're taking an action, printed to management room.
+     *  this will be HTML escaped before printing, just in case it has user-provided data
+     */
+    constructor(reason: string) {
+        super("ban", reason);
+    }
 }
