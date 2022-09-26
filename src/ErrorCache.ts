@@ -23,13 +23,13 @@ const TRIGGER_INTERVALS: { [key: string]: number } = {
 };
 
 /**
- * The ErrorCache is used to surppress the same error messages for the same error state.
+ * The ErrorCache is used to suppress the same error messages for the same error state.
  * An example would be when mjolnir has been told to protect a room but is missing some permission such as the ability to send `m.room.server_acl`.
  * Each time `Mjolnir` synchronizes policies to protected rooms Mjolnir will try to log to the management room that Mjolnir doesn't have permission to send `m.room.server_acl`.
  * The ErrorCache is an attempt to make sure the error is reported only once.
  */
 export default class ErrorCache {
-    private roomsToErrors: { [roomId: string]: { [kind: string]: number } } = {};
+    private roomsToErrors: Map<string/*room id*/, Map<string /*error kind*/, number>> = new Map();
 
     constructor() {
     }
@@ -41,34 +41,35 @@ export default class ErrorCache {
      * @param kind The kind of error we are resetting.
      */
     public resetError(roomId: string, kind: string) {
-        if (!this.roomsToErrors[roomId]) {
-            this.roomsToErrors[roomId] = {};
+        if (!this.roomsToErrors.has(roomId)) {
+            this.roomsToErrors.set(roomId, new Map());
         }
-        this.roomsToErrors[roomId][kind] = 0;
+        this.roomsToErrors.get(roomId)?.set(kind, 0);
     }
 
     /**
      * Register the error with the cache.
      * @param roomId The room where the error is occuring or related to.
      * @param kind What kind of error, either `ERROR_KIND_PERMISSION` or `ERROR_KIND_FATAL`.
-     * @returns True if the error kind has recently been triggered in that room according to the time specified in `TRIGGER_INTERVALS`, otherwise false.
+     * @returns True if the error kind has been triggered in that room,
+     * meaning it has been longer than the time specified in `TRIGGER_INTERVALS` since the last trigger (or the first trigger). Otherwise false.
      */
     public triggerError(roomId: string, kind: string): boolean {
-        if (!this.roomsToErrors[roomId]) {
-            this.roomsToErrors[roomId] = {};
+        if (!this.roomsToErrors.get(roomId)) {
+            this.roomsToErrors.set(roomId, new Map());
         }
 
-        const triggers = this.roomsToErrors[roomId];
-        if (!triggers[kind]) {
-            triggers[kind] = 0;
+        const triggers = this.roomsToErrors.get(roomId)!;
+        if (!triggers.has(kind)) {
+            triggers?.set(kind, 0);
         }
 
-        const lastTriggerTime = triggers[kind];
+        const lastTriggerTime = triggers.get(kind)!;
         const now = new Date().getTime();
         const interval = TRIGGER_INTERVALS[kind];
 
         if ((now - lastTriggerTime) >= interval) {
-            triggers[kind] = now;
+            triggers.set(kind, now);
             return true;
         } else {
             return false;
