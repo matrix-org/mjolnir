@@ -71,10 +71,11 @@ export function isTrueJoinEvent(event: any): boolean {
  *
  * @param client Client to redact the messages with.
  * @param managementRoom Management room to log messages back to.
- * @param userIdOrGlob A mxid or a glob which is applied to the whole sender. See `MatrixGlob` in matrix-bot-sdk.
- * @param targetRoomIds Rooms to redact the message from
- * @param limit The number of messages to redact from most recent first.
- * @param noop Whether to opreate in noop mode.
+ * @param userIdOrGlob A mxid or a glob which is applied to the whole sender field of events in the room, which will be redacted if they match.
+ * See `MatrixGlob` in matrix-bot-sdk.
+ * @param targetRoomIds Rooms to redact the messages from.
+ * @param limit The number of messages to redact from most recent first. If the limit is reached then no further messages will be redacted.
+ * @param noop Whether to operate in noop mode.
  */
 export async function redactUserMessagesIn(client: MatrixClient, managementRoom: ManagementRoomOutput, userIdOrGlob: string, targetRoomIds: string[], limit = 1000, noop = false) {
     for (const targetRoomId of targetRoomIds) {
