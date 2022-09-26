@@ -65,7 +65,8 @@ export class ProtectedRooms {
     private readonly errorCache = new ErrorCache();
 
     /**
-     * These are globs that are matched against the reason of an `m.ban` recommendation against a user.
+     * These are globs sourced from `config.automaticallyRedactForReasons` that are matched against the reason of an
+     * `m.ban` recommendation against a user.
      * If a rule matches a user in a room, and a glob from here matches that rule's reason, then we will redact
      * all of the messages from that user.
      */
@@ -115,7 +116,7 @@ export class ProtectedRooms {
         this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
     }
 
-    public get automaticRedactGlobs(): MatrixGlob[] {
+    public get automaticRedactGlobs(): Readonly<MatrixGlob[]> {
         return this.automaticRedactionReasons;
     }
 
