@@ -108,14 +108,19 @@ export class ProtectedRooms {
      * Queue a user's messages in a room for redaction once we have stopped synchronizing bans
      * over the protected rooms.
      *
-     * Nit: it probably should just called RedactUser and the queue is a hidden detail but whatever.
      * @param userId The user whose messages we want to redact.
      * @param roomId The room we want to redact them in.
      */
-    public queueRedactUserMessagesIn(userId: string, roomId: string) {
+    public redactUser(userId: string, roomId: string) {
         this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
     }
 
+    /**
+     * These are globs sourced from `config.automaticallyRedactForReasons` that are matched against the reason of an
+     * `m.ban` recommendation against a user.
+     * If a rule matches a user in a room, and a glob from here matches that rule's reason, then we will redact
+     * all of the messages from that user.
+     */
     public get automaticRedactGlobs(): Readonly<MatrixGlob[]> {
         return this.automaticRedactionReasons;
     }
@@ -384,7 +389,7 @@ export class ProtectedRooms {
                                 if (!this.config.noop) {
                                     await this.client.banUser(member.userId, roomId, userRule.reason);
                                     if (this.automaticRedactGlobs.find(g => g.test(userRule.reason.toLowerCase()))) {
-                                        this.queueRedactUserMessagesIn(member.userId, roomId);
+                                        this.redactUser(member.userId, roomId);
                                     }
                                 } else {
                                     await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
