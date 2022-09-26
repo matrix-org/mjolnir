@@ -420,6 +420,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         // just ban one server
         const badServer = `evil.com`;
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*").denyServer(badServer);
+        // collect all the rooms that received an ACL event.
         const aclRooms: any[] = await new Promise(async resolve => {
             const rooms: any[] = [];
             this.mjolnir.client.on('room.event', (room: string, event: any) => {
