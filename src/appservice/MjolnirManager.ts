@@ -1,7 +1,7 @@
 import { Mjolnir } from "../Mjolnir";
 import { Request, WeakEvent, BridgeContext } from "matrix-appservice-bridge";
 import { IConfig, read as configRead } from "../config";
-import { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
+import PolicyList, { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 
 export class MjolnirManager {
@@ -19,11 +19,8 @@ export class MjolnirManager {
         // rather than externally...
         // FIXME: We need to verify that we haven't stored a mjolnir already if we aren't doing the above.
 
-        // get mjolnir list wroking by just avoiding it for now and see if protections work
-        // and bans.
-        // Find out trade offs of changing mjolnir to make it work vs making new subcomponent of mjolnir.
         const managedMjolnir = new ManagedMjolnir(await Mjolnir.setupMjolnirFromConfig(client, this.getDefaultMjolnirConfig(managementRoomId)));
-        await managedMjolnir.moveMeSomewhereCommonAndStopImplementingFunctionalityOnACommandFirstBasis(requestingUserId, 'list')
+        await managedMjolnir.createFirstList(requestingUserId, 'list')
         this.mjolnirs.set(await client.getUserId(), managedMjolnir);
     }
 
@@ -64,37 +61,14 @@ export class ManagedMjolnir {
         await this.mjolnir.addProtectedRoom(roomId);
     }
 
-    public async moveMeSomewhereCommonAndStopImplementingFunctionalityOnACommandFirstBasis(mjolnirOwnerId: string, shortcode: string) {
-        const powerLevels: { [key: string]: any } = {
-            "ban": 50,
-            "events": {
-                "m.room.name": 100,
-                "m.room.power_levels": 100,
-            },
-            "events_default": 50, // non-default
-            "invite": 0,
-            "kick": 50,
-            "notifications": {
-                "room": 20,
-            },
-            "redact": 50,
-            "state_default": 50,
-            "users": {
-                [await this.mjolnir.client.getUserId()]: 100,
-                [mjolnirOwnerId]: 50
-            },
-            "users_default": 0,
-        };
-    
-        const listRoomId = await this.mjolnir.client.createRoom({
-            preset: "public_chat",
-            invite: [mjolnirOwnerId],
-            name: `${mjolnirOwnerId}'s policy room`,
-            initial_state: [{type: SHORTCODE_EVENT_TYPE, state_key: "", content: {shortcode: shortcode}}],
-            power_level_content_override: powerLevels,
-        });
-    
+    public async createFirstList(mjolnirOwnerId: string, shortcode: string) {
+        const listRoomId = await PolicyList.createList(
+            this.mjolnir.client,
+            shortcode,
+            [mjolnirOwnerId],
+            { name: `${mjolnirOwnerId}'s policy room` }
+        );
         const roomRef = Permalinks.forRoom(listRoomId);
-        await this.mjolnir.watchList(roomRef);
+        return await this.mjolnir.watchList(roomRef);
     }
 }
