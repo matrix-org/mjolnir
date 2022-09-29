@@ -26,7 +26,7 @@ import { JoinWaveShortCircuit } from "./JoinWaveShortCircuit";
 import { Mjolnir } from "../Mjolnir";
 import { extractRequestError, LogLevel, LogService, Permalinks } from "matrix-bot-sdk";
 import { ProtectionSettingValidationError } from "./ProtectionSettings";
-import { Consequence, ConsequenceType } from "./consequence";
+import { Consequence } from "./consequence";
 import { htmlEscape } from "../utils";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
@@ -263,7 +263,7 @@ export class ProtectionManager {
                     }
                 });
             } catch (e) {
-                await this.mjolnir.managementRoom.logMessage(LogLevel.ERROR, "handleConsequences", `Failed to enact ${consequence.name} consequence: ${e}`);
+                await this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "handleConsequences", `Failed to enact ${consequence.name} consequence: ${e}`);
             }
         }
     }
