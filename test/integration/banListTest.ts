@@ -247,7 +247,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         }
 
         // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
         await Promise.all(protectedRooms.map(async room => {
             // We're going to need timeline pagination I'm afraid.
             const roomAcl = await mjolnir.client.getRoomStateEvent(room, "m.room.server_acl", "");
@@ -269,7 +269,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         }
         // We do this because it should force us to wait until all the ACL events have been applied.
         // Even if that does mean the last few events will not go through batching...
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
 
         // At this point we check that the state within Mjolnir is internally consistent, this is just because debugging the following
         // is a pita.
@@ -300,7 +300,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
     it('Will remove rules that have legacy types', async function() {
         const mjolnir: Mjolnir = this.mjolnir!
         const serverName: string = new UserID(await mjolnir.client.getUserId()).domain
-        const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
+        const moderator: MatrixClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         this.moderator = moderator;
         await moderator.joinRoom(mjolnir.managementRoomId);
         const mjolnirId = await mjolnir.client.getUserId();
@@ -312,7 +312,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         await mjolnir.addProtectedRoom(protectedRoom);
 
         // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
         // If this is not present, then it means the room isn't being protected, which is really bad.
         const roomAcl = await mjolnir.client.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
@@ -333,7 +333,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'this is bad sort it out.');
         await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, 'hidden with a non-standard state key', undefined, "rule_1");
         // Wait for the ACL event to be applied to our protected room.
-        await this.mjolnir!.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists();
 
         await banList.updateList();
         // rules are normalized by rule type, that's why there should only be 3.
@@ -359,7 +359,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         }
 
         // Wait for mjolnir to sync protected rooms to update ACL.
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
         // Confirm that the server is unbanned.
         await banList.updateList();
         assert.equal(banList.allRules.length, 0);
@@ -388,7 +388,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         }
 
         // If a previous test hasn't cleaned up properly, these rooms will be populated by bogus ACLs at this point.
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
         await Promise.all(protectedRooms.map(async room => {
             const roomAcl = await mjolnir.client.getRoomStateEvent(room, "m.room.server_acl", "").catch(e => e.statusCode === 404 ? { deny: [] } : Promise.reject(e));
             assert.equal(roomAcl?.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
@@ -399,7 +399,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         await mjolnir.client.joinRoom(banListId);
         await mjolnir.watchList(Permalinks.forRoom(banListId));
 
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
 
         // shuffle protected rooms https://stackoverflow.com/a/12646864, we do this so we can create activity "randomly" in them.
         for (let i = protectedRooms.length - 1; i > 0; i--) {
@@ -408,25 +408,38 @@ describe('Test: should apply bans to the most recently active rooms first', func
         }
         // create some activity in the same order.
         for (const roomId of protectedRooms.slice().reverse()) {
-            await mjolnir.client.sendMessage(roomId, { body: `activity`, msgtype: 'm.text' });
+            await moderator.sendMessage(roomId, { body: `activity`, msgtype: 'm.text' });
             await new Promise(resolve => setTimeout(resolve, 100));
         }
 
         // check the rooms are in the expected order
         for (let i = 0; i < protectedRooms.length; i++) {
-            assert.equal(mjolnir.protectedRoomsByActivity()[i], protectedRooms[i]);
+            assert.equal(mjolnir.protectedRoomsTracker.protectedRoomsByActivity()[i], protectedRooms[i]);
         }
 
-        const badServer = `evil.com`;
         // just ban one server
+        const badServer = `evil.com`;
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*").denyServer(badServer);
-        await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule ${badServer}`);
+        // collect all the rooms that received an ACL event.
+        const aclRooms: any[] = await new Promise(async resolve => {
+            const rooms: any[] = [];
+            this.mjolnir.client.on('room.event', (room: string, event: any) => {
+                if (protectedRooms.includes(room)) {
+                    rooms.push(room);
+                }
+                if (rooms.length === protectedRooms.length) {
+                    resolve(rooms)
+                }
+            });
+            // create the rule that will ban the server.
+            await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule ${badServer}`);
+        })
 
         // Wait until all the ACL events have been applied.
-        await mjolnir.syncLists();
+        await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
 
         for (let i = 0; i < protectedRooms.length; i++) {
-            assert.equal(mjolnir.protectedRoomsByActivity()[i], protectedRooms.at(-i - 1));
+            assert.equal(aclRooms[i], protectedRooms[i], "The ACL should have been applied to the active rooms first.");
         }
 
         // Check that the most recently active rooms got the ACL update first.

@@ -15,18 +15,19 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { Permalinks, RichReply } from "matrix-bot-sdk";
 
 // !mjolnir rooms
 export async function execListProtectedRooms(roomId: string, event: any, mjolnir: Mjolnir) {
-    let html = `<b>Protected rooms (${Object.keys(mjolnir.protectedRooms).length}):</b><br/><ul>`;
-    let text = `Protected rooms (${Object.keys(mjolnir.protectedRooms).length}):\n`;
+    const rooms = mjolnir.protectedRoomsTracker.getProtectedRooms();
+    let html = `<b>Protected rooms (${rooms.length}):</b><br/><ul>`;
+    let text = `Protected rooms (${rooms.length}):\n`;
 
     let hasRooms = false;
-    for (const protectedRoomId in mjolnir.protectedRooms) {
+    for (const protectedRoomId in rooms) {
         hasRooms = true;
 
-        const roomUrl = mjolnir.protectedRooms[protectedRoomId];
+        const roomUrl = Permalinks.forRoom(protectedRoomId);
         html += `<li><a href="${roomUrl}">${protectedRoomId}</a></li>`;
         text += `* ${roomUrl}\n`;
     }

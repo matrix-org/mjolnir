@@ -100,7 +100,7 @@ export async function execSinceCommand(destinationRoomId: string, event: any, mj
     let result = await execSinceCommandAux(destinationRoomId, event, mjolnir, tokens);
     if ("error" in result) {
         mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '❌');
-        mjolnir.logMessage(LogLevel.WARN, "SinceCommand", result.error);
+        mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", result.error);
         const reply = RichReply.createFor(destinationRoomId, event, result.error, htmlEscape(result.error));
         reply["msgtype"] = "m.notice";
         /* no need to await */ mjolnir.client.sendMessage(destinationRoomId, reply);
@@ -185,6 +185,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
     // Now list affected rooms.
     const rooms: Set</* room id */string> = new Set();
     let reasonParts: string[] | undefined;
+    const protectedRooms = new Set(mjolnir.protectedRoomsTracker.getProtectedRooms());
     for (let token of optionalTokens) {
         const maybeArg = getTokenAsString(reasonParts ? "[reason]" : "[room]", token);
         if ("error" in maybeArg) {
@@ -194,14 +195,14 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
         if (!reasonParts) {
             // If we haven't reached the reason yet, attempt to use `maybeRoom` as a room.
             if (maybeRoom === "*") {
-                for (let roomId of Object.keys(mjolnir.protectedRooms)) {
+                for (let roomId of mjolnir.protectedRoomsTracker.getProtectedRooms()) {
                     rooms.add(roomId);
                 }
                 continue;
             } else if (maybeRoom.startsWith("#") || maybeRoom.startsWith("!")) {
                 const roomId = await mjolnir.client.resolveRoom(maybeRoom);
-                if (!(roomId in mjolnir.protectedRooms)) {
-                    return mjolnir.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
+                if (!protectedRooms.has(roomId)) {
+                    return mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
                 }
                 rooms.add(roomId);
                 continue;

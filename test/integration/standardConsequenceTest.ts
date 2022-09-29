@@ -27,7 +27,7 @@ describe("Test: standard consequences", function() {
         await badUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
-        await this.mjolnir.registerProtection(new class implements IProtection {
+        await this.mjolnir.protectionManager.registerProtection(new class implements IProtection {
             name = "JY2TPN";
             description = "A test protection";
             settings = { };
@@ -37,7 +37,7 @@ describe("Test: standard consequences", function() {
                 }
             };
         });
-        await this.mjolnir.enableProtection("JY2TPN");
+        await this.mjolnir.protectionManager.enableProtection("JY2TPN");
 
         let reply = new Promise(async (resolve, reject) => {
             const messageId = await badUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "ngmWkF"});
@@ -71,7 +71,7 @@ describe("Test: standard consequences", function() {
         await badUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
-        await this.mjolnir.registerProtection(new class implements IProtection {
+        await this.mjolnir.protectionManager.registerProtection(new class implements IProtection {
             name = "0LxMTy";
             description = "A test protection";
             settings = { };
@@ -81,7 +81,7 @@ describe("Test: standard consequences", function() {
                 }
             };
         });
-        await this.mjolnir.enableProtection("0LxMTy");
+        await this.mjolnir.protectionManager.enableProtection("0LxMTy");
 
         let reply = new Promise(async (resolve, reject) => {
             const messageId = await badUser.sendMessage(protectedRoomId, {msgtype: "m.text", body: "7Uga3d"});
@@ -118,7 +118,7 @@ describe("Test: standard consequences", function() {
         await goodUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
-        await this.mjolnir.registerProtection(new class implements IProtection {
+        await this.mjolnir.protectionManager.registerProtection(new class implements IProtection {
             name = "95B1Cr";
             description = "A test protection";
             settings = { };
@@ -128,7 +128,7 @@ describe("Test: standard consequences", function() {
                 }
             };
         });
-        await this.mjolnir.enableProtection("95B1Cr");
+        await this.mjolnir.protectionManager.enableProtection("95B1Cr");
 
         let reply = new Promise(async (resolve, reject) => {
             this.mjolnir.client.on('room.message', async (roomId, event) => {

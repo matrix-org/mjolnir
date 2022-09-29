@@ -178,7 +178,7 @@ export class ThrottlingQueue {
         try {
             await task();
         } catch (ex) {
-            await this.mjolnir.logMessage(
+            await this.mjolnir.managementRoomOutput.logMessage(
                 LogLevel.WARN,
                 'Error while executing task',
                 extractRequestError(ex)

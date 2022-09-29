@@ -45,8 +45,8 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         return;
     }
 
-    const targetRoomIds = roomAlias ? [roomAlias] : Object.keys(mjolnir.protectedRooms);
-    await redactUserMessagesIn(mjolnir, userId, targetRoomIds, limit);
+    const targetRoomIds = roomAlias ? [roomAlias] : mjolnir.protectedRoomsTracker.getProtectedRooms();
+    await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, limit);
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
     await mjolnir.client.redactEvent(roomId, processingReactionId, 'done processing');
