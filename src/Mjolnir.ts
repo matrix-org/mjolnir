@@ -39,6 +39,7 @@ import { ProtectedRooms } from "./ProtectedRooms";
 import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
+import { CachingClient } from "./CachingClient";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -49,13 +50,8 @@ const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
-/**
- * Synapse will tell us where we last got to on polling reports, so we need
- * to store that for pagination on further polls
- */
-export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
-
 export class Mjolnir {
+    public readonly client: CachingClient;
     private displayName: string;
     private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
@@ -185,7 +181,7 @@ export class Mjolnir {
     }
 
     constructor(
-        public readonly client: MatrixClient,
+        client: MatrixClient,
         private readonly clientUserId: string,
         public readonly managementRoomId: string,
         public readonly config: IConfig,
@@ -198,6 +194,7 @@ export class Mjolnir {
         // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
         public readonly ruleServer: RuleServer | null,
     ) {
+        this.client = new CachingClient(client);
         this.explicitlyProtectedRoomIds = Object.keys(this.protectedRooms);
 
         // Setup bot.
@@ -265,7 +262,7 @@ export class Mjolnir {
             this.reportPoller = new ReportPoller(this, this.reportManager);
         }
         // Setup join/leave listener
-        this.roomJoins = new RoomMemberManager(this.client);
+        this.roomJoins = new RoomMemberManager(client);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
 
         this.protectionManager = new ProtectionManager(this);
@@ -305,17 +302,7 @@ export class Mjolnir {
             await this.webapis.start();
 
             if (this.reportPoller) {
-                let reportPollSetting: { from: number } = { from: 0 };
-                try {
-                    reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
-                } catch (err) {
-                    if (err.body?.errcode !== "M_NOT_FOUND") {
-                        throw err;
-                    } else {
-                        this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
-                    }
-                }
-                this.reportPoller.start(reportPollSetting.from);
+                await this.reportPoller.start();
             }
 
             // Load the state.
