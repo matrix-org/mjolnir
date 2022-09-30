@@ -86,7 +86,7 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    return mjolnir.client.sendMessage(roomId, reply);
+    return mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -108,7 +108,7 @@ async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir
     }
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 /**
@@ -149,7 +149,7 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
         const maxAgeHumanReadable = HUMANIZER.humanize(maxAgeMS, HUMANIZER_OPTIONS);
         let targetRoomId;
         try {
-            targetRoomId = await mjolnir.client.resolveRoom(targetRoomAliasOrId);
+            targetRoomId = await mjolnir.client.uncached.resolveRoom(targetRoomAliasOrId);
         } catch (ex) {
             return {
                 html: `Cannot resolve room ${htmlEscape(targetRoomAliasOrId)}.`,
@@ -171,6 +171,6 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
     })();
     const reply = RichReply.createFor(destinationRoomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    return mjolnir.client.sendMessage(destinationRoomId, reply);
+    return mjolnir.client.uncached.sendMessage(destinationRoomId, reply);
 }
 

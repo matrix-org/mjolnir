@@ -89,7 +89,7 @@ export class JoinWaveShortCircuit extends Protection {
             await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "JoinWaveShortCircuit", `Setting ${roomId} to invite-only as more than ${this.settings.maxPer.value} users have joined over the last ${this.settings.timescaleMinutes.value} minutes (since ${this.joinBuckets[roomId].lastBucketStart})`, roomId);
 
             if (!mjolnir.config.noop) {
-                await mjolnir.client.sendStateEvent(roomId, "m.room.join_rules", "", {"join_rule": "invite"})
+                await mjolnir.client.uncached.sendStateEvent(roomId, "m.room.join_rules", "", {"join_rule": "invite"})
             } else {
                 await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "JoinWaveShortCircuit", `Tried to set ${roomId} to invite-only, but Mjolnir is running in no-op mode`, roomId);
             }

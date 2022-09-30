@@ -27,10 +27,10 @@ export async function execShutdownRoomCommand(roomId: string, event: any, mjolni
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
 
-    await mjolnir.shutdownSynapseRoom(await mjolnir.client.resolveRoom(victim), reason);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.shutdownSynapseRoom(await mjolnir.client.uncached.resolveRoom(victim), reason);
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

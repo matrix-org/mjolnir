@@ -152,7 +152,7 @@ export class ProtectedRooms {
      * @returns The list of errors encountered, for reporting to the management room.
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
-        return await this.eventRedactionQueue.process(this.client.uncached, this.managementRoomOutput, roomId);
+        return await this.eventRedactionQueue.process(this.client, this.managementRoomOutput, roomId);
     }
 
     /**

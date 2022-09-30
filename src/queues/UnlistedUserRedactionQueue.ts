@@ -43,7 +43,7 @@ export class UnlistedUserRedactionQueue {
             try {
                 LogService.info("AutomaticRedactionQueue", `Redacting event because the user is listed as bad: ${permalink}`)
                 if (!mjolnir.config.noop) {
-                    await mjolnir.client.redactEvent(roomId, event['event_id']);
+                    await mjolnir.client.uncached.redactEvent(roomId, event['event_id']);
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
                 }

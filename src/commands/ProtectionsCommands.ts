@@ -23,14 +23,14 @@ import { isListSetting } from "../protections/ProtectionSettings";
 export async function execEnableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     try {
         await mjolnir.protectionManager.enableProtection(parts[2]);
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+        await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
     } catch (e) {
         LogService.error("ProtectionsCommands", extractRequestError(e));
 
         const message = `Error enabling protection '${parts[0]}' - check the name and try again.`;
         const reply = RichReply.createFor(roomId, event, message, message);
         reply["msgtype"] = "m.notice";
-        await mjolnir.client.sendMessage(roomId, reply);
+        await mjolnir.client.uncached.sendMessage(roomId, reply);
     }
 }
 
@@ -104,7 +104,7 @@ export async function execConfigSetProtection(roomId: string, event: any, mjolni
 
     const reply = RichReply.createFor(roomId, event, message, message);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 /*
@@ -117,7 +117,7 @@ export async function execConfigAddProtection(roomId: string, event: any, mjolni
 
     const reply = RichReply.createFor(roomId, event, message, message);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 /*
@@ -130,7 +130,7 @@ export async function execConfigRemoveProtection(roomId: string, event: any, mjo
 
     const reply = RichReply.createFor(roomId, event, message, message);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 /*
@@ -151,7 +151,7 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
             const errMsg = `Unknown protection: ${parts[0]}`;
             const errReply = RichReply.createFor(roomId, event, errMsg, errMsg);
             errReply["msgtype"] = "m.notice";
-            await mjolnir.client.sendMessage(roomId, errReply);
+            await mjolnir.client.uncached.sendMessage(roomId, errReply);
             return;
         }
         pickProtections = [parts[0]];
@@ -191,13 +191,13 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 // !mjolnir disable <protection>
 export async function execDisableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     await mjolnir.protectionManager.disableProtection(parts[2]);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir protections
@@ -217,5 +217,5 @@ export async function execListProtections(roomId: string, event: any, mjolnir: M
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }

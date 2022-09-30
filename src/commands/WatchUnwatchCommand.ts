@@ -24,10 +24,10 @@ export async function execWatchCommand(roomId: string, event: any, mjolnir: Mjol
         const replyText = "Cannot watch list due to error - is that a valid room alias?";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
         reply["msgtype"] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir unwatch <room alias or ID>
@@ -37,8 +37,8 @@ export async function execUnwatchCommand(roomId: string, event: any, mjolnir: Mj
         const replyText = "Cannot unwatch list due to error - is that a valid room alias?";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
         reply["msgtype"] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

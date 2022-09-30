@@ -17,7 +17,6 @@ limitations under the License.
 import {
     LogLevel,
     LogService,
-    MatrixClient,
     MatrixGlob,
     getRequestFn,
     setRequestFn,
@@ -25,6 +24,7 @@ import {
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
 import ManagementRoomOutput from "./ManagementRoomOutput";
+import { CachingClient } from "./CachingClient";
 
 // Define a few aliases to simplify parsing durations.
 
@@ -77,7 +77,7 @@ export function isTrueJoinEvent(event: any): boolean {
  * @param limit The number of messages to redact from most recent first. If the limit is reached then no further messages will be redacted.
  * @param noop Whether to operate in noop mode.
  */
-export async function redactUserMessagesIn(client: MatrixClient, managementRoom: ManagementRoomOutput, userIdOrGlob: string, targetRoomIds: string[], limit = 1000, noop = false) {
+export async function redactUserMessagesIn(client: CachingClient, managementRoom: ManagementRoomOutput, userIdOrGlob: string, targetRoomIds: string[], limit = 1000, noop = false) {
     for (const targetRoomId of targetRoomIds) {
         await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
 
@@ -85,7 +85,7 @@ export async function redactUserMessagesIn(client: MatrixClient, managementRoom:
             for (const victimEvent of eventsToRedact) {
                 await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
                 if (!noop) {
-                    await client.redactEvent(targetRoomId, victimEvent['event_id']);
+                    await client.uncached.redactEvent(targetRoomId, victimEvent['event_id']);
                 } else {
                     await managementRoom.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
                 }
@@ -110,7 +110,7 @@ export async function redactUserMessagesIn(client: MatrixClient, managementRoom:
  * The callback will only be called if there are any relevant events.
  * @returns {Promise<void>} Resolves when either: the limit has been reached, no relevant events could be found or there is no more timeline to paginate.
  */
-export async function getMessagesByUserIn(client: MatrixClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<void> {
+export async function getMessagesByUserIn(client: CachingClient, sender: string, roomId: string, limit: number, cb: (events: any[]) => void): Promise<void> {
     const isGlob = sender.includes("*");
     const roomEventFilter = {
         rooms: [roomId],
@@ -154,7 +154,7 @@ export async function getMessagesByUserIn(client: MatrixClient, sender: string, 
             ... from ? { from } : {}
         };
         LogService.info("utils", "Backfilling with token: " + from);
-        return client.doRequest("GET", `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages`, qs);
+        return client.uncached.doRequest("GET", `/_matrix/client/v3/rooms/${encodeURIComponent(roomId)}/messages`, qs);
     }
 
     let processed = 0;

@@ -16,9 +16,8 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import PolicyList from "../models/PolicyList";
-import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
+import { LogLevel, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
-import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 
 interface Arguments {
     list: PolicyList | null;
@@ -29,16 +28,11 @@ interface Arguments {
 
 // Exported for tests
 export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments | null> {
-    let defaultShortcode: string | null = null;
-    try {
-        const data: { shortcode: string } = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
-        defaultShortcode = data['shortcode'];
-    } catch (e) {
-        LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");
-        LogService.warn("UnbanBanCommand", extractRequestError(e));
-
-        // Assume no default.
+    let data = mjolnir.accountData.defaultList!.get();
+    if (!data || !("shortcode" in data) || typeof data["shortcode"] !== "string") {
+        data = { shortcode: null };
     }
+    let defaultShortcode: string | null = data['shortcode'];
 
     let argumentIndex = 2;
     let ruleType: string | null = null;
@@ -101,7 +95,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     if (replyMessage) {
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
         reply["msgtype"] = "m.notice";
-        await mjolnir.client.sendMessage(roomId, reply);
+        await mjolnir.client.uncached.sendMessage(roomId, reply);
         return null;
     }
 
@@ -119,7 +113,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     if (!bits) return; // error already handled
 
     await bits.list!.banEntity(bits.ruleType!, bits.entity, bits.reason);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }
 
 // !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
@@ -134,7 +128,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
         await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
         for (const protectedRoomId of mjolnir.protectedRoomsTracker.getProtectedRooms()) {
-            const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
+            const members = await mjolnir.client.uncached.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
             await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Found ${members.length} banned user(s)`);
             for (const member of members) {
                 const victim = member.membershipFor;
@@ -143,7 +137,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
                     await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`, protectedRoomId);
 
                     if (!mjolnir.config.noop) {
-                        await mjolnir.client.unbanUser(victim, protectedRoomId);
+                        await mjolnir.client.uncached.unbanUser(victim, protectedRoomId);
                     } else {
                         await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${victim} in ${protectedRoomId} but Mjolnir is running in no-op mode`, protectedRoomId);
                     }
@@ -159,5 +153,5 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
         }
     }
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

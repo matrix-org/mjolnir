@@ -27,10 +27,10 @@ export async function execSetDefaultListCommand(roomId: string, event: any, mjol
         const replyText = "No ban list with that shortcode was found.";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
         reply["msgtype"] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
 
-    await mjolnir.client.setAccountData(DEFAULT_LIST_EVENT_TYPE, { shortcode });
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.accountData.defaultList!.set({ shortcode });
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

@@ -40,6 +40,7 @@ import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 import { CachingClient, WritableCache } from "./CachingClient";
+import { DEFAULT_LIST_EVENT_TYPE } from "./commands/SetDefaultBanListCommand";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -49,8 +50,6 @@ export const STATE_RUNNING = "running";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
-
-type WatchedListsEvent = { references?: string[] } | null;
 
 export class Mjolnir {
     public readonly client: CachingClient;
@@ -97,9 +96,10 @@ export class Mjolnir {
     /**
      * The list of protected rooms, as specified in the account data.
      */
-    private accountData: {
+    public readonly accountData: {
         protectedRooms?: WritableCache<any>,
-        watchedLists?: WritableCache<WatchedListsEvent>,
+        watchedLists?: WritableCache<any>,
+        defaultList?: WritableCache<any>,
     } = {};
 
     /**
@@ -322,6 +322,7 @@ export class Mjolnir {
                 LogService.warn("Mjolnir", extractRequestError(e));
             }
             this.accountData.watchedLists = await this.client.accountData(WATCHED_LISTS_EVENT_TYPE);
+            this.accountData.defaultList = await this.client.accountData(DEFAULT_LIST_EVENT_TYPE);
             await this.buildWatchedPolicyLists();
             this.applyUnprotectedRooms();
             await this.protectionManager.start();
@@ -432,7 +433,7 @@ export class Mjolnir {
      * @param roomRef A reference (matrix.to URL) for the `PolicyList`.
      */
     private async addPolicyList(roomId: string, roomRef: string): Promise<PolicyList> {
-        const list = new PolicyList(roomId, roomRef, this.client.uncached);
+        const list = new PolicyList(roomId, roomRef, this.client);
         this.ruleServer?.watch(list);
         list.on('PolicyList.batch', (...args) => this.protectedRoomsTracker.syncWithPolicyList(...args));
         await list.updateList();
