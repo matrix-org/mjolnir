@@ -18,6 +18,7 @@ import { RichReply } from "matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
 import { EntityType } from "../models/ListRule";
 import { htmlEscape } from "../utils";
+import { ListMessageSplitter } from "../ListMessageSplitter";
 
 /**
  * List all of the rules that match a given entity.
@@ -77,52 +78,73 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
 
 // !mjolnir rules
 export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: Mjolnir) {
-    let html = "<b>Rules currently in use:</b><br/>";
-    let text = "Rules currently in use:\n";
+    let splitter = new ListMessageSplitter();
 
-    let hasLists = false;
+    splitter.add_header("<b>Rules currently in use:</b>", "Rules currently in use:");
+
     for (const list of mjolnir.lists) {
-        hasLists = true;
         let hasRules = false;
 
         const shortcodeInfo = list.listShortcode ? ` (shortcode: ${list.listShortcode})` : '';
 
-        html += `<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:<br/><ul>`;
-        text += `${list.roomRef}${shortcodeInfo}:\n`;
+        splitter.add_header(`<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:`, `${list.roomRef}${shortcodeInfo}:`);
 
         for (const rule of list.serverRules) {
             hasRules = true;
-            html += `<li>server (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
-            text += `* server (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
+
+            splitter.add_paragraph(
+                `server (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})`,
+                `server (${rule.recommendation}): ${rule.entity} (${rule.reason})`
+            )
         }
 
         for (const rule of list.userRules) {
             hasRules = true;
-            html += `<li>user (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
-            text += `* user (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
+
+            splitter.add_paragraph(
+                `user (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})`,
+                `user (${rule.recommendation}): ${rule.entity} (${rule.reason})`
+            )
         }
 
         for (const rule of list.roomRules) {
             hasRules = true;
-            html += `<li>room (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
-            text += `* room (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
+
+            splitter.add_paragraph(
+                `room (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})`,
+                `room (${rule.recommendation}): ${rule.entity} (${rule.reason})`
+            )
         }
 
         if (!hasRules) {
-            html += "<li><i>No rules</i>";
-            text += "* No rules\n";
+            splitter.add_paragraph(
+                "<i>No rules</i>",
+                "No rules"
+            )
         }
-
-        html += "</ul>";
-        text += "\n";
     }
 
-    if (!hasLists) {
-        html = "No ban lists configured";
-        text = "No ban lists configured";
+    if (mjolnir.lists.length === 0) {
+        splitter.add_paragraph(
+            "No ban lists configured",
+            "No ban lists configured"
+        )
     }
 
-    const reply = RichReply.createFor(roomId, event, text, html);
+    let rendered = splitter.render();
+    let first = rendered.shift()!;
+
+    const reply = RichReply.createFor(roomId, event, first.text, first.html);
     reply["msgtype"] = "m.notice";
-    return mjolnir.client.sendMessage(roomId, reply);
+
+    await mjolnir.client.sendMessage(roomId, reply);
+
+    for (const message of rendered) {
+        await mjolnir.client.sendMessage(roomId, {
+            msgtype: "m.notice",
+            body: message.text,
+            format: "org.matrix.custom.html",
+            formatted_body: message.html,
+        });
+    }
 }
