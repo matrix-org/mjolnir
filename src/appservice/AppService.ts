@@ -16,20 +16,23 @@
  */
 
 import { randomUUID } from "crypto";
-import { AppServiceRegistration, Bridge, Cli, Request, WeakEvent, BridgeContext, MatrixUser, UserBridgeStore, RemoteUser } from "matrix-appservice-bridge";
+import { AppServiceRegistration, Bridge, Cli, Request, WeakEvent, BridgeContext, MatrixUser } from "matrix-appservice-bridge";
+import { MatrixClient } from "matrix-bot-sdk";
 // needed by appservice irc, though it looks completely dead.
-import * as Datastore from "nedb";
 import { MjolnirManager } from ".//MjolnirManager";
+import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
 // ts-node src/appservice/AppService.ts -r -u "http://localhost:9000" # remember to add the registration to homeserver.yaml! you probably want host.docker.internal as the hostname of the appservice if using mx-tester
 // ts-node src/appservice/AppService -p 9000 # to start.
 
 export class MjolnirAppService {
 
+    public readonly dataStore: DataStore;
     public readonly bridge: Bridge;
     public readonly mjolnirManager: MjolnirManager = new MjolnirManager();
 
     public constructor() {
+        this.dataStore = new PgDataStore("foo bar baz");
         new Api("http://localhost:8081", this).start(9001);
         this.bridge = new Bridge({
             homeserverUrl: "http://localhost:8081",
@@ -39,40 +42,56 @@ export class MjolnirAppService {
                 onUserQuery: this.onUserQuery.bind(this),
                 onEvent: this.onEvent.bind(this),
             },
-            userStore: new UserBridgeStore(new Datastore()),
             suppressEcho: false,
         });
     }
 
-    public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
-        // FIXME: we need to restrict who can do it (special list? ban remote users?)
-        const issuedMjolnirs = await this.bridge.getUserStore()!.getRemoteUsersFromMatrixId(requestingUserId);
-        if (issuedMjolnirs.length === 0) {
+    public async initStoredMjolnirs(): Promise<void> {
+        for (var mjolnirRecord of await this.dataStore.list()) {
+            const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.localPart);
+            await this.mjolnirManager.makeInstance(
+                mjolnirRecord.owner,
+                mjolnirRecord.managementRoom,
+                mjolnirClient,
+            );
+        }
+    }
+
+    public async makeMatrixClient(localPart: string): Promise<[string, MatrixClient]> {
             // Now we need to make one of the transparent mjolnirs and add it to the monitor.
-            const mjIntent = await this.bridge.getIntentFromLocalpart(`mjolnir_${randomUUID()}`);
+            const mjIntent = await this.bridge.getIntentFromLocalpart(localPart);
             await mjIntent.ensureRegistered();
             // we're only doing this because it's complaining about missing profiles.
             // actually the user id wasn't even right, so this might not be necessary anymore.
             await mjIntent.ensureProfile('Mjolnir');
+            return [mjIntent.userId, mjIntent.matrixClient];
+    }
 
-            const managementRoomId = (await mjIntent.createRoom({
-                createAsClient: true,
-                options: {
-                    preset: 'private_chat',
-                    invite: [requestingUserId],
-                    name: `${requestingUserId}'s mjolnir`
-                }
-            })).room_id;
+    public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
+        // FIXME: we need to restrict who can do it (special list? ban remote users?)
+        const provisionedMjolnirs = await this.dataStore.lookupByOwner(requestingUserId);
+        if (provisionedMjolnirs.length === 0) {
+            const mjolnirLocalPart = `mjolnir_${randomUUID()}`;
+            const [mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirLocalPart);
 
-            await this.mjolnirManager.createNew(requestingUserId, managementRoomId, mjIntent.matrixClient);
-            // Technically the mjolnir is a remote user, but also not because it's matrix-matrix.
-            //const mjAsRemote = new RemoteUser(mjIntent.userId)
-            //const bridgeStore = this.bridge.getUserStore()!;
-            //bridgeStore.setRemoteUser()
-            await this.bridge.getUserStore()!.linkUsers(new MatrixUser(requestingUserId), new RemoteUser(mjIntent.userId));
-            return [mjIntent.userId, managementRoomId];
+            const managementRoomId = await mjolnirClient.createRoom({
+                preset: 'private_chat',
+                invite: [requestingUserId],
+                name: `${requestingUserId}'s mjolnir`
+            });
+
+            const mjolnir = await this.mjolnirManager.makeInstance(requestingUserId, managementRoomId, mjolnirClient);
+            await mjolnir.createFirstList(requestingUserId, "list");
+
+            await this.dataStore.store({
+                localPart: mjolnirLocalPart,
+                owner: requestingUserId,
+                managementRoom: managementRoomId,
+            });
+
+            return [mjolnirUserId, managementRoomId];
         } else {
-            throw new Error(`User: ${requestingUserId} has already provisioned ${issuedMjolnirs.length} mjolnirs.`);
+            throw new Error(`User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`);
         }
     }
 

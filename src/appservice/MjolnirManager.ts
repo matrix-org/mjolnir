@@ -14,14 +14,10 @@ export class MjolnirManager {
         return config;
     }
 
-    public async createNew(requestingUserId: string, managementRoomId: string, client: MatrixClient) {
-        // FIXME: We should be creating the intent here and generating the id surely?
-        // rather than externally...
-        // FIXME: We need to verify that we haven't stored a mjolnir already if we aren't doing the above.
-
+    public async makeInstance(requestingUserId: string, managementRoomId: string, client: MatrixClient): Promise<ManagedMjolnir> {
         const managedMjolnir = new ManagedMjolnir(await Mjolnir.setupMjolnirFromConfig(client, this.getDefaultMjolnirConfig(managementRoomId)));
-        await managedMjolnir.createFirstList(requestingUserId, 'list')
         this.mjolnirs.set(await client.getUserId(), managedMjolnir);
+        return managedMjolnir;
     }
 
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
