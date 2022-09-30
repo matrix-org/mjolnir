@@ -55,6 +55,12 @@ export enum Recommendation {
     /// is considered absolutely absolutely perfect by whoever issued
     /// this ListRule.
     Opinion = "org.matrix.msc3845.opinion",
+
+    /**
+     * This is a rule that recommends allowing a user to participate.
+     * Used for the construction of allow lists.
+     */
+    Allow = "org.matrix.mjolnir.allow",
 }
 
 /**
@@ -74,6 +80,11 @@ const RECOMMENDATION_OPINION_VARIANTS: string[] = [
     // Unstable
     Recommendation.Opinion
 ];
+
+const RECOMMENDATION_ALLOW_VARIANTS: string[] = [
+    // Unstable
+    Recommendation.Allow
+]
 
 export const OPINION_MIN = -100;
 export const OPINION_MAX = +100;
@@ -126,6 +137,13 @@ export abstract class ListRule {
     }
 
     /**
+     * @returns Whether the entity in he rule represents a Matrix glob (and not a literal).
+     */
+    public isGlob(): boolean {
+        return /[*?]/.test(this.entity);
+    }
+
+    /**
      * Validate and parse an event into a ListRule.
      *
      * @param event An *untrusted* event.
@@ -173,6 +191,8 @@ export abstract class ListRule {
                 return null;
             }
             return new ListRuleOpinion(event, entity, reason, kind, opinion);
+        } else if (RECOMMENDATION_ALLOW_VARIANTS.includes(recommendation)) {
+            return new ListRuleAllow(event, entity, reason, kind);
         } else {
             // As long as the `recommendation` is defined, we assume
             // that the rule is correct, just unknown.
@@ -204,6 +224,32 @@ export class ListRuleBan extends ListRule {
         kind: EntityType,
     ) {
         super(sourceEvent, entity, reason, kind, Recommendation.Ban)
+    }
+}
+
+/**
+ * A rule representing an "allow".
+ */
+ export class ListRuleAllow extends ListRule {
+    constructor(
+        /**
+         * The event source for the rule.
+         */
+        sourceEvent: MatrixStateEvent,
+        /**
+         * The entity covered by this rule, e.g. a glob user ID, a room ID, a server domain.
+         */
+        entity: string,
+        /**
+         * A human-readable reason for this rule, for audit purposes.
+         */
+        reason: string,
+        /**
+         * The type of entity for this rule, e.g. user, server domain, etc.
+         */
+        kind: EntityType,
+    ) {
+        super(sourceEvent, entity, reason, kind, Recommendation.Allow)
     }
 }
 
