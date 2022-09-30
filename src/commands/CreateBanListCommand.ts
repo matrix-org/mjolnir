@@ -38,13 +38,13 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
         "redact": 50,
         "state_default": 50,
         "users": {
-            [await mjolnir.client.getUserId()]: 100,
+            [mjolnir.client.userId]: 100,
             [event["sender"]]: 50
         },
         "users_default": 0,
     };
 
-    const listRoomId = await mjolnir.client.createRoom({
+    const listRoomId = await mjolnir.client.uncached.createRoom({
         preset: "public_chat",
         room_alias_name: aliasLocalpart,
         invite: [event['sender']],
@@ -59,5 +59,5 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
     const text = `Created new list (${roomRef}). This list is now being watched.`;
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, reply);
+    await mjolnir.client.uncached.sendMessage(roomId, reply);
 }

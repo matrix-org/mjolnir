@@ -41,5 +41,5 @@ export async function execListProtectedRooms(roomId: string, event: any, mjolnir
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    return mjolnir.client.sendMessage(roomId, reply);
+    return mjolnir.client.uncached.sendMessage(roomId, reply);
 }

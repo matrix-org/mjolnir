@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { PowerLevelAction } from "matrix-bot-sdk/lib/models/PowerLevelAction";
-import { LogService, UserID } from "matrix-bot-sdk";
+import { LogService } from "matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
 import { htmlEscape } from "../utils";
 import { JSDOM } from 'jsdom';
@@ -79,7 +79,7 @@ export class ReportManager extends EventEmitter {
     constructor(public mjolnir: Mjolnir) {
         super();
         // Configure bot interactions.
-        mjolnir.client.on("room.event", async (roomId, event) => {
+        mjolnir.client.uncached.on("room.event", async (roomId, event) => {
             try {
                 switch (event["type"]) {
                     case "m.reaction": {
@@ -125,7 +125,7 @@ export class ReportManager extends EventEmitter {
      * @param event The reaction.
      */
     public async handleReaction({ roomId, event }: { roomId: string, event: any }) {
-        if (event.sender === await this.mjolnir.client.getUserId()) {
+        if (event.sender === this.mjolnir.client.userId) {
             // Let's not react to our own reactions.
             return;
         }
@@ -144,8 +144,8 @@ export class ReportManager extends EventEmitter {
         // Get the original event.
         let initialNoticeReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
         try {
-            let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
-            if (originalEvent.sender !== await this.mjolnir.client.getUserId()) {
+            let originalEvent = await this.mjolnir.client.uncached.getEvent(roomId, relation.event_id);
+            if (originalEvent.sender !== this.mjolnir.client.userId) {
                 // Let's not handle reactions to events we didn't send as
                 // some setups have two or more Mjolnir's in the same management room.
                 return;
@@ -208,7 +208,7 @@ export class ReportManager extends EventEmitter {
                 })
             } else {
                 LogService.info("ReportManager::handleReaction", "User", event["sender"], "cancelled action", matches[1]);
-                this.mjolnir.client.redactEvent(this.mjolnir.managementRoomId, relation.event_id, "Action cancelled");
+                this.mjolnir.client.uncached.redactEvent(this.mjolnir.managementRoomId, relation.event_id, "Action cancelled");
             }
 
             return;
@@ -242,15 +242,15 @@ export class ReportManager extends EventEmitter {
                     [ABUSE_ACTION_CONFIRMATION_KEY]: confirmationReport
                 };
 
-                let requestConfirmationEventId = await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, confirmation);
-                await this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
+                let requestConfirmationEventId = await this.mjolnir.client.uncached.sendMessage(this.mjolnir.managementRoomId, confirmation);
+                await this.mjolnir.client.uncached.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": requestConfirmationEventId,
                         "key": `🆗 ${action.emoji} ${await action.title(this, initialNoticeReport)} [${action.label}][${CONFIRM}]`
                     }
                 });
-                await this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
+                await this.mjolnir.client.uncached.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": requestConfirmationEventId,
@@ -304,14 +304,14 @@ export class ReportManager extends EventEmitter {
             error = ex;
         }
         if (error) {
-            this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
+            this.mjolnir.client.uncached.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                 "m.relates_to": {
                     "rel_type": "m.annotation",
                     "event_id": failureEventId,
                     "key": `${action.emoji} ❌`
                 }
             });
-            this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.notice", {
+            this.mjolnir.client.uncached.sendEvent(this.mjolnir.managementRoomId, "m.notice", {
                 "body": error.message || "<unknown error>",
                 "m.relationship": {
                     "rel_type": "m.reference",
@@ -319,7 +319,7 @@ export class ReportManager extends EventEmitter {
                 }
             })
         } else {
-            this.mjolnir.client.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
+            this.mjolnir.client.uncached.sendEvent(this.mjolnir.managementRoomId, "m.reaction", {
                 "m.relates_to": {
                     "rel_type": "m.annotation",
                     "event_id": successEventId,
@@ -327,10 +327,10 @@ export class ReportManager extends EventEmitter {
                 }
             });
             if (onSuccessRemoveEventId) {
-                this.mjolnir.client.redactEvent(this.mjolnir.managementRoomId, onSuccessRemoveEventId, "Action complete");
+                this.mjolnir.client.uncached.redactEvent(this.mjolnir.managementRoomId, onSuccessRemoveEventId, "Action complete");
             }
             if (response) {
-                this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, {
+                this.mjolnir.client.uncached.sendMessage(this.mjolnir.managementRoomId, {
                     msgtype: "m.notice",
                     "formatted_body": response,
                     format: "org.matrix.custom.html",
@@ -467,7 +467,7 @@ class IgnoreBadReport implements IUIAction {
         return "Ignore bad report";
     }
     public async execute(manager: ReportManager, report: IReportWithAction): Promise<string | undefined> {
-        await manager.mjolnir.client.sendEvent(manager.mjolnir.managementRoomId, "m.room.message",
+        await manager.mjolnir.client.uncached.sendEvent(manager.mjolnir.managementRoomId, "m.room.message",
             {
                 msgtype: "m.notice",
                 body: "Report classified as invalid",
@@ -494,7 +494,7 @@ class RedactMessage implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(manager: ReportManager, report: IReport): Promise<boolean> {
         try {
-            return await manager.mjolnir.client.userHasPowerLevelForAction(await manager.mjolnir.client.getUserId(), report.room_id, PowerLevelAction.RedactEvents);
+            return await manager.mjolnir.client.uncached.userHasPowerLevelForAction(manager.mjolnir.client.userId, report.room_id, PowerLevelAction.RedactEvents);
         } catch (ex) {
             return false;
         }
@@ -506,7 +506,7 @@ class RedactMessage implements IUIAction {
         return `Redact event ${report.event_id}`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string): Promise<string | undefined> {
-        await manager.mjolnir.client.redactEvent(report.room_id, report.event_id);
+        await manager.mjolnir.client.uncached.redactEvent(report.room_id, report.event_id);
         return;
     }
 }
@@ -520,7 +520,7 @@ class KickAccused implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(manager: ReportManager, report: IReport): Promise<boolean> {
         try {
-            return await manager.mjolnir.client.userHasPowerLevelForAction(await manager.mjolnir.client.getUserId(), report.room_id, PowerLevelAction.Kick);
+            return await manager.mjolnir.client.uncached.userHasPowerLevelForAction(await manager.mjolnir.client.userId, report.room_id, PowerLevelAction.Kick);
         } catch (ex) {
             return false;
         }
@@ -532,7 +532,7 @@ class KickAccused implements IUIAction {
         return `Kick ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
-        await manager.mjolnir.client.kickUser(report.accused_id, report.room_id);
+        await manager.mjolnir.client.uncached.kickUser(report.accused_id, report.room_id);
         return;
     }
 }
@@ -546,7 +546,7 @@ class MuteAccused implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(manager: ReportManager, report: IReport): Promise<boolean> {
         try {
-            return await manager.mjolnir.client.userHasPowerLevelFor(await manager.mjolnir.client.getUserId(), report.room_id, "m.room.power_levels", true);
+            return await manager.mjolnir.client.uncached.userHasPowerLevelFor(manager.mjolnir.client.userId, report.room_id, "m.room.power_levels", true);
         } catch (ex) {
             return false;
         }
@@ -558,7 +558,7 @@ class MuteAccused implements IUIAction {
         return `Mute ${htmlEscape(report.accused_id)} in room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
-        await manager.mjolnir.client.setUserPowerLevel(report.accused_id, report.room_id, -1);
+        await manager.mjolnir.client.uncached.setUserPowerLevel(report.accused_id, report.room_id, -1);
         return;
     }
 }
@@ -572,7 +572,7 @@ class BanAccused implements IUIAction {
     public needsConfirmation = true;
     public async canExecute(manager: ReportManager, report: IReport): Promise<boolean> {
         try {
-            return await manager.mjolnir.client.userHasPowerLevelForAction(await manager.mjolnir.client.getUserId(), report.room_id, PowerLevelAction.Ban);
+            return await manager.mjolnir.client.uncached.userHasPowerLevelForAction(manager.mjolnir.client.userId, report.room_id, PowerLevelAction.Ban);
         } catch (ex) {
             return false;
         }
@@ -584,7 +584,7 @@ class BanAccused implements IUIAction {
         return `Ban ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
-        await manager.mjolnir.client.banUser(report.accused_id, report.room_id);
+        await manager.mjolnir.client.uncached.banUser(report.accused_id, report.room_id);
         return;
     }
 }
@@ -634,7 +634,7 @@ class EscalateToServerModerationRoom implements IUIAction {
             return false;
         }
         try {
-            await manager.mjolnir.client.getEvent(report.room_id, report.event_id);
+            await manager.mjolnir.client.uncached.getEvent(report.room_id, report.event_id);
         } catch (ex) {
             // We can't fetch the event.
             return false;
@@ -645,10 +645,10 @@ class EscalateToServerModerationRoom implements IUIAction {
         return "Escalate";
     }
     public async help(manager: ReportManager, _report: IReport): Promise<string> {
-        return `Escalate report to ${getHomeserver(await manager.mjolnir.client.getUserId())} server moderators`;
+        return `Escalate report to ${manager.mjolnir.client.domain} server moderators`;
     }
     public async execute(manager: ReportManager, report: IReport, _moderationRoomId: string, displayManager: DisplayManager): Promise<string | undefined> {
-        let event = await manager.mjolnir.client.getEvent(report.room_id, report.event_id);
+        let event = await manager.mjolnir.client.uncached.getEvent(report.room_id, report.event_id);
 
         // Display the report and UI directly in the management room, as if it had been
         // received from /report.
@@ -691,7 +691,7 @@ class DisplayManager {
 
         let roomAliasOrId = roomId;
         try {
-            roomAliasOrId = await this.owner.mjolnir.client.getPublishedAlias(roomId) || roomId;
+            roomAliasOrId = await this.owner.mjolnir.client.uncached.getPublishedAlias(roomId) || roomId;
         } catch (ex) {
             // Ignore.
         }
@@ -721,12 +721,12 @@ class DisplayManager {
 
         let reporterDisplayName: string, accusedDisplayName: string;
         try {
-            reporterDisplayName = (await this.owner.mjolnir.client.getUserProfile(reporterId))["displayname"] || reporterId;
+            reporterDisplayName = (await this.owner.mjolnir.client.uncached.getUserProfile(reporterId))["displayname"] || reporterId;
         } catch (ex) {
             reporterDisplayName = "<Error: Cannot extract reporter display name>";
         }
         try {
-            accusedDisplayName = (await this.owner.mjolnir.client.getUserProfile(accusedId))["displayname"] || accusedId;
+            accusedDisplayName = (await this.owner.mjolnir.client.uncached.getUserProfile(accusedId))["displayname"] || accusedId;
         } catch (ex) {
             accusedDisplayName = "<Error: Cannot extract accused display name>";
         }
@@ -876,7 +876,7 @@ class DisplayManager {
             [ABUSE_REPORT_KEY]: report
         };
 
-        let noticeEventId = await this.owner.mjolnir.client.sendMessage(this.owner.mjolnir.managementRoomId, notice);
+        let noticeEventId = await this.owner.mjolnir.client.uncached.sendMessage(this.owner.mjolnir.managementRoomId, notice);
         if (kind !== Kind.ERROR) {
             // Now let's display buttons.
             for (let [label, action] of ACTIONS) {
@@ -884,7 +884,7 @@ class DisplayManager {
                 if (!await action.canExecute(this.owner, report, moderationRoomId)) {
                     continue;
                 }
-                await this.owner.mjolnir.client.sendEvent(this.owner.mjolnir.managementRoomId, "m.reaction", {
+                await this.owner.mjolnir.client.uncached.sendEvent(this.owner.mjolnir.managementRoomId, "m.reaction", {
                     "m.relates_to": {
                         "rel_type": "m.annotation",
                         "event_id": noticeEventId,
@@ -945,7 +945,3 @@ const ACTION_LIST = [
  * As a map of labels => actions.
  */
 const ACTIONS = new Map(ACTION_LIST.map(action => [action.label, action]));
-
-function getHomeserver(userId: string): string {
-    return new UserID(userId).domain
-}

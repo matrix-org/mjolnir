@@ -563,7 +563,7 @@ export class DetectFederationLag extends Protection {
             // Ill-formed event.
             return;
         }
-        if (sender === await mjolnir.client.getUserId()) {
+        if (sender === mjolnir.client.userId) {
             // Let's not create loops.
             return;
         }
@@ -591,8 +591,7 @@ export class DetectFederationLag extends Protection {
             this.lagPerRoom.set(roomId, roomInfo);
         }
 
-        const localDomain = new UserID(await mjolnir.client.getUserId()).domain
-        const isLocalDomain = domain === localDomain;
+        const isLocalDomain = domain === mjolnir.client.domain;
         const thresholds =
             isLocalDomain
                 ? {
@@ -617,7 +616,7 @@ export class DetectFederationLag extends Protection {
         }
 
         // Check whether an alarm needs to be raised!
-        const isLocalDomainOnAlert = roomInfo.isServerOnAlert(localDomain);
+        const isLocalDomainOnAlert = roomInfo.isServerOnAlert(mjolnir.client.domain);
         if (roomInfo.alerts > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value
             || isLocalDomainOnAlert) {
             // Raise the alarm!
@@ -630,7 +629,7 @@ export class DetectFederationLag extends Protection {
             /* do not await */ mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "FederationLag",
                 `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomInfo.latestAlertStart}.\n${roomInfo.alerts} homeservers are lagging: ${[...roomInfo.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
             // Drop a state event, for the use of potential other bots.
-            const warnStateEventId = await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, LAG_STATE_EVENT, roomId, {
+            const warnStateEventId = await mjolnir.client.uncached.sendStateEvent(mjolnir.managementRoomId, LAG_STATE_EVENT, roomId, {
                 domains: [...roomInfo.serversOnAlert()],
                 roomId,
                 // We need to round the stats, as Matrix doesn't support floating-point
@@ -648,7 +647,7 @@ export class DetectFederationLag extends Protection {
             if (roomInfo.warnStateEventId) {
                 const warnStateEventId = roomInfo.warnStateEventId;
                 roomInfo.warnStateEventId = null;
-                await mjolnir.client.redactEvent(mjolnir.managementRoomId, warnStateEventId, "Alert over");
+                await mjolnir.client.uncached.redactEvent(mjolnir.managementRoomId, warnStateEventId, "Alert over");
             }
         }
     }
@@ -691,13 +690,12 @@ export class DetectFederationLag extends Protection {
      */
     public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
         const roomId = subcommand[0] || "*";
-        const localDomain = new UserID(await mjolnir.client.getUserId()).domain;
         const annotatedStats = (roomInfo: RoomInfo) => {
             const stats = roomInfo.globalStats()?.round();
             if (!stats) {
                 return null;
             }
-            const isLocalDomainOnAlert = roomInfo.isServerOnAlert(localDomain);
+            const isLocalDomainOnAlert = roomInfo.isServerOnAlert(mjolnir.client.domain);
             const numberOfServersOnAlert = roomInfo.alerts;
             if (isLocalDomainOnAlert) {
                 (stats as any)["warning"] = "Local homeserver is lagging";
@@ -713,7 +711,7 @@ export class DetectFederationLag extends Protection {
             const result: any = {};
 
             for (const [perRoomId, perRoomInfo] of this.lagPerRoom.entries()) {
-                const key = await mjolnir.client.getPublishedAlias(perRoomId) || perRoomId;
+                const key = await mjolnir.client.uncached.getPublishedAlias(perRoomId) || perRoomId;
                 result[key] = annotatedStats(perRoomInfo);
             }
             text = JSON.stringify(result, null, 2);

@@ -64,7 +64,7 @@ export class ProtectionManager {
      */
     public async start() {
         this.mjolnir.reportManager.on("report.new", this.handleReport.bind(this));
-        this.mjolnir.client.on("room.event", this.handleEvent.bind(this));
+        this.mjolnir.client.uncached.on("room.event", this.handleEvent.bind(this));
         for (const protection of PROTECTIONS) {
             try {
                 await this.registerProtection(protection);
@@ -85,7 +85,7 @@ export class ProtectionManager {
 
         let enabledProtections: { enabled: string[] } | null = null;
         try {
-            enabledProtections = await this.mjolnir.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            enabledProtections = await this.mjolnir.client.uncached.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
         } catch {
             // this setting either doesn't exist, or we failed to read it (bad network?)
             // TODO: retry on certain failures?
@@ -140,7 +140,7 @@ export class ProtectionManager {
             validatedSettings[key] = value;
         }
 
-        await this.mjolnir.client.sendStateEvent(
+        await this.mjolnir.client.uncached.sendStateEvent(
             this.mjolnir.managementRoomId, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
         );
     }
@@ -150,7 +150,7 @@ export class ProtectionManager {
      */
     private async saveEnabledProtections() {
         const protections = this.enabledProtections.map(p => p.name);
-        await this.mjolnir.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
+        await this.mjolnir.client.uncached.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
     }
     /*
      * Enable a protection by name and persist its enable state in to a state event
@@ -204,7 +204,7 @@ export class ProtectionManager {
     public async getProtectionSettings(protectionName: string): Promise<{ [setting: string]: any }> {
         let savedSettings: { [setting: string]: any } = {}
         try {
-            savedSettings = await this.mjolnir.client.getRoomStateEvent(
+            savedSettings = await this.mjolnir.client.uncached.getRoomStateEvent(
                 this.mjolnir.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
             );
         } catch {
@@ -241,9 +241,9 @@ export class ProtectionManager {
                 if (consequence.name === "alert") {
                     /* take no additional action, just print the below message to management room */
                 } else if (consequence.name === "ban") {
-                    await this.mjolnir.client.banUser(sender, roomId, "abuse detected");
+                    await this.mjolnir.client.uncached.banUser(sender, roomId, "abuse detected");
                 } else if (consequence.name === "redact") {
-                    await this.mjolnir.client.redactEvent(roomId, eventId, "abuse detected");
+                    await this.mjolnir.client.uncached.redactEvent(roomId, eventId, "abuse detected");
                 } else {
                     throw new Error(`unknown consequence ${consequence.name}`);
                 }
@@ -253,7 +253,7 @@ export class ProtectionManager {
                     + ` against ${htmlEscape(sender)}`
                     + ` in ${htmlEscape(roomId)}`
                     + ` (reason: ${htmlEscape(consequence.reason)})`;
-                await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, {
+                await this.mjolnir.client.uncached.sendMessage(this.mjolnir.managementRoomId, {
                     msgtype: "m.notice",
                     body: message,
                     [CONSEQUENCE_EVENT_DATA]: {
@@ -270,7 +270,7 @@ export class ProtectionManager {
 
     private async handleEvent(roomId: string, event: any) {
         if (this.mjolnir.protectedRoomsTracker.getProtectedRooms().includes(roomId)) {
-            if (event['sender'] === await this.mjolnir.client.getUserId()) return; // Ignore ourselves
+            if (event['sender'] === this.mjolnir.client.userId) return; // Ignore ourselves
 
             // Iterate all the enabled protections
             for (const protection of this.enabledProtections) {
@@ -282,7 +282,7 @@ export class ProtectionManager {
                     LogService.error("ProtectionManager", "Error handling protection: " + protection.name);
                     LogService.error("ProtectionManager", "Failed event: " + eventPermalink);
                     LogService.error("ProtectionManager", extractRequestError(e));
-                    await this.mjolnir.client.sendNotice(this.mjolnir.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
+                    await this.mjolnir.client.uncached.sendNotice(this.mjolnir.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
                     continue;
                 }
 
@@ -307,9 +307,7 @@ export class ProtectionManager {
         const additionalPermissions = this.requiredProtectionPermissions();
 
         try {
-            const ownUserId = await this.mjolnir.client.getUserId();
-
-            const powerLevels = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
+            const powerLevels = await this.mjolnir.client.uncached.getRoomStateEvent(roomId, "m.room.power_levels", "");
             if (!powerLevels) {
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error("Missing power levels state event");
@@ -328,7 +326,7 @@ export class ProtectionManager {
             const kick = plDefault(powerLevels['kick'], 50);
             const redact = plDefault(powerLevels['redact'], 50);
 
-            const userLevel = plDefault(users[ownUserId], usersDefault);
+            const userLevel = plDefault(users[this.mjolnir.client.userId], usersDefault);
             const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
 
             // Wants: ban, kick, redact, m.room.server_acl

@@ -33,7 +33,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         let replyMessage = "Wildcard bans require an addition `--force` argument to confirm";
         const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
         reply["msgtype"] = "m.notice";
-        await mjolnir.client.sendMessage(roomId, reply);
+        await mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
 
@@ -43,7 +43,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
     if (parts.length > 3) {
         let reasonIndex = 3;
         if (parts[3].startsWith("#") || parts[3].startsWith("!")) {
-            rooms = [await mjolnir.client.resolveRoom(parts[3])];
+            rooms = [await mjolnir.client.uncached.resolveRoom(parts[3])];
             reasonIndex = 4;
         }
         reason = parts.slice(reasonIndex).join(' ') || '<no reason supplied>';
@@ -51,7 +51,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
     if (!reason) reason = '<none supplied>';
 
     for (const protectedRoomId of rooms) {
-        const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ["join"], ["ban", "leave"]);
+        const members = await mjolnir.client.uncached.getRoomMembers(protectedRoomId, undefined, ["join"], ["ban", "leave"]);
 
         for (const member of members) {
             const victim = member.membershipFor;
@@ -62,7 +62,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                 if (!mjolnir.config.noop) {
                     try {
                         await mjolnir.taskQueue.push(async () => {
-                            return mjolnir.client.kickUser(victim, protectedRoomId, reason);
+                            return mjolnir.client.uncached.kickUser(victim, protectedRoomId, reason);
                         });
                     } catch (e) {
                         await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${victim}: ${e}`);
@@ -74,5 +74,5 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
         }
     }
 
-    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    return mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

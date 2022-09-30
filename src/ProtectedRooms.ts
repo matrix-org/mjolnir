@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
+import { CachingClient } from "./CachingClient";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoomOutput";
@@ -83,8 +84,7 @@ export class ProtectedRooms {
     private aclChain: Promise<void> = Promise.resolve();
 
     constructor(
-        private readonly client: MatrixClient,
-        private readonly clientUserId: string,
+        private readonly client: CachingClient,
         private readonly managementRoomId: string,
         private readonly managementRoomOutput: ManagementRoomOutput,
         /**
@@ -152,7 +152,7 @@ export class ProtectedRooms {
      * @returns The list of errors encountered, for reporting to the management room.
      */
     public async processRedactionQueue(roomId?: string): Promise<RoomUpdateError[]> {
-        return await this.eventRedactionQueue.process(this.client, this.managementRoomOutput, roomId);
+        return await this.eventRedactionQueue.process(this.client.uncached, this.managementRoomOutput, roomId);
     }
 
     /**
@@ -163,7 +163,7 @@ export class ProtectedRooms {
     }
 
     public async handleEvent(roomId: string, event: any) {
-        if (event['sender'] === this.clientUserId) {
+        if (event['sender'] === this.client.userId) {
             throw new TypeError("`ProtectedRooms::handleEvent` should not be used to inform about events sent by mjolnir.");
         }
         this.protectedRoomActivityTracker.handleEvent(roomId, event);
@@ -212,7 +212,7 @@ export class ProtectedRooms {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(this.managementRoomId, {
+            await this.client.uncached.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -260,7 +260,7 @@ export class ProtectedRooms {
         if (!hadErrors) {
             const html = `<font color="#00cc00"><b>Done updating rooms - no errors</b></font>`;
             const text = "Done updating rooms - no errors";
-            await this.client.sendMessage(this.managementRoomId, {
+            await this.client.uncached.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",
@@ -290,7 +290,7 @@ export class ProtectedRooms {
     }
 
     private async _applyServerAcls(lists: PolicyList[], roomIds: string[]): Promise<RoomUpdateError[]> {
-        const serverName: string = new UserID(await this.client.getUserId()).domain;
+        const serverName: string = new UserID(this.client.userId).domain;
 
         // Construct a server ACL first
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
@@ -308,7 +308,7 @@ export class ProtectedRooms {
 
         if (this.config.verboseLogging) {
             // We specifically use sendNotice to avoid having to escape HTML
-            await this.client.sendNotice(this.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
+            await this.client.uncached.sendNotice(this.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
         }
 
         const errors: RoomUpdateError[] = [];
@@ -317,7 +317,7 @@ export class ProtectedRooms {
                 await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
 
                 try {
-                    const currentAcl = await this.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
+                    const currentAcl = await this.client.uncached.getRoomStateEvent(roomId, "m.room.server_acl", "");
                     if (acl.matches(currentAcl)) {
                         await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
                         continue;
@@ -330,7 +330,7 @@ export class ProtectedRooms {
                 await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
 
                 if (!this.config.noop) {
-                    await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
+                    await this.client.uncached.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
                 } else {
                     await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
@@ -361,12 +361,12 @@ export class ProtectedRooms {
                 let members: { userId: string, membership: string }[];
 
                 if (this.config.fasterMembershipChecks) {
-                    const memberIds = await this.client.getJoinedRoomMembers(roomId);
+                    const memberIds = await this.client.uncached.getJoinedRoomMembers(roomId);
                     members = memberIds.map(u => {
                         return { userId: u, membership: "join" };
                     });
                 } else {
-                    const state = await this.client.getRoomState(roomId);
+                    const state = await this.client.uncached.getRoomState(roomId);
                     members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']).map(s => {
                         return { userId: s['state_key'], membership: s['content'] ? s['content']['membership'] : 'leave' };
                     });
@@ -387,7 +387,7 @@ export class ProtectedRooms {
                                 await this.managementRoomOutput.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
 
                                 if (!this.config.noop) {
-                                    await this.client.banUser(member.userId, roomId, userRule.reason);
+                                    await this.client.uncached.banUser(member.userId, roomId, userRule.reason);
                                     if (this.automaticRedactGlobs.find(g => g.test(userRule.reason.toLowerCase()))) {
                                         this.redactUser(member.userId, roomId);
                                     }
@@ -423,7 +423,7 @@ export class ProtectedRooms {
      */
     private async printBanlistChanges(changes: ListRuleChange[], list: PolicyList, ignoreSelf = false): Promise<boolean> {
         if (ignoreSelf) {
-            const sender = await this.client.getUserId();
+            const sender = this.client.userId;
             changes = changes.filter(change => change.sender !== sender);
         }
         if (changes.length <= 0) return false;
@@ -457,7 +457,7 @@ export class ProtectedRooms {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(this.managementRoomId, message);
+        await this.client.uncached.sendMessage(this.managementRoomId, message);
         return true;
     }
 
@@ -480,9 +480,9 @@ export class ProtectedRooms {
 
         html += `<font color="#ff0000"><b>${htmlTitle}${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
         text += `${textTitle}${errors.length} errors updating protected rooms!\n`;
-        const viaServers = [(new UserID(await this.client.getUserId())).domain];
+        const viaServers = [(new UserID(this.client.userId)).domain];
         for (const error of errors) {
-            const alias = (await this.client.getPublishedAlias(error.roomId)) || error.roomId;
+            const alias = (await this.client.uncached.getPublishedAlias(error.roomId)) || error.roomId;
             const url = Permalinks.forRoom(alias, viaServers);
             html += `<li><a href="${url}">${alias}</a> - ${error.errorMessage}</li>`;
             text += `${url} - ${error.errorMessage}\n`;
@@ -495,7 +495,7 @@ export class ProtectedRooms {
             format: "org.matrix.custom.html",
             formatted_body: html,
         };
-        await this.client.sendMessage(this.managementRoomId, message);
+        await this.client.uncached.sendMessage(this.managementRoomId, message);
         return true;
     }
 
@@ -513,7 +513,7 @@ export class ProtectedRooms {
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";
-            await this.client.sendMessage(this.managementRoomId, {
+            await this.client.uncached.sendMessage(this.managementRoomId, {
                 msgtype: "m.notice",
                 body: text,
                 format: "org.matrix.custom.html",

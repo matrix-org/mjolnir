@@ -39,7 +39,7 @@ import { ProtectedRooms } from "./ProtectedRooms";
 import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
-import { CachingClient } from "./CachingClient";
+import { CachingClient, WritableCache } from "./CachingClient";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -50,10 +50,10 @@ const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
+type WatchedListsEvent = { references?: string[] } | null;
+
 export class Mjolnir {
     public readonly client: CachingClient;
-    private displayName: string;
-    private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     public readonly roomJoins: RoomMemberManager;
     /**
@@ -93,6 +93,14 @@ export class Mjolnir {
      * Handle user reports from the homeserver.
      */
     public readonly reportManager: ReportManager;
+
+    /**
+     * The list of protected rooms, as specified in the account data.
+     */
+    private accountData: {
+        protectedRooms?: WritableCache<any>,
+        watchedLists?: WritableCache<WatchedListsEvent>,
+    } = {};
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -209,12 +217,12 @@ export class Mjolnir {
             if (content['msgtype'] === "m.text" && content['body']) {
                 const prefixes = [
                     COMMAND_PREFIX,
-                    this.localpart + ":",
-                    this.displayName + ":",
-                    await client.getUserId() + ":",
-                    this.localpart + " ",
-                    this.displayName + " ",
-                    await client.getUserId() + " ",
+                    this.client.localpart + ":",
+                    this.client.displayName + ":",
+                    this.client.userId + ":",
+                    this.client.localpart + " ",
+                    this.client.displayName + " ",
+                    this.client.userId + " ",
                     ...config.commands.additionalPrefixes.map(p => `!${p}`),
                     ...config.commands.additionalPrefixes.map(p => `${p}:`),
                     ...config.commands.additionalPrefixes.map(p => `${p} `),
@@ -245,15 +253,6 @@ export class Mjolnir {
             return this.resyncJoinedRooms();
         });
 
-        client.getUserId().then(userId => {
-            this.localpart = userId.split(':')[0].substring(1);
-            return client.getUserProfile(userId);
-        }).then(profile => {
-            if (profile['displayname']) {
-                this.displayName = profile['displayname'];
-            }
-        });
-
         // Setup Web APIs
         console.log("Creating Web APIs");
         this.reportManager = new ReportManager(this);
@@ -267,9 +266,9 @@ export class Mjolnir {
 
         this.protectionManager = new ProtectionManager(this);
 
-        this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, client, config);
+        this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, this.client, config);
         const protections = new ProtectionManager(this);
-        this.protectedRoomsTracker = new ProtectedRooms(client, clientUserId, managementRoomId, this.managementRoomOutput, protections, config);
+        this.protectedRoomsTracker = new ProtectedRooms(this.client, managementRoomId, this.managementRoomOutput, protections, config);
     }
 
     public get lists(): PolicyList[] {
@@ -310,8 +309,9 @@ export class Mjolnir {
 
             await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
             await this.resyncJoinedRooms(false);
+            this.accountData.protectedRooms = await this.client.accountData(PROTECTED_ROOMS_EVENT_TYPE);
             try {
-                const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                const data: { rooms?: string[] } | null = this.accountData.protectedRooms.get();
                 if (data && data['rooms']) {
                     for (const roomId of data['rooms']) {
                         this.protectedRooms[roomId] = Permalinks.forRoom(roomId);
@@ -321,6 +321,7 @@ export class Mjolnir {
             } catch (e) {
                 LogService.warn("Mjolnir", extractRequestError(e));
             }
+            this.accountData.watchedLists = await this.client.accountData(WATCHED_LISTS_EVENT_TYPE);
             await this.buildWatchedPolicyLists();
             this.applyUnprotectedRooms();
             await this.protectionManager.start();
@@ -371,15 +372,10 @@ export class Mjolnir {
         if (unprotectedIdx >= 0) this.unprotectedWatchedListRooms.splice(unprotectedIdx, 1);
         this.explicitlyProtectedRoomIds.push(roomId);
 
-        let additionalProtectedRooms: { rooms?: string[] } | null = null;
-        try {
-            additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
-        } catch (e) {
-            LogService.warn("Mjolnir", extractRequestError(e));
-        }
+        let additionalProtectedRooms: { rooms?: string[] } | null = this.accountData.protectedRooms!.get();
         const rooms = (additionalProtectedRooms?.rooms ?? []);
         rooms.push(roomId);
-        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: rooms });
+        await this.accountData.protectedRooms!.set({ rooms: rooms });
     }
 
     public async removeProtectedRoom(roomId: string) {
@@ -390,21 +386,16 @@ export class Mjolnir {
         const idx = this.explicitlyProtectedRoomIds.indexOf(roomId);
         if (idx >= 0) this.explicitlyProtectedRoomIds.splice(idx, 1);
 
-        let additionalProtectedRooms: { rooms?: string[] } | null = null;
-        try {
-            additionalProtectedRooms = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
-        } catch (e) {
-            LogService.warn("Mjolnir", extractRequestError(e));
-        }
+        let additionalProtectedRooms: { rooms?: string[] } | null = this.accountData.protectedRooms!.get();
         additionalProtectedRooms = { rooms: additionalProtectedRooms?.rooms?.filter(r => r !== roomId) ?? [] };
-        await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, additionalProtectedRooms);
+        await this.accountData.protectedRooms!.set(additionalProtectedRooms);
     }
 
     // See https://github.com/matrix-org/mjolnir/issues/370.
     private async resyncJoinedRooms(withSync = true) {
         if (!this.config.protectAllJoinedRooms) return;
 
-        const joinedRoomIds = (await this.client.getJoinedRooms())
+        const joinedRoomIds = [...this.client.joinedRooms().get()!.values()]
             .filter(r => r !== this.managementRoomId && !this.unprotectedWatchedListRooms.includes(r));
         const oldRoomIdsSet = new Set(this.protectedJoinedRoomIds);
         const joinedRoomIdsSet = new Set(joinedRoomIds);
@@ -441,7 +432,7 @@ export class Mjolnir {
      * @param roomRef A reference (matrix.to URL) for the `PolicyList`.
      */
     private async addPolicyList(roomId: string, roomRef: string): Promise<PolicyList> {
-        const list = new PolicyList(roomId, roomRef, this.client);
+        const list = new PolicyList(roomId, roomRef, this.client.uncached);
         this.ruleServer?.watch(list);
         list.on('PolicyList.batch', (...args) => this.protectedRoomsTracker.syncWithPolicyList(...args));
         await list.updateList();
@@ -451,20 +442,20 @@ export class Mjolnir {
     }
 
     public async watchList(roomRef: string): Promise<PolicyList | null> {
-        const joinedRooms = await this.client.getJoinedRooms();
+        const joinedRooms = this.client.joinedRooms().get()!;
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
-        const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
-        if (!joinedRooms.includes(roomId)) {
-            await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+        const roomId = await this.client.uncached.resolveRoom(permalink.roomIdOrAlias);
+        if (!joinedRooms.has(roomId)) {
+            await this.client.uncached.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
         }
 
         if (this.policyLists.find(b => b.roomId === roomId)) return null;
 
         const list = await this.addPolicyList(roomId, roomRef);
 
-        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
+        await this.accountData.watchedLists!.set({
             references: this.policyLists.map(b => b.roomRef),
         });
 
@@ -477,7 +468,7 @@ export class Mjolnir {
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
-        const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
+        const roomId = await this.client.uncached.resolveRoom(permalink.roomIdOrAlias);
         const list = this.policyLists.find(b => b.roomId === roomId) || null;
         if (list) {
             this.policyLists.splice(this.policyLists.indexOf(list), 1);
@@ -485,7 +476,7 @@ export class Mjolnir {
             this.protectedRoomsTracker.unwatchList(list);
         }
 
-        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
+        await this.accountData.watchedLists!.set({
             references: this.policyLists.map(b => b.roomRef),
         });
         return list;
@@ -495,21 +486,21 @@ export class Mjolnir {
         if (!this.config.protectAllJoinedRooms) return; // doesn't matter
         if (this.explicitlyProtectedRoomIds.includes(roomId)) return; // explicitly protected
 
-        const createEvent = new CreateEvent(await this.client.getRoomStateEvent(roomId, "m.room.create", ""));
-        if (createEvent.creator === await this.client.getUserId()) return; // we created it
+        const createEvent = new CreateEvent(await this.client.uncached.getRoomStateEvent(roomId, "m.room.create", ""));
+        if (createEvent.creator === this.client.userId) return; // we created it
 
         if (!this.unprotectedWatchedListRooms.includes(roomId)) this.unprotectedWatchedListRooms.push(roomId);
         this.applyUnprotectedRooms();
 
         try {
-            const accountData: { warned: boolean } | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
+            const accountData: { warned: boolean } | null = await this.client.uncached.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
             if (accountData && accountData.warned) return; // already warned
         } catch (e) {
             // Ignore - probably haven't warned about it yet
         }
 
         await this.managementRoomOutput.logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
-        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
+        await this.client.uncached.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
     }
 
     /**
@@ -525,22 +516,17 @@ export class Mjolnir {
 
     private async buildWatchedPolicyLists() {
         this.policyLists = [];
-        const joinedRooms = await this.client.getJoinedRooms();
+        const joinedRooms = this.client.joinedRooms().get()!;
 
-        let watchedListsEvent: { references?: string[] } | null = null;
-        try {
-            watchedListsEvent = await this.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
-        } catch (e) {
-            // ignore - not important
-        }
+        let watchedListsEvent = this.accountData.watchedLists!.get();
 
         for (const roomRef of (watchedListsEvent?.references || [])) {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
 
-            const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
-            if (!joinedRooms.includes(roomId)) {
-                await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+            const roomId = await this.client.uncached.resolveRoom(permalink.roomIdOrAlias);
+            if (!joinedRooms.has(roomId)) {
+                await this.client.uncached.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
             }
 
             await this.warnAboutUnprotectedPolicyListRoom(roomId);
@@ -554,9 +540,9 @@ export class Mjolnir {
             if (event['type'] === 'm.room.message' && event['content'] && event['content']['body']) {
                 if (event['content']['body'] === "** Unable to decrypt: The sender's device has not sent us the keys for this message. **") {
                     // UISI
-                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '⚠');
-                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], 'UISI');
-                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '🚨');
+                    await this.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '⚠');
+                    await this.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], 'UISI');
+                    await this.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '🚨');
                 }
             }
         }
@@ -577,8 +563,8 @@ export class Mjolnir {
 
     public async isSynapseAdmin(): Promise<boolean> {
         try {
-            const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
-            const response = await this.client.doRequest("GET", endpoint);
+            const endpoint = `/_synapse/admin/v1/users/${this.client.userId}/admin`;
+            const response = await this.client.uncached.doRequest("GET", endpoint);
             return response['admin'];
         } catch (e) {
             LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
@@ -589,13 +575,13 @@ export class Mjolnir {
 
     public async deactivateSynapseUser(userId: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/deactivate/${userId}`;
-        return await this.client.doRequest("POST", endpoint);
+        return await this.client.uncached.doRequest("POST", endpoint);
     }
 
     public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
-        return await this.client.doRequest("DELETE", endpoint, null, {
-            new_room_user_id: await this.client.getUserId(),
+        return await this.client.uncached.doRequest("DELETE", endpoint, null, {
+            new_room_user_id: this.client.userId,
             block: true,
             message: message /* If `undefined`, we'll use Synapse's default message. */
         });
@@ -610,8 +596,8 @@ export class Mjolnir {
     public async makeUserRoomAdmin(roomId: string, userId?: string): Promise<any> {
         try {
             const endpoint = `/_synapse/admin/v1/rooms/${roomId}/make_room_admin`;
-            return await this.client.doRequest("POST", endpoint, null, {
-                user_id: userId || await this.client.getUserId(), /* if not specified make the bot administrator */
+            return await this.client.uncached.doRequest("POST", endpoint, null, {
+                user_id: userId || this.client.userId, /* if not specified make the bot administrator */
             });
         } catch (e) {
             return extractRequestError(e);

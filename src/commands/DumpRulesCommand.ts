@@ -72,7 +72,7 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
     }
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    return mjolnir.client.sendMessage(roomId, reply);
+    return mjolnir.client.uncached.sendMessage(roomId, reply);
 }
 
 // !mjolnir rules
@@ -124,5 +124,5 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
-    return mjolnir.client.sendMessage(roomId, reply);
+    return mjolnir.client.uncached.sendMessage(roomId, reply);
 }
