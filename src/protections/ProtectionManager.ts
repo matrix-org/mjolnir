@@ -17,6 +17,7 @@ limitations under the License.
 import { FirstMessageIsImage } from "./FirstMessageIsImage";
 import { Protection } from "./IProtection";
 import { BasicFlooding } from "./BasicFlooding";
+import { MentionFlood } from "./MentionFlood";
 import { DetectFederationLag } from "./DetectFederationLag";
 import { WordList } from "./WordList";
 import { MessageIsVoice } from "./MessageIsVoice";
@@ -34,6 +35,7 @@ import { RoomUpdateError } from "../models/RoomUpdateError";
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
     new BasicFlooding(),
+    new MentionFlood(),
     new WordList(),
     new MessageIsVoice(),
     new MessageIsMedia(),
