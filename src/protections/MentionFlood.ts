@@ -2,6 +2,7 @@ import { Protection } from './IProtection';
 import { NumberProtectionSetting } from './ProtectionSettings';
 import { Mjolnir } from '../Mjolnir';
 import { LogLevel, LogService } from 'matrix-bot-sdk';
+import { isTrueJoinEvent } from '../utils';
 
 // We ban user if they mention more or equal to this ratio
 export const DEFAULT_MAX_MENTIONS = 5;
@@ -40,7 +41,7 @@ export class MentionFlood extends Protection {
         const now = new Date();
 
         if (minsBeforeTrusting > 0) {
-            if (!this.justJoined[roomId]) this.justJoined[roo] = {};
+            if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
 
             if (event['type'] === 'm.room.member') {
                 if (isTrueJoinEvent(event)) {

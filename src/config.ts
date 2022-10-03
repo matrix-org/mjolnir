@@ -144,6 +144,9 @@ const defaultConfig: IConfig = {
         wordlist: {
             words: [],
             minutesBeforeTrusting: 20
+        },
+        mentionflood: {
+            minutesBeforeTrusting: 20
         }
     },
     health: {
