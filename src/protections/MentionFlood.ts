@@ -47,7 +47,7 @@ export class MentionFlood extends Protection {
                 await mjolnir.client.banUser(event['sender'], `Banning ${event['sender']} for mention flood in ${roomId}`);
                 await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
             } else {
-                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${event['sender']} for mention flood in ${roomId} but Mjolnir is running in no-op mode.`)
+                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${event['sender']} for mention flood in ${roomId} but Mjolnir is running in no-op mode.`);
             }
         }
     }
