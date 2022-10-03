@@ -74,6 +74,9 @@ export interface IConfig {
             words: string[];
             minutesBeforeTrusting: number;
         };
+        mentionflood: {
+            minutesBeforeTrusting: number;
+        };
     };
     health: {
         healthz: {

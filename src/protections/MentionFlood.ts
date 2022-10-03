@@ -1,7 +1,7 @@
 import { Protection } from './IProtection';
 import { NumberProtectionSetting } from './ProtectionSettings';
 import { Mjolnir } from '../Mjolnir';
-import { LogLevel } from 'matrix-bot-sdk';
+import { LogLevel, LogService } from 'matrix-bot-sdk';
 
 // We ban user if they mention more or equal to this ratio
 export const DEFAULT_MAX_MENTIONS = 5;
@@ -18,6 +18,7 @@ export class MentionFlood extends Protection {
         maxMentions: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS)
     };
 
+    private justJoined: { [roomId: string]: { [username: string]: Date } } = {};
     private mention: RegExp;
 
     constructor() {
@@ -35,10 +36,31 @@ export class MentionFlood extends Protection {
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         const content = event['content'] || {};
+        const minsBeforeTrusting = mjolnir.config.protections.mentionflood.minutesBeforeTrusting;
+        const now = new Date();
+
+        if (minsBeforeTrusting > 0) {
+            if (!this.justJoined[roomId]) this.justJoined[roo] = {};
+
+            if (event['type'] === 'm.room.member') {
+                if (isTrueJoinEvent(event)) {
+                    this.justJoined[roomId][event['state_key']] = now;
+                    LogService.info("MentionFlood", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
+                } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
+                    delete this.justJoined[roomId][event['sender']]
+                }
+
+                return;
+            }
+        }
 
         if (event['type'] !== 'm.room.message') return;
 
-        const message: string = content['formatted_body'] || content['body'] || '';
+        const message: string = content['formatted_body'] || content['body'] || null;
+
+        if (minsBeforeTrusting < 0) return;
+        const joinTime = this.justJoined[roomId][event['sender']]
+        if ((joinTime && (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000)) || !joinTime) return;
 
         const maxMentionsPerMessage = this.settings.maxMentions.value;
         if (message && (message.match(this.mention)?.length || 0) > maxMentionsPerMessage) {
