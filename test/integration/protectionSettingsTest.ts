@@ -23,6 +23,13 @@ describe("Test: Protection settings", function() {
             ProtectionSettingValidationError
         );
     });
+    it("Mjolnir refuses to save invalid protection setting values", async function() {
+        this.timeout(20000);
+        await assert.rejects(
+            async () => await this.mjolnir.protectionManager.setProtectionSettings("MentionFloodProtection", {"maxMentions": "beep"}),
+            ProtectionSettingValidationError
+        );
+    });
     it("Mjolnir successfully saves valid protection setting values", async function() {
         this.timeout(20000);
 
