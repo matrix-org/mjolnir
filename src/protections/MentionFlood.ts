@@ -38,7 +38,7 @@ export class MentionFlood extends Protection {
             if (event['type'] === 'm.room.member') {
                 if (isTrueJoinEvent(event)) {
                     this.justJoined[roomId][event['state_key']] = now;
-                    LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
+                    LogService.info("MentionFlood", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
                 } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
                     delete this.justJoined[roomId][event['sender']];
                 }
@@ -55,7 +55,7 @@ export class MentionFlood extends Protection {
             if (joinTime) {
                 if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
                     delete this.justJoined[roomId][event['sender']];
-                    LogService.info("WordList", `${event['sender']} is no longer considered suspect`);
+                    LogService.info("MentionFlood", `${event['sender']} is no longer considered suspect`);
                     return;
                 }
 
