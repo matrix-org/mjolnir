@@ -37,7 +37,6 @@ export class MentionFlood extends Protection {
             if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
             if (event['type'] === 'm.room.member') {
                 if (isTrueJoinEvent(event)) {
-                    const now = new Date();
                     this.justJoined[roomId][event['state_key']] = now;
                     LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
                 } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
