@@ -178,6 +178,9 @@ protections:
     # (users will always be banned if they say a bad word)
     minutesBeforeTrusting: 20
 
+  mentionflood:
+    minutesBeforeTrusting: 20
+
 # Options for advanced monitoring of the health of the bot.
 health:
   # healthz options. These options are best for use in container environments
