@@ -3,8 +3,8 @@ import { NumberProtectionSetting } from './ProtectionSettings';
 import { Mjolnir } from '../Mjolnir';
 import { LogLevel, LogService } from 'matrix-bot-sdk';
 import { isTrueJoinEvent } from '../utils';
+import { ConsequenceBan, ConsequenceRedact } from "./consequence";
 
-// We ban user if they mention more or equal to this ratio
 export const DEFAULT_MAX_MENTIONS = 5;
 
 export class MentionFlood extends Protection {
@@ -12,7 +12,7 @@ export class MentionFlood extends Protection {
         maxMentions: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS)
     };
 
-    private justJoined: { [roomId: string]: { [username: string]: Date } } = {};
+    private justJoined: { [roomId: string]: { [username: string]: Date} } = {};
 
     constructor() {
         super();
@@ -31,15 +31,17 @@ export class MentionFlood extends Protection {
         const minsBeforeTrusting = mjolnir.config.protections.mentionflood.minutesBeforeTrusting;
         const now = new Date();
 
+        LogService.warn("MentionFlood", event);
+
         if (minsBeforeTrusting > 0) {
             if (!this.justJoined[roomId]) this.justJoined[roomId] = {};
-
             if (event['type'] === 'm.room.member') {
                 if (isTrueJoinEvent(event)) {
+                    const now = new Date();
                     this.justJoined[roomId][event['state_key']] = now;
-                    LogService.info("MentionFlood", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
+                    LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
                 } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
-                    delete this.justJoined[roomId][event['sender']]
+                    delete this.justJoined[roomId][event['sender']];
                 }
 
                 return;
@@ -47,18 +49,27 @@ export class MentionFlood extends Protection {
         }
 
         if (event['type'] !== 'm.room.message') return;
-
         const message: string = content['formatted_body'] || content['body'] || null;
+
+        if (minsBeforeTrusting > 0) {
+            const joinTime = this.justJoined[roomId][event['sender']]
+            if (joinTime) {
+                if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
+                    delete this.justJoined[roomId][event['sender']];
+                    LogService.info("WordList", `${event['sender']} is no longer considered suspect`);
+                    return;
+                }
+
+            } else {
+                return;
+            }
+        }
 
         const maxMentionsPerMessage = this.settings.maxMentions.value;
         if (message && (message.match(/@[^:]*:\S+/gi)?.length || 0) > maxMentionsPerMessage) {
             await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionFlood", `Banning ${event['sender']}`);
-            if (!mjolnir.config.noop) {
-                await mjolnir.client.banUser(event['sender'], `Banning ${event['sender']} for mention flood in ${roomId}`);
-                await mjolnir.client.redactEvent(roomId, event['event_id'], "spam");
-            } else {
-                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionFlood", `Tried to ban ${event['sender']} for mention flood in ${roomId} but Mjolnir is running in no-op mode.`);
-            }
+            const reason = "spam";
+            return [new ConsequenceBan(reason), new ConsequenceRedact(reason)];
         }
     }
 }
