@@ -18,10 +18,10 @@ import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } fr
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoomOutput";
+import AccessControlUnit, { Access } from "./models/AccessControlUnit";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
 import PolicyList, { ListRuleChange } from "./models/PolicyList";
 import { RoomUpdateError } from "./models/RoomUpdateError";
-import { ServerAcl } from "./models/ServerAcl";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
@@ -82,6 +82,11 @@ export class ProtectedRooms {
      */
     private aclChain: Promise<void> = Promise.resolve();
 
+    /**
+     * A utility to test the access that users have in the set of protected rooms according to the policies of the watched lists.
+     */
+    private readonly accessControlUnit = new AccessControlUnit([]);
+
     constructor(
         private readonly client: MatrixClient,
         private readonly clientUserId: string,
@@ -136,11 +141,13 @@ export class ProtectedRooms {
     public watchList(policyList: PolicyList): void {
         if (!this.policyLists.includes(policyList)) {
             this.policyLists.push(policyList);
+            this.accessControlUnit.watchList(policyList);
         }
     }
 
     public unwatchList(policyList: PolicyList): void {
         this.policyLists = this.policyLists.filter(list => list.roomId !== policyList.roomId);
+        this.accessControlUnit.unwatchList(policyList);
     }
 
     /**
@@ -182,7 +189,7 @@ export class ProtectedRooms {
             // we cannot eagerly ban users (that is to ban them when they have never been a member)
             // as they can be force joined to a room they might not have known existed.
             // Only apply bans and then redactions in the room we are currently looking at.
-            const banErrors = await this.applyUserBans(this.policyLists, [roomId]);
+            const banErrors = await this.applyUserBans([roomId]);
             const redactionErrors = await this.processRedactionQueue(roomId);
             await this.printActionResult(banErrors);
             await this.printActionResult(redactionErrors);
@@ -202,7 +209,7 @@ export class ProtectedRooms {
         let hadErrors = false;
         const [aclErrors, banErrors] = await Promise.all([
             this.applyServerAcls(this.policyLists, this.protectedRoomsByActivity()),
-            this.applyUserBans(this.policyLists, this.protectedRoomsByActivity())
+            this.applyUserBans(this.protectedRoomsByActivity())
         ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
@@ -250,7 +257,7 @@ export class ProtectedRooms {
         let hadErrors = false;
         const [aclErrors, banErrors] = await Promise.all([
             this.applyServerAcls(this.policyLists, this.protectedRoomsByActivity()),
-            this.applyUserBans(this.policyLists, this.protectedRoomsByActivity())
+            this.applyUserBans(this.protectedRoomsByActivity())
         ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
@@ -293,18 +300,8 @@ export class ProtectedRooms {
         const serverName: string = new UserID(await this.client.getUserId()).domain;
 
         // Construct a server ACL first
-        const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
-        for (const list of lists) {
-            for (const rule of list.serverRules) {
-                acl.denyServer(rule.entity);
-            }
-        }
-
+        const acl = this.accessControlUnit.createServerAcl(serverName);
         const finalAcl = acl.safeAclContent();
-
-        if (finalAcl.deny.length !== acl.literalAclContent().deny.length) {
-            this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyAcl", `Mjölnir has detected and removed an ACL that would exclude itself. Please check the ACL lists.`);
-        }
 
         if (this.config.verboseLogging) {
             // We specifically use sendNotice to avoid having to escape HTML
@@ -346,11 +343,10 @@ export class ProtectedRooms {
     /**
     * Applies the member bans represented by the ban lists to the provided rooms, returning the
      * room IDs that could not be updated and their error.
-     * @param {PolicyList[]} lists The lists to determine bans from.
      * @param {string[]} roomIds The room IDs to apply the bans in.
      * @param {Mjolnir} mjolnir The Mjolnir client to apply the bans with.
      */
-    private async applyUserBans(lists: PolicyList[], roomIds: string[]): Promise<RoomUpdateError[]> {
+    private async applyUserBans(roomIds: string[]): Promise<RoomUpdateError[]> {
         // We can only ban people who are not already banned, and who match the rules.
         const errors: RoomUpdateError[] = [];
         for (const roomId of roomIds) {
@@ -377,29 +373,21 @@ export class ProtectedRooms {
                         continue; // user already banned
                     }
 
-                    let banned = false;
-                    for (const list of lists) {
-                        for (const userRule of list.userRules) {
-                            if (userRule.isMatch(member.userId)) {
-                                // User needs to be banned
+                    // We don't want to ban people based on server ACL as this would flood the room with bans.
+                    const memberAccess = this.accessControlUnit.testUserWithoutServer(member.userId);
+                    if (memberAccess.outcome === Access.Banned) {
+                        const reason = memberAccess.rule ? memberAccess.rule.reason : '<no reason supplied>';
+                        // We specifically use sendNotice to avoid having to escape HTML
+                        await this.managementRoomOutput.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${reason}`, roomId);
 
-                                // We specifically use sendNotice to avoid having to escape HTML
-                                await this.managementRoomOutput.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${userRule.reason}`, roomId);
-
-                                if (!this.config.noop) {
-                                    await this.client.banUser(member.userId, roomId, userRule.reason);
-                                    if (this.automaticRedactGlobs.find(g => g.test(userRule.reason.toLowerCase()))) {
-                                        this.redactUser(member.userId, roomId);
-                                    }
-                                } else {
-                                    await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
-                                }
-
-                                banned = true;
-                                break;
+                        if (!this.config.noop) {
+                            await this.client.banUser(member.userId, roomId, memberAccess.rule!.reason);
+                            if (this.automaticRedactGlobs.find(g => g.test(reason.toLowerCase()))) {
+                                this.redactUser(member.userId, roomId);
                             }
+                        } else {
+                            await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                         }
-                        if (banned) break;
                     }
                 }
             } catch (e) {

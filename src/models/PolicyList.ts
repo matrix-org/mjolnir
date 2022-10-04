@@ -89,7 +89,8 @@ class PolicyList extends EventEmitter {
     /**
      * This is used to annotate state events we store with the rule they are associated with.
      * If we refactor this, it is important to also refactor any listeners to 'PolicyList.update'
-     * which will assume `ListRule`s that are removed will be identital (Object.is) to when they were added.
+     * which may assume `ListRule`s that are removed will be identital (Object.is) to when they were added.
+     * This behaviour should be avoided.
      */
     private static readonly EVENT_RULE_ANNOTATION_KEY = 'org.matrix.mjolnir.annotation.rule';
 
