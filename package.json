@@ -27,6 +27,7 @@
     "@types/mocha": "^9.0.0",
     "@types/nedb": "^1.8.12",
     "@types/node": "^16.7.10",
+    "@types/pg": "^8.6.5",
     "@types/request": "^2.48.8",
     "@types/shell-quote": "1.7.1",
     "crypto-js": "^4.1.1",

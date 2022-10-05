@@ -1,9 +1,9 @@
 import { Client } from "pg";
 
 export interface MjolnirRecord {
-    localPart: string,
+    local_part: string,
     owner: string,
-    managementRoom: string,
+    management_room: string,
 }
 
 export interface DataStore {
@@ -15,7 +15,7 @@ export interface DataStore {
 
     lookupByOwner(owner: string): Promise<MjolnirRecord[]>;
 
-    lookupByMxid(mxid: string): Promise<MjolnirRecord[]>;
+    lookupByLocalPart(localPart: string): Promise<MjolnirRecord[]>;
 }
 
 export class PgDataStore implements DataStore {
@@ -30,7 +30,7 @@ export class PgDataStore implements DataStore {
     }
 
     public async list(): Promise<MjolnirRecord[]> {
-        const result = await this.pgClient.query<MjolnirRecord>("SELECT mxid, owner, managementRoom FROM mjolnir");
+        const result = await this.pgClient.query<MjolnirRecord>("SELECT local_part, owner, management_room FROM mjolnir");
 
         if (!result.rowCount) {
             return [];
@@ -41,24 +41,24 @@ export class PgDataStore implements DataStore {
 
     public async store(mjolnirRecord: MjolnirRecord): Promise<void> {
         await this.pgClient.query(
-            "INSERT INTO mjolnir (mxid, owner, managementRoom) VALUES ($1, $2, $3)",
-            [mjolnirRecord.mxid, mjolnirRecord.owner, mjolnirRecord.managementRoom],
+            "INSERT INTO mjolnir (local_part, owner, management_room) VALUES ($1, $2, $3)",
+            [mjolnirRecord.local_part, mjolnirRecord.owner, mjolnirRecord.management_room],
         );
     }
 
     public async lookupByOwner(owner: string): Promise<MjolnirRecord[]> {
         const result = await this.pgClient.query<MjolnirRecord>(
-            "SELECT mxid, owner FROM mjolnir WHERE owner = $1",
+            "SELECT local_part, owner, management_room FROM mjolnir WHERE owner = $1",
             [owner],
         );
 
         return result.rows;
     }
 
-    public async lookupByMxid(mxid: string): Promise<MjolnirRecord[]> {
+    public async lookupByLocalPart(localPart: string): Promise<MjolnirRecord[]> {
         const result = await this.pgClient.query<MjolnirRecord>(
-            "SELECT mxid, owner, managementRoom FROM mjolnir WHERE mxid = $1",
-            [mxid],
+            "SELECT local_part, owner, management_room FROM mjolnir WHERE local_part = $1",
+            [localPart],
         );
 
         return result.rows;

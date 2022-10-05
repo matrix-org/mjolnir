@@ -46,12 +46,13 @@ export class MjolnirAppService {
         });
     }
 
-    public async initStoredMjolnirs(): Promise<void> {
+    public async init(): Promise<void> {
+        await this.dataStore.init();
         for (var mjolnirRecord of await this.dataStore.list()) {
-            const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.localPart);
+            const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.local_part);
             await this.mjolnirManager.makeInstance(
                 mjolnirRecord.owner,
-                mjolnirRecord.managementRoom,
+                mjolnirRecord.management_room,
                 mjolnirClient,
             );
         }
@@ -84,9 +85,9 @@ export class MjolnirAppService {
             await mjolnir.createFirstList(requestingUserId, "list");
 
             await this.dataStore.store({
-                localPart: mjolnirLocalPart,
+                local_part: mjolnirLocalPart,
                 owner: requestingUserId,
-                managementRoom: managementRoomId,
+                management_room: managementRoomId,
             });
 
             return [mjolnirUserId, managementRoomId];
@@ -126,9 +127,11 @@ new Cli({
         reg.setRateLimited(false);
         callback(reg);
     },
-    run: function(port: number) {
+    run: async function(port: number) {
         const service = new MjolnirAppService();
+        await service.bridge.initalise();
+        await service.init();
         console.log("Matrix-side listening on port %s", port);
-        service.bridge.run(port);
+        await service.bridge.listen(port);
     }
 }).run();
