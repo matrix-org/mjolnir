@@ -131,20 +131,5 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
         )
     }
 
-    let rendered = splitter.render();
-    let first = rendered.shift()!;
-
-    const reply = RichReply.createFor(roomId, event, first.text, first.html);
-    reply["msgtype"] = "m.notice";
-
-    await mjolnir.client.sendMessage(roomId, reply);
-
-    for (const message of rendered) {
-        await mjolnir.client.sendMessage(roomId, {
-            msgtype: "m.notice",
-            body: message.text,
-            format: "org.matrix.custom.html",
-            formatted_body: message.html,
-        });
-    }
+    await splitter.reply(mjolnir.client, roomId, event, true);
 }
