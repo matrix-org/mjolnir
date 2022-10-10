@@ -149,7 +149,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir protections                                                - List all available protections\n" +
                 "!mjolnir enable <protection>                                        - Enables a particular protection\n" +
                 "!mjolnir disable <protection>                                       - Disables a particular protection\n" +
-                "!mjolnir config set <protection>.<setting> [value]                  - Change a projection setting\n" +
+                "!mjolnir config set <protection>.<setting> [value]                  - Change a protection setting\n" +
                 "!mjolnir config add <protection>.<setting> [value]                  - Add a value to a list protection setting\n" +
                 "!mjolnir config remove <protection>.<setting> [value]               - Remove a value from a list protection setting\n" +
                 "!mjolnir config get [protection]                                    - List protection settings\n" +
