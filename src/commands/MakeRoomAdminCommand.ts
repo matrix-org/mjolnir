@@ -24,19 +24,19 @@ export async function execMakeRoomAdminCommand(roomId: string, event: any, mjoln
         const message = "Either the command is disabled or I am not running as homeserver administrator.";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
 
-    let err = await mjolnir.makeUserRoomAdmin(await mjolnir.client.resolveRoom(parts[3]), parts[4]);
+    let err = await mjolnir.makeUserRoomAdmin(await mjolnir.client.uncached.resolveRoom(parts[3]), parts[4]);
     if (err instanceof Error || typeof (err) === "string") {
         const errMsg = "Failed to process command:";
         const message = typeof (err) === "string" ? `${errMsg}: ${err}` : `${errMsg}: ${err.message}`;
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     } else {
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+        await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
     }
 }

@@ -26,10 +26,10 @@ export async function execDeactivateCommand(roomId: string, event: any, mjolnir:
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        mjolnir.client.uncached.sendMessage(roomId, reply);
         return;
     }
 
     await mjolnir.deactivateSynapseUser(victim);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

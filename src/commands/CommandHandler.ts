@@ -171,13 +171,13 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             const text = `Mjolnir help:\n${menu}`;
             const reply = RichReply.createFor(roomId, event, text, html);
             reply["msgtype"] = "m.notice";
-            return await mjolnir.client.sendMessage(roomId, reply);
+            return await mjolnir.client.uncached.sendMessage(roomId, reply);
         }
     } catch (e) {
         LogService.error("CommandHandler", extractRequestError(e));
         const text = "There was an error processing your command - see console/log for details";
         const reply = RichReply.createFor(roomId, event, text, text);
         reply["msgtype"] = "m.notice";
-        return await mjolnir.client.sendMessage(roomId, reply);
+        return await mjolnir.client.uncached.sendMessage(roomId, reply);
     }
 }

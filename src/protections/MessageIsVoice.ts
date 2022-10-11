@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, Permalinks, UserID } from "matrix-bot-sdk";
+import { LogLevel, Permalinks } from "matrix-bot-sdk";
 
 export class MessageIsVoice extends Protection {
 
@@ -37,10 +37,10 @@ export class MessageIsVoice extends Protection {
         if (event['type'] === 'm.room.message' && event['content']) {
             if (event['content']['msgtype'] !== 'm.audio') return;
             if (event['content']['org.matrix.msc3245.voice'] === undefined) return;
-            await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "MessageIsVoice", `Redacting event from ${event['sender']} for posting a voice message. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
+            await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "MessageIsVoice", `Redacting event from ${event['sender']} for posting a voice message. ${Permalinks.forEvent(roomId, event['event_id'], [mjolnir.client.domain])}`);
             // Redact the event
             if (!mjolnir.config.noop) {
-                await mjolnir.client.redactEvent(roomId, event['event_id'], "Voice messages are not permitted here");
+                await mjolnir.client.uncached.redactEvent(roomId, event['event_id'], "Voice messages are not permitted here");
             } else {
                 await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MessageIsVoice", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
             }

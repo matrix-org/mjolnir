@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogLevel, LogService, MatrixClient, MessageType, Permalinks, TextualMessageEventContent, UserID } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, MessageType, Permalinks, TextualMessageEventContent, UserID } from "matrix-bot-sdk";
+import { CachingClient } from "./CachingClient";
 import { IConfig } from "./config";
 import { htmlEscape } from "./utils";
 
@@ -32,7 +33,7 @@ export default class ManagementRoomOutput {
 
     constructor(
         private readonly managementRoomId: string,
-        private readonly client: MatrixClient,
+        private readonly client: CachingClient,
         private readonly config: IConfig,
         ) {
 
@@ -63,11 +64,11 @@ export default class ManagementRoomOutput {
             return v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
         };
 
-        const viaServers = [(new UserID(await this.client.getUserId())).domain];
+        const viaServers = [(new UserID(this.client.userId)).domain];
         for (const roomId of roomIds) {
             let alias = roomId;
             try {
-                alias = (await this.client.getPublishedAlias(roomId)) || roomId;
+                alias = (await this.client.uncached.getPublishedAlias(roomId)) || roomId;
             } catch (e) {
                 // This is a recursive call, so tell the function not to try and call us
                 await this.logMessage(LogLevel.WARN, "utils", `Failed to resolve room alias for ${roomId} - see console for details`, null, true);
@@ -115,7 +116,7 @@ export default class ManagementRoomOutput {
                 evContent = await this.replaceRoomIdsWithPills(clientMessage, new Set(roomIds), "m.notice");
             }
 
-            await client.sendMessage(this.managementRoomId, evContent);
+            await client.uncached.sendMessage(this.managementRoomId, evContent);
         }
 
         levelToFn[level.toString()](module, message);

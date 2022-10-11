@@ -73,16 +73,16 @@ export class TrustedReporters extends Protection {
         }
         if (reporters.size === this.settings.redactThreshold.value) {
             met.push("redact");
-            await mjolnir.client.redactEvent(roomId, event.id, "abuse detected");
+            await mjolnir.client.uncached.redactEvent(roomId, event.id, "abuse detected");
         }
         if (reporters.size === this.settings.banThreshold.value) {
             met.push("ban");
-            await mjolnir.client.banUser(event.userId, roomId, "abuse detected");
+            await mjolnir.client.uncached.banUser(event.userId, roomId, "abuse detected");
         }
 
 
         if (met.length > 0) {
-            await mjolnir.client.sendMessage(mjolnir.config.managementRoom, {
+            await mjolnir.client.uncached.sendMessage(mjolnir.config.managementRoom, {
                 msgtype: "m.notice",
                 body: `message ${event.id} reported by ${[...reporters].join(', ')}. `
                     + `actions: ${met.join(', ')}`

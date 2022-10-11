@@ -99,14 +99,14 @@ function getTokenAsString(name: string, token: ParseEntry): {error: string}|{ok:
 export async function execSinceCommand(destinationRoomId: string, event: any, mjolnir: Mjolnir, tokens: ParseEntry[]) {
     let result = await execSinceCommandAux(destinationRoomId, event, mjolnir, tokens);
     if ("error" in result) {
-        mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '❌');
+        mjolnir.client.uncached.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '❌');
         mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", result.error);
         const reply = RichReply.createFor(destinationRoomId, event, result.error, htmlEscape(result.error));
         reply["msgtype"] = "m.notice";
-        /* no need to await */ mjolnir.client.sendMessage(destinationRoomId, reply);
+        /* no need to await */ mjolnir.client.uncached.sendMessage(destinationRoomId, reply);
     } else {
         // Details have already been printed.
-        mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '✅');
+        mjolnir.client.uncached.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '✅');
     }
 }
 
@@ -200,7 +200,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                 }
                 continue;
             } else if (maybeRoom.startsWith("#") || maybeRoom.startsWith("!")) {
-                const roomId = await mjolnir.client.resolveRoom(maybeRoom);
+                const roomId = await mjolnir.client.uncached.resolveRoom(maybeRoom);
                 if (!protectedRooms.has(roomId)) {
                     return mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", `This room is not protected: ${htmlEscape(roomId)}.`);
                 }
@@ -220,7 +220,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
         };
     }
 
-    const progressEventId = await mjolnir.client.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '⏳');
+    const progressEventId = await mjolnir.client.uncached.unstableApis.addReactionToEvent(destinationRoomId, event['event_id'], '⏳');
     const reason: string | undefined = reasonParts?.join(" ");
 
     for (let targetRoomId of rooms) {
@@ -235,7 +235,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                 case Action.Kick: {
                     for (let join of recentJoins) {
                         try {
-                            await mjolnir.client.kickUser(join.userId, targetRoomId, reason);
+                            await mjolnir.client.uncached.kickUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
                         } catch (ex) {
                             LogService.warn("SinceCommand", "Error while attempting to kick user", ex);
@@ -248,7 +248,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                 case Action.Ban: {
                     for (let join of recentJoins) {
                         try {
-                            await mjolnir.client.banUser(join.userId, targetRoomId, reason);
+                            await mjolnir.client.uncached.banUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
                         } catch (ex) {
                             LogService.warn("SinceCommand", "Error while attempting to ban user", ex);
@@ -259,13 +259,13 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                     return formatResult("ban", targetRoomId, recentJoins, results);
                 }
                 case Action.Mute: {
-                    const powerLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>};
+                    const powerLevels = await mjolnir.client.uncached.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>};
 
                     for (let join of recentJoins) {
                         powerLevels.users[join.userId] = -1;
                     }
                     try {
-                        await mjolnir.client.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
+                        await mjolnir.client.uncached.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
                         for (let join of recentJoins) {
                             results.succeeded.push(join.userId);
                         }
@@ -279,13 +279,13 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                     return formatResult("mute", targetRoomId, recentJoins, results);
                 }
                 case Action.Unmute: {
-                    const powerLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>, users_default?: number};
+                    const powerLevels = await mjolnir.client.uncached.getRoomStateEvent(targetRoomId, "m.room.power_levels", "") as {users: Record</* userId */ string, number>, users_default?: number};
                     for (let join of recentJoins) {
                         // Restore default powerlevel.
                         delete powerLevels.users[join.userId];
                     }
                     try {
-                        await mjolnir.client.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
+                        await mjolnir.client.uncached.sendStateEvent(targetRoomId, "m.room.power_levels", "", powerLevels);
                         for (let join of recentJoins) {
                             results.succeeded.push(join.userId);
                         }
@@ -303,10 +303,10 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
 
         const reply = RichReply.createFor(destinationRoomId, event, text, html);
         reply["msgtype"] = "m.notice";
-        /* no need to await */ mjolnir.client.sendMessage(destinationRoomId, reply);
+        /* no need to await */ mjolnir.client.uncached.sendMessage(destinationRoomId, reply);
     }
 
-    await mjolnir.client.redactEvent(destinationRoomId, progressEventId);
+    await mjolnir.client.uncached.redactEvent(destinationRoomId, progressEventId);
     return {ok: undefined};
 }
 

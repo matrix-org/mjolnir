@@ -14,11 +14,17 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Mjolnir, REPORT_POLL_EVENT_TYPE } from "../Mjolnir";
+import { Mjolnir } from "../Mjolnir";
 import { ReportManager } from './ReportManager';
 import { LogLevel } from "matrix-bot-sdk";
 
 class InvalidStateError extends Error { }
+
+/**
+ * Synapse will tell us where we last got to on polling reports, so we need
+ * to store that for pagination on further polls
+ */
+ export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 /**
  * A class to poll synapse's report endpoint, so we can act on new reports
@@ -65,7 +71,7 @@ export class ReportPoller {
             next_token: number | undefined
         } | undefined;
         try {
-            response_ = await this.mjolnir.client.doRequest(
+            response_ = await this.mjolnir.client.uncached.doRequest(
                 "GET",
                 "/_synapse/admin/v1/event_reports",
                 {
@@ -87,7 +93,7 @@ export class ReportPoller {
 
             let event: any; // `any` because `handleServerAbuseReport` uses `any`
             try {
-                event = (await this.mjolnir.client.doRequest(
+                event = (await this.mjolnir.client.uncached.doRequest(
                     "GET",
                     `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`
                 )).event;
@@ -112,7 +118,7 @@ export class ReportPoller {
         if (response.next_token !== undefined) {
             this.from = response.next_token;
             try {
-                await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
+                await this.mjolnir.client.uncached.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
             } catch (ex) {
                 await this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
             }
@@ -130,9 +136,19 @@ export class ReportPoller {
 
         this.schedulePoll();
     }
-    public start(startFrom: number) {
+    public async start() {
         if (this.timeout === null) {
-            this.from = startFrom;
+            let reportPollSetting: { from: number } = { from: 0 };
+            try {
+                reportPollSetting = await this.mjolnir.client.uncached.getAccountData(REPORT_POLL_EVENT_TYPE);
+            } catch (err) {
+                if (err.body?.errcode !== "M_NOT_FOUND") {
+                    throw err;
+                } else {
+                    this.mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
+                }
+            }
+            this.from = reportPollSetting.from;
             this.schedulePoll();
         } else {
             throw new InvalidStateError("cannot start an already started poll");

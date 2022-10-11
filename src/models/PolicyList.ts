@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
+import { extractRequestError, LogService, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
 import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
+import { CachingClient } from "../CachingClient";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
@@ -92,7 +93,7 @@ class PolicyList extends EventEmitter {
      * @param roomRef A sharable/clickable matrix URL that refers to the room.
      * @param client A matrix client that is used to read the state of the room when `updateList` is called.
      */
-    constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
+    constructor(public readonly roomId: string, public readonly roomRef: string, private client: CachingClient) {
         super();
         this.batcher = new UpdateBatcher(this);
     }
@@ -156,7 +157,7 @@ class PolicyList extends EventEmitter {
     public set listShortcode(newShortcode: string) {
         const currentShortcode = this.shortcode;
         this.shortcode = newShortcode;
-        this.client.sendStateEvent(this.roomId, SHORTCODE_EVENT_TYPE, '', { shortcode: this.shortcode }).catch(err => {
+        this.client.uncached.sendStateEvent(this.roomId, SHORTCODE_EVENT_TYPE, '', { shortcode: this.shortcode }).catch(err => {
             LogService.error("PolicyList", extractRequestError(err));
             if (this.shortcode === newShortcode) this.shortcode = currentShortcode;
         });
@@ -219,7 +220,7 @@ class PolicyList extends EventEmitter {
     public async banEntity(ruleType: string, entity: string, reason?: string): Promise<void> {
         // '@' at the beginning of state keys is reserved.
         const stateKey = ruleType === RULE_USER ? '_' + entity.substring(1) : entity;
-        const event_id = await this.client.sendStateEvent(this.roomId, ruleType, stateKey, {
+        const event_id = await this.client.uncached.sendStateEvent(this.roomId, ruleType, stateKey, {
             entity,
             recommendation: Recommendation.Ban,
             reason: reason || '<no reason supplied>',
@@ -248,14 +249,14 @@ class PolicyList extends EventEmitter {
                 break;
         }
         const sendNullState = async (stateType: string, stateKey: string) => {
-            const event_id = await this.client.sendStateEvent(this.roomId, stateType, stateKey, {});
+            const event_id = await this.client.uncached.sendStateEvent(this.roomId, stateType, stateKey, {});
             this.updateForEvent(event_id);
         }
         const removeRule = async (rule: ListRule): Promise<void> => {
             const stateKey = rule.sourceEvent.state_key;
             // We can't cheat and check our state cache because we normalize the event types to the most recent version.
             const typesToRemove = (await Promise.all(
-                typesToCheck.map(stateType => this.client.getRoomStateEvent(this.roomId, stateType, stateKey)
+                typesToCheck.map(stateType => this.client.uncached.getRoomStateEvent(this.roomId, stateType, stateKey)
                     .then(_ => stateType) // We need the state type as getRoomState only returns the content, not the top level.
                     .catch(e => e.statusCode === 404 ? null : Promise.reject(e))))
                 ).filter(e => e); // remove nulls. I don't know why TS still thinks there can be nulls after this??
@@ -277,7 +278,7 @@ class PolicyList extends EventEmitter {
     public async updateList(): Promise<ListRuleChange[]> {
         let changes: ListRuleChange[] = [];
 
-        const state = await this.client.getRoomState(this.roomId);
+        const state = await this.client.uncached.getRoomState(this.roomId);
         for (const event of state) {
             if (event['state_key'] === '' && event['type'] === SHORTCODE_EVENT_TYPE) {
                 this.shortcode = (event['content'] || {})['shortcode'] || null;

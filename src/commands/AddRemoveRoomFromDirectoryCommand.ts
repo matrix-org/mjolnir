@@ -23,14 +23,14 @@ async function addRemoveFromDirectory(inRoomId: string, event: any, mjolnir: Mjo
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(inRoomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(inRoomId, reply);
+        mjolnir.client.uncached.sendMessage(inRoomId, reply);
         return;
     }
 
-    const targetRoomId = await mjolnir.client.resolveRoom(roomRef);
-    await mjolnir.client.setDirectoryVisibility(targetRoomId, visibility);
+    const targetRoomId = await mjolnir.client.uncached.resolveRoom(roomRef);
+    await mjolnir.client.uncached.setDirectoryVisibility(targetRoomId, visibility);
 
-    await mjolnir.client.unstableApis.addReactionToEvent(inRoomId, event['event_id'], '✅');
+    await mjolnir.client.uncached.unstableApis.addReactionToEvent(inRoomId, event['event_id'], '✅');
 }
 
 // !mjolnir directory add <room>
