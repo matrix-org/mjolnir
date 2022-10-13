@@ -36,6 +36,7 @@
     "typescript-formatter": "^7.2"
   },
   "dependencies": {
+    "await-lock": "^2.2.2",
     "express": "^4.17",
     "html-to-text": "^8.0.0",
     "humanize-duration": "^3.27.1",

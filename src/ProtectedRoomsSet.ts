@@ -42,7 +42,7 @@ import { htmlEscape } from "./utils";
  * It is also important not to tie this to the one group of rooms that a mjolnir may watch
  * as in future we might want to borrow this class to represent a space https://github.com/matrix-org/mjolnir/issues/283.
  */
-export class ProtectedRooms {
+export class ProtectedRoomsSet {
 
     private protectedRooms = new Set</* room id */string>();
 
@@ -228,7 +228,7 @@ export class ProtectedRooms {
         }
     }
 
-    public async addProtectedRoom(roomId: string): Promise<void> {
+    public addProtectedRoom(roomId: string): void {
         if (this.protectedRooms.has(roomId)) {
             // we need to protect ourselves form syncing all the lists unnecessarily
             // as Mjolnir does call this method repeatedly.
@@ -236,7 +236,6 @@ export class ProtectedRooms {
         }
         this.protectedRooms.add(roomId);
         this.protectedRoomActivityTracker.addProtectedRoom(roomId);
-        await this.syncLists(this.config.verboseLogging);
     }
 
     public removeProtectedRoom(roomId: string): void {

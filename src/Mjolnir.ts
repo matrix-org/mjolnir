@@ -35,7 +35,7 @@ import RuleServer from "./models/RuleServer";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
 import { IConfig } from "./config";
 import PolicyList from "./models/PolicyList";
-import { ProtectedRooms } from "./ProtectedRooms";
+import { ProtectedRoomsSet } from "./ProtectedRoomsSet";
 import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
@@ -45,7 +45,6 @@ export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
 export const STATE_SYNCING = "syncing";
 export const STATE_RUNNING = "running";
 
-const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
 const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
@@ -78,7 +77,7 @@ export class Mjolnir {
      * These are eventually are exluded from `protectedRooms` in `applyUnprotectedRooms` via `resyncJoinedRooms`.
      */
     private unprotectedWatchedListRooms: string[] = [];
-    public readonly protectedRoomsTracker: ProtectedRooms;
+    public readonly protectedRoomsTracker: ProtectedRoomsSet;
     private webapis: WebAPIs;
     public taskQueue: ThrottlingQueue;
     /**
@@ -272,7 +271,7 @@ export class Mjolnir {
 
         this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, client, config);
         const protections = new ProtectionManager(this);
-        this.protectedRoomsTracker = new ProtectedRooms(client, clientUserId, managementRoomId, this.managementRoomOutput, protections, config);
+        this.protectedRoomsTracker = new ProtectedRoomsSet(client, clientUserId, managementRoomId, this.managementRoomOutput, protections, config);
     }
 
     public get lists(): PolicyList[] {
