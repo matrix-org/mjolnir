@@ -336,6 +336,15 @@ export class Mjolnir {
     }
 
     /**
+     * Rooms that mjolnir is configured to explicitly protect.
+     * Do not use to access all of the rooms that mjolnir protects.
+     * FIXME: In future ProtectedRoomsSet on this mjolnir should not be public and should also be accessed via a delegator method.
+     */
+    public get explicitlyProtectedRooms(): string[] {
+        return this.protectedRoomsConfig.getExplicitlyProtectedRooms()
+    }
+
+    /**
      * Explicitly protect this room, adding it to the account data.
      * Should NOT be used to protect a room to implement e.g. `config.protectAllJoinedRooms`,
      * use `protectRoom` instead.

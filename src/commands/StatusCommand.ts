@@ -18,6 +18,7 @@ import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, 
 import { RichReply } from "matrix-bot-sdk";
 import { htmlEscape, parseDuration } from "../utils";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
+import PolicyList from "../models/PolicyList";
 
 const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
 const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
@@ -67,22 +68,28 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
             break;
     }
 
-    html += `<b>Protected rooms: </b> ${Object.keys(mjolnir.protectedRooms).length}<br/>`;
-    text += `Protected rooms: ${Object.keys(mjolnir.protectedRooms).length}\n`;
+    html += `<b>Protected rooms: </b> ${mjolnir.protectedRoomsTracker.getProtectedRooms().length}<br/>`;
+    text += `Protected rooms: ${mjolnir.protectedRoomsTracker.getProtectedRooms().length}\n`;
 
     // Append list information
-    html += "<b>Subscribed ban lists:</b><br><ul>";
-    text += "Subscribed ban lists:\n";
-    for (const list of mjolnir.lists) {
-        const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
-        html += `<li>${htmlEscape(list.listShortcode)} @ <a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
-        text += `* ${list.listShortcode} @ ${list.roomRef} (${ruleInfo})\n`;
+    const renderPolicyLists = (header: string, lists: PolicyList[]) => {
+        html += `<b>${header}:</b><br><ul>`;
+        text += `${header}:\n`;
+        for (const list of lists) {
+            const ruleInfo = `rules: ${list.serverRules.length} servers, ${list.userRules.length} users, ${list.roomRules.length} rooms`;
+            html += `<li>${htmlEscape(list.listShortcode)} @ <a href="${list.roomRef}">${list.roomId}</a> (${ruleInfo})</li>`;
+            text += `* ${list.listShortcode} @ ${list.roomRef} (${ruleInfo})\n`;
+        }
+        if (lists.length === 0) {
+            html += "<li><i>None</i></li>";
+            text += "* None\n";
+        }
+        html += "</ul>";
     }
-    if (mjolnir.lists.length === 0) {
-        html += "<li><i>None</i></li>";
-        text += "* None\n";
-    }
-    html += "</ul>";
+    const subscribedLists = mjolnir.lists.filter(list => !mjolnir.explicitlyProtectedRooms.includes(list.roomId));
+    renderPolicyLists("Subscribed policy lists", subscribedLists);
+    const subscribedAndProtectedLists = mjolnir.lists.filter(list => mjolnir.explicitlyProtectedRooms.includes(list.roomId));
+    renderPolicyLists("Subscribed and protected policy lists", subscribedAndProtectedLists);
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
