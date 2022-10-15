@@ -80,19 +80,19 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
 export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: Mjolnir) {
     let splitter = new ListMessageSplitter();
 
-    splitter.add_header("<b>Rules currently in use:</b>", "Rules currently in use:");
+    splitter.addHeader("<b>Rules currently in use:</b>", "Rules currently in use:");
 
     for (const list of mjolnir.lists) {
         let hasRules = false;
 
         const shortcodeInfo = list.listShortcode ? ` (shortcode: ${list.listShortcode})` : '';
 
-        splitter.add_header(`<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:`, `${list.roomRef}${shortcodeInfo}:`);
+        splitter.addHeader(`<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:`, `${list.roomRef}${shortcodeInfo}:`);
 
         for (const rule of list.serverRules) {
             hasRules = true;
 
-            splitter.add_paragraph(
+            splitter.addParagraph(
                 `server (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})`,
                 `server (${rule.recommendation}): ${rule.entity} (${rule.reason})`
             )
@@ -101,7 +101,7 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
         for (const rule of list.userRules) {
             hasRules = true;
 
-            splitter.add_paragraph(
+            splitter.addParagraph(
                 `user (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})`,
                 `user (${rule.recommendation}): ${rule.entity} (${rule.reason})`
             )
@@ -110,14 +110,14 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
         for (const rule of list.roomRules) {
             hasRules = true;
 
-            splitter.add_paragraph(
+            splitter.addParagraph(
                 `room (<code>${rule.recommendation}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})`,
                 `room (${rule.recommendation}): ${rule.entity} (${rule.reason})`
             )
         }
 
         if (!hasRules) {
-            splitter.add_paragraph(
+            splitter.addParagraph(
                 "<i>No rules</i>",
                 "No rules"
             )
@@ -125,7 +125,7 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
     }
 
     if (mjolnir.lists.length === 0) {
-        splitter.add_paragraph(
+        splitter.addParagraph(
             "No ban lists configured",
             "No ban lists configured"
         )
