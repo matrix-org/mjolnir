@@ -173,6 +173,9 @@ export class ProtectedRoomsSet {
         if (event['sender'] === this.clientUserId) {
             throw new TypeError("`ProtectedRooms::handleEvent` should not be used to inform about events sent by mjolnir.");
         }
+        if (!this.protectedRooms.has(roomId)) {
+            return; // We're not protecting this room.
+        }
         this.protectedRoomActivityTracker.handleEvent(roomId, event);
         if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
             // power levels were updated - recheck permissions
