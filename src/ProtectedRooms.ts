@@ -374,7 +374,7 @@ export class ProtectedRooms {
                     }
 
                     // We don't want to ban people based on server ACL as this would flood the room with bans.
-                    const memberAccess = this.accessControlUnit.testUserWithoutServer(member.userId);
+                    const memberAccess = this.accessControlUnit.getAccessForUser(member.userId, "IGNORE_SERVER");
                     if (memberAccess.outcome === Access.Banned) {
                         const reason = memberAccess.rule ? memberAccess.rule.reason : '<no reason supplied>';
                         // We specifically use sendNotice to avoid having to escape HTML

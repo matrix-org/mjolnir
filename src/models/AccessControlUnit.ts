@@ -239,35 +239,31 @@ export default class AccessControlUnit {
      * @param domain The server name to test.
      * @returns A description of the access that the server has.
      */
-    public testServer(domain: string): EntityAccess {
-        return this.testEntity(domain, this.serverAllows, this.serverBans);
+    public getAccessForServer(domain: string): EntityAccess {
+        return this.getAccessForEntity(domain, this.serverAllows, this.serverBans);
     }
 
     /**
-     * Test whether the user is allowed by the ACL unit.
-     * Does not test the domain of the user id.
+     * Get the level of access the user has for the ACL unit.
      * @param mxid The user id to test.
+     * @param policy Whether to check the server part of the user id against server rules.
      * @returns A description of the access that the user has.
      */
-    public testUserWithoutServer(mxid: string): EntityAccess {
-        return this.testEntity(mxid, this.userAllows, this.userBans);
-    }
-
-    /**
-     * Test whether the user is allowed by the ACL unit. Does take the user's server into consideration.
-     * @param mxid The user id to test.
-     * @returns A description of the access that the user or their server has.
-     */
-    public testUser(mxid: UserID): EntityAccess {
-        const userAccess = this.testUserWithoutServer(mxid.toString());
+    public getAccessForUser(mxid: string, policy: "CHECK_SERVER" | "IGNORE_SERVER"): EntityAccess {
+        const userAccess = this.getAccessForEntity(mxid, this.userAllows, this.userBans);
         if (userAccess.outcome === Access.Allowed) {
-            return this.testServer(mxid.domain);
+            if (policy === "IGNORE_SERVER") {
+                return userAccess;
+            } else {
+                const userId = new UserID(mxid);
+                return this.getAccessForServer(userId.domain);
+            }
         } else {
             return userAccess;
         }
     }
 
-    private testEntity(entity: string, allowCache: ListRuleCache, bannedCache: ListRuleCache): EntityAccess {
+    private getAccessForEntity(entity: string, allowCache: ListRuleCache, bannedCache: ListRuleCache): EntityAccess {
         // Check if the entity is explicitly allowed.
         // We have to infer that a rule exists for '*' if the allowCache is empty, otherwise you brick the ACL.
         const allowRule = allowCache.test(entity);
@@ -298,7 +294,7 @@ export default class AccessControlUnit {
             for (const rule of allowedServers) {
                 acl.allowServer(rule.entity);
             }
-            if (this.testServer(serverName).outcome === Access.NotAllowed) {
+            if (this.getAccessForServer(serverName).outcome === Access.NotAllowed) {
                 acl.allowServer(serverName);
                 LogService.warn('AccessControlUnit', `The server ${serverName} we are operating from was not on the allowed when constructing the server ACL, so it will be injected it into the server acl. Please check the ACL lists.`)
             }
