@@ -90,7 +90,7 @@ class PolicyList extends EventEmitter {
      * This is used to annotate state events we store with the rule they are associated with.
      * If we refactor this, it is important to also refactor any listeners to 'PolicyList.update'
      * which may assume `ListRule`s that are removed will be identital (Object.is) to when they were added.
-     * This behaviour should be avoided.
+     * If you are adding new listeners, you should check the source event_id of the rule.
      */
     private static readonly EVENT_RULE_ANNOTATION_KEY = 'org.matrix.mjolnir.annotation.rule';
 
@@ -144,8 +144,6 @@ class PolicyList extends EventEmitter {
      * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the PolicyList.
      * @param recommendation A specific recommendation to filter for e.g. `m.ban`. Please remember recommendation varients are normalized.
      * @returns The active ListRules for the ban list of that kind.
-     * FIXME: it would be nice if this was a generic to the ListRule type, (and get the recommendation type from it) but that seems hard to do, maybe impossible?.
-     * TFW you mess up type erasure so bad comeon.
      */
     public rulesOfKind(kind: string, recommendation?: Recommendation): ListRule[] {
         const rules: ListRule[] = []
