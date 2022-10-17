@@ -195,7 +195,7 @@ export enum Access {
     Banned,
     /// The entity did not match any allow rule.
     NotAllowed,
-    /// The user was allowed implicitly (it matched an allow rule and did not match any banning rules).
+    /// The user was allowed and didn't match any ban.
     Allowed,
 }
 
