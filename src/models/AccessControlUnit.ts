@@ -20,7 +20,7 @@ import { LogService, UserID } from "matrix-bot-sdk";
 import { ServerAcl } from "./ServerAcl";
 
 /**
- * The ListRuleCache is a cache for all the rules in a list for a specific entity type and recommendation.
+ * The ListRuleCache is a cache for all the rules in a set of lists for a specific entity type and recommendation.
  * The cache can then be used to quickly test against all the rules for that specific entity/recommendation.
  * E.g. The cache can be used for all the m.ban rules for users in a set of lists to conveniently test members of a room.
  * While some effort has been made to optimize the testing of entities, the main purpose of this class is to stop
