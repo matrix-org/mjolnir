@@ -59,7 +59,7 @@ class ListRuleCache {
      * @param entity e.g. an mxid for a user, the server name for a server.
      * @returns A single `ListRule` matching the entity.
      */
-    public test(entity: string): ListRule|null {
+    public getAnyRuleForEntity(entity: string): ListRule|null {
         const literalRule = this.literalRules.get(entity);
         if (literalRule !== undefined) {
             return literalRule[0];
@@ -266,12 +266,12 @@ export default class AccessControlUnit {
     private getAccessForEntity(entity: string, allowCache: ListRuleCache, bannedCache: ListRuleCache): EntityAccess {
         // Check if the entity is explicitly allowed.
         // We have to infer that a rule exists for '*' if the allowCache is empty, otherwise you brick the ACL.
-        const allowRule = allowCache.test(entity);
+        const allowRule = allowCache.getAnyRuleForEntity(entity);
         if (allowRule === null && !allowCache.isEmpty()) {
             return { outcome: Access.NotAllowed }
         }
         // Now check if the entity is banned.
-        const banRule = bannedCache.test(entity);
+        const banRule = bannedCache.getAnyRuleForEntity(entity);
         if (banRule !== null) {
             return { outcome: Access.Banned, rule: banRule };
         }
