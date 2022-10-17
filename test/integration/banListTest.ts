@@ -464,7 +464,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
 /**
  * Assert that the AccessUnitOutcome entity test has the right access.
  * @param expected The Access we expect the entity to have, See Access.
- * @param query The result of a test on AccessControlUnit e.g. `unit.testUser('@meow:localhost')`
+ * @param query The result of a test on AccessControlUnit e.g. `unit.getAccessForUser'@meow:localhost')`
  * @param message A message for the console if the entity doesn't have the expected access.
  */
 function assertAccess(expected: Access, query: EntityAccess, message?: string) {
@@ -477,7 +477,7 @@ describe('Test: AccessControlUnit interaction with policy lists.', function() {
         const policyListId = await mjolnir.client.createRoom();
         const policyList = new PolicyList(policyListId, Permalinks.forRoom(policyListId), mjolnir.client);
         const aclUnit = new AccessControlUnit([policyList]);
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@anyone:anywhere.example.com')), 'Empty lists should implicitly allow.');
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@anyone:anywhere.example.com', "CHECK_SERVER"), 'Empty lists should implicitly allow.');
 
         await createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, 'matrix.org', '', { recommendation: Recommendation.Allow });
         // we want to imagine that the banned server was never taken off the allow after being banned.
@@ -487,21 +487,21 @@ describe('Test: AccessControlUnit interaction with policy lists.', function() {
 
         await policyList.updateList();
 
-        assertAccess(Access.Allowed, aclUnit.testServer('matrix.org'));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@someone:matrix.org')));
-        assertAccess(Access.NotAllowed, aclUnit.testServer('anywhere.else.example.com'));
-        assertAccess(Access.NotAllowed, aclUnit.testUser(new UserID('@anyone:anywhere.else.example.com')));
-        assertAccess(Access.Banned, aclUnit.testServer('bad.example.com'));
-        assertAccess(Access.Banned, aclUnit.testUser(new UserID('@anyone:bad.example.com')));
+        assertAccess(Access.Allowed, aclUnit.getAccessForServer('matrix.org'));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@someone:matrix.org', "CHECK_SERVER"));
+        assertAccess(Access.NotAllowed, aclUnit.getAccessForServer('anywhere.else.example.com'));
+        assertAccess(Access.NotAllowed, aclUnit.getAccessForUser('@anyone:anywhere.else.example.com', "CHECK_SERVER"));
+        assertAccess(Access.Banned, aclUnit.getAccessForServer('bad.example.com'));
+        assertAccess(Access.Banned, aclUnit.getAccessForUser('@anyone:bad.example.com', "CHECK_SERVER"));
         // They're not allowed in the first place, never mind that they are also banned.
-        assertAccess(Access.NotAllowed, aclUnit.testServer('meow.ddns.example.com'));
-        assertAccess(Access.NotAllowed, aclUnit.testUser(new UserID('@anyone:meow.ddns.example.com')));
+        assertAccess(Access.NotAllowed, aclUnit.getAccessForServer('meow.ddns.example.com'));
+        assertAccess(Access.NotAllowed, aclUnit.getAccessForUser('@anyone:meow.ddns.example.com', "CHECK_SERVER"));
 
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@spam:matrix.org')));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@spam:matrix.org', "CHECK_SERVER"));
         await createPolicyRule(mjolnir.client, policyListId, RULE_USER, '@spam:matrix.org', '', { recommendation: Recommendation.Ban });
         await policyList.updateList();
-        assertAccess(Access.Banned, aclUnit.testUser(new UserID('@spam:matrix.org')));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@someone:matrix.org')));
+        assertAccess(Access.Banned, aclUnit.getAccessForUser('@spam:matrix.org', "CHECK_SERVER"));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@someone:matrix.org', "CHECK_SERVER"));
 
         // protect a room and check that only bad.example.com, *.ddns.example.com are in the deny ACL and not matrix.org
         await mjolnir.watchList(policyList.roomRef);
@@ -526,15 +526,15 @@ describe('Test: AccessControlUnit interaction with policy lists.', function() {
         await mjolnir.protectedRoomsTracker.syncLists();
 
         assert.equal(changes.length, 5, "The rules should have correctly been removed");
-        assertAccess(Access.Allowed, aclUnit.testServer('matrix.org'));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@someone:matrix.org')));
-        assertAccess(Access.Allowed, aclUnit.testServer('anywhere.else.example.com'));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@anyone:anywhere.else.example.com')));
-        assertAccess(Access.Allowed, aclUnit.testServer('bad.example.com'));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@anyone:bad.example.com')));
-        assertAccess(Access.Allowed, aclUnit.testServer('meow.ddns.example.com'));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@anyone:meow.ddns.example.com')));
-        assertAccess(Access.Allowed, aclUnit.testUser(new UserID('@spam:matrix.org')));
+        assertAccess(Access.Allowed, aclUnit.getAccessForServer('matrix.org'));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@someone:matrix.org', "CHECK_SERVER"));
+        assertAccess(Access.Allowed, aclUnit.getAccessForServer('anywhere.else.example.com'));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@anyone:anywhere.else.example.com', "CHECK_SERVER"));
+        assertAccess(Access.Allowed, aclUnit.getAccessForServer('bad.example.com'));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@anyone:bad.example.com', "CHECK_SERVER"));
+        assertAccess(Access.Allowed, aclUnit.getAccessForServer('meow.ddns.example.com'));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@anyone:meow.ddns.example.com', "CHECK_SERVER"));
+        assertAccess(Access.Allowed, aclUnit.getAccessForUser('@spam:matrix.org', "CHECK_SERVER"));
 
         const roomAclAfter = await mjolnir.client.getRoomStateEvent(protectedRoom, "m.room.server_acl", "");
         assert.equal(roomAclAfter.deny?.length ?? 0, 0, 'There should be no entries in the deny ACL.');
@@ -553,14 +553,14 @@ describe('Test: AccessControlUnit interaction with policy lists.', function() {
             return createPolicyRule(mjolnir.client, policyList.roomId, RULE_SERVER, banMeServer, '', { recommendation: Recommendation.Ban })
         }));
         await Promise.all(policyLists.map(list => list.updateList()));
-        assertAccess(Access.Banned, aclUnit.testServer(banMeServer));
+        assertAccess(Access.Banned, aclUnit.getAccessForServer(banMeServer));
 
         // remove the rule that bans `banme.example.com` from just one of the lists.
         await removePolicyRule(mjolnir.client, policyLists[0].roomId, RULE_SERVER, banMeServer);
         await Promise.all(policyLists.map(list => list.updateList()));
-        assertAccess(Access.Banned, aclUnit.testServer(banMeServer), "Should still be banned at this point.");
+        assertAccess(Access.Banned, aclUnit.getAccessForServer(banMeServer), "Should still be banned at this point.");
         await removePolicyRule(mjolnir.client, policyLists[1].roomId, RULE_SERVER, banMeServer);
         await Promise.all(policyLists.map(list => list.updateList()));
-        assertAccess(Access.Allowed, aclUnit.testServer(banMeServer), "Should not longer be any rules");
+        assertAccess(Access.Allowed, aclUnit.getAccessForServer(banMeServer), "Should not longer be any rules");
     })
 })
