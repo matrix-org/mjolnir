@@ -164,7 +164,7 @@ class ListRuleCache {
      * Update the cache for a single `ListRuleChange`.
      * @param change The change made to a rule that was present in the policy list.
      */
-    private updataCacheForChange(change: ListRuleChange): void {
+    private updateCacheForChange(change: ListRuleChange): void {
         if (change.rule.kind !== this.entityType || change.rule.recommendation !== this.recommendation) {
             return;
         }
@@ -186,7 +186,7 @@ class ListRuleCache {
      * @param changes The changes that were made to list rules since the last update to this policy list.
      */
     private updateCache(changes: ListRuleChange[]) {
-        changes.forEach(this.updataCacheForChange, this);
+        changes.forEach(this.updateCacheForChange, this);
     }
 }
 
