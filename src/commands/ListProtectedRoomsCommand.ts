@@ -24,7 +24,7 @@ export async function execListProtectedRooms(roomId: string, event: any, mjolnir
     let text = `Protected rooms (${rooms.length}):\n`;
 
     let hasRooms = false;
-    for (const protectedRoomId in rooms) {
+    for (const protectedRoomId of rooms) {
         hasRooms = true;
 
         const roomUrl = Permalinks.forRoom(protectedRoomId);
