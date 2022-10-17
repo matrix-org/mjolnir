@@ -224,7 +224,7 @@ describe('Test: We will not be able to ban ourselves via ACL.', function() {
         assert.equal(acl.safeAclContent().deny.length, 1);
         assert.equal(acl.literalAclContent().deny.length, 3);
 
-        const aclUnitAcl = aclUnit.createServerAcl(serverName);
+        const aclUnitAcl = aclUnit.compileServerAcl(serverName);
         assert.equal(aclUnitAcl.literalAclContent().deny.length, 1);
 
     })

@@ -300,7 +300,7 @@ export class ProtectedRooms {
         const serverName: string = new UserID(await this.client.getUserId()).domain;
 
         // Construct a server ACL first
-        const acl = this.accessControlUnit.createServerAcl(serverName);
+        const acl = this.accessControlUnit.compileServerAcl(serverName);
         const finalAcl = acl.safeAclContent();
 
         if (this.config.verboseLogging) {

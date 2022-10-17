@@ -284,7 +284,7 @@ export default class AccessControlUnit {
      * @param serverName The name of the server that you are operating from, used to ensure you cannot brick yourself.
      * @returns A new `ServerAcl` instance with deny and allow entries created from the rules in this unit.
      */
-    public createServerAcl(serverName: string) {
+    public compileServerAcl(serverName: string): ServerAcl {
         const acl = new ServerAcl(serverName).denyIpAddresses();
         const allowedServers = this.serverAllows.allRules;
         // Allowed servers (allow).
