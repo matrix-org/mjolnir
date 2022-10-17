@@ -209,7 +209,7 @@ export interface EntityAccess {
 }
 
 /**
- * This allows us to work the access an entity has to some thing based on a set of watched/unwatched lists.
+ * This allows us to work out the access an entity has to some thing based on a set of watched/unwatched lists.
  */
 export default class AccessControlUnit {
     private readonly userBans = new ListRuleCache(RULE_USER, Recommendation.Ban);
