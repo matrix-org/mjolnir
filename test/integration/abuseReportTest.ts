@@ -19,6 +19,12 @@ const REPORT_NOTICE_REGEXPS = {
 
 
 describe("Test: Reporting abuse", async () => {
+    // Testing with successive versions of the API.
+    //
+    // As of this writing, v3 is the standard, while r0 is deprecated. However,
+    // both versions are still in use in the wild.
+    // Note that this version change only affects the actual URL at which reports
+    // are sent.
     for (let endpoint of ['v3', 'r0']) {
         it(`Mjölnir intercepts abuse reports with endpoint ${endpoint}`, async function() {
             this.timeout(90000);
