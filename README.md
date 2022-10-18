@@ -48,7 +48,7 @@ This requires two configuration steps:
 
 1. In your Mjölnir configuration file, typically `/etc/mjolnir/config/production.yaml`, copy and paste the `web` section from `default.yaml`, if you don't have it yet (it appears with version 1.20) and set `enabled: true` for both `web` and
 `abuseReporting`.
-2. Setup a reverse proxy that will redirect requests from `^/_matrix/client/r0/rooms/([^/]*)/report/(.*)$` to `http://host:port/api/1/report/$1/$2`, where `host` is the host where you run Mjölnir, and `port` is the port you configured in `production.yaml`. For an example nginx configuration, see `test/nginx.conf`. It's the confirmation we use during runtime testing.
+2. Setup a reverse proxy that will redirect requests from `^/_matrix/client/(r0|v3)/rooms/([^/]*)/report/(.*)$` to `http://host:port/api/1/report/$2/$3`, where `host` is the host where you run Mjölnir, and `port` is the port you configured in `production.yaml`. For an example nginx configuration, see `test/nginx.conf`. It's the confirmation we use during runtime testing.
 
 ### Security note
 
