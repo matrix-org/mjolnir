@@ -104,7 +104,7 @@ The users to trust, the actions to take, and the thresholds needed for those act
 
 Prerequisites:
 * `pollReport: true` in Mjolnir config file
-* retart Mjolnir
+* restart Mjolnir
 * `!mjolnir enable TrustedReporters`
 * `!mjolnir config add TrustedReporters.mxids @trusteduser:example.com`
 * `!mjolnir config set TrustedReporters.alertThreshold 3`
