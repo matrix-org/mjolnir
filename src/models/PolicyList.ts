@@ -87,6 +87,14 @@ class PolicyList extends EventEmitter {
     private batchedEvents = new Set<string /* event id */>();
 
     /**
+     * This is used to annotate state events we store with the rule they are associated with.
+     * If we refactor this, it is important to also refactor any listeners to 'PolicyList.update'
+     * which may assume `ListRule`s that are removed will be identital (Object.is) to when they were added.
+     * If you are adding new listeners, you should check the source event_id of the rule.
+     */
+    private static readonly EVENT_RULE_ANNOTATION_KEY = 'org.matrix.mjolnir.annotation.rule';
+
+    /**
      * Construct a PolicyList, does not synchronize with the room.
      * @param roomId The id of the policy room, i.e. a room containing MSC2313 policies.
      * @param roomRef A sharable/clickable matrix URL that refers to the room.
@@ -134,19 +142,21 @@ class PolicyList extends EventEmitter {
     /**
      * Return all the active rules of a given kind.
      * @param kind e.g. RULE_SERVER (m.policy.rule.server). Rule types are always normalised when they are interned into the PolicyList.
+     * @param recommendation A specific recommendation to filter for e.g. `m.ban`. Please remember recommendation varients are normalized.
      * @returns The active ListRules for the ban list of that kind.
      */
-    private rulesOfKind(kind: string): ListRule[] {
+    public rulesOfKind(kind: string, recommendation?: Recommendation): ListRule[] {
         const rules: ListRule[] = []
         const stateKeyMap = this.state.get(kind);
         if (stateKeyMap) {
             for (const event of stateKeyMap.values()) {
-                const rule = event?.unsigned?.rule;
-                // README! If you are refactoring this and/or introducing a mechanism to return the list of rules,
-                // please make sure that you *only* return rules with `m.ban` or create a different method
-                // (we don't want to accidentally ban entities).
-                if (rule && rule.kind === kind && rule.recommendation === Recommendation.Ban) {
-                    rules.push(rule);
+                const rule = event[PolicyList.EVENT_RULE_ANNOTATION_KEY];
+                if (rule && rule.kind === kind) {
+                    if (recommendation === undefined) {
+                        rules.push(rule);
+                    } else if (rule.recommendation === recommendation) {
+                        rules.push(rule);
+                    }
                 }
             }
         }
@@ -353,10 +363,10 @@ class PolicyList extends EventEmitter {
 
             // If we haven't got any information about what the rule used to be, then it wasn't a valid rule to begin with
             // and so will not have been used. Removing a rule like this therefore results in no change.
-            if (changeType === ChangeType.Removed && previousState?.unsigned?.rule) {
+            if (changeType === ChangeType.Removed && previousState?.[PolicyList.EVENT_RULE_ANNOTATION_KEY]) {
                 const sender = event.unsigned['redacted_because'] ? event.unsigned['redacted_because']['sender'] : event.sender;
                 changes.push({
-                    changeType, event, sender, rule: previousState.unsigned.rule,
+                    changeType, event, sender, rule: previousState[PolicyList.EVENT_RULE_ANNOTATION_KEY],
                     ...previousState ? { previousState } : {}
                 });
                 // Event has no content and cannot be parsed as a ListRule.
@@ -368,7 +378,7 @@ class PolicyList extends EventEmitter {
                 // Invalid/unknown rule, just skip it.
                 continue;
             }
-            event.unsigned.rule = rule;
+            event[PolicyList.EVENT_RULE_ANNOTATION_KEY] = rule;
             if (changeType) {
                 changes.push({ rule, changeType, event, sender: event.sender, ...previousState ? { previousState } : {} });
             }
