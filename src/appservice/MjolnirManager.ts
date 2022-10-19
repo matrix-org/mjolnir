@@ -1,7 +1,7 @@
 import { Mjolnir } from "../Mjolnir";
 import { Request, WeakEvent, BridgeContext } from "matrix-appservice-bridge";
 import { IConfig, read as configRead } from "../config";
-import PolicyList, { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
+import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 
 export class MjolnirManager {
