@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogService, MatrixClient, UserID } from "matrix-bot-sdk";
+import { extractRequestError, LogService, MatrixClient, RoomCreateOptions, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
 import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
 
@@ -121,7 +121,7 @@ class PolicyList extends EventEmitter {
         client: MatrixClient,
         shortcode: string,
         invite: string[],
-        createRoomOptions = {}
+        createRoomOptions: RoomCreateOptions = {}
     ): Promise<string /* room id */> {
         const powerLevels: { [key: string]: any } = {
             "ban": 50,
@@ -143,7 +143,7 @@ class PolicyList extends EventEmitter {
             },
             "users_default": 0,
         };
-        const finalRoomCreateOptions = {
+        const finalRoomCreateOptions: RoomCreateOptions = {
             // Support for MSC3784.
             creation_content: {
                 type: PolicyList.ROOM_TYPE
@@ -161,7 +161,8 @@ class PolicyList extends EventEmitter {
             ...createRoomOptions
         };
         // Guard room type in case someone overwrites it when declaring custom creation_content in future code.
-        if (!PolicyList.ROOM_TYPE_VARIANTS.includes(finalRoomCreateOptions.creation_content.type)) {
+        const roomType = finalRoomCreateOptions.creation_content?.type;
+        if (typeof roomType === 'string' && !PolicyList.ROOM_TYPE_VARIANTS.includes(roomType)) {
             throw new TypeError(`Creating a policy room with a type other than the policy room type is not supported, you probably don't want to do this.`);
         }
         const listRoomId = await client.createRoom(finalRoomCreateOptions);
