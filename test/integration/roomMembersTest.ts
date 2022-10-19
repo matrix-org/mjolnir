@@ -1,5 +1,6 @@
 import { strict as assert } from "assert";
 import { randomUUID } from "crypto";
+import { Mjolnir } from "../../src/Mjolnir";
 import { RoomMemberManager } from "../../src/RoomMembers";
 import { newTestUser } from "./clientHelper";
 import { getFirstReply, getNthReply } from "./commands/commandUtils";
@@ -255,11 +256,12 @@ describe("Test: Testing RoomMemberManager", function() {
     it("RoomMemberManager counts correctly when we actually join/leave/get banned from the room", async function() {
         this.timeout(60000);
         const start = new Date(Date.now() - 10_000);
+        const mjolnir: Mjolnir = this.mjolnir!;
 
         // Setup a moderator.
         this.moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
-        await this.mjolnir.client.inviteUser(await this.moderator.getUserId(), this.mjolnir.managementRoomId)
-        await this.moderator.joinRoom(this.mjolnir.managementRoomId);
+        await mjolnir.client.inviteUser(await this.moderator.getUserId(), mjolnir.managementRoomId)
+        await this.moderator.joinRoom(mjolnir.managementRoomId);
 
         // Create a few users and two rooms.
         this.users = [];
@@ -282,15 +284,15 @@ describe("Test: Testing RoomMemberManager", function() {
         const roomIds = [roomId1, roomId2];
 
         for (let roomId of roomIds) {
-            await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${roomId}` });
+            await this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${roomId}` });
         }
 
         let protectedRoomsUpdated = false;
         do {
-            let protectedRooms = this.mjolnir.protectedRooms;
+            let protectedRooms = mjolnir.protectedRoomsTracker.getProtectedRooms();
             protectedRoomsUpdated = true;
             for (let roomId of roomIds) {
-                if (!(roomId in protectedRooms)) {
+                if (!protectedRooms.includes(roomId)) {
                     protectedRoomsUpdated = false;
                     await new Promise(resolve => setTimeout(resolve, 1_000));
                 }
@@ -299,18 +301,18 @@ describe("Test: Testing RoomMemberManager", function() {
 
 
         // Initially, we shouldn't know about any user in these rooms... except Mjölnir itself.
-        const manager: RoomMemberManager = this.mjolnir.roomJoins;
+        const manager: RoomMemberManager = mjolnir.roomJoins;
         for (let roomId of roomIds) {
             const joined = manager.getUsersInRoom(roomId, start, 100);
             assert.equal(joined.length, 1, "Initially, we shouldn't know about any other user in these rooms");
-            assert.equal(joined[0].userId, await this.mjolnir.client.getUserId(), "Initially, Mjölnir should be the only known user in these rooms");
+            assert.equal(joined[0].userId, await mjolnir.client.getUserId(), "Initially, Mjölnir should be the only known user in these rooms");
         }
 
         // Initially, the command should show that same result.
         for (let roomId of roomIds) {
-            const reply = await getFirstReply(this.mjolnir.client, this.mjolnir.managementRoomId, () => {
+            const reply = await getFirstReply(mjolnir.client, mjolnir.managementRoomId, () => {
                 const command = `!mjolnir status joins ${roomId}`;
-                return this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
+                return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
             });
             const body = reply["content"]?.["body"] as string;
             assert.ok(body.includes("\n1 recent joins"), "Initially the command should respond with 1 user");
@@ -326,9 +328,9 @@ describe("Test: Testing RoomMemberManager", function() {
             const roomId = roomIds[i];
             const joined = manager.getUsersInRoom(roomId, start, 100);
             assert.equal(joined.length, SAMPLE_SIZE / 2 /* half of the users */ + 1 /* mjolnir */, "We should now see all joined users in the room");
-            const reply = await getFirstReply(this.mjolnir.client, this.mjolnir.managementRoomId, () => {
+            const reply = await getFirstReply(mjolnir.client, mjolnir.managementRoomId, () => {
                 const command = `!mjolnir status joins ${roomId}`;
-                return this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
+                return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
             });
             const body = reply["content"]?.["body"] as string;
             assert.ok(body.includes(`\n${joined.length} recent joins`), `After joins, the command should respond with ${joined.length} users`);
@@ -359,9 +361,9 @@ describe("Test: Testing RoomMemberManager", function() {
 
         for (let i = 0; i < roomIds.length; ++i) {
             const roomId = roomIds[i];
-            const reply = await getFirstReply(this.mjolnir.client, this.mjolnir.managementRoomId, () => {
+            const reply = await getFirstReply(mjolnir.client, mjolnir.managementRoomId, () => {
                 const command = `!mjolnir status joins ${roomId}`;
-                return this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
+                return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
             });
             const body = reply["content"]?.["body"] as string;
             for (let j = 0; j < userIds.length; ++j) {
@@ -378,10 +380,11 @@ describe("Test: Testing RoomMemberManager", function() {
     it("!mjolnir since kicks the correct users", async function() {
         this.timeout(600_000);
         const start = new Date(Date.now() - 10_000);
+        const mjolnir: Mjolnir = this.mjolnir!;
 
         // Setup a moderator.
         this.moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
-        await this.moderator.joinRoom(this.mjolnir.managementRoomId);
+        await this.moderator.joinRoom(mjolnir.managementRoomId);
 
         // Create a few users.
         this.goodUsers = [];
@@ -418,7 +421,7 @@ describe("Test: Testing RoomMemberManager", function() {
         const NUMBER_OF_ROOMS = 18;
         const allRoomIds: string[] = [];
         const allRoomAliases: string[] = [];
-        const mjolnirUserId = await this.mjolnir.client.getUserId();
+        const mjolnirUserId = await mjolnir.client.getUserId();
         for (let i = 0; i < NUMBER_OF_ROOMS; ++i) {
             const roomId = await this.moderator.createRoom({
                 invite: [mjolnirUserId, ...goodUserIds, ...badUserIds],
@@ -432,18 +435,18 @@ describe("Test: Testing RoomMemberManager", function() {
         for (let i = 1; i < allRoomIds.length; ++i) {
             // Protect all rooms except allRoomIds[0], as control.
             const roomId = allRoomIds[i];
-            await this.mjolnir.client.joinRoom(roomId);
+            await mjolnir.client.joinRoom(roomId);
             await this.moderator.setUserPowerLevel(mjolnirUserId, roomId, 100);
-            await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${roomId}` });
+            await this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${roomId}` });
         }
 
         let protectedRoomsUpdated = false;
         do {
-            let protectedRooms = this.mjolnir.protectedRooms;
+            let protectedRooms = mjolnir.protectedRoomsTracker.getProtectedRooms();
             protectedRoomsUpdated = true;
             for (let i = 1; i < allRoomIds.length; ++i) {
                 const roomId = allRoomIds[i];
-                if (!(roomId in protectedRooms)) {
+                if (!protectedRooms.includes(roomId)) {
                     protectedRoomsUpdated = false;
                     await new Promise(resolve => setTimeout(resolve, 1_000));
                 }
@@ -659,8 +662,8 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Just-in-case health check, before starting.
         {
-            const usersInUnprotectedControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
-            const usersInControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
+            const usersInUnprotectedControlProtected = await mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
+            const usersInControlProtected = await mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
                 assert.ok(usersInUnprotectedControlProtected.includes(userId), `Initially, good user ${userId} should be in the unprotected control room`);
                 assert.ok(usersInControlProtected.includes(userId), `Initially, good user ${userId} should be in the control room`);
@@ -676,21 +679,21 @@ describe("Test: Testing RoomMemberManager", function() {
             const index = experiment.roomIndex!;
             const roomId = roomIds[index];
             const roomAlias = roomAliases[index];
-            const joined = this.mjolnir.roomJoins.getUsersInRoom(roomId, start, 100);
+            const joined = mjolnir.roomJoins.getUsersInRoom(roomId, start, 100);
             console.debug(`Running experiment ${i} "${experiment.name}" in room index ${index} (${roomId} / ${roomAlias}): \`${experiment.command(roomId, roomAlias)}\``);
             assert.ok(joined.length >= 2 * SAMPLE_SIZE, `In experiment ${experiment.name}, we should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`);
 
             // Run experiment.
-            await getNthReply(this.mjolnir.client, this.mjolnir.managementRoomId, experiment.n, async () => {
+            await getNthReply(mjolnir.client, mjolnir.managementRoomId, experiment.n, async () => {
                 const command = experiment.command(roomId, roomAlias);
-                let result = await this.moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
+                let result = await this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
                 return result;
             });
 
             // Check post-conditions.
-            const usersInRoom = await this.mjolnir.client.getJoinedRoomMembers(roomId);
-            const usersInUnprotectedControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
-            const usersInControlProtected = await this.mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
+            const usersInRoom = await mjolnir.client.getJoinedRoomMembers(roomId);
+            const usersInUnprotectedControlProtected = await mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
+            const usersInControlProtected = await mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
                 assert.ok(usersInRoom.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in affected room`);
                 assert.ok(usersInControlProtected.includes(userId), `After a ${experiment.name}, good user ${userId} should still be in control room (${CONTROL_PROTECTED_ID})`);
@@ -698,20 +701,20 @@ describe("Test: Testing RoomMemberManager", function() {
             }
             if (experiment.method === Method.mute) {
                 for (let userId of goodUserIds) {
-                    let canSpeak = await this.mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
+                    let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
                     assert.ok(canSpeak, `After a ${experiment.name}, good user ${userId} should still be allowed to speak in the room`);
                 }
                 for (let userId of badUserIds) {
-                    let canSpeak = await this.mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
+                    let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
                     assert.ok(!canSpeak, `After a ${experiment.name}, bad user ${userId} should NOT be allowed to speak in the room`);
                 }
             } else if (experiment.method === Method.unmute) {
                 for (let userId of goodUserIds) {
-                    let canSpeak = await this.mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
+                    let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
                     assert.ok(canSpeak, `After a ${experiment.name}, good user ${userId} should still be allowed to speak in the room`);
                 }
                 for (let userId of badUserIds) {
-                    let canSpeak = await this.mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
+                    let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
                     assert.ok(canSpeak, `After a ${experiment.name}, bad user ${userId} should AGAIN be allowed to speak in the room`);
                 }
             } else {
@@ -719,7 +722,7 @@ describe("Test: Testing RoomMemberManager", function() {
                     assert.ok(!usersInRoom.includes(userId), `After a ${experiment.name}, bad user ${userId} should NOT be in affected room`);
                     assert.equal(usersInControlProtected.includes(userId), !experiment.shouldAffectControlProtected, `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectControlProtected ? "NOT" : "still"} be in control room`);
                     assert.ok(usersInUnprotectedControlProtected.includes(userId), `After a ${experiment.name}, bad user ${userId} should still be in unprotected control room`);
-                    const leaveEvent = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
+                    const leaveEvent = await mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
                     switch (experiment.method) {
                         case Method.kick:
                             assert.equal(leaveEvent.membership, "leave");
