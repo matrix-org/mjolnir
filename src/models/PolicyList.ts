@@ -86,6 +86,10 @@ class PolicyList extends EventEmitter {
     // Events that we have already informed the batcher about, that we haven't loaded from the room state yet.
     private batchedEvents = new Set<string /* event id */>();
 
+    /** MSC3784 support. Please note that policy lists predate room types. So there will be lists in the wild without this type. */
+    public static readonly ROOM_TYPE = "support.feline.policy.lists.msc.v1";
+    public static readonly ROOM_TYPE_VARIANTS = [PolicyList.ROOM_TYPE]
+
     /**
      * This is used to annotate state events we store with the rule they are associated with.
      * If we refactor this, it is important to also refactor any listeners to 'PolicyList.update'
@@ -103,6 +107,65 @@ class PolicyList extends EventEmitter {
     constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
         super();
         this.batcher = new UpdateBatcher(this);
+    }
+
+    /**
+     * Create a new policy list.
+     * @param client A MatrixClient that will be used to create the list.
+     * @param shortcode A shortcode to refer to the list with.
+     * @param invite A list of users to invite to the list and make moderator.
+     * @param createRoomOptions Additional room create options such as an alias.
+     * @returns The room id for the newly created policy list.
+     */
+    public static async createList(
+        client: MatrixClient,
+        shortcode: string,
+        invite: string[],
+        createRoomOptions = {}
+    ): Promise<string /* room id */> {
+        const powerLevels: { [key: string]: any } = {
+            "ban": 50,
+            "events": {
+                "m.room.name": 100,
+                "m.room.power_levels": 100,
+            },
+            "events_default": 50, // non-default
+            "invite": 0,
+            "kick": 50,
+            "notifications": {
+                "room": 20,
+            },
+            "redact": 50,
+            "state_default": 50,
+            "users": {
+                [await client.getUserId()]: 100,
+                ...invite.reduce((users, mxid) => ({...users,  [mxid]: 50 }), {}),
+            },
+            "users_default": 0,
+        };
+        const finalRoomCreateOptions = {
+            // Support for MSC3784.
+            creation_content: {
+                type: PolicyList.ROOM_TYPE
+            },
+            preset: "public_chat",
+            invite,
+            initial_state: [
+                {
+                    type: SHORTCODE_EVENT_TYPE,
+                    state_key: "",
+                    content: {shortcode: shortcode}
+                }
+            ],
+            power_level_content_override: powerLevels,
+            ...createRoomOptions
+        };
+        // Guard room type in case someone overwrites it when declaring custom creation_content in future code.
+        if (!PolicyList.ROOM_TYPE_VARIANTS.includes(finalRoomCreateOptions.creation_content.type)) {
+            throw new TypeError(`Creating a policy room with a type other than the policy room type is not supported, you probably don't want to do this.`);
+        }
+        const listRoomId = await client.createRoom(finalRoomCreateOptions);
+        return listRoomId
     }
 
     /**

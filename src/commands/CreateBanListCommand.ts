@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { SHORTCODE_EVENT_TYPE } from "../models/PolicyList";
+import PolicyList from "../models/PolicyList";
 import { Permalinks, RichReply } from "matrix-bot-sdk";
 
 // !mjolnir list create <shortcode> <alias localpart>
@@ -23,34 +23,12 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
     const shortcode = parts[3];
     const aliasLocalpart = parts[4];
 
-    const powerLevels: { [key: string]: any } = {
-        "ban": 50,
-        "events": {
-            "m.room.name": 100,
-            "m.room.power_levels": 100,
-        },
-        "events_default": 50, // non-default
-        "invite": 0,
-        "kick": 50,
-        "notifications": {
-            "room": 20,
-        },
-        "redact": 50,
-        "state_default": 50,
-        "users": {
-            [await mjolnir.client.getUserId()]: 100,
-            [event["sender"]]: 50
-        },
-        "users_default": 0,
-    };
-
-    const listRoomId = await mjolnir.client.createRoom({
-        preset: "public_chat",
-        room_alias_name: aliasLocalpart,
-        invite: [event['sender']],
-        initial_state: [{ type: SHORTCODE_EVENT_TYPE, state_key: "", content: { shortcode: shortcode } }],
-        power_level_content_override: powerLevels,
-    });
+    const listRoomId = await PolicyList.createList(
+        mjolnir.client,
+        shortcode,
+        [event['sender']],
+        { room_alias_name: aliasLocalpart }
+    );
 
     const roomRef = Permalinks.forRoom(listRoomId);
     await mjolnir.watchList(roomRef);
