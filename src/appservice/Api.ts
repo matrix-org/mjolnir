@@ -1,5 +1,5 @@
-import * as request from "request";
-import * as express from "express";
+import request from "request";
+import express from "express";
 import * as bodyParser from "body-parser";
 import { MjolnirAppService } from "./AppService";
 

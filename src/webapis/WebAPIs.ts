@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Server } from "http";
-import * as express from "express";
+import express from "express";
 import { LogService, MatrixClient } from "matrix-bot-sdk";
 import RuleServer from "../models/RuleServer";
 import { ReportManager } from "../report/ReportManager";
