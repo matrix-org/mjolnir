@@ -16,27 +16,28 @@
  */
 
 import { randomUUID } from "crypto";
-import { AppServiceRegistration, Bridge, Cli, Request, WeakEvent, BridgeContext, MatrixUser } from "matrix-appservice-bridge";
+import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, MatrixUser } from "matrix-appservice-bridge";
 import { MatrixClient } from "matrix-bot-sdk";
-// needed by appservice irc, though it looks completely dead.
 import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
-// ts-node src/appservice/AppService.ts -r -u "http://localhost:9000" # remember to add the registration to homeserver.yaml! you probably want host.docker.internal as the hostname of the appservice if using mx-tester
-// ts-node src/appservice/AppService -p 9000 # to start.
+import { IConfig } from "./config/config";
 
+// so one problem we have in regards to the ACL unit
+// and the policy list is that we can't initialize those 
+// until the bridge has read the access tokens with init etc.
 export class MjolnirAppService {
 
     public readonly dataStore: DataStore;
     public readonly bridge: Bridge;
     public readonly mjolnirManager: MjolnirManager = new MjolnirManager();
 
-    public constructor() {
-        this.dataStore = new PgDataStore("postgres://mjolnir-tester:mjolnir-test@localhost:8082/mjolnir-test-db");
-        new Api("http://localhost:8081", this).start(9001);
+    public constructor(config: IConfig) {
+        this.dataStore = new PgDataStore(config.db.connectionString);
+        new Api(config.homeserver.url, this).start(config.webAPI.port);
         this.bridge = new Bridge({
-            homeserverUrl: "http://localhost:8081",
-            domain: "localhost:9999",
+            homeserverUrl: config.homeserver.url,
+            domain: config.homeserver.domain,
             registration: "mjolnir-registration.yaml",
             controller: {
                 onUserQuery: this.onUserQuery.bind(this),
@@ -46,6 +47,7 @@ export class MjolnirAppService {
         });
     }
 
+    // FIXME: this needs moving the MjolnirManager.
     public async init(): Promise<void> {
         await this.dataStore.init();
         for (var mjolnirRecord of await this.dataStore.list()) {
@@ -114,11 +116,8 @@ export class MjolnirAppService {
         }
         this.mjolnirManager.onEvent(request, context);
     }
-}
 
-new Cli({
-    registrationPath: "mjolnir-registration.yaml",
-    generateRegistration: function(reg, callback) {
+    public static generateRegistration(reg: AppServiceRegistration, callback: (finalRegisration: AppServiceRegistration) => void) {
         reg.setId(AppServiceRegistration.generateToken());
         reg.setHomeserverToken(AppServiceRegistration.generateToken());
         reg.setAppServiceToken(AppServiceRegistration.generateToken());
@@ -126,12 +125,13 @@ new Cli({
         reg.addRegexPattern("users", "@mjolnir_.*", true);
         reg.setRateLimited(false);
         callback(reg);
-    },
-    run: async function(port: number) {
-        const service = new MjolnirAppService();
+    }
+
+    public static async run(port: number, config: IConfig) {
+        const service = new MjolnirAppService(config);
         await service.bridge.initalise();
         await service.init();
         console.log("Matrix-side listening on port %s", port);
         await service.bridge.listen(port);
     }
-}).run();
+}

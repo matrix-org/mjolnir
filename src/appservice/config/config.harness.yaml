@@ -1,0 +1,13 @@
+
+homeserver:
+  domain: "localhost:9999"
+  url: http://localhost:8008
+
+db:
+  engine: "postgres"
+  connectionString: "postgres://mjolnir-tester:mjolnir-test@localhost:8082/mjolnir-test-db"
+
+access_control_list: "!aBcDeF:matrix.org"
+
+webAPI:
+  port: 9001
