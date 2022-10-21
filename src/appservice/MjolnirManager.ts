@@ -1,11 +1,29 @@
 import { Mjolnir } from "../Mjolnir";
-import { Request, WeakEvent, BridgeContext } from "matrix-appservice-bridge";
+import { Request, WeakEvent, BridgeContext, Bridge } from "matrix-appservice-bridge";
 import { IConfig, read as configRead } from "../config";
 import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
+import { DataStore } from "./datastore";
+import { AccessControl } from "./AccessControl";
+import { Access } from "../models/AccessControlUnit";
+import { randomUUID } from "crypto";
 
 export class MjolnirManager {
     public readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
+
+    private constructor(
+        private readonly dataStore: DataStore,
+        private readonly bridge: Bridge,
+        private readonly accessControl: AccessControl
+    ) {
+
+    }
+
+    public static async makeMjolnirManager(dataStore: DataStore, bridge: Bridge, accessControl: AccessControl): Promise<MjolnirManager> {
+        const mjolnirManager = new MjolnirManager(dataStore, bridge, accessControl);
+        mjolnirManager.createMjolnirsFromDataStore();
+        return mjolnirManager;
+    }
 
     public getDefaultMjolnirConfig(managementRoom: string): IConfig {
         let config = configRead();
@@ -25,6 +43,62 @@ export class MjolnirManager {
         // https://github.com/matrix-org/matrix-appservice-bridge/blob/6046d31c54d461ad53e6d6e244ce2d944b62f890/src/components/room-bridge-store.ts
         // looks like it might work, but we will ask, figure it out later.
         [...this.mjolnirs.values()].forEach((mj: ManagedMjolnir) => mj.onEvent(request));
+    }
+
+    public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
+        const access = this.accessControl.getUserAccess(requestingUserId);
+        if (access.outcome !== Access.Allowed) {
+            throw new Error(`${requestingUserId} tried to provision a mjolnir when they do not have access ${access.outcome} ${access.rule?.reason ?? 'no reason specified'}`);
+        }
+        const provisionedMjolnirs = await this.dataStore.lookupByOwner(requestingUserId);
+        if (provisionedMjolnirs.length === 0) {
+            const mjolnirLocalPart = `mjolnir_${randomUUID()}`;
+            const [mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirLocalPart);
+
+            const managementRoomId = await mjolnirClient.createRoom({
+                preset: 'private_chat',
+                invite: [requestingUserId],
+                name: `${requestingUserId}'s mjolnir`
+            });
+
+            const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjolnirClient);
+            await mjolnir.createFirstList(requestingUserId, "list");
+
+            await this.dataStore.store({
+                local_part: mjolnirLocalPart,
+                owner: requestingUserId,
+                management_room: managementRoomId,
+            });
+
+            return [mjolnirUserId, managementRoomId];
+        } else {
+            throw new Error(`User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`);
+        }
+    }
+
+    private async makeMatrixClient(localPart: string): Promise<[string, MatrixClient]> {
+        // Now we need to make one of the transparent mjolnirs and add it to the monitor.
+        const mjIntent = await this.bridge.getIntentFromLocalpart(localPart);
+        await mjIntent.ensureRegistered();
+        return [mjIntent.userId, mjIntent.matrixClient];
+    }
+
+    // Still think that we should check each time a command is sent or something, rather than like this ...
+    private async createMjolnirsFromDataStore() {
+        for (const mjolnirRecord of await this.dataStore.list()) {
+            const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.local_part);
+            const access = this.accessControl.getUserAccess(mjolnirRecord.owner);
+            if (access.outcome !== Access.Allowed) {
+                // Don't await, we don't want to clobber initialization just because we can't tell someone they're no longer allowed.
+                mjolnirClient.sendNotice(mjolnirRecord.management_room, `Your mjolnir has been disabled by the administrator: ${access.rule?.reason ?? "no reason supplied"}`);
+            } else {
+                await this.makeInstance(
+                    mjolnirRecord.owner,
+                    mjolnirRecord.management_room,
+                    mjolnirClient,
+                );
+            }
+        }
     }
 }
 

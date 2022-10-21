@@ -1,14 +1,14 @@
 import request from "request";
 import express from "express";
 import * as bodyParser from "body-parser";
-import { MjolnirAppService } from "./AppService";
+import { MjolnirManager } from "./MjolnirManager";
 
 export class Api {
     private httpdConfig: express.Express = express();
 
     constructor(
         private homeserver: string,
-        private appService: MjolnirAppService,
+        private mjolnirManager: MjolnirManager,
     ) {}
 
     private resolveAccessToken(accessToken: string): Promise<string> {
@@ -105,7 +105,7 @@ export class Api {
             return;
         }
 
-        const [mjolnirId, managementRoom] = await this.appService.provisionNewMjolnir(userId);
+        const [mjolnirId, managementRoom] = await this.mjolnirManager.provisionNewMjolnir(userId);
 
         // privisionNewMjolnir can't fail yet, but it should be able to
         //if (mjolnirId === null) {
@@ -139,7 +139,7 @@ export class Api {
             return;
         }
 
-        const mjolnir = this.appService.mjolnirManager.mjolnirs.get(mjolnirId);
+        const mjolnir = this.mjolnirManager.mjolnirs.get(mjolnirId);
         if (mjolnir === undefined) {
             response.status(400).send("unknown mjolnir mxid");
             return;

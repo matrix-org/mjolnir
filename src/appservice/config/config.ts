@@ -14,6 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import * as fs from "fs";
+import { load } from "js-yaml";
+
 export interface IConfig {
     homeserver: {
         domain: string,
@@ -26,4 +29,11 @@ export interface IConfig {
         port: number
     },
     accessControlList: string,
+}
+
+export function read(configPath: string): IConfig {
+    const content = fs.readFileSync(configPath, "utf8");
+    const parsed = load(content);
+    const config = (parsed as object) as IConfig;
+    return config;
 }

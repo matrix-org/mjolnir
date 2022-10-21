@@ -1,40 +1,37 @@
+/*
+Copyright 2022 The Matrix.org Foundation C.I.C.
 
-/**
- * What kind of vulnerabilities make process isolation count?
- * Either way they have the token to the appservice even with process isolation
- * the bounds are limitless.
- * 
- * In both casees we have to migrate the configuration away from being static
- * so that it can be built on the fly to start new processes.
- * Yes we could also write to a file but that's disgusting and i refuse.
- * The config is the biggest piece of static bullshit that makes things a pita,
- * so this removes one of the arguments against in-process work.
- * 
- * Ok so my idea is to just use fork and have a special Mjolnir instance
- * that basically proxies the mjolnir in the forked processes.
- * 
- */
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-import { randomUUID } from "crypto";
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, MatrixUser } from "matrix-appservice-bridge";
-import { MatrixClient } from "matrix-bot-sdk";
 import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
 import { IConfig } from "./config/config";
 import { AccessControl } from "./AccessControl";
-import { Access } from "../models/AccessControlUnit";
 
 export class MjolnirAppService {
+
+    private readonly api: Api;
 
     private constructor(
         public readonly config: IConfig,
         private readonly bridge: Bridge,
-        private readonly dataStore: DataStore,
         private readonly mjolnirManager: MjolnirManager,
         private readonly accessControl: AccessControl,
     ) {
-        new Api(config.homeserver.url, this).start(config.webAPI.port);
+        this.api = new Api(config.homeserver.url, mjolnirManager);
     }
 
     public static async makeMjolnirAppService(config: IConfig, dataStore: DataStore) {
@@ -51,74 +48,21 @@ export class MjolnirAppService {
             },
             suppressEcho: false,
         });
-        const mjolnirManager = new MjolnirManager();
+        await bridge.initalise();
         const accessControlListId = await bridge.getBot().getClient().resolveRoom(config.accessControlList);
+        const accessControl = await AccessControl.setupAccessControl(accessControlListId, bridge);
+        const mjolnirManager = await MjolnirManager.makeMjolnirManager(dataStore, bridge, accessControl);
         const appService = new MjolnirAppService(
             config,
             bridge,
-            dataStore,
             mjolnirManager,
-            await AccessControl.setupAccessControl(accessControlListId, bridge)
+            accessControl
         );
         bridge.opts.controller = {
             onUserQuery: appService.onUserQuery.bind(appService),
             onEvent: appService.onEvent.bind(appService),
         };
         return appService;
-    }
-
-    // FIXME: this needs moving the MjolnirManager.
-    public async init(): Promise<void> {
-        await this.dataStore.init();
-        for (var mjolnirRecord of await this.dataStore.list()) {
-            const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.local_part);
-            await this.mjolnirManager.makeInstance(
-                mjolnirRecord.owner,
-                mjolnirRecord.management_room,
-                mjolnirClient,
-            );
-        }
-    }
-
-    public async makeMatrixClient(localPart: string): Promise<[string, MatrixClient]> {
-            // Now we need to make one of the transparent mjolnirs and add it to the monitor.
-            const mjIntent = await this.bridge.getIntentFromLocalpart(localPart);
-            await mjIntent.ensureRegistered();
-            // we're only doing this because it's complaining about missing profiles.
-            // actually the user id wasn't even right, so this might not be necessary anymore.
-            await mjIntent.ensureProfile('Mjolnir');
-            return [mjIntent.userId, mjIntent.matrixClient];
-    }
-
-    public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
-        const access = this.accessControl.getUserAccess(requestingUserId);
-        if (access.outcome !== Access.Allowed) {
-            throw new Error(`${requestingUserId} tried to provision a mjolnir when they do not have access ${access.outcome} ${access.rule?.reason ?? 'no reason specified'}`);
-        }
-        const provisionedMjolnirs = await this.dataStore.lookupByOwner(requestingUserId);
-        if (provisionedMjolnirs.length === 0) {
-            const mjolnirLocalPart = `mjolnir_${randomUUID()}`;
-            const [mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirLocalPart);
-
-            const managementRoomId = await mjolnirClient.createRoom({
-                preset: 'private_chat',
-                invite: [requestingUserId],
-                name: `${requestingUserId}'s mjolnir`
-            });
-
-            const mjolnir = await this.mjolnirManager.makeInstance(requestingUserId, managementRoomId, mjolnirClient);
-            await mjolnir.createFirstList(requestingUserId, "list");
-
-            await this.dataStore.store({
-                local_part: mjolnirLocalPart,
-                owner: requestingUserId,
-                management_room: managementRoomId,
-            });
-
-            return [mjolnirUserId, managementRoomId];
-        } else {
-            throw new Error(`User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`);
-        }
     }
 
     public onUserQuery (queriedUser: MatrixUser) {
@@ -138,10 +82,17 @@ export class MjolnirAppService {
         const mxEvent = request.getData();
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
-                await this.provisionNewMjolnir(mxEvent.sender);
+                await this.mjolnirManager.provisionNewMjolnir(mxEvent.sender);
             }
         }
+        this.accessControl.handleEvent(mxEvent['room_id'], mxEvent);
         this.mjolnirManager.onEvent(request, context);
+    }
+
+    private async start(port: number) {
+        console.log("Matrix-side listening on port %s", port);
+        this.api.start(this.config.webAPI.port);
+        await this.bridge.listen(port);
     }
 
     public static generateRegistration(reg: AppServiceRegistration, callback: (finalRegisration: AppServiceRegistration) => void) {
@@ -156,11 +107,9 @@ export class MjolnirAppService {
 
     public static async run(port: number, config: IConfig) {
         const dataStore = new PgDataStore(config.db.connectionString);
+        await dataStore.init();
         const service = await MjolnirAppService.makeMjolnirAppService(config, dataStore);
-        await service.bridge.initalise();
-        await service.init();
         // Can't stress how important it is that listen happens last.
-        console.log("Matrix-side listening on port %s", port);
-        await service.bridge.listen(port);
+        await service.start(port);
     }
 }

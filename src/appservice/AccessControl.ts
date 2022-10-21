@@ -35,6 +35,10 @@ export class AccessControl {
         accessControlListId: string,
         bridge: Bridge,
     ): Promise<AccessControl> {
+        const joinedRooms = await bridge.getBot().getJoinedRooms();
+        if (!joinedRooms.includes(accessControlListId)) {
+            await bridge.getBot().getClient().joinRoom(accessControlListId);
+        }
         const accessControlList = new PolicyList(
             accessControlListId,
             Permalinks.forRoom(accessControlListId),
