@@ -21,7 +21,7 @@ export class Api {
                     reject(null);
                 }
 
-                var response: { sub: string};
+                let response: { sub: string};
                 try {
                     response = JSON.parse(body);
                 } catch (e) {
@@ -45,14 +45,14 @@ export class Api {
         this.httpdConfig.listen(port);
     }
 
-    private async pathGet(request: express.Request, response: express.Response) {
-        const accessToken = request.query["openId"];
+    private async pathGet(req: express.Request, response: express.Response) {
+        const accessToken = req.query["openId"];
         if (accessToken === undefined) {
             response.status(401).send("unauthorised");
             return;
         }
 
-        const mjolnirId = request.query["mxid"];
+        const mjolnirId = req.query["mxid"];
         if (mjolnirId === undefined) {
             response.status(400).send("invalid request");
             return;
@@ -72,8 +72,8 @@ export class Api {
         response.status(200).json({ managementRoom: managementRoom });
     }
 
-    private async pathList(request: express.Request, response: express.Response) {
-        const accessToken = request.query["openId"];
+    private async pathList(req: express.Request, response: express.Response) {
+        const accessToken = req.query["openId"];
         if (accessToken === undefined) {
             response.status(401).send("unauthorised");
             return;
@@ -86,14 +86,14 @@ export class Api {
         response.status(200).json(existing);
     }
 
-    private async pathCreate(request: express.Request, response: express.Response) {
-        const accessToken = request.body["openId"];
+    private async pathCreate(req: express.Request, response: express.Response) {
+        const accessToken = req.body["openId"];
         if (accessToken === undefined) {
             response.status(401).send("unauthorised");
             return;
         }
 
-        const roomId = request.body["roomId"];
+        const roomId = req.body["roomId"];
         if (roomId === undefined) {
             response.status(400).send("invalid request");
             return;
@@ -114,8 +114,8 @@ export class Api {
         response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
     }
 
-    private async pathJoin(request: express.Request, response: express.Response) {
-        const accessToken = request.body["openId"];
+    private async pathJoin(req: express.Request, response: express.Response) {
+        const accessToken = req.body["openId"];
         if (accessToken === undefined) {
             response.status(401).send("unauthorised");
             return;
@@ -127,13 +127,13 @@ export class Api {
             return;
         }
 
-        const mjolnirId = request.body["mxid"];
+        const mjolnirId = req.body["mxid"];
         if (mjolnirId === undefined) {
             response.status(400).send("invalid request");
             return;
         }
 
-        const roomId = request.body["roomId"];
+        const roomId = req.body["roomId"];
         if (roomId === undefined) {
             response.status(400).send("invalid request");
             return;
