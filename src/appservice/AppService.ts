@@ -32,7 +32,7 @@ export class MjolnirAppService {
     public readonly mjolnirManager: MjolnirManager = new MjolnirManager();
 
     public constructor() {
-        this.dataStore = new PgDataStore("foo bar baz");
+        this.dataStore = new PgDataStore("postgres://mjolnir-tester:mjolnir-test@localhost:8082/mjolnir-test-db");
         new Api("http://localhost:8081", this).start(9001);
         this.bridge = new Bridge({
             homeserverUrl: "http://localhost:8081",
