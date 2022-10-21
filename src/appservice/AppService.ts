@@ -22,7 +22,8 @@ import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
 import { IConfig } from "./config/config";
-import { Mjolnir } from "../Mjolnir";
+import { AccessControl } from "./AccessControl";
+import { Access } from "../models/AccessControlUnit";
 
 export class MjolnirAppService {
 
@@ -31,7 +32,7 @@ export class MjolnirAppService {
         private readonly bridge: Bridge,
         private readonly dataStore: DataStore,
         private readonly mjolnirManager: MjolnirManager,
-        //private readonly accessControl: AccessControl,
+        private readonly accessControl: AccessControl,
     ) {
         new Api(config.homeserver.url, this).start(config.webAPI.port);
     }
@@ -51,11 +52,13 @@ export class MjolnirAppService {
             suppressEcho: false,
         });
         const mjolnirManager = new MjolnirManager();
+        const accessControlListId = await bridge.getBot().getClient().resolveRoom(config.accessControlList);
         const appService = new MjolnirAppService(
             config,
             bridge,
             dataStore,
-            mjolnirManager
+            mjolnirManager,
+            await AccessControl.setupAccessControl(accessControlListId, bridge)
         );
         bridge.opts.controller = {
             onUserQuery: appService.onUserQuery.bind(appService),
@@ -88,7 +91,10 @@ export class MjolnirAppService {
     }
 
     public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
-        // FIXME: we need to restrict who can do it (special list? ban remote users?)
+        const access = this.accessControl.getUserAccess(requestingUserId);
+        if (access.outcome !== Access.Allowed) {
+            throw new Error(`${requestingUserId} tried to provision a mjolnir when they do not have access ${access.outcome} ${access.rule?.reason ?? 'no reason specified'}`);
+        }
         const provisionedMjolnirs = await this.dataStore.lookupByOwner(requestingUserId);
         if (provisionedMjolnirs.length === 0) {
             const mjolnirLocalPart = `mjolnir_${randomUUID()}`;
