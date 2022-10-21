@@ -22,29 +22,46 @@ import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
 import { IConfig } from "./config/config";
+import { Mjolnir } from "../Mjolnir";
 
-// so one problem we have in regards to the ACL unit
-// and the policy list is that we can't initialize those 
-// until the bridge has read the access tokens with init etc.
 export class MjolnirAppService {
 
-    public readonly dataStore: DataStore;
-    public readonly bridge: Bridge;
-    public readonly mjolnirManager: MjolnirManager = new MjolnirManager();
-
-    public constructor(config: IConfig) {
-        this.dataStore = new PgDataStore(config.db.connectionString);
+    private constructor(
+        public readonly config: IConfig,
+        private readonly bridge: Bridge,
+        private readonly dataStore: DataStore,
+        private readonly mjolnirManager: MjolnirManager,
+        //private readonly accessControl: AccessControl,
+    ) {
         new Api(config.homeserver.url, this).start(config.webAPI.port);
-        this.bridge = new Bridge({
+    }
+
+    public static async makeMjolnirAppService(config: IConfig, dataStore: DataStore) {
+        const bridge = new Bridge({
             homeserverUrl: config.homeserver.url,
             domain: config.homeserver.domain,
             registration: "mjolnir-registration.yaml",
+            // We lazily initialize the controller to avoid null checks
+            // It also allows us to combine constructor/initialize logic
+            // to make the code base much simpler. A small hack to pay for an overall less hacky code base.
             controller: {
-                onUserQuery: this.onUserQuery.bind(this),
-                onEvent: this.onEvent.bind(this),
+                onUserQuery: () => {throw new Error("Mjolnir uninitialized")},
+                onEvent: () => {throw new Error("Mjolnir uninitialized")},
             },
             suppressEcho: false,
         });
+        const mjolnirManager = new MjolnirManager();
+        const appService = new MjolnirAppService(
+            config,
+            bridge,
+            dataStore,
+            mjolnirManager
+        );
+        bridge.opts.controller = {
+            onUserQuery: appService.onUserQuery.bind(appService),
+            onEvent: appService.onEvent.bind(appService),
+        };
+        return appService;
     }
 
     // FIXME: this needs moving the MjolnirManager.
@@ -108,6 +125,10 @@ export class MjolnirAppService {
         // https://github.com/matrix-org/matrix-appservice-irc/blob/develop/src/bridge/MatrixHandler.ts#L921
         // ^ that's how matrix-appservice-irc maps from room to channel, we basically need to do the same but map
         // from room to which mjolnir it's for, unless that information is present in BridgeContext, which it might be...
+        // How do we get that information in bridge context?
+        // Alternatively we have to either use their advanced user member caching or track this ourselves somehow ffs.
+        // Alternatively just don't care about it right now, let it push events through to them all and get
+        // consultation from bridge people (Halfy).
         const mxEvent = request.getData();
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
@@ -128,9 +149,11 @@ export class MjolnirAppService {
     }
 
     public static async run(port: number, config: IConfig) {
-        const service = new MjolnirAppService(config);
+        const dataStore = new PgDataStore(config.db.connectionString);
+        const service = await MjolnirAppService.makeMjolnirAppService(config, dataStore);
         await service.bridge.initalise();
         await service.init();
+        // Can't stress how important it is that listen happens last.
         console.log("Matrix-side listening on port %s", port);
         await service.bridge.listen(port);
     }
