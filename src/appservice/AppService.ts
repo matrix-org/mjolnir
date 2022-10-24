@@ -27,9 +27,10 @@ export class MjolnirAppService {
 
     private constructor(
         public readonly config: IConfig,
-        private readonly bridge: Bridge,
+        public readonly bridge: Bridge,
         private readonly mjolnirManager: MjolnirManager,
         private readonly accessControl: AccessControl,
+        private readonly dataStore: DataStore,
     ) {
         this.api = new Api(config.homeserver.url, mjolnirManager);
     }
@@ -56,7 +57,8 @@ export class MjolnirAppService {
             config,
             bridge,
             mjolnirManager,
-            accessControl
+            accessControl,
+            dataStore
         );
         bridge.opts.controller = {
             onUserQuery: appService.onUserQuery.bind(appService),
@@ -89,10 +91,15 @@ export class MjolnirAppService {
         this.mjolnirManager.onEvent(request, context);
     }
 
-    private async start(port: number) {
+    public async start(port: number) {
         console.log("Matrix-side listening on port %s", port);
         this.api.start(this.config.webAPI.port);
         await this.bridge.listen(port);
+    }
+
+    public async close(): Promise<void> {
+        await this.bridge.close();
+        await this.dataStore.close();
     }
 
     public static generateRegistration(reg: AppServiceRegistration, callback: (finalRegisration: AppServiceRegistration) => void) {

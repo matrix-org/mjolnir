@@ -14,6 +14,7 @@
     "start:dev": "yarn build && node --async-stack-traces lib/index.js",
     "test": "ts-mocha --project ./tsconfig.json test/commands/**/*.ts",
     "test:integration": "NODE_ENV=harness ts-mocha --async-stack-traces --require test/integration/fixtures.ts --timeout 300000 --project ./tsconfig.json \"test/integration/**/*Test.ts\"",
+    "test:appservice:integration": "NODE_ENV=harness ts-mocha --async-stack-traces --exit --timeout 300000 --project ./tsconfig.json \"test/appservice/integration/**/*Test.ts\"",
     "test:manual": "NODE_ENV=harness ts-node test/integration/manualLaunchScript.ts",
     "version": "sed -i '/# version automated/s/[0-9][0-9]*\\.[0-9][0-9]*\\.[0-9][0-9]*/'$npm_package_version'/' synapse_antispam/setup.py && git add synapse_antispam/setup.py && cat synapse_antispam/setup.py"
   },

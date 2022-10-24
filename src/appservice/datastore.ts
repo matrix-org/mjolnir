@@ -9,6 +9,8 @@ export interface MjolnirRecord {
 export interface DataStore {
     init(): Promise<void>;
 
+    close(): Promise<void>;
+
     list(): Promise<MjolnirRecord[]>;
 
     store(mjolnirRecord: MjolnirRecord): Promise<void>;
@@ -27,6 +29,10 @@ export class PgDataStore implements DataStore {
 
     public async init(): Promise<void> {
         await this.pgClient.connect();
+    }
+
+    public async close(): Promise<void> {
+        await this.pgClient.end()
     }
 
     public async list(): Promise<MjolnirRecord[]> {
