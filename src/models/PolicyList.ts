@@ -162,7 +162,7 @@ class PolicyList extends EventEmitter {
         };
         // Guard room type in case someone overwrites it when declaring custom creation_content in future code.
         const roomType = finalRoomCreateOptions.creation_content?.type;
-        if (typeof roomType === 'string' && !PolicyList.ROOM_TYPE_VARIANTS.includes(roomType)) {
+        if (typeof roomType !== 'string' || !PolicyList.ROOM_TYPE_VARIANTS.includes(roomType)) {
             throw new TypeError(`Creating a policy room with a type other than the policy room type is not supported, you probably don't want to do this.`);
         }
         const listRoomId = await client.createRoom(finalRoomCreateOptions);
