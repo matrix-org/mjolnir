@@ -99,7 +99,7 @@ export class MjolnirAppService {
         reg.setId(AppServiceRegistration.generateToken());
         reg.setHomeserverToken(AppServiceRegistration.generateToken());
         reg.setAppServiceToken(AppServiceRegistration.generateToken());
-        reg.setSenderLocalpart("mjolnir");
+        reg.setSenderLocalpart("mjolnir-bot");
         reg.addRegexPattern("users", "@mjolnir_.*", true);
         reg.setRateLimited(false);
         callback(reg);

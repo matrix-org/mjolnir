@@ -5,7 +5,7 @@ homeserver:
 
 db:
   engine: "postgres"
-  connectionString: "postgres://mjolnir-tester:mjolnir-test@localhost:8082/mjolnir-test-db"
+  connectionString: "postgres://mjolnir-tester:mjolnir-test@localhost:8083/mjolnir-test-db"
 
 accessControlList: "#access-control-list:localhost:9999"
 
