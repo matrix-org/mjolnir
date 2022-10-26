@@ -35,11 +35,11 @@ export class MjolnirAppService {
         this.api = new Api(config.homeserver.url, mjolnirManager);
     }
 
-    public static async makeMjolnirAppService(config: IConfig, dataStore: DataStore) {
+    public static async makeMjolnirAppService(config: IConfig, dataStore: DataStore, registrationFilePath: string) {
         const bridge = new Bridge({
             homeserverUrl: config.homeserver.url,
             domain: config.homeserver.domain,
-            registration: "mjolnir-registration.yaml",
+            registration: registrationFilePath,
             // We lazily initialize the controller to avoid null checks
             // It also allows us to combine constructor/initialize logic
             // to make the code base much simpler. A small hack to pay for an overall less hacky code base.
@@ -112,10 +112,10 @@ export class MjolnirAppService {
         callback(reg);
     }
 
-    public static async run(port: number, config: IConfig) {
+    public static async run(port: number, config: IConfig, registrationFilePath: string) {
         const dataStore = new PgDataStore(config.db.connectionString);
         await dataStore.init();
-        const service = await MjolnirAppService.makeMjolnirAppService(config, dataStore);
+        const service = await MjolnirAppService.makeMjolnirAppService(config, dataStore, registrationFilePath);
         // Can't stress how important it is that listen happens last.
         await service.start(port);
     }

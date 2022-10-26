@@ -17,7 +17,7 @@ const cli = new Cli({
         if (config === null) {
             throw new Error("Couldn't load config");
         }
-        await MjolnirAppService.run(port, config);
+        await MjolnirAppService.run(port, config, cli.getRegistrationFilePath());
     }
 });
 

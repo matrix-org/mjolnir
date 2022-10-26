@@ -16,7 +16,7 @@ export async function setupHarness(): Promise<MjolnirAppService> {
     await ensureAliasedRoomExists(utilityUser, config.accessControlList);
     const dataStore = new PgDataStore(config.db.connectionString);
     await dataStore.init();
-    const appservice = await MjolnirAppService.makeMjolnirAppService(config, dataStore);
+    const appservice = await MjolnirAppService.makeMjolnirAppService(config, dataStore, "mjolnir-registration.yaml");
     await appservice.start(9000);
     return appservice;
 }
