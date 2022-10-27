@@ -8,6 +8,12 @@ import { AccessControl } from "./AccessControl";
 import { Access } from "../models/AccessControlUnit";
 import { randomUUID } from "crypto";
 
+/**
+ * The MjolnirManager is responsible for:
+ * * Provisioning new mjolnir instances.
+ * * Starting mjolnirs when the appservice is brought online.
+ * * Informing mjolnirs about new events.
+ */
 export class MjolnirManager {
     public readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
 
