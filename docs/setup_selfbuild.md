@@ -1,4 +1,4 @@
-To build mjolnir, you have to have installed `yarn` 1.x and Node 16.
+To build mjolnir, you have to have installed and [Node >16](https://nodejs.org/en/download/), [npm](https://docs.npmjs.com/cli/v7/configuring-npm/install) and [yarn >1.x](https://classic.yarnpkg.com/en/docs/install).
 
 ```bash
 git clone https://github.com/matrix-org/mjolnir.git
