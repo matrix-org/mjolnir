@@ -84,6 +84,16 @@ export interface IConfig {
             healthyStatus: number;
             unhealthyStatus: number;
         };
+        // If specified, attempt to upload any crash statistics to sentry.
+        sentry?: {
+            dsn: string;
+
+            // Frequency of performance monitoring.
+            //
+            // A number in [0.0, 1.0], where 0.0 means "don't bother with tracing"
+            // and 1.0 means "trace performance at every opportunity".
+            tracesSampleRate: number;
+        };
     };
     web: {
         enabled: boolean;

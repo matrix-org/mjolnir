@@ -15,6 +15,9 @@ limitations under the License.
 */
 
 import * as path from "path";
+
+import { Healthz } from "./health/healthz";
+
 import {
     LogLevel,
     LogService,
@@ -23,10 +26,10 @@ import {
     RichConsoleLogger,
     SimpleFsStorageProvider
 } from "matrix-bot-sdk";
+
 import { read as configRead } from "./config";
-import { Healthz } from "./health/healthz";
 import { Mjolnir } from "./Mjolnir";
-import { patchMatrixClient } from "./utils";
+import { initializeSentry, patchMatrixClient } from "./utils";
 
 
 (async function () {
@@ -39,6 +42,10 @@ import { patchMatrixClient } from "./utils";
 
     LogService.info("index", "Starting bot...");
 
+    // Initialize error reporting as early as possible.
+    if (config.health.sentry) {
+        initializeSentry(config);
+    }
     const healthz = new Healthz(config);
     healthz.isHealthy = false; // start off unhealthy
     if (config.health.healthz.enabled) {
