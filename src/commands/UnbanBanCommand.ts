@@ -157,6 +157,8 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
             await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure no users were accidentally unbanned`);
             await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
         }
+    } else if (USER_RULE_TYPES.includes(bits.ruleType!) && bits.reason === 'false') {
+        await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "UnbanBanCommand", "Running unban without `unban <list> <user> true` will not override existing room level bans");
     }
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
