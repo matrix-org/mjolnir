@@ -100,6 +100,12 @@ export class Api {
         response.status(200).json(existing);
     }
 
+    /**
+     * Creates a new mjolnir for the requesting user and protects their first room.
+     * @param req.body.roomId The room id that the request to create a mjolnir originates from.
+     * This is so that mjolnir can protect the room once the authenticity of the request has been verified.
+     * @param req.body.openId An OpenID token to verify the send of the request with.
+     */
     private async pathCreate(req: express.Request, response: express.Response) {
         const accessToken = req.body["openId"];
         if (accessToken === undefined) {
@@ -119,11 +125,8 @@ export class Api {
             return;
         }
 
+        // TODO: provisionNewMjolnir will throw if it fails...
         const [mjolnirId, managementRoom] = await this.mjolnirManager.provisionNewMjolnir(userId);
-
-        // privisionNewMjolnir can't fail yet, but it should be able to
-        //if (mjolnirId === null) {
-        //}
 
         response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
     }

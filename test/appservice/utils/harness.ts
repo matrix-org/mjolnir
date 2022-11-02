@@ -11,7 +11,6 @@ export function readTestConfig(): IConfig {
     return configRead(path.join(__dirname, "../../../src/appservice/config/config.harness.yaml"));
 }
 
-// FIXME: do we need to tear these down? Well yes.
 export async function setupHarness(): Promise<MjolnirAppService> {
     const config = readTestConfig();
     const utilityUser = await newTestUser(config.homeserver.url, { name: { contains: "utility" }});
