@@ -1,28 +1,24 @@
-import { readTestConfig, setupHarness } from "../utils/harness";
+import { isPolicyRoom, readTestConfig, setupHarness } from "../utils/harness";
 import { newTestUser } from "../../integration/clientHelper";
 import { getFirstReply } from "../../integration/commands/commandUtils";
 import { MatrixClient } from "matrix-bot-sdk";
 import { MjolnirAppService } from "../../../src/appservice/AppService";
-import PolicyList from "../../../src/models/PolicyList";
-import { CreateEvent } from "matrix-bot-sdk";
+import { doesNotMatch } from "assert";
 
 interface Context extends Mocha.Context {
     user?: MatrixClient,
     appservice?:  MjolnirAppService
 }
 
-afterEach(function(this: Context) {
-    this.user?.stop();
-    // something still runs, and i'm not sure what? -- ignoring with --exit.
-    this.appservice?.close();
-});
-
-async function isPolicyRoom(user: MatrixClient, roomId: string): Promise<boolean> {
-    const createEvent = new CreateEvent(await user.getRoomStateEvent(roomId, "m.room.create", ""));
-    return PolicyList.ROOM_TYPE_VARIANTS.includes(createEvent.type);
-}
-
 describe("Test that the app service can provision a mjolnir on invite of the appservice bot", function () {
+    afterEach(function(this: Context) {
+        this.user?.stop();
+        if (this.appservice) {
+            return this.appservice.close();
+        } else {
+            console.warn("Missing Appservice in this context, so cannot stop it.")
+        }
+    });
     it("", async function (this: Context) {
         const config = readTestConfig();
         this.appservice = await setupHarness();

@@ -2,9 +2,11 @@ import request from "request";
 import express from "express";
 import * as bodyParser from "body-parser";
 import { MjolnirManager } from "./MjolnirManager";
+import * as http from "http";
 
 export class Api {
     private httpdConfig: express.Express = express();
+    private httpServer?: http.Server;
 
     constructor(
         private homeserver: string,
@@ -34,7 +36,19 @@ export class Api {
         });
     }
 
+    public async close() {
+        return await new Promise((resolve, reject) => {
+            if (!this.httpServer) {
+                throw new TypeError("Server was never started");
+            }
+            this.httpServer.close(error => error ? reject(error) : resolve(undefined))
+        });
+    }
+
     public start(port: number) {
+        if (this.httpServer) {
+            throw new TypeError("server already started");
+        }
         this.httpdConfig.use(bodyParser.json());
 
         this.httpdConfig.get("/get", this.pathGet.bind(this));
@@ -42,7 +56,7 @@ export class Api {
         this.httpdConfig.post("/create", this.pathCreate.bind(this));
         this.httpdConfig.post("/join", this.pathJoin.bind(this));
 
-        this.httpdConfig.listen(port);
+        this.httpServer = this.httpdConfig.listen(port);
     }
 
     private async pathGet(req: express.Request, response: express.Response) {

@@ -100,6 +100,7 @@ export class MjolnirAppService {
     public async close(): Promise<void> {
         await this.bridge.close();
         await this.dataStore.close();
+        await this.api.close();
     }
 
     public static generateRegistration(reg: AppServiceRegistration, callback: (finalRegisration: AppServiceRegistration) => void) {
