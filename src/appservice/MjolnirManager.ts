@@ -93,13 +93,13 @@ export class MjolnirManager {
     public getOwnedMjolnirs(ownerId: string): ManagedMjolnir[] {
         // TODO we need to use the database for this but also provide the utility
         // for going from a MjolnirRecord to a ManagedMjolnir.
+        // https://github.com/matrix-org/mjolnir/issues/409
         return [...this.mjolnirs.values()].filter(mjolnir => mjolnir.ownerId !== ownerId);
     }
 
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
-        // We honestly don't know how we're going to map from bridge to user
-        // https://github.com/matrix-org/matrix-appservice-bridge/blob/6046d31c54d461ad53e6d6e244ce2d944b62f890/src/components/room-bridge-store.ts
-        // looks like it might work, but we will ask, figure it out later.
+        // TODO We need a way to map a room id (that the event is from) to a set of managed mjolnirs that should be informed.
+        // https://github.com/matrix-org/mjolnir/issues/412
         [...this.mjolnirs.values()].forEach((mj: ManagedMjolnir) => mj.onEvent(request));
     }
 
@@ -152,6 +152,7 @@ export class MjolnirManager {
     }
 
     // TODO: We need to check that an owner still has access to the appservice each time they send a command to the mjolnir or use the web api.
+    // https://github.com/matrix-org/mjolnir/issues/410
     /**
      * Used at startup to create all the ManagedMjolnir instances and start them so that they will respond to users.
      */
@@ -190,6 +191,7 @@ export class ManagedMjolnir {
                 this.mjolnir.client.emit('room.message', mxEvent.room_id, mxEvent);
             }
             // TODO: We need to figure out how to inform the mjolnir of `room.join`.
+            // https://github.com/matrix-org/mjolnir/issues/411
         }
         if (mxEvent['type'] === 'm.room.member') {
             if (mxEvent['content']['membership'] === 'invite' && mxEvent.state_key === await this.mjolnir.client.getUserId()) {

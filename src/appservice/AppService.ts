@@ -74,13 +74,6 @@ export class MjolnirAppService {
     // is it ok for this to be async? seems a bit dodge.
     // it should be BridgeRequestEvent not whatever this is
     public async onEvent(request: Request<WeakEvent>, context: BridgeContext) {
-        // https://github.com/matrix-org/matrix-appservice-irc/blob/develop/src/bridge/MatrixHandler.ts#L921
-        // ^ that's how matrix-appservice-irc maps from room to channel, we basically need to do the same but map
-        // from room to which mjolnir it's for, unless that information is present in BridgeContext, which it might be...
-        // How do we get that information in bridge context?
-        // Alternatively we have to either use their advanced user member caching or track this ourselves somehow ffs.
-        // Alternatively just don't care about it right now, let it push events through to them all and get
-        // consultation from bridge people (Halfy).
         const mxEvent = request.getData();
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {

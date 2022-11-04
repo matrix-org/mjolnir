@@ -87,6 +87,7 @@ export class Api {
         }
 
         // TODO: getMjolnir can fail if the ownerId doesn't match the requesting userId.
+        // https://github.com/matrix-org/mjolnir/issues/408
         const mjolnir = this.mjolnirManager.getMjolnir(mjolnirId, userId);
         if (mjolnir === undefined) {
             response.status(400).send("unknown mjolnir mxid");
@@ -143,6 +144,7 @@ export class Api {
         }
 
         // TODO: provisionNewMjolnir will throw if it fails...
+        // https://github.com/matrix-org/mjolnir/issues/408
         const [mjolnirId, managementRoom] = await this.mjolnirManager.provisionNewMjolnir(userId);
 
         response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
@@ -180,6 +182,7 @@ export class Api {
         }
 
         // TODO: getMjolnir can fail if the ownerId doesn't match the requesting userId.
+        // https://github.com/matrix-org/mjolnir/issues/408
         const mjolnir = this.mjolnirManager.getMjolnir(mjolnirId, userId);
         if (mjolnir === undefined) {
             response.status(400).send("unknown mjolnir mxid");
