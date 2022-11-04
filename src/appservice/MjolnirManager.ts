@@ -25,19 +25,38 @@ export class MjolnirManager {
 
     }
 
+    /**
+     * Create the mjolnir manager from the datastore and the access control.
+     * @param dataStore The data store interface that has the details for provisioned mjolnirs.
+     * @param bridge The bridge abstraction that encapsulates details about the appservice.
+     * @param accessControl Who has access to the bridge.
+     * @returns A new mjolnir manager.
+     */
     public static async makeMjolnirManager(dataStore: DataStore, bridge: Bridge, accessControl: AccessControl): Promise<MjolnirManager> {
         const mjolnirManager = new MjolnirManager(dataStore, bridge, accessControl);
-        mjolnirManager.createMjolnirsFromDataStore();
+        await mjolnirManager.createMjolnirsFromDataStore();
         return mjolnirManager;
     }
 
-    public getDefaultMjolnirConfig(managementRoom: string): IConfig {
+    /**
+     * Gets the default config to give the newly provisioned mjolnirs.
+     * @param managementRoomId A room that has been created to serve as the mjolnir's management room for the owner.
+     * @returns A config that can be directly used by the new mjolnir.
+     */
+    public getDefaultMjolnirConfig(managementRoomId: string): IConfig {
         let config = configRead();
-        config.managementRoom = managementRoom;
+        config.managementRoom = managementRoomId;
         config.protectedRooms = [];
         return config;
     }
 
+    /**
+     * Creates a new mjolnir for a user.
+     * @param requestingUserId The user that is requesting this mjolnir and who will own it.
+     * @param managementRoomId An existing matrix room to act as the management room.
+     * @param client A client for the appservice virtual user that the new mjolnir should use.
+     * @returns A new managed mjolnir.
+     */
     public async makeInstance(requestingUserId: string, managementRoomId: string, client: MatrixClient): Promise<ManagedMjolnir> {
         const managedMjolnir = new ManagedMjolnir(
             requestingUserId,
@@ -47,6 +66,12 @@ export class MjolnirManager {
         return managedMjolnir;
     }
 
+    /**
+     * Gets a mjolnir for the corresponding mxid that is owned by a specific user.
+     * @param mjolnirId The mxid of the mjolnir we are trying to get.
+     * @param ownerId The owner of the mjolnir. We ask for it explicitly to not leak access to another user's mjolnir.
+     * @returns The matching managed mjolnir instance.
+     */
     public getMjolnir(mjolnirId: string, ownerId: string): ManagedMjolnir|undefined {
         const mjolnir = this.mjolnirs.get(mjolnirId);
         if (mjolnir) {
@@ -60,6 +85,11 @@ export class MjolnirManager {
         }
     }
 
+    /**
+     * Find all of the mjolnirs that are owned by this specific user.
+     * @param ownerId An owner of multiple mjolnirs.
+     * @returns Any mjolnirs that they own.
+     */
     public getOwnedMjolnirs(ownerId: string): ManagedMjolnir[] {
         // TODO we need to use the database for this but also provide the utility
         // for going from a MjolnirRecord to a ManagedMjolnir.
@@ -73,6 +103,11 @@ export class MjolnirManager {
         [...this.mjolnirs.values()].forEach((mj: ManagedMjolnir) => mj.onEvent(request));
     }
 
+    /**
+     * provision a new mjolnir for a matrix user.
+     * @param requestingUserId The mxid of the user we are creating a mjolnir for.
+     * @returns The matrix id of the new mjolnir and its management room.
+     */
     public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
         const access = this.accessControl.getUserAccess(requestingUserId);
         if (access.outcome !== Access.Allowed) {
@@ -104,6 +139,11 @@ export class MjolnirManager {
         }
     }
 
+    /**
+     * Utility that creates a matrix client for a virtual user on our homeserver with the specified loclapart.
+     * @param localPart The localpart of the virtual user we need a client for.
+     * @returns A tuple with the complete mxid of the virtual user and a MatrixClient.
+     */
     private async makeMatrixClient(localPart: string): Promise<[string, MatrixClient]> {
         // Now we need to make one of the transparent mjolnirs and add it to the monitor.
         const mjIntent = await this.bridge.getIntentFromLocalpart(localPart);
@@ -111,7 +151,10 @@ export class MjolnirManager {
         return [mjIntent.userId, mjIntent.matrixClient];
     }
 
-    // Still think that we should check each time a command is sent or something, rather than like this ...
+    // TODO: We need to check that an owner still has access to the appservice each time they send a command to the mjolnir or use the web api.
+    /**
+     * Used at startup to create all the ManagedMjolnir instances and start them so that they will respond to users.
+     */
     private async createMjolnirsFromDataStore() {
         for (const mjolnirRecord of await this.dataStore.list()) {
             const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.local_part);
@@ -146,7 +189,7 @@ export class ManagedMjolnir {
             if (mxEvent.type === 'm.room.message') {
                 this.mjolnir.client.emit('room.message', mxEvent.room_id, mxEvent);
             }
-            // room.join requires us to know the joined rooms before so lol.
+            // TODO: We need to figure out how to inform the mjolnir of `room.join`.
         }
         if (mxEvent['type'] === 'm.room.member') {
             if (mxEvent['content']['membership'] === 'invite' && mxEvent.state_key === await this.mjolnir.client.getUserId()) {
