@@ -15,7 +15,7 @@ import { randomUUID } from "crypto";
  * * Informing mjolnirs about new events.
  */
 export class MjolnirManager {
-    public readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
+    private readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
 
     private constructor(
         private readonly dataStore: DataStore,
@@ -39,9 +39,31 @@ export class MjolnirManager {
     }
 
     public async makeInstance(requestingUserId: string, managementRoomId: string, client: MatrixClient): Promise<ManagedMjolnir> {
-        const managedMjolnir = new ManagedMjolnir(await Mjolnir.setupMjolnirFromConfig(client, this.getDefaultMjolnirConfig(managementRoomId)));
+        const managedMjolnir = new ManagedMjolnir(
+            requestingUserId,
+            await Mjolnir.setupMjolnirFromConfig(client, this.getDefaultMjolnirConfig(managementRoomId))
+        );
         this.mjolnirs.set(await client.getUserId(), managedMjolnir);
         return managedMjolnir;
+    }
+
+    public getMjolnir(mjolnirId: string, ownerId: string): ManagedMjolnir|undefined {
+        const mjolnir = this.mjolnirs.get(mjolnirId);
+        if (mjolnir) {
+            if (mjolnir.ownerId !== ownerId) {
+                throw new Error(`${mjolnirId} is owned by a different user to ${ownerId}`);
+            } else {
+                return mjolnir;
+            }
+        } else {
+            return undefined;
+        }
+    }
+
+    public getOwnedMjolnirs(ownerId: string): ManagedMjolnir[] {
+        // TODO we need to use the database for this but also provide the utility
+        // for going from a MjolnirRecord to a ManagedMjolnir.
+        return [...this.mjolnirs.values()].filter(mjolnir => mjolnir.ownerId !== ownerId);
     }
 
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
@@ -111,7 +133,10 @@ export class MjolnirManager {
 // Isolating this mjolnir is going to require provisioning an access token just for this user to be useful.
 // We can use fork and node's IPC to inform the process of matrix evnets.
 export class ManagedMjolnir {
-    public constructor(private readonly mjolnir: Mjolnir) { }
+    public constructor(
+        public readonly ownerId: string,
+        private readonly mjolnir: Mjolnir,
+    ) { }
 
     public async onEvent(request: Request<WeakEvent>) {
         // phony sync.
@@ -146,5 +171,9 @@ export class ManagedMjolnir {
         );
         const roomRef = Permalinks.forRoom(listRoomId);
         return await this.mjolnir.watchList(roomRef);
+    }
+
+    public get managementRoomId(): string {
+        return this.mjolnir.managementRoomId;
     }
 }

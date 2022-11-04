@@ -4,6 +4,9 @@ import * as bodyParser from "body-parser";
 import { MjolnirManager } from "./MjolnirManager";
 import * as http from "http";
 
+/**
+ * This provides a web api that is designed to power the mjolnir widget https://github.com/matrix-org/mjolnir-widget.
+ */
 export class Api {
     private httpdConfig: express.Express = express();
     private httpServer?: http.Server;
@@ -59,44 +62,58 @@ export class Api {
         this.httpServer = this.httpdConfig.listen(port);
     }
 
+    /**
+     * Finds the management room for a mjolnir.
+     * @param req.body.openId An OpenID token to verify the send of the request with.
+     * @param req.body.mxid   The mjolnir we want to find the management room for.
+     */
     private async pathGet(req: express.Request, response: express.Response) {
-        const accessToken = req.query["openId"];
+        const accessToken = req.body["openId"];
         if (accessToken === undefined) {
             response.status(401).send("unauthorised");
             return;
         }
 
-        const mjolnirId = req.query["mxid"];
+        const userId = await this.resolveAccessToken(accessToken);
+        if (userId === null) {
+            response.status(401).send("unauthorised");
+            return;
+        }
+
+        const mjolnirId = req.body["mxid"];
         if (mjolnirId === undefined) {
             response.status(400).send("invalid request");
             return;
         }
 
-        //const userId = await this.resolveAccessToken(accessToken);
-        // doesn't exist yet
-        //if (!this.appService.canSeeMjolnir(userId, mjolnirId)) {
-        if (false) {
-            response.status(403);
+        // TODO: getMjolnir can fail if the ownerId doesn't match the requesting userId.
+        const mjolnir = this.mjolnirManager.getMjolnir(mjolnirId, userId);
+        if (mjolnir === undefined) {
+            response.status(400).send("unknown mjolnir mxid");
             return;
         }
 
-        // doesn't exist yet
-        //const managementRoom = this.appService.managementRoomFor(mjolnirId);
-        const managementRoom = "!123456:matrix.org";
-        response.status(200).json({ managementRoom: managementRoom });
+        response.status(200).json({ managementRoom: mjolnir.managementRoomId });
     }
 
+    /**
+     * Return the mxids of mjolnirs that this user has provisioned.
+     * @param req.body.openId An OpenID token to verify the send of the request with.
+     */
     private async pathList(req: express.Request, response: express.Response) {
-        const accessToken = req.query["openId"];
+        const accessToken = req.body["openId"];
         if (accessToken === undefined) {
             response.status(401).send("unauthorised");
             return;
         }
 
-        //const userId = await this.resolveAccessToken(accessToken);
-        // doesn't exist yet
-        //const existing = this.appService.listForUser(userId);
-        const existing = ["@mjolnir_12345:matrix.org", "@mjolnir_12346:matrix.org"];
+        const userId = await this.resolveAccessToken(accessToken);
+        if (userId === null) {
+            response.status(401).send("unauthorised");
+            return;
+        }
+
+        const existing = this.mjolnirManager.getOwnedMjolnirs(userId)
         response.status(200).json(existing);
     }
 
@@ -131,6 +148,12 @@ export class Api {
         response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
     }
 
+    /**
+     * Request a mjolnir to join and protect a room.
+     * @param req.body.openId An OpenID token to verify the send of the request with.
+     * @param req.body.mxid   The mjolnir that should join the room.
+     * @param req.body.roomId The room that this mjolnir should join and protect.
+     */
     private async pathJoin(req: express.Request, response: express.Response) {
         const accessToken = req.body["openId"];
         if (accessToken === undefined) {
@@ -156,7 +179,8 @@ export class Api {
             return;
         }
 
-        const mjolnir = this.mjolnirManager.mjolnirs.get(mjolnirId);
+        // TODO: getMjolnir can fail if the ownerId doesn't match the requesting userId.
+        const mjolnir = this.mjolnirManager.getMjolnir(mjolnirId, userId);
         if (mjolnir === undefined) {
             response.status(400).send("unknown mjolnir mxid");
             return;
