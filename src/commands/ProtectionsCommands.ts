@@ -139,9 +139,9 @@ export async function execConfigRemoveProtection(roomId: string, event: any, mjo
  * !mjolnir get [protection name]
  */
 export async function execConfigGetProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    let pickProtections = Object.keys(mjolnir.protectionManager.protections);
+    let pickProtections = Array.from(mjolnir.protectionManager.protections.keys());
 
-    if (parts.length < 3) {
+    if (parts.length === 0) {
         // no specific protectionName provided, show all of them.
 
         // sort output by protection name
@@ -175,12 +175,12 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
         for (const settingName of settingNames) {
             anySettings = true;
 
-            let value = protectionSettings[settingName].value
+            let value = protectionSettings[settingName].value.toString();
             text += `* ${protectionName}.${settingName}: ${value}`;
             // `protectionName` and `settingName` are user-provided but
             // validated against the names of existing protections and their
             // settings, so XSS is avoided for these already
-            html += `<li><code>${protectionName}.${settingName}</code>: <code>${htmlEscape(value)}</code></li>`
+            html += `<li><code>${protectionName}.${settingName}</code>: <code>${htmlEscape(value)}</code></li>`;
         }
     }
 
