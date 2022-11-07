@@ -33,6 +33,10 @@ export class UnlistedUserRedactionQueue {
         this.usersToRedact.add(userId);
     }
 
+    public removeUser(userId: string) {
+        this.usersToRedact.delete(userId);
+    }
+
     public isUserQueued(userId: string): boolean {
         return this.usersToRedact.has(userId);
     }

@@ -129,7 +129,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
 
     await bits.list!.unbanEntity(bits.ruleType!, bits.entity);
 
-    if (USER_RULE_TYPES.includes(bits.ruleType!) && bits.reason === 'true') {
+    const unbanUserFromRooms = async () => {
         const rule = new MatrixGlob(bits.entity);
         await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
         let unbannedSomeone = false;
@@ -156,6 +156,15 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
         if (unbannedSomeone) {
             await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure no users were accidentally unbanned`);
             await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
+        }
+    };
+
+    if (USER_RULE_TYPES.includes(bits.ruleType!)) {
+        mjolnir.unlistedUserRedactionHandler.removeUser(bits.entity);
+        if (bits.reason === 'true') {
+            await unbanUserFromRooms();
+        } else {
+            await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "UnbanBanCommand", "Running unban without `unban <list> <user> true` will not override existing room level bans");
         }
     }
 
