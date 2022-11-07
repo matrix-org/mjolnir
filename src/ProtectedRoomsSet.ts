@@ -206,7 +206,7 @@ export class ProtectedRoomsSet {
     public async syncLists(verbose = true) {
         for (const list of this.policyLists) {
             const changes = await list.updateList();
-            await this.printBanlistChanges(changes, list, true);
+            await this.printBanlistChanges(changes, list);
         }
 
         let hadErrors = false;
@@ -277,7 +277,7 @@ export class ProtectedRoomsSet {
             });
         }
         // This can fail if the change is very large and it is much less important than applying bans, so do it last.
-        await this.printBanlistChanges(changes, policyList, true);
+        await this.printBanlistChanges(changes, policyList);
     }
 
     /**
@@ -408,14 +408,9 @@ export class ProtectedRoomsSet {
     /**
      * Print the changes to a banlist to the management room.
      * @param changes A list of changes that have been made to a particular ban list.
-     * @param ignoreSelf Whether to exclude changes that have been made by Mjolnir.
      * @returns true if the message was sent, false if it wasn't (because there there were no changes to report).
      */
-    private async printBanlistChanges(changes: ListRuleChange[], list: PolicyList, ignoreSelf = false): Promise<boolean> {
-        if (ignoreSelf) {
-            const sender = await this.client.getUserId();
-            changes = changes.filter(change => change.sender !== sender);
-        }
+    private async printBanlistChanges(changes: ListRuleChange[], list: PolicyList): Promise<boolean> {
         if (changes.length <= 0) return false;
 
         let html = "";
