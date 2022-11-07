@@ -384,6 +384,19 @@ export class Mjolnir {
         this.protectedRoomsTracker.removeProtectedRoom(roomId);
     }
 
+    public async addProtectedSpace(roomId: string): Promise<void> {
+        await this.protectedRoomsConfig.addProtectedSpace(roomId);
+        await this.protectSpace(roomId);
+    }
+
+    private async protectSpace(roomId: string): Promise<void> {
+        // create a ProtectedSpace and keep that somewhere,
+        // protected space could use ProtectedRoomSet for all its rooms.
+        // don't bother with recursively following spaces yet, but we probably need something like
+        // m.space.parent for that to work properly since anyone can add any room to spaces.
+        //  
+    }
+
     /**
      * Resynchronize the protected rooms with rooms that the mjolnir user is joined to.
      * This is to implement `config.protectAllJoinedRooms` functionality.

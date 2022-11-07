@@ -19,6 +19,16 @@ import { extractRequestError, LogService, MatrixClient, Permalinks } from "matri
 import { IConfig } from "./config";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 
+interface ProtectedRoomsAccountData {
+    rooms: string[],
+    spaces: [
+        {
+            room_id: string,
+            recursive: boolean,
+        }
+    ]
+}
+
 /**
  * Manages the set of rooms that the user has EXPLICITLY asked to be protected.
  */
@@ -64,7 +74,7 @@ export default class ProtectedRoomsConfig {
     public async loadProtectedRoomsFromAccountData(): Promise<void> {
         LogService.debug("ProtectedRoomsConfig", "Loading protected rooms...");
         try {
-            const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+            const data: ProtectedRoomsAccountData | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
             if (data && data['rooms']) {
                 for (const roomId of data['rooms']) {
                     this.explicitlyProtectedRooms.add(roomId);
