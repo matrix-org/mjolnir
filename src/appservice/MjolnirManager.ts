@@ -1,5 +1,5 @@
 import { Mjolnir } from "../Mjolnir";
-import { Request, WeakEvent, BridgeContext, Bridge } from "matrix-appservice-bridge";
+import { Request, WeakEvent, BridgeContext, Bridge, Intent } from "matrix-appservice-bridge";
 import { IConfig, read as configRead } from "../config";
 import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
@@ -116,15 +116,15 @@ export class MjolnirManager {
         const provisionedMjolnirs = await this.dataStore.lookupByOwner(requestingUserId);
         if (provisionedMjolnirs.length === 0) {
             const mjolnirLocalPart = `mjolnir_${randomUUID()}`;
-            const [mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirLocalPart);
+            const mjIntent = await this.makeMatrixIntent(mjolnirLocalPart);
 
-            const managementRoomId = await mjolnirClient.createRoom({
+            const managementRoomId = await mjIntent.matrixClient.createRoom({
                 preset: 'private_chat',
                 invite: [requestingUserId],
                 name: `${requestingUserId}'s mjolnir`
             });
 
-            const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjolnirClient);
+            const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjIntent.matrixClient);
             await mjolnir.createFirstList(requestingUserId, "list");
 
             await this.dataStore.store({
@@ -133,7 +133,7 @@ export class MjolnirManager {
                 management_room: managementRoomId,
             });
 
-            return [mjolnirUserId, managementRoomId];
+            return [mjIntent.userId, managementRoomId];
         } else {
             throw new Error(`User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`);
         }
@@ -142,13 +142,12 @@ export class MjolnirManager {
     /**
      * Utility that creates a matrix client for a virtual user on our homeserver with the specified loclapart.
      * @param localPart The localpart of the virtual user we need a client for.
-     * @returns A tuple with the complete mxid of the virtual user and a MatrixClient.
+     * @returns A bridge intent with the complete mxid of the virtual user and a MatrixClient.
      */
-    private async makeMatrixClient(localPart: string): Promise<[string, MatrixClient]> {
-        // Now we need to make one of the transparent mjolnirs and add it to the monitor.
-        const mjIntent = await this.bridge.getIntentFromLocalpart(localPart);
+    private async makeMatrixIntent(localPart: string): Promise<Intent> {
+        const mjIntent = this.bridge.getIntentFromLocalpart(localPart);
         await mjIntent.ensureRegistered();
-        return [mjIntent.userId, mjIntent.matrixClient];
+        return mjIntent;
     }
 
     // TODO: We need to check that an owner still has access to the appservice each time they send a command to the mjolnir or use the web api.
