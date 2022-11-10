@@ -18,6 +18,12 @@ import { Bridge } from "matrix-appservice-bridge";
 import AccessControlUnit, { EntityAccess } from "../models/AccessControlUnit";
 import PolicyList from "../models/PolicyList";
 import { Permalinks } from "matrix-bot-sdk";
+
+/**
+ * Utility to manage which users have access to the application service,
+ * meaning whether a user is able to provision a mjolnir or continue to use one.
+ * Internally we use a policy list within matrix to determine who has access via the `AccessControlUnit`.
+ */
 export class AccessControl {
 
     private constructor(
@@ -37,10 +43,7 @@ export class AccessControl {
         accessControlListId: string,
         bridge: Bridge,
     ): Promise<AccessControl> {
-        const joinedRooms = await bridge.getBot().getJoinedRooms();
-        if (!joinedRooms.includes(accessControlListId)) {
-            await bridge.getBot().getClient().joinRoom(accessControlListId);
-        }
+        await bridge.getBot().getClient().joinRoom(accessControlListId);
         const accessControlList = new PolicyList(
             accessControlListId,
             Permalinks.forRoom(accessControlListId),
