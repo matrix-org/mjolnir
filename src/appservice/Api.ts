@@ -16,7 +16,12 @@ export class Api {
         private mjolnirManager: MjolnirManager,
     ) {}
 
-    private resolveAccessToken(accessToken: string): Promise<string> {
+    /**
+     * Resolves an open id access token to find a matching user that the token is valid for.
+     * @param accessToken An openID token.
+     * @returns The mxid of the user that this token belongs to or null if the token could not be authenticated.
+     */
+    private resolveAccessToken(accessToken: string): Promise<string|null> {
         return new Promise((resolve, reject) => {
             request({
                 url: `${this.homeserver}/_matrix/federation/v1/openid/userinfo`,
@@ -39,8 +44,8 @@ export class Api {
         });
     }
 
-    public async close() {
-        return await new Promise((resolve, reject) => {
+    public async close(): Promise<void> {
+        await new Promise((resolve, reject) => {
             if (!this.httpServer) {
                 throw new TypeError("Server was never started");
             }
@@ -64,8 +69,8 @@ export class Api {
 
     /**
      * Finds the management room for a mjolnir.
-     * @param req.body.openId An OpenID token to verify the send of the request with.
-     * @param req.body.mxid   The mjolnir we want to find the management room for.
+     * @param req.body.openId An OpenID token to verify that the sender of the request owns the mjolnir described in `req.body.mxid`.
+     * @param req.body.mxid   The mxid of the mjolnir we want to find the management room for.
      */
     private async pathGet(req: express.Request, response: express.Response) {
         const accessToken = req.body["openId"];
@@ -99,7 +104,7 @@ export class Api {
 
     /**
      * Return the mxids of mjolnirs that this user has provisioned.
-     * @param req.body.openId An OpenID token to verify the send of the request with.
+     * @param req.body.openId An OpenID token to find the sender of the request with and find their provisioned mjolnirs.
      */
     private async pathList(req: express.Request, response: express.Response) {
         const accessToken = req.body["openId"];
@@ -122,7 +127,7 @@ export class Api {
      * Creates a new mjolnir for the requesting user and protects their first room.
      * @param req.body.roomId The room id that the request to create a mjolnir originates from.
      * This is so that mjolnir can protect the room once the authenticity of the request has been verified.
-     * @param req.body.openId An OpenID token to verify the send of the request with.
+     * @param req.body.openId An OpenID token to find the sender of the request with.
      */
     private async pathCreate(req: express.Request, response: express.Response) {
         const accessToken = req.body["openId"];
@@ -152,8 +157,8 @@ export class Api {
 
     /**
      * Request a mjolnir to join and protect a room.
-     * @param req.body.openId An OpenID token to verify the send of the request with.
-     * @param req.body.mxid   The mjolnir that should join the room.
+     * @param req.body.openId An OpenID token to find the sender of the request with and that they own the mjolnir described in `req.body.mxid`.
+     * @param req.body.mxid   The mxid of the mjolnir that should join the room.
      * @param req.body.roomId The room that this mjolnir should join and protect.
      */
     private async pathJoin(req: express.Request, response: express.Response) {

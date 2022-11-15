@@ -43,7 +43,7 @@ export class MjolnirManager {
      * @param managementRoomId A room that has been created to serve as the mjolnir's management room for the owner.
      * @returns A config that can be directly used by the new mjolnir.
      */
-    public getDefaultMjolnirConfig(managementRoomId: string): IConfig {
+    private getDefaultMjolnirConfig(managementRoomId: string): IConfig {
         let config = configRead();
         config.managementRoom = managementRoomId;
         config.protectedRooms = [];
@@ -97,6 +97,9 @@ export class MjolnirManager {
         return [...this.mjolnirs.values()].filter(mjolnir => mjolnir.ownerId !== ownerId);
     }
 
+    /**
+     * Listener that should be setup and called by `MjolnirAppService` while listening to the bridge abstraction provided by matrix-appservice-bridge.
+     */
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
         // TODO We need a way to map a room id (that the event is from) to a set of managed mjolnirs that should be informed.
         // https://github.com/matrix-org/mjolnir/issues/412
@@ -157,24 +160,22 @@ export class MjolnirManager {
      */
     private async createMjolnirsFromDataStore() {
         for (const mjolnirRecord of await this.dataStore.list()) {
-            const [_mjolnirUserId, mjolnirClient] = await this.makeMatrixClient(mjolnirRecord.local_part);
+            const mjIntent = await this.makeMatrixIntent(mjolnirRecord.local_part);
             const access = this.accessControl.getUserAccess(mjolnirRecord.owner);
             if (access.outcome !== Access.Allowed) {
                 // Don't await, we don't want to clobber initialization just because we can't tell someone they're no longer allowed.
-                mjolnirClient.sendNotice(mjolnirRecord.management_room, `Your mjolnir has been disabled by the administrator: ${access.rule?.reason ?? "no reason supplied"}`);
+                mjIntent.matrixClient.sendNotice(mjolnirRecord.management_room, `Your mjolnir has been disabled by the administrator: ${access.rule?.reason ?? "no reason supplied"}`);
             } else {
                 await this.makeInstance(
                     mjolnirRecord.owner,
                     mjolnirRecord.management_room,
-                    mjolnirClient,
+                    mjIntent.matrixClient,
                 );
             }
         }
     }
 }
 
-// Isolating this mjolnir is going to require provisioning an access token just for this user to be useful.
-// We can use fork and node's IPC to inform the process of matrix evnets.
 export class ManagedMjolnir {
     public constructor(
         public readonly ownerId: string,
@@ -182,7 +183,8 @@ export class ManagedMjolnir {
     ) { }
 
     public async onEvent(request: Request<WeakEvent>) {
-        // phony sync.
+        // Emulate the client syncing.
+        // https://github.com/matrix-org/mjolnir/issues/411
         const mxEvent = request.getData();
         if (mxEvent['type'] !== undefined) {
             this.mjolnir.client.emit('room.event', mxEvent.room_id, mxEvent);
