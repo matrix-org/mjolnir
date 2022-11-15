@@ -1,6 +1,7 @@
 {
     "compilerOptions": {
         "alwaysStrict": true,
+        "esModuleInterop": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
         "module": "commonjs",
@@ -20,6 +21,7 @@
     },
     "include": [
         "./src/**/*",
+	    "./test/appservice/*",
         "./test/integration/manualLaunchScript.ts",
         "./test/integration/roomMembersTest.ts",
         "./test/integration/banListTest.ts",

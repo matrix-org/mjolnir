@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import * as expect from "expect";
+import expect from "expect";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";

@@ -1,0 +1,13 @@
+
+homeserver:
+  domain: "localhost:9999"
+  url: http://localhost:8081
+
+db:
+  engine: "postgres"
+  connectionString: "postgres://mjolnir-tester:mjolnir-test@localhost:8083/mjolnir-test-db"
+
+accessControlList: "#access-control-list:localhost:9999"
+
+webAPI:
+  port: 9001

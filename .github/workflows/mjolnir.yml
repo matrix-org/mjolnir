@@ -56,3 +56,25 @@ jobs:
       run: RUST_LOG=debug,hyper=info,rusttls=info mx-tester run
     - name: Cleanup
       run: mx-tester down
+  appservice-integration:
+    name: Application Service Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-node@v3
+      with:
+        node-version: '16'
+    - name: Fetch and build mx-tester (cached across runs)
+      uses: baptiste0928/cargo-install@v1
+      with:
+        crate: mx-tester
+        version: "0.3.3"
+    - name: Setup image
+      run: RUST_LOG=debug,hyper=info,rusttls=info mx-tester build up
+    - name: Setup dependencies
+      run: yarn install
+    - name: Run tests
+      run: yarn test:appservice:integration
+    - name: Cleanup
+      run: mx-tester down
