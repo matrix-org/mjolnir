@@ -3,31 +3,30 @@ import { strict as assert } from "assert";
 import { newTestUser } from "./clientHelper";
 import { Mjolnir } from "../../src/Mjolnir";
 import { read as configRead } from "../../src/config";
-import { getRequestFn, LogService, MatrixClient } from "matrix-bot-sdk";
+import { getRequestFn, LogService } from "matrix-bot-sdk";
 import { createBanList, getFirstReaction } from "./commands/commandUtils";
 
 /**
  * Get a copy of the rules from the ruleserver.
  */
 async function currentRules(mjolnir: Mjolnir): Promise<{ start: object, stop: object, since: string }> {
-    return await new Promise((resolve, reject) => {
-        return getRequestFn()({
+    return await new Promise((resolve, reject) => getRequestFn()({
             uri: `http://${mjolnir.config.web.address}:${mjolnir.config.web.port}/api/1/ruleserver/updates/`,
             method: "GET"
-    }, (error, _response, body) => {
+    }, (error: object, _response: any, body: string) => {
         if (error) {
             reject(error)
         } else {
             resolve(JSON.parse(body))
         }
-    })});
+    }));
 }
 
 /**
  * Wait for the rules to change as a result of the thunk. The returned promise will resolve when the rules being served have changed.
  * @param thunk Should cause the rules the RuleServer is serving to change some way.
  */
-async function waitForRuleChange(mjolnir: Mjolnir, thunk): Promise<void> {
+async function waitForRuleChange(mjolnir: Mjolnir, thunk: any): Promise<void> {
     const initialRules = await currentRules(mjolnir);
     let rules = initialRules;
     // We use JSON.stringify like this so that it is pretty printed in the log and human readable.
@@ -49,7 +48,7 @@ async function waitForRuleChange(mjolnir: Mjolnir, thunk): Promise<void> {
 
 describe("Test: that policy lists are consumed by the associated synapse module", function () {
     this.afterEach(async function () {
-        if(this.config.web.ruleServer.enabled) {
+        if (this.config.web.ruleServer.enabled) {
             this.timeout(5000)
             LogService.debug('policyConsumptionTest', `Rules at end of test ${JSON.stringify(await currentRules(this.mjolnir), null, 2)}`);
             // Clear any state associated with the account.
