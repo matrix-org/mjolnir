@@ -19,6 +19,8 @@ import PolicyList from "../models/PolicyList";
 import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
+import { defineApplicationCommand } from "./ApplicationCommand";
+import { defineMatrixInterfaceCommand } from "./MatrixInterfaceCommand";
 
 interface Arguments {
     list: PolicyList | null;
@@ -113,25 +115,32 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     };
 }
 
+const BAN_COMMAND = defineApplicationCommand([], async (list: PolicyList, ruleType: string, entity: string, reason: string): Promise<void> => {
+    await list.banEntity(ruleType, entity, reason);
+});
+
 // !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
-export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const bits = await parseArguments(roomId, event, mjolnir, parts);
-    if (!bits) return; // error already handled
+defineMatrixInterfaceCommand(["ban"],
+    async function (mjolnir: Mjolnir, roomId: string, event: any, parts: string[]): Promise<[PolicyList, string, string, string]> {
+        const bits = await parseArguments(roomId, event, mjolnir, parts);
+        if (bits === null) {
+            // FIXME
+            throw new Error("Couldn't parse arguments FIXME - parser needs to be rewritten to reject nulls");
+        }
+        return [bits.list!, bits.ruleType!, bits.entity!, bits.reason!];
+    },
+    BAN_COMMAND,
+    async function (mjolnir: Mjolnir, commandRoomId: string, event: any, result: void) {
+        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '✅');
+    }
+);
 
-    await bits.list!.banEntity(bits.ruleType!, bits.entity, bits.reason);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
-}
-
-// !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
-export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const bits = await parseArguments(roomId, event, mjolnir, parts);
-    if (!bits) return; // error already handled
-
-    await bits.list!.unbanEntity(bits.ruleType!, bits.entity);
+const UNBAN_COMMAND = defineApplicationCommand([], async (mjolnir: Mjolnir, list: PolicyList, ruleType: string, entity: string, reason: string): Promise<void> => {
+    await list.unbanEntity(ruleType, entity);
 
     const unbanUserFromRooms = async () => {
-        const rule = new MatrixGlob(bits.entity);
-        await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + bits.entity);
+        const rule = new MatrixGlob(entity);
+        await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "UnbanBanCommand", "Unbanning users that match glob: " + entity);
         let unbannedSomeone = false;
         for (const protectedRoomId of mjolnir.protectedRoomsTracker.getProtectedRooms()) {
             const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
@@ -159,14 +168,27 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
         }
     };
 
-    if (USER_RULE_TYPES.includes(bits.ruleType!)) {
-        mjolnir.unlistedUserRedactionHandler.removeUser(bits.entity);
-        if (bits.reason === 'true') {
+    if (USER_RULE_TYPES.includes(ruleType)) {
+        mjolnir.unlistedUserRedactionHandler.removeUser(entity);
+        if (reason === 'true') {
             await unbanUserFromRooms();
         } else {
             await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "UnbanBanCommand", "Running unban without `unban <list> <user> true` will not override existing room level bans");
         }
     }
+})
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
-}
+// !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
+defineMatrixInterfaceCommand(["unban"],
+    async function (mjolnir: Mjolnir, roomId: string, event: any, parts: string[]): Promise<[Mjolnir, PolicyList, string, string, string]> {
+        const bits = await parseArguments(roomId, event, mjolnir, parts);
+        if (bits === null) {
+            throw new Error("Couldn't parse arguments FIXME");
+        }
+        return [mjolnir, bits.list!, bits.ruleType!, bits.entity!, bits.reason!];
+    },
+    UNBAN_COMMAND,
+    async function (mjolnir: Mjolnir, commandRoomId: string, event: any, result: void) {
+        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '✅');
+    }
+);

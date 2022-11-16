@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { execStatusCommand } from "./StatusCommand";
-import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
+import "./UnbanBanCommand";
 import { execDumpRulesCommand, execRulesMatchingCommand } from "./DumpRulesCommand";
 import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
 import { htmlEscape } from "../utils";
@@ -42,11 +42,12 @@ import { execKickCommand } from "./KickCommand";
 import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
 import { parse as tokenize } from "shell-quote";
 import { execSinceCommand } from "./SinceCommand";
+import { MatrixCommandTable } from "./MatrixInterfaceCommand";
 
 
 export const COMMAND_PREFIX = "!mjolnir";
 
-export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir) {
+export async function handleCommand(roomId: string, event: { content: { body: string } }, mjolnir: Mjolnir, commandTable: MatrixCommandTable) {
     const cmd = event['content']['body'];
     const parts = cmd.trim().split(' ').filter(p => p.trim().length > 0);
 
@@ -57,10 +58,6 @@ export async function handleCommand(roomId: string, event: { content: { body: st
     try {
         if (parts.length === 1 || parts[1] === 'status') {
             return await execStatusCommand(roomId, event, mjolnir, parts.slice(2));
-        } else if (parts[1] === 'ban' && parts.length > 2) {
-            return await execBanCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'unban' && parts.length > 2) {
-            return await execUnbanCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rules' && parts.length === 4 && parts[2] === 'matching') {
             return await execRulesMatchingCommand(roomId, event, mjolnir, parts[3])
         } else if (parts[1] === 'rules') {
@@ -126,6 +123,11 @@ export async function handleCommand(roomId: string, event: { content: { body: st
         } else if (parts[1] === 'make' && parts[2] === 'admin' && parts.length > 3) {
             return await execMakeRoomAdminCommand(roomId, event, mjolnir, parts);
         } else {
+            const command = commandTable.findAMatchingCommand(parts.slice(1));
+            if (command) {
+                return await command.invoke(mjolnir, roomId, event, parts);
+            }
+
             // Help menu
             const menu = "" +
                 "!mjolnir                                                            - Print status information\n" +

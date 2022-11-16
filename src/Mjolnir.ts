@@ -39,6 +39,7 @@ import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
+import { MatrixCommandTable } from "./commands/MatrixInterfaceCommand";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -85,6 +86,8 @@ export class Mjolnir {
      * Handle user reports from the homeserver.
      */
     public readonly reportManager: ReportManager;
+
+    private readonly matrixCommandTable: MatrixCommandTable;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -168,6 +171,7 @@ export class Mjolnir {
         public readonly ruleServer: RuleServer | null,
     ) {
         this.protectedRoomsConfig = new ProtectedRoomsConfig(client);
+        this.matrixCommandTable = new MatrixCommandTable(config.commands.features);
 
         // Setup bot.
 
@@ -204,7 +208,8 @@ export class Mjolnir {
                 LogService.info("Mjolnir", `Command being run by ${event['sender']}: ${event['content']['body']}`);
 
                 await client.sendReadReceipt(roomId, event['event_id']);
-                return handleCommand(roomId, event, this);
+
+                return handleCommand(roomId, event, this, this.matrixCommandTable);
             }
         });
 
