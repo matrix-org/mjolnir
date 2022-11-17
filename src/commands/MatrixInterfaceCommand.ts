@@ -16,6 +16,8 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { ApplicationCommand, ApplicationFeature, getApplicationFeature } from "./ApplicationCommand";
+import { ValidationError, ValidationResult } from "./Validation";
+import { RichReply, LogService } from "matrix-bot-sdk";
 
 type CommandLookupEntry = Map<string|symbol, CommandLookupEntry|MatrixInterfaceCommand<BaseFunction>>;
 
@@ -28,7 +30,7 @@ type ParserSignature<ExecutorType extends (...args: any) => Promise<any>> = (
     mjolnir: Mjolnir,
     roomId: string,
     event: any,
-    parts: string[]) => Promise<Parameters<ExecutorType>>;
+    parts: string[]) => Promise<ValidationResult<Parameters<ExecutorType>, ValidationError>>;
 
 type RendererSignature<ExecutorReturnType extends Promise<any>> = (
     mjolnir: Mjolnir,
@@ -56,7 +58,8 @@ class MatrixInterfaceCommand<ExecutorType extends (...args: any) => Promise<any>
         public readonly commandParts: string[],
         private readonly parser: ParserSignature<ExecutorType>,
         public readonly applicationCommand: ApplicationCommand<ExecutorType>,
-        private readonly renderer: RendererSignature<ReturnType<ExecutorType>>
+        private readonly renderer: RendererSignature<ReturnType<ExecutorType>>,
+        private readonly validationErrorHandler?: (mjolnir: Mjolnir, roomId: string, event: any, validationError: ValidationError) => Promise<void>
     ) {
 
     }
@@ -71,8 +74,24 @@ class MatrixInterfaceCommand<ExecutorType extends (...args: any) => Promise<any>
      */
     public async invoke(...args: Parameters<ParserSignature<ExecutorType>>): Promise<void> {
         const parseResults = await this.parser(...args);
-        const executorResult: ReturnType<ExecutorType> = await this.applicationCommand.executor.apply(this, parseResults);
+        if (parseResults.isErr()) {
+            this.reportValidationError.apply(this, [...args.slice(0, -1), parseResults.err]);
+            return;
+        }
+        const executorResult: ReturnType<ExecutorType> = await this.applicationCommand.executor.apply(this, parseResults.ok);
         await this.renderer.apply(this, [...args.slice(0, -1), executorResult]);
+    }
+
+    private async reportValidationError(mjolnir: Mjolnir, roomId: string, event: any, validationError: ValidationError): Promise<void> {
+        LogService.info("MatrixInterfaceCommand", `User input validation error when parsing command ${this.commandParts}: ${validationError.message}`);
+        if (this.validationErrorHandler) {
+            await this.validationErrorHandler.apply(this, arguments);
+            return;
+        }
+        const replyMessage = validationError.message;
+        const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
+        reply["msgtype"] = "m.notice";
+        await mjolnir.client.sendMessage(roomId, reply);
     }
 }
 
