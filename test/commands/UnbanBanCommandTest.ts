@@ -22,7 +22,7 @@ import { read as configRead } from "../../src/config";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/ListRule";
 
 function createTestMjolnir(defaultShortcode: string|null = null): Mjolnir {
-    const config = configRead();
+    const config = configRead(false);
     const client = {
         // Mock `MatrixClient.getAccountData` .
         getAccountData: (eventType: string): Promise<any> => {
