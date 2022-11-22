@@ -10,8 +10,8 @@ yarn install
 yarn build
 
 # Copy and edit the config. It *is* recommended to change the data path.
-cp config/default.yaml config/development.yaml
-nano config/development.yaml
+cp config/default.yaml config/production.yaml
+nano config/production.yaml
 
 # Start Mjolnir and make use of the production.yaml (instead of default.yaml)
 NODE_ENV=production node lib/index.js
