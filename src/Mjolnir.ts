@@ -291,8 +291,10 @@ export class Mjolnir {
             await this.protectedRoomsConfig.loadProtectedRoomsFromConfig(this.config);
             await this.protectedRoomsConfig.loadProtectedRoomsFromAccountData();
             this.protectedRoomsConfig.getExplicitlyProtectedRooms().forEach(this.protectRoom, this);
-            await this.resyncJoinedRooms(false);
+            // We have to build the policy lists before calling `resyncJoinedRooms` otherwise mjolnir will try to protect
+            // every policy list we are already joined to, as mjolnir will not be able to distinguish them from normal rooms.
             await this.buildWatchedPolicyLists();
+            await this.resyncJoinedRooms(false);
             await this.protectionManager.start();
 
             if (this.config.verifyPermissionsOnStartup) {
