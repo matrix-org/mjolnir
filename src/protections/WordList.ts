@@ -64,6 +64,9 @@ export class WordList extends Protection {
 
         if (event['type'] === 'm.room.message') {
             const message = content['formatted_body'] || content['body'] || null;
+            if (!message) {
+                return;
+            }
 
             // Check conditions first
             if (minsBeforeTrusting > 0) {
@@ -84,25 +87,25 @@ export class WordList extends Protection {
                     return
                 }
             }
-            if (this.badWords === null) {
-                // Create a mega-regex from all the tiny baby regexs
-                try {
-                    this.badWords = new RegExp(
-                        "(" + mjolnir.config.protections.wordlist.words.join(")|(") + ")",
-                        "i"
-                    );
-                } catch (ex) {
-                    await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "WordList", `Could not produce a regex from the word list:\n${ex}.`)
+            if (!this.badWords) {
+                // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+                const escapeRegExp = (string: string) => {
+                    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                };
+
+                // Create a mega-regex from all the tiny words.
+                const words = mjolnir.config.protections.wordlist.words.filter(word => word.length !== 0).map(escapeRegExp);
+                if (words.length === 0) {
+                    mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "WordList", `Someone turned on the word list protection without configuring any words. Disabling.`);
+                    this.enabled = false;
+                    return;
                 }
+                this.badWords = new RegExp(words.join("|"), "i");
             }
 
-            if (!message) {
-                return;
-            }
-
-            const matches = message.match(this.badWords!);
-            if (matches) {
-                const reason = `bad word: ${matches[0]}`;
+            const match = this.badWords!.exec(message);
+            if (match) {
+                const reason = `bad word: ${match[0]}`;
                 return [new ConsequenceBan(reason), new ConsequenceRedact(reason)];
             }
         }
