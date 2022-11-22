@@ -13,5 +13,5 @@ yarn build
 cp config/default.yaml config/production.yaml
 nano config/production.yaml
 
-NODE_ENV=production node lib/index.js
+node lib/index.js --mjolnir-config ./config/production.yaml
 ```
