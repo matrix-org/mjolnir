@@ -15,9 +15,9 @@ limitations under the License.
 */
 
 import * as fs from "fs";
-import * as path from "path";
 import { load } from "js-yaml";
 import { MatrixClient } from "matrix-bot-sdk";
+import Config from "config";
 
 /**
  * The configuration, as read from production.yaml
@@ -170,12 +170,32 @@ const defaultConfig: IConfig = {
     },
 };
 
-export function read(): IConfig {
-    const config_dir = process.env.NODE_CONFIG_DIR || "./config";
-    const config_file = `${process.env.NODE_ENV || "default"}.yaml`
+/**
+ * Grabs an explicit path provided for mjolnir's config from an arguments vector if provided, otherwise returns undefined.
+ * @param argv An arguments vector sourced from `process.argv`.
+ * @returns The path if one was provided or undefined.
+ */
+function configPathFromArguments(argv: string[]): undefined|string {
+    const configOptionIndex = argv.findIndex(arg => arg === "--mjolnir-config");
+    if (configOptionIndex > 0) {
+        const configOptionPath = argv.at(configOptionIndex + 1);
+        if (!configOptionPath) {
+            throw new Error("No path provided with option --mjolnir-config");
+        }
+        return configOptionPath;
+    } else {
+        return;
+    }
+}
 
-    const content = fs.readFileSync(path.join(config_dir, config_file), "utf8");
-    const parsed = load(content);
-    const config = {...defaultConfig, ...(parsed as object)} as IConfig;
-    return config;
+export function read(): IConfig {
+    const explicitConfigPath = configPathFromArguments(process.argv);
+    if (explicitConfigPath) {
+        const content = fs.readFileSync(explicitConfigPath, "utf8");
+        const parsed = load(content);
+        return Config.util.extendDeep({}, defaultConfig, parsed);
+    } else {
+        const config = Config.util.extendDeep({}, defaultConfig, Config.util.toObject()) as IConfig;
+        return config;
+    }
 }

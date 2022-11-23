@@ -25,7 +25,7 @@ In short, please make sure that the mjolnir configuration exists under `./config
 Run the following command in your terminal, replace `./mjolnir` with the root directory of your config, if it is in another spot.
 
 ```bash
-docker run --rm -it -v ./mjolnir:/data matrixdotorg/mjolnir:latest
+docker run --rm -it -v ./mjolnir:/data matrixdotorg/mjolnir:latest bot --mjolnir-config /data/config/production.yaml
 ```
 
 # Docker Compose
