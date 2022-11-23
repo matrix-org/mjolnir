@@ -16,21 +16,17 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import PolicyList from "../models/PolicyList";
-import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, MatrixGlob } from "matrix-bot-sdk";
 import { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 import { defineApplicationCommand } from "./ApplicationCommand";
 import { defineMatrixInterfaceCommand } from "./MatrixInterfaceCommand";
+import { ValidationError, ValidationResult } from "./Validation";
 
-interface Arguments {
-    list: PolicyList | null;
-    entity: string;
-    ruleType: string | null;
-    reason: string;
-}
+type Arguments = Parameters<(mjolnir: Mjolnir, list: PolicyList, ruleType: string, entity: string, reason: string) => void>;
 
 // Exported for tests
-export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments | null> {
+export async function parseArguments(mjolnir: Mjolnir, roomId: string, event: any, parts: string[]): Promise<ValidationResult<Arguments, ValidationError>> {
     let defaultShortcode: string | null = null;
     try {
         const data: { shortcode: string } = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
@@ -42,10 +38,19 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
         // Assume no default.
     }
 
+    const findList = (mjolnir: Mjolnir, shortcode: string): ValidationResult<PolicyList, ValidationError> => {
+        const foundList = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === shortcode.toLowerCase());
+        if (foundList !== undefined) {
+            return ValidationResult.Ok(foundList);
+        } else {
+            return ValidationResult.Err(ValidationError.makeValidationError('shortcode not found', `A list with the shourtcode ${shortcode} could not be found.`));
+        }
+    }
+
     let argumentIndex = 2;
     let ruleType: string | null = null;
     let entity: string | null = null;
-    let list: PolicyList | null = null;
+    let list: ValidationResult<PolicyList, ValidationError>|null = null;
     let force = false;
     while (argumentIndex < 7 && argumentIndex < parts.length) {
         const arg = parts[argumentIndex++];
@@ -61,10 +66,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
             else if (arg.startsWith("!") && !ruleType) ruleType = RULE_ROOM;
             else if (!ruleType) ruleType = RULE_SERVER;
         } else if (!list) {
-            const foundList = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === arg.toLowerCase());
-            if (foundList !== undefined) {
-                list = foundList;
-            }
+            list = findList(mjolnir, arg.toLocaleLowerCase());
         }
 
         if (entity) break;
@@ -88,47 +90,55 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     }
 
     if (!list) {
-        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode) || null;
+        if (defaultShortcode) {
+            list = await findList(mjolnir, defaultShortcode);
+            if (list.isErr()) {
+                return ValidationResult.Err(ValidationError.makeValidationError(
+                    "shortcode not found",
+                    `A shortcode was not provided for this command, and a list couldn't be found with the default shortcode ${defaultShortcode}`))
+            }
+        } else {
+            // FIXME: should be turned into a utility function to find the default list.
+            //        and in general, why is there a default shortcode instead of a default list?
+            return ValidationResult.Err(ValidationError.makeValidationError(
+                "no default shortcode",
+                `A shortcode was not provided for this command, and a default shortcode was not set either.`
+            ))
+        }
     }
 
-    let replyMessage: string | null = null;
-    if (!list) replyMessage = "No ban list matching that shortcode was found";
-    else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
-    else if (!entity) replyMessage = "No entity found";
-
-    if (mjolnir.config.commands.confirmWildcardBan && /[*?]/.test(entity) && !force) {
-        replyMessage = "Wildcard bans require an additional `--force` argument to confirm";
+    if (list.isErr()) {
+        return ValidationResult.Err(list.err);
+    } else if (!ruleType) {
+        return ValidationResult.Err(
+            ValidationError.makeValidationError('uknown rule type', "Please specify the type as either 'user', 'room', or 'server'")
+        );
+    } else if (!entity) {
+        return ValidationResult.Err(
+            ValidationError.makeValidationError('no entity', "No entity was able to be parsed from this command")
+        );
+    } else if (mjolnir.config.commands.confirmWildcardBan && /[*?]/.test(entity) && !force) {
+        return ValidationResult.Err(
+            ValidationError.makeValidationError("wildcard required", "Wildcard bans require an additional `--force` argument to confirm")
+        );
     }
 
-    if (replyMessage) {
-        const reply = RichReply.createFor(roomId, event, replyMessage, replyMessage);
-        reply["msgtype"] = "m.notice";
-        await mjolnir.client.sendMessage(roomId, reply);
-        return null;
-    }
-
-    return {
-        list,
-        entity,
+    return ValidationResult.Ok([
+        mjolnir,
+        list.ok,
         ruleType,
-        reason: parts.splice(argumentIndex).join(" ").trim(),
-    };
+        entity,
+        parts.splice(argumentIndex).join(" ").trim(),
+    ]);
 }
 
-const BAN_COMMAND = defineApplicationCommand([], async (list: PolicyList, ruleType: string, entity: string, reason: string): Promise<void> => {
+const BAN_COMMAND = defineApplicationCommand([], async (mjonlir: Mjolnir, list: PolicyList, ruleType: string, entity: string, reason: string): Promise<void> => {
     await list.banEntity(ruleType, entity, reason);
 });
 
 // !mjolnir ban <shortcode> <user|server|room> <glob> [reason] [--force]
 defineMatrixInterfaceCommand(["ban"],
-    async function (mjolnir: Mjolnir, roomId: string, event: any, parts: string[]): Promise<[PolicyList, string, string, string]> {
-        const bits = await parseArguments(roomId, event, mjolnir, parts);
-        if (bits === null) {
-            // FIXME
-            throw new Error("Couldn't parse arguments FIXME - parser needs to be rewritten to reject nulls");
-        }
-        return [bits.list!, bits.ruleType!, bits.entity!, bits.reason!];
-    },
+    parseArguments,
     BAN_COMMAND,
     async function (mjolnir: Mjolnir, commandRoomId: string, event: any, result: void) {
         await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '✅');
@@ -180,13 +190,7 @@ const UNBAN_COMMAND = defineApplicationCommand([], async (mjolnir: Mjolnir, list
 
 // !mjolnir unban <shortcode> <user|server|room> <glob> [apply:t/f]
 defineMatrixInterfaceCommand(["unban"],
-    async function (mjolnir: Mjolnir, roomId: string, event: any, parts: string[]): Promise<[Mjolnir, PolicyList, string, string, string]> {
-        const bits = await parseArguments(roomId, event, mjolnir, parts);
-        if (bits === null) {
-            throw new Error("Couldn't parse arguments FIXME");
-        }
-        return [mjolnir, bits.list!, bits.ruleType!, bits.entity!, bits.reason!];
-    },
+    parseArguments,
     UNBAN_COMMAND,
     async function (mjolnir: Mjolnir, commandRoomId: string, event: any, result: void) {
         await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '✅');
