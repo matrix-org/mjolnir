@@ -88,12 +88,13 @@ export class MjolnirAppService {
      * @param config The parsed configuration file.
      * @param registrationFilePath A path to their homeserver registration file.
      */
-     public static async run(port: number, config: IConfig, registrationFilePath: string) {
+    public static async run(port: number, config: IConfig, registrationFilePath: string): Promise<MjolnirAppService> {
         const dataStore = new PgDataStore(config.db.connectionString);
         await dataStore.init();
         const service = await MjolnirAppService.makeMjolnirAppService(config, dataStore, registrationFilePath);
         // The call to `start` MUST happen last. As it needs the datastore, and the mjolnir manager to be initialized before it can process events from the homeserver.
         await service.start(port);
+        return service;
     }
 
     public onUserQuery (queriedUser: MatrixUser) {
