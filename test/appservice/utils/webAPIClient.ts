@@ -21,7 +21,6 @@ export interface CreateMjolnirResponse {
 export class MjolnirWebAPIClient {
 
     private constructor(
-        private readonly matrixClient: MatrixClient,
         private readonly openIDToken: string,
         private readonly baseURL: string,
     ) {
@@ -30,7 +29,7 @@ export class MjolnirWebAPIClient {
 
     public static async makeClient(client: MatrixClient, baseUrl: string): Promise<MjolnirWebAPIClient> {
         const token = await getOpenIDToken(client);
-        return new MjolnirWebAPIClient(client, token, baseUrl);
+        return new MjolnirWebAPIClient(token, baseUrl);
     }
 
     public async createMjolnir(roomToProtectId: string): Promise<CreateMjolnirResponse> {

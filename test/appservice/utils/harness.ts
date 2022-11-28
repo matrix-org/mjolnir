@@ -2,7 +2,6 @@ import path from "path";
 import { MjolnirAppService } from "../../../src/appservice/AppService";
 import { ensureAliasedRoomExists } from "../../integration/mjolnirSetupUtils";
 import { read as configRead, IConfig } from "../../../src/appservice/config/config";
-import { PgDataStore } from "../../../src/appservice/datastore";
 import { newTestUser } from "../../integration/clientHelper";
 import PolicyList from "../../../src/models/PolicyList";
 import { CreateEvent, MatrixClient } from "matrix-bot-sdk";
@@ -15,11 +14,7 @@ export async function setupHarness(): Promise<MjolnirAppService> {
     const config = readTestConfig();
     const utilityUser = await newTestUser(config.homeserver.url, { name: { contains: "utility" }});
     await ensureAliasedRoomExists(utilityUser, config.accessControlList);
-    const dataStore = new PgDataStore(config.db.connectionString);
-    await dataStore.init();
-    const appservice = await MjolnirAppService.makeMjolnirAppService(config, dataStore, "mjolnir-registration.yaml");
-    await appservice.start(9000);
-    return appservice;
+    return await MjolnirAppService.run(9000, config, "mjolnir-registration.yaml");
 }
 
 export async function isPolicyRoom(user: MatrixClient, roomId: string): Promise<boolean> {

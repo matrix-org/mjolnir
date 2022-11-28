@@ -16,6 +16,7 @@ describe("Test that the app service can provision a mjolnir on invite of the app
             return this.appservice.close();
         } else {
             console.warn("Missing Appservice in this context, so cannot stop it.")
+            return Promise.resolve(); // TS7030: Not all code paths return a value.
         }
     });
     it("A moderator that requests a mjolnir via a matrix invitation will be invited to a new policy and management room", async function (this: Context) {
