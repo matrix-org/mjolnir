@@ -11,7 +11,7 @@ information about the Synapse module can be found in the README.
 If you're actively dealing with an incident, here's what you need to know:
 
 * Always talk to Mjolnir in your coordination room.
-* `!mjolnir rooms add <room>` will add a room to your "protected rooms", roms where mjolnir will propagate bans.
+* `!mjolnir rooms add <room>` will add a room to your "protected rooms", rooms where mjolnir will propagate bans.
 * `!mjolnir ban <shortcode> user @spammer:example.org` will ban someone.
 * `!mjolnir ban <shortcode> server example.org` will ban a whole server.
 * `!mjolnir rules` will tell you what the shortcodes are for your ban lists (needed above).
