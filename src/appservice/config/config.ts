@@ -16,6 +16,7 @@ limitations under the License.
 
 import * as fs from "fs";
 import { load } from "js-yaml";
+import { LoggingOpts } from "matrix-appservice-bridge";
 
 export interface IConfig {
     /** Details for the homeserver the appservice will be serving */
@@ -36,6 +37,8 @@ export interface IConfig {
     },
     /** A policy room for controlling access to the appservice */
     accessControlList: string,
+    /** configuration for matrix-appservice-bridge's Logger */
+    logging?: LoggingOpts,
 }
 
 export function read(configPath: string): IConfig {
