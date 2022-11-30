@@ -68,6 +68,7 @@ export interface IConfig {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
         confirmWildcardBan: boolean;
+        features: string[];
     };
     protections: {
         wordlist: {
@@ -146,6 +147,9 @@ const defaultConfig: IConfig = {
         allowNoPrefix: false,
         additionalPrefixes: [],
         confirmWildcardBan: true,
+        features: [
+            "synapse admin",
+        ]
     },
     protections: {
         wordlist: {
