@@ -14,13 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, MatrixUser } from "matrix-appservice-bridge";
+import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, MatrixUser, Logger } from "matrix-appservice-bridge";
 import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
 import { IConfig } from "./config/config";
 import { AccessControl } from "./AccessControl";
 
+const log = new Logger("AppService");
 /**
  * Responsible for setting up listeners and delegating functionality to a matrix-appservice-bridge `Bridge` for
  * the entrypoint of the application.
@@ -64,7 +65,7 @@ export class MjolnirAppService {
             },
             suppressEcho: false,
         });
-        await bridge.initalise();
+        await bridge.initialise();
         const accessControlListId = await bridge.getBot().getClient().resolveRoom(config.accessControlList);
         const accessControl = await AccessControl.setupAccessControl(accessControlListId, bridge);
         const mjolnirManager = await MjolnirManager.makeMjolnirManager(dataStore, bridge, accessControl);
@@ -89,6 +90,7 @@ export class MjolnirAppService {
      * @param registrationFilePath A path to their homeserver registration file.
      */
     public static async run(port: number, config: IConfig, registrationFilePath: string): Promise<MjolnirAppService> {
+        Logger.configure(config.logging ?? { console: "debug" });
         const dataStore = new PgDataStore(config.db.connectionString);
         await dataStore.init();
         const service = await MjolnirAppService.makeMjolnirAppService(config, dataStore, registrationFilePath);
@@ -114,11 +116,19 @@ export class MjolnirAppService {
         // Acts as an alternative to the web api provided for the widget.
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
-                await this.mjolnirManager.provisionNewMjolnir(mxEvent.sender);
-                // reject the invite to keep the room clean and make sure the invetee doesn't get confused and think this is their mjolnir.
-                this.bridge.getBot().getClient().leaveRoom(mxEvent.room_id).catch(e => {
-                    console.warn("Unable to reject an invite to a room", e)
-                });
+                log.info(`${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, attempting to provision them a mjolnir`);
+                try {
+                    await this.mjolnirManager.provisionNewMjolnir(mxEvent.sender)
+                } catch (e: any) {
+                    log.error(`Failed to provision a mjolnir for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`, e);
+                    // continue, we still want to reject this invitation.
+                }
+                try {
+                    // reject the invite to keep the room clean and make sure the invetee doesn't get confused and think this is their mjolnir.
+                    await this.bridge.getBot().getClient().leaveRoom(mxEvent.room_id);
+                } catch (e: any) {
+                    log.warn("Unable to reject an invite to a room", e);
+                }
             }
         }
         this.accessControl.handleEvent(mxEvent['room_id'], mxEvent);
@@ -130,10 +140,10 @@ export class MjolnirAppService {
      * @param port The port that the appservice should listen on to receive transactions from the homeserver.
      */
     private async start(port: number) {
-        console.log("Starting MjolnirAppService, Matrix-side to listen on port %s", port);
+        log.info("Starting MjolnirAppService, Matrix-side to listen on port", port);
         this.api.start(this.config.webAPI.port);
         await this.bridge.listen(port);
-        console.log("MjolnirAppService started successfully");
+        log.info("MjolnirAppService started successfully");
     }
 
     /**

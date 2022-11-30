@@ -53,7 +53,7 @@
     "humanize-duration-ts": "^2.1.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
-    "matrix-appservice-bridge": "^5.0.0",
+    "matrix-appservice-bridge": "8.0.0",
     "parse-duration": "^1.0.2",
     "pg": "^8.8.0",
     "shell-quote": "^1.7.3",

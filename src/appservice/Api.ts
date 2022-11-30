@@ -3,7 +3,9 @@ import express from "express";
 import * as bodyParser from "body-parser";
 import { MjolnirManager } from "./MjolnirManager";
 import * as http from "http";
+import { Logger } from "matrix-appservice-bridge";
 
+const log = new Logger("Api");
 /**
  * This provides a web api that is designed to power the mjolnir widget https://github.com/matrix-org/mjolnir-widget.
  */
@@ -28,7 +30,7 @@ export class Api {
                 qs: { access_token: accessToken },
             }, (err, homeserver_response, body) => {
                 if (err) {
-                    console.error(`Error resolving openID token from ${this.homeserver}`, err);
+                    log.error(`Error resolving openID token from ${this.homeserver}`, err);
                     reject(null);
                 }
 
@@ -36,7 +38,7 @@ export class Api {
                 try {
                     response = JSON.parse(body);
                 } catch (e) {
-                    console.error(`Received ill formed response from ${this.homeserver} when resolving an openID token`, e);
+                    log.error(`Received ill formed response from ${this.homeserver} when resolving an openID token`, e);
                     reject(null);
                     return;
                 }
