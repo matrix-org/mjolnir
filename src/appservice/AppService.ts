@@ -116,13 +116,19 @@ export class MjolnirAppService {
         // Acts as an alternative to the web api provided for the widget.
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
-                await this.mjolnirManager.provisionNewMjolnir(mxEvent.sender).catch((e: any) => {
+                log.info(`${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, attempting to provision them a mjolnir`);
+                try {
+                    await this.mjolnirManager.provisionNewMjolnir(mxEvent.sender)
+                } catch (e: any) {
                     log.error(`Failed to provision a mjolnir for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`, e);
-                });
-                // reject the invite to keep the room clean and make sure the invetee doesn't get confused and think this is their mjolnir.
-                this.bridge.getBot().getClient().leaveRoom(mxEvent.room_id).catch(e => {
+                    // continue, we still want to reject this invitation.
+                }
+                try {
+                    // reject the invite to keep the room clean and make sure the invetee doesn't get confused and think this is their mjolnir.
+                    await this.bridge.getBot().getClient().leaveRoom(mxEvent.room_id);
+                } catch (e: any) {
                     log.warn("Unable to reject an invite to a room", e);
-                });
+                }
             }
         }
         this.accessControl.handleEvent(mxEvent['room_id'], mxEvent);
