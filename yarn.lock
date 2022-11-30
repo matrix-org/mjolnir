@@ -247,6 +247,13 @@
     pg-protocol "*"
     pg-types "^2.2.0"
 
+"@types/pkginfo@^0.4.0":
+  version "0.4.0"
+  resolved "https://registry.yarnpkg.com/@types/pkginfo/-/pkginfo-0.4.0.tgz#00143b97e98aa7c9391943266d2e4aebd8f44c35"
+  integrity sha512-4DGKkOlWkMuVDZQvytWzzWWAjyqDmlLKRYE4lzeA8t0s7fK0aF25uPbX9eBVermUjLJdeLHu9k1WmNiAssqCcg==
+  dependencies:
+    "@types/node" "*"
+
 "@types/qs@*":
   version "6.9.7"
   resolved "https://registry.npmjs.org/@types/qs/-/qs-6.9.7.tgz"
@@ -2201,12 +2208,13 @@ make-error@^1.1.1:
   resolved "https://registry.yarnpkg.com/make-error/-/make-error-1.3.6.tgz#2eb2e37ea9b67c4891f684a1394799af484cf7a2"
   integrity sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==
 
-matrix-appservice-bridge@^5.0.0:
-  version "5.0.0"
-  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-5.0.0.tgz#e3b42f9c1bef9c2a5fe51c47e2232ea3040852d0"
-  integrity sha512-d+F2RN/6o4TtBHOgcNECXX/UGjqM4zuWK14hmnzHHdrQi/Xuq9GSO14jMKsl1Jc0Kbkpv9cFMfhy27yo/Ju7/w==
+matrix-appservice-bridge@8.0.0:
+  version "8.0.0"
+  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-8.0.0.tgz#6849ac05c281399b2c2b35daba784f8291d3b35d"
+  integrity sha512-XFo3avVfKb34d7kalXcsi0vThlnqmrwvewcfhjintmpbFlwu54/lvdbykFSyu2kT8BY1zUtDz7iQ3Q3RAyaN1g==
   dependencies:
     "@alloc/quick-lru" "^5.2.0"
+    "@types/pkginfo" "^0.4.0"
     axios "^0.27.2"
     chalk "^4.1.0"
     express "^4.18.1"
@@ -2215,20 +2223,22 @@ matrix-appservice-bridge@^5.0.0:
     ip-cidr "^3.0.4"
     is-my-json-valid "^2.20.5"
     js-yaml "^4.0.0"
-    matrix-appservice "^1.0.0"
-    matrix-bot-sdk "^0.6.1"
+    matrix-appservice "^1.1.0"
+    matrix-bot-sdk "^0.6.2"
     nedb "^1.8.0"
     nopt "^5.0.0"
     p-queue "^6.6.2"
-    prom-client "^14.0.0"
+    pkginfo "^0.4.1"
+    postgres "^3.3.1"
+    prom-client "^14.1.0"
     uuid "^8.3.2"
     winston "^3.3.3"
     winston-daily-rotate-file "^4.5.1"
 
-matrix-appservice@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/matrix-appservice/-/matrix-appservice-1.0.0.tgz#8a1225b248131eb8d37618bd88f76d705c647c28"
-  integrity sha512-SoWTp92xKsKiC6T8147gTxChyp0aNisxLWtX15vGMIeIdV3ZsUzoQsLVhABzuVzW1ExZ5FAoD1HpYz1Du9lk6A==
+matrix-appservice@^1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/matrix-appservice/-/matrix-appservice-1.1.0.tgz#e567945042000485e4ea4bfeef92246e93296f01"
+  integrity sha512-6hJdmo9YIbh6dS9MfMHCpHMhklN/+NOcfGQ/3UbbEEfIE8dt0bHqi1nnIiias5IqDFl6ED9y+YQdtyqnIXx+Ww==
   dependencies:
     "@types/express" "^4.17.8"
     body-parser "^1.19.0"
@@ -2236,10 +2246,10 @@ matrix-appservice@^1.0.0:
     js-yaml "^4.1.0"
     morgan "^1.10.0"
 
-matrix-bot-sdk@^0.6.1:
-  version "0.6.1"
-  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.6.1.tgz#29c5d92fd6bc2eb0f6be2540ed133d8ffadaed93"
-  integrity sha512-xbSQUpbuQq9Oj5f5GeprKndJZqdB9N9majg+VwIEcBGBscpWCskX32kTaoNhTHAE92XlM+qnwFME45TYElf4tA==
+matrix-bot-sdk@^0.6.2:
+  version "0.6.2"
+  resolved "https://registry.yarnpkg.com/matrix-bot-sdk/-/matrix-bot-sdk-0.6.2.tgz#c9334b39f62a9742d74e46312def566429dfef26"
+  integrity sha512-+kXlXkQBQgWC6oUwYEosJlXjceaj7jQUnPlALFhGeAabgVm8tmuvFNVKqClwvrrjj+0Gzsmt+rcJHmkvqymFXA==
   dependencies:
     "@matrix-org/matrix-sdk-crypto-nodejs" "^0.1.0-beta.1"
     "@types/express" "^4.17.13"
@@ -2718,6 +2728,11 @@ pify@^3.0.0:
   resolved "https://registry.yarnpkg.com/pify/-/pify-3.0.0.tgz#e5a4acd2c101fdf3d9a4d07f0dbc4db49dd28176"
   integrity sha512-C3FsVNH1udSEX48gGX1xfvwTWfsYWj5U+8/uK15BGzIGrKoUpghX8hWZwa/OFnakBiiVNmBvemTJR5mcy7iPcg==
 
+pkginfo@^0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/pkginfo/-/pkginfo-0.4.1.tgz#b5418ef0439de5425fc4995042dced14fb2a84ff"
+  integrity sha512-8xCNE/aT/EXKenuMDZ+xTVwkT8gsoHN2z/Q29l80u0ppGEXVvsKRzNMbtKhg8LS8k1tJLAHHylf6p4VFmP6XUQ==
+
 postcss@^8.3.11:
   version "8.4.16"
   resolved "https://registry.npmjs.org/postcss/-/postcss-8.4.16.tgz"
@@ -2749,6 +2764,11 @@ postgres-interval@^1.1.0:
   dependencies:
     xtend "^4.0.0"
 
+postgres@^3.3.1:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/postgres/-/postgres-3.3.2.tgz#91f2e209e4a08ca7101eb7178734e4c0e4d23eb3"
+  integrity sha512-NaPqFpUC6C7aCQkJXLvuO/3RKNKL4en8opY53YrcXK3//xXra6CZ2qX6290lxuQ1dW1LbRGYCmsawRlCxSBonQ==
+
 prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.npmjs.org/prelude-ls/-/prelude-ls-1.2.1.tgz"
@@ -2774,10 +2794,10 @@ progress@^2.0.0:
   resolved "https://registry.npmjs.org/progress/-/progress-2.0.3.tgz"
   integrity sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==
 
-prom-client@^14.0.0:
-  version "14.0.1"
-  resolved "https://registry.npmjs.org/prom-client/-/prom-client-14.0.1.tgz"
-  integrity sha512-HxTArb6fkOntQHoRGvv4qd/BkorjliiuO2uSWC2KC17MUTKYttWdDoXX/vxOhQdkoECEM9BBH0pj2l8G8kev6w==
+prom-client@^14.1.0:
+  version "14.1.0"
+  resolved "https://registry.yarnpkg.com/prom-client/-/prom-client-14.1.0.tgz#049609859483d900844924df740722c76ed1fdbb"
+  integrity sha512-iFWCchQmi4170omLpFXbzz62SQTmPhtBL35v0qGEVRHKcqIeiexaoYeP0vfZTujxEq3tA87iqOdRbC9svS1B9A==
   dependencies:
     tdigest "^0.1.1"
 
