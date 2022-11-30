@@ -14,6 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import * as Sentry from "@sentry/node";
 import { extractRequestError, LogLevel, LogService, MatrixClient, MessageType, Permalinks, TextualMessageEventContent, UserID } from "matrix-bot-sdk";
 import { IConfig } from "./config";
 import { htmlEscape } from "./utils";
@@ -34,7 +35,7 @@ export default class ManagementRoomOutput {
         private readonly managementRoomId: string,
         private readonly client: MatrixClient,
         private readonly config: IConfig,
-        ) {
+    ) {
 
     }
 
@@ -94,6 +95,9 @@ export default class ManagementRoomOutput {
      * @param isRecursive Whether logMessage is being called from logMessage.
      */
     public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
+        if (level === LogLevel.ERROR) {
+            Sentry.captureMessage(`${module}: ${message}`, 'error');
+        }
         if (!additionalRoomIds) additionalRoomIds = [];
         if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];
 
@@ -115,7 +119,12 @@ export default class ManagementRoomOutput {
                 evContent = await this.replaceRoomIdsWithPills(clientMessage, new Set(roomIds), "m.notice");
             }
 
-            await client.sendMessage(this.managementRoomId, evContent);
+            try {
+                await client.sendMessage(this.managementRoomId, evContent);
+            } catch (ex) {
+                // We want to be informed if we cannot log a message.
+                Sentry.captureException(ex);
+            }
         }
 
         levelToFn[level.toString()](module, message);

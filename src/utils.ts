@@ -24,7 +24,11 @@ import {
 } from "matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
+import * as Sentry from '@sentry/node';
+import * as _ from '@sentry/tracing'; // Performing the import activates tracing.
+
 import ManagementRoomOutput from "./ManagementRoomOutput";
+import { IConfig } from "./config";
 
 // Define a few aliases to simplify parsing durations.
 
@@ -396,3 +400,27 @@ export function patchMatrixClient() {
     patchMatrixClientForConciseExceptions();
     patchMatrixClientForRetry();
 }
+
+/**
+ * Initialize Sentry for error monitoring and reporting.
+ *
+ * This method is idempotent. If `config` specifies that Sentry
+ * should not be used, it does nothing.
+ */
+export function initializeSentry(config: IConfig) {
+    if (sentryInitialized) {
+        return;
+    }
+    if (config.health.sentry) {
+        // Configure error monitoring with Sentry.
+        let sentry = config.health.sentry;
+        Sentry.init({
+            dsn: sentry.dsn,
+            tracesSampleRate: sentry.tracesSampleRate,
+        });
+        sentryInitialized = true;
+    }
+}
+// Set to `true` once we have initialized `Sentry` to ensure
+// that we do not attempt to initialize it more than once.
+let sentryInitialized = false;

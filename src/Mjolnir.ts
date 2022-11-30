@@ -319,11 +319,10 @@ export class Mjolnir {
                 LogService.error("Mjolnir", extractRequestError(err));
                 this.stop();
                 await this.managementRoomOutput.logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
-                throw err;
             } catch (e) {
                 LogService.error("Mjolnir", `Failed to report startup error to the management room: ${e}`);
-                throw err;
             }
+            throw err;
         }
     }
 
@@ -602,3 +601,4 @@ export class Mjolnir {
         }
     }
 }
+
