@@ -29,7 +29,7 @@ import {
 
 import { read as configRead } from "./config";
 import { Mjolnir } from "./Mjolnir";
-import { initializeSentry, patchMatrixClient } from "./utils";
+import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient } from "./utils";
 
 
 (async function () {
@@ -45,6 +45,9 @@ import { initializeSentry, patchMatrixClient } from "./utils";
     // Initialize error reporting as early as possible.
     if (config.health.sentry) {
         initializeSentry(config);
+    }
+    if (config.health.openMetrics?.enabled) {
+        initializeGlobalPerformanceMetrics(config);
     }
     const healthz = new Healthz(config);
     healthz.isHealthy = false; // start off unhealthy

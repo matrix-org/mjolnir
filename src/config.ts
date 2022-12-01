@@ -19,6 +19,45 @@ import { load } from "js-yaml";
 import { MatrixClient, LogService } from "matrix-bot-sdk";
 import Config from "config";
 
+export interface IHealthConfig {
+    health?: {
+        // If specified, attempt to upload any crash statistics to sentry.
+        sentry?: {
+            dsn: string;
+
+            // Frequency of performance monitoring.
+            //
+            // A number in [0.0, 1.0], where 0.0 means "don't bother with tracing"
+            // and 1.0 means "trace performance at every opportunity".
+            tracesSampleRate: number;
+        };
+        openMetrics?: {
+            /**
+             * If `true`, expose a web server for server metrics, e.g. performance.
+             *
+             * Intended to be used with Prometheus or another Open Metrics scrapper.
+             */
+            enabled: boolean;
+            /**
+             * The port on which to expose server metrics.
+             */
+            port: number;
+            /**
+             * The path at which to collect health metrics.
+             *
+             * If unspecified, use `"/metrics"`.
+             */
+            endpoint: string;
+            /**
+             * If specified, only serve this address mask.
+             *
+             * If unspecified, use 0.0.0.0 (accessible by any host).
+             */
+            address: string;
+        }
+    }
+}
+
 /**
  * The configuration, as read from production.yaml
  *
@@ -99,6 +138,30 @@ export interface IConfig {
             // and 1.0 means "trace performance at every opportunity".
             tracesSampleRate: number;
         };
+        openMetrics?: {
+            /**
+             * If `true`, expose a web server for server metrics, e.g. performance.
+             *
+             * Intended to be used with Prometheus or another Open Metrics scrapper.
+             */
+            enabled: boolean;
+            /**
+             * The port on which to expose server metrics.
+             */
+            port: number;
+            /**
+             * The path at which to collect health metrics.
+             *
+             * If unspecified, use `"/metrics"`.
+             */
+            endpoint: string;
+            /**
+             * If specified, only serve this address mask.
+             *
+             * If unspecified, use 0.0.0.0 (accessible by any host).
+             */
+            address: string;
+        }
     };
     web: {
         enabled: boolean;
@@ -167,6 +230,12 @@ const defaultConfig: IConfig = {
             healthyStatus: 200,
             unhealthyStatus: 418,
         },
+        openMetrics: {
+            enabled: false,
+            port: 9090,
+            address: "0.0.0.0",
+            endpoint: "/metrics",
+        }
     },
     web: {
         enabled: false,

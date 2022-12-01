@@ -27,5 +27,6 @@
         "./test/integration/banListTest.ts",
         "./test/integration/reportPollingTest",
         "./test/integration/policyConsumptionTest.ts",
+        "./test/integration/openMetricsTest.ts",
     ]
 }
