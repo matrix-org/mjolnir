@@ -1,7 +1,7 @@
 These instructions are to build and run mjolnir without using [Docker](./setup_docker.md).
 To build mjolnir, you have to have installed [Node >=16](https://nodejs.org/en/download/), [npm](https://docs.npmjs.com/cli/v7/configuring-npm/install) and [yarn >1.x](https://classic.yarnpkg.com/en/docs/install).
 
-Get the latest release-version https://github.com/matrix-org/mjolnir/releases/latest/ - for example `v1.6.1`.
+Copy the latest release tag from https://github.com/matrix-org/mjolnir/releases/latest/ to use when cloning. For example `v1.6.1` - please check the link for the current version as this mentioned example might be outdated.
 
 ```bash
 git clone https://github.com/matrix-org/mjolnir.git --branch <release tag>
