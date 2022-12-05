@@ -1,5 +1,5 @@
 import { Mjolnir } from "../Mjolnir";
-import { Request, WeakEvent, BridgeContext, Bridge, Intent } from "matrix-appservice-bridge";
+import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matrix-appservice-bridge";
 import { IConfig, read as configRead } from "../config";
 import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
@@ -7,6 +7,10 @@ import { DataStore } from "./datastore";
 import { AccessControl } from "./AccessControl";
 import { Access } from "../models/AccessControlUnit";
 import { randomUUID } from "crypto";
+import EventEmitter from "events";
+import { MatrixEmitter } from "../MatrixEmitter";
+
+const log = new Logger('MjolnirManager');
 
 /**
  * The MjolnirManager is responsible for:
@@ -58,10 +62,17 @@ export class MjolnirManager {
      * @returns A new managed mjolnir.
      */
     public async makeInstance(requestingUserId: string, managementRoomId: string, client: MatrixClient): Promise<ManagedMjolnir> {
+        const intentListener = new MatrixIntentListener(await client.getUserId());
         const managedMjolnir = new ManagedMjolnir(
             requestingUserId,
-            await Mjolnir.setupMjolnirFromConfig(client, this.getDefaultMjolnirConfig(managementRoomId))
+            await Mjolnir.setupMjolnirFromConfig(
+                client,
+                intentListener,
+                this.getDefaultMjolnirConfig(managementRoomId)
+            ),
+            intentListener,
         );
+        await managedMjolnir.start();
         this.mjolnirs.set(await client.getUserId(), managedMjolnir);
         return managedMjolnir;
     }
@@ -170,7 +181,11 @@ export class MjolnirManager {
                     mjolnirRecord.owner,
                     mjolnirRecord.management_room,
                     mjIntent.matrixClient,
-                );
+                ).catch((e: any) => {
+                    log.error(`Could not start mjolnir ${mjolnirRecord.local_part} for ${mjolnirRecord.owner}:`, e);
+                    // Don't await, we don't want to clobber initialization if this fails.
+                    mjIntent.matrixClient.sendNotice(mjolnirRecord.management_room, `Your mjolnir could not be started. Please alert the administrator`);
+                });
             }
         }
     }
@@ -180,25 +195,11 @@ export class ManagedMjolnir {
     public constructor(
         public readonly ownerId: string,
         private readonly mjolnir: Mjolnir,
+        private readonly matrixEmitter: MatrixIntentListener,
     ) { }
 
     public async onEvent(request: Request<WeakEvent>) {
-        // Emulate the client syncing.
-        // https://github.com/matrix-org/mjolnir/issues/411
-        const mxEvent = request.getData();
-        if (mxEvent['type'] !== undefined) {
-            this.mjolnir.client.emit('room.event', mxEvent.room_id, mxEvent);
-            if (mxEvent.type === 'm.room.message') {
-                this.mjolnir.client.emit('room.message', mxEvent.room_id, mxEvent);
-            }
-            // TODO: We need to figure out how to inform the mjolnir of `room.join`.
-            // https://github.com/matrix-org/mjolnir/issues/411
-        }
-        if (mxEvent['type'] === 'm.room.member') {
-            if (mxEvent['content']['membership'] === 'invite' && mxEvent.state_key === await this.mjolnir.client.getUserId()) {
-                this.mjolnir.client.emit('room.invite', mxEvent.room_id, mxEvent);
-            }
-        }
+        this.matrixEmitter.handleEvent(request.getData());
     }
 
     public async joinRoom(roomId: string) {
@@ -221,5 +222,57 @@ export class ManagedMjolnir {
 
     public get managementRoomId(): string {
         return this.mjolnir.managementRoomId;
+    }
+
+    /**
+     * Intended to be called by the MjolnirManager to make sure the mjolnir is ready to listen to events.
+     * It should not be informed of any events via `onEvent` until this is called.
+     */
+    public async start(): Promise<void> {
+        await this.mjolnir.start();
+    }
+}
+
+export class MatrixIntentListener extends EventEmitter implements MatrixEmitter {
+    constructor(private readonly mjolnirId: string) {
+        super()
+    }
+
+    public handleEvent(mxEvent: WeakEvent) {
+        // These are ordered to be the same as matrix-bot-sdk's MatrixClient
+        // They shouldn't need to be, but they are just in case it matters.
+        if (mxEvent['type'] === 'm.room.member' &&  mxEvent.state_key === this.mjolnirId) {
+            if (mxEvent['content']['membership'] === 'leave') {
+                this.emit('room.leave', mxEvent.room_id, mxEvent);
+            }
+            if (mxEvent['content']['membership'] === 'invite') {
+                this.emit('room.invite', mxEvent.room_id, mxEvent);
+            }
+            if (mxEvent['content']['membership'] === 'join') {
+                this.emit('room.join', mxEvent.room_id, mxEvent);
+            }
+        }
+        if (mxEvent.type === 'm.room.message') {
+            this.emit('room.message', mxEvent.room_id, mxEvent);
+        }
+        if (mxEvent.type === 'm.room.tombstone' && mxEvent.state_key === '') {
+            this.emit('room.archived', mxEvent.room_id, mxEvent);
+        }
+        this.emit('room.event', mxEvent.room_id, mxEvent);
+
+    }
+
+    /**
+     * To be called by `Mjolnir`.
+     */
+    public async start() {
+
+    }
+
+    /**
+     * To be called by `Mjolni`.
+     */
+    public stop() {
+
     }
 }

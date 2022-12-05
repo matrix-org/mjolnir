@@ -67,7 +67,7 @@ import { initializeSentry, patchMatrixClient } from "./utils";
         patchMatrixClient();
         config.RUNTIME.client = client;
 
-        bot = await Mjolnir.setupMjolnirFromConfig(client, config);
+        bot = await Mjolnir.setupMjolnirFromConfig(client, client, config);
     } catch (err) {
         console.error(`Failed to setup mjolnir from the config ${config.dataPath}: ${err}`);
         throw err;

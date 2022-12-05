@@ -79,7 +79,7 @@ export class ReportManager extends EventEmitter {
     constructor(public mjolnir: Mjolnir) {
         super();
         // Configure bot interactions.
-        mjolnir.client.on("room.event", async (roomId, event) => {
+        mjolnir.matrixEmitter.on("room.event", async (roomId, event) => {
             try {
                 switch (event["type"]) {
                     case "m.reaction": {

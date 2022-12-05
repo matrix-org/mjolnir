@@ -39,6 +39,7 @@ import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
+import { MatrixEmitter } from "./MatrixEmitter";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -96,7 +97,7 @@ export class Mjolnir {
      * @param {string} options.acceptInvitesFromSpace A space of users to accept invites from, ignores invites form users not in this space.
      */
     private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options: { [key: string]: any }) {
-        client.on("room.invite", async (roomId: string, inviteEvent: any) => {
+        mjolnir.matrixEmitter.on("room.invite", async (roomId: string, inviteEvent: any) => {
             const membershipEvent = new MembershipEvent(inviteEvent);
 
             const reportInvite = async () => {
@@ -140,7 +141,7 @@ export class Mjolnir {
      * @param {MatrixClient} client The client for Mjolnir to use.
      * @returns A new Mjolnir instance that can be started without further setup.
      */
-    static async setupMjolnirFromConfig(client: MatrixClient, config: IConfig): Promise<Mjolnir> {
+    static async setupMjolnirFromConfig(client: MatrixClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
         const policyLists: PolicyList[] = [];
         const joinedRooms = await client.getJoinedRooms();
 
@@ -152,7 +153,7 @@ export class Mjolnir {
         }
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
-        const mjolnir = new Mjolnir(client, await client.getUserId(), managementRoomId, config, policyLists, ruleServer);
+        const mjolnir = new Mjolnir(client, await client.getUserId(), matrixEmitter, managementRoomId, config, policyLists, ruleServer);
         await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
@@ -161,6 +162,7 @@ export class Mjolnir {
     constructor(
         public readonly client: MatrixClient,
         private readonly clientUserId: string,
+        public readonly matrixEmitter: MatrixEmitter,
         public readonly managementRoomId: string,
         public readonly config: IConfig,
         private policyLists: PolicyList[],
@@ -171,9 +173,9 @@ export class Mjolnir {
 
         // Setup bot.
 
-        client.on("room.event", this.handleEvent.bind(this));
+        matrixEmitter.on("room.event", this.handleEvent.bind(this));
 
-        client.on("room.message", async (roomId, event) => {
+        matrixEmitter.on("room.message", async (roomId, event) => {
             if (roomId !== this.managementRoomId) return;
             if (!event['content']) return;
 
@@ -208,11 +210,11 @@ export class Mjolnir {
             }
         });
 
-        client.on("room.join", (roomId: string, event: any) => {
+        matrixEmitter.on("room.join", (roomId: string, event: any) => {
             LogService.info("Mjolnir", `Joined ${roomId}`);
             return this.resyncJoinedRooms();
         });
-        client.on("room.leave", (roomId: string, event: any) => {
+        matrixEmitter.on("room.leave", (roomId: string, event: any) => {
             LogService.info("Mjolnir", `Left ${roomId}`);
             return this.resyncJoinedRooms();
         });
@@ -303,7 +305,7 @@ export class Mjolnir {
             }
 
             // Start the bot.
-            await this.client.start();
+            await this.matrixEmitter.start();
 
             this.currentState = STATE_SYNCING;
             if (this.config.syncOnStartup) {
@@ -331,7 +333,7 @@ export class Mjolnir {
      */
     public stop() {
         LogService.info("Mjolnir", "Stopping Mjolnir...");
-        this.client.stop();
+        this.matrixEmitter.stop();
         this.webapis.stop();
         this.reportPoller?.stop();
     }

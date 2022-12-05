@@ -64,7 +64,7 @@ export class ProtectionManager {
      */
     public async start() {
         this.mjolnir.reportManager.on("report.new", this.handleReport.bind(this));
-        this.mjolnir.client.on("room.event", this.handleEvent.bind(this));
+        this.mjolnir.matrixEmitter.on("room.event", this.handleEvent.bind(this));
         for (const protection of PROTECTIONS) {
             try {
                 await this.registerProtection(protection);

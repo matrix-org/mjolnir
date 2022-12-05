@@ -1,4 +1,4 @@
-import { MatrixClient } from "matrix-bot-sdk";
+import { MatrixEmitter } from "./MatrixEmitter";
 
 enum Action {
     Join,
@@ -154,7 +154,7 @@ class RoomMembers {
 export class RoomMemberManager {
     private perRoom: Map<string /* room id */, RoomMembers> = new Map();
     private readonly cbHandleEvent;
-    constructor(private client: MatrixClient) {
+    constructor(private client: MatrixEmitter) {
         // Listen for join events.
         this.cbHandleEvent = this.handleEvent.bind(this);
         client.on("room.event", this.cbHandleEvent);
