@@ -180,6 +180,10 @@ const defaultConfig: IConfig = {
     },
 };
 
+export function getDefaultConfig(): IConfig {
+    return Config.util.cloneDeep(defaultConfig);
+}
+
 /**
  * Grabs an explicit path provided for mjolnir's config from an arguments vector if provided, otherwise returns undefined.
  * @param argv An arguments vector sourced from `process.argv`.

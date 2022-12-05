@@ -1,6 +1,6 @@
 import { Mjolnir } from "../Mjolnir";
 import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matrix-appservice-bridge";
-import { IConfig, read as configRead } from "../config";
+import { getDefaultConfig, IConfig, read as configRead } from "../config";
 import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 import { DataStore } from "./datastore";
@@ -9,6 +9,7 @@ import { Access } from "../models/AccessControlUnit";
 import { randomUUID } from "crypto";
 import EventEmitter from "events";
 import { MatrixEmitter } from "../MatrixEmitter";
+import Config from "config";
 
 const log = new Logger('MjolnirManager');
 
@@ -48,7 +49,29 @@ export class MjolnirManager {
      * @returns A config that can be directly used by the new mjolnir.
      */
     private getDefaultMjolnirConfig(managementRoomId: string): IConfig {
-        let config = configRead();
+        const allowedKeys = [
+            "commands",
+            "verboseLogging",
+            "logLevel",
+            "syncOnStartup",
+            "verifyPermissionsOnStartup",
+            "fasterMembershipChecks",
+            "automaticallyRedactForReasons",
+            "protectAllJoinedRooms",
+            "backgroundDelayMS",
+        ];
+        const configTemplate = configRead();
+        const unusedKeys = Object.keys(configTemplate).filter(key => !allowedKeys.includes(key));
+        if (unusedKeys.length > 0) {
+            log.warn("The config provided for provisioned mjolnirs contains keys which are not used by the appservice.", unusedKeys);
+        }
+        const config = Config.util.extendDeep(
+            getDefaultConfig(),
+            allowedKeys.reduce((existingConfig: any, key: string) => {
+                return { ...existingConfig, [key]: configTemplate[key as keyof IConfig] }
+            }, {})
+        );
+
         config.managementRoom = managementRoomId;
         config.protectedRooms = [];
         return config;
