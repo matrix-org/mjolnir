@@ -15,7 +15,6 @@ limitations under the License.
 */
 
 import EventEmitter from "events";
-import { MatrixClient } from "matrix-bot-sdk";
 
 /**
  * This is an interface created in order to keep the event listener
@@ -43,25 +42,4 @@ export declare interface MatrixEmitter extends EventEmitter {
 
     start(): Promise<void>;
     stop(): void;
-}
-
-// Blruh are you dumb? is this even needed??
-export class MatrixClientListner extends EventEmitter implements MatrixEmitter {
-    constructor(private readonly client: MatrixClient) {
-        super();
-        const makeListener = (event: string) => {
-            return (...args: any[]) => this.emit(event, ...args);
-        };
-        for (const event of ['room.event', 'room.messages', 'room.invite', 'room.join', 'room.leave']) {
-            this.client.on(event, makeListener(event));
-        }
-    }
-
-    public async start(): Promise<void> {
-        await this.client.start();
-    }
-
-    public stop(): void {
-        this.client.stop();
-    }
 }
