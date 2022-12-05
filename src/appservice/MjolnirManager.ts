@@ -216,6 +216,7 @@ export class ManagedMjolnir {
             { name: `${mjolnirOwnerId}'s policy room` }
         );
         const roomRef = Permalinks.forRoom(listRoomId);
+        await this.mjolnir.addProtectedRoom(listRoomId);
         return await this.mjolnir.watchList(roomRef);
     }
 
