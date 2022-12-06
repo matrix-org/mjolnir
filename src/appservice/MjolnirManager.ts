@@ -49,6 +49,9 @@ export class MjolnirManager {
      * @returns A config that can be directly used by the new mjolnir.
      */
     private getDefaultMjolnirConfig(managementRoomId: string): IConfig {
+        // These are keys that are allowed to be configured for provisioned mjolnirs.
+        // We need a restricted set so that someone doesn't accidentally enable webservers etc
+        // on every created Mjolnir, which would result in very confusing error messages.
         const allowedKeys = [
             "commands",
             "verboseLogging",
@@ -249,7 +252,7 @@ export class ManagedMjolnir {
 
     /**
      * Intended to be called by the MjolnirManager to make sure the mjolnir is ready to listen to events.
-     * It should not be informed of any events via `onEvent` until this is called.
+     * This managed mjolnir should not be informed of any events via `onEvent` until `start` is called.
      */
     public async start(): Promise<void> {
         await this.mjolnir.start();
@@ -289,13 +292,13 @@ export class MatrixIntentListener extends EventEmitter implements MatrixEmitter 
      * To be called by `Mjolnir`.
      */
     public async start() {
-
+        // Nothing to do.
     }
 
     /**
-     * To be called by `Mjolni`.
+     * To be called by `Mjolnir`.
      */
     public stop() {
-
+        // Nothing to do.
     }
 }
