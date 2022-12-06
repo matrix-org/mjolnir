@@ -18,6 +18,7 @@ import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
 import ManagementRoomOutput from "../ManagementRoomOutput";
+import { MatrixSendClient } from "../MatrixEmitter";
 
 export interface QueuedRedaction {
     /** The room which the redaction will take place in. */
@@ -27,7 +28,7 @@ export interface QueuedRedaction {
      * Called by the EventRedactionQueue.
      * @param client A MatrixClient to use to carry out the redaction.
      */
-    redact(client: MatrixClient, managementRoom: ManagementRoomOutput): Promise<void>
+    redact(client: MatrixSendClient, managementRoom: ManagementRoomOutput): Promise<void>
     /**
      * Used to test whether the redaction is the equivalent to another redaction.
      * @param redaction Another QueuedRedaction to test if this redaction is an equivalent to.
@@ -107,7 +108,7 @@ export class EventRedactionQueue {
      * @param limitToRoomId If the roomId is provided, only redactions for that room will be processed.
      * @returns A description of any errors encountered by each QueuedRedaction that was processed.
      */
-    public async process(client: MatrixClient, managementRoom: ManagementRoomOutput, limitToRoomId?: string): Promise<RoomUpdateError[]> {
+    public async process(client: MatrixSendClient, managementRoom: ManagementRoomOutput, limitToRoomId?: string): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
         const redact = async (currentBatch: QueuedRedaction[]) => {
             for (const redaction of currentBatch) {

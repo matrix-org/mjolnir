@@ -14,10 +14,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixClient, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoomOutput";
+import { MatrixSendClient } from "./MatrixEmitter";
 import AccessControlUnit, { Access } from "./models/AccessControlUnit";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
 import PolicyList, { ListRuleChange } from "./models/PolicyList";
@@ -88,7 +89,7 @@ export class ProtectedRoomsSet {
     private readonly accessControlUnit = new AccessControlUnit([]);
 
     constructor(
-        private readonly client: MatrixClient,
+        private readonly client: MatrixSendClient,
         private readonly clientUserId: string,
         private readonly managementRoomId: string,
         private readonly managementRoomOutput: ManagementRoomOutput,

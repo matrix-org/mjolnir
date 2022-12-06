@@ -84,7 +84,7 @@ export async function makeMjolnir(config: IConfig): Promise<Mjolnir> {
     await overrideRatelimitForUser(config.homeserverUrl, await client.getUserId());
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
-    let mj = await Mjolnir.setupMjolnirFromConfig(client, config);
+    let mj = await Mjolnir.setupMjolnirFromConfig(client, client, config);
     globalClient = client;
     globalMjolnir = mj;
     return mj;

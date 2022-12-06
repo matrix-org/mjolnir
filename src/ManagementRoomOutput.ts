@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 import * as Sentry from "@sentry/node";
-import { extractRequestError, LogLevel, LogService, MatrixClient, MessageType, Permalinks, TextualMessageEventContent, UserID } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, MessageType, Permalinks, TextualMessageEventContent, UserID } from "matrix-bot-sdk";
 import { IConfig } from "./config";
+import { MatrixSendClient } from "./MatrixEmitter";
 import { htmlEscape } from "./utils";
 
 const levelToFn = {
@@ -33,7 +34,7 @@ export default class ManagementRoomOutput {
 
     constructor(
         private readonly managementRoomId: string,
-        private readonly client: MatrixClient,
+        private readonly client: MatrixSendClient,
         private readonly config: IConfig,
     ) {
 
