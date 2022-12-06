@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as fs from "fs";
 import { load } from "js-yaml";
-import { MatrixClient } from "matrix-bot-sdk";
+import { MatrixClient, LogService } from "matrix-bot-sdk";
 import Config from "config";
 
 /**
@@ -212,4 +212,41 @@ export function read(): IConfig {
         const config = Config.util.extendDeep({}, defaultConfig, Config.util.toObject()) as IConfig;
         return config;
     }
+}
+
+/**
+ * Provides a config for each newly provisioned mjolnir in appservice mode.
+ * @param managementRoomId A room that has been created to serve as the mjolnir's management room for the owner.
+ * @returns A config that can be directly used by the new mjolnir.
+ */
+export function getProvisionedMjolnirConfig(managementRoomId: string): IConfig {
+    // These are keys that are allowed to be configured for provisioned mjolnirs.
+    // We need a restricted set so that someone doesn't accidentally enable webservers etc
+    // on every created Mjolnir, which would result in very confusing error messages.
+    const allowedKeys = [
+        "commands",
+        "verboseLogging",
+        "logLevel",
+        "syncOnStartup",
+        "verifyPermissionsOnStartup",
+        "fasterMembershipChecks",
+        "automaticallyRedactForReasons",
+        "protectAllJoinedRooms",
+        "backgroundDelayMS",
+    ];
+    const configTemplate = read(); // we use the standard bot config as a template for every provisioned mjolnir.
+    const unusedKeys = Object.keys(configTemplate).filter(key => !allowedKeys.includes(key));
+    if (unusedKeys.length > 0) {
+        LogService.warn("config", "The config provided for provisioned mjolnirs contains keys which are not used by the appservice.", unusedKeys);
+    }
+    const config = Config.util.extendDeep(
+        getDefaultConfig(),
+        allowedKeys.reduce((existingConfig: any, key: string) => {
+            return { ...existingConfig, [key]: configTemplate[key as keyof IConfig] }
+        }, {})
+    );
+
+    config.managementRoom = managementRoomId;
+    config.protectedRooms = [];
+    return config;
 }

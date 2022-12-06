@@ -1,6 +1,6 @@
 import { Mjolnir } from "../Mjolnir";
 import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matrix-appservice-bridge";
-import { getDefaultConfig, IConfig, read as configRead } from "../config";
+import { getProvisionedMjolnirConfig } from "../config";
 import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 import { DataStore } from "./datastore";
@@ -9,7 +9,6 @@ import { Access } from "../models/AccessControlUnit";
 import { randomUUID } from "crypto";
 import EventEmitter from "events";
 import { MatrixEmitter } from "../MatrixEmitter";
-import Config from "config";
 
 const log = new Logger('MjolnirManager');
 
@@ -44,43 +43,6 @@ export class MjolnirManager {
     }
 
     /**
-     * Gets the default config to give the newly provisioned mjolnirs.
-     * @param managementRoomId A room that has been created to serve as the mjolnir's management room for the owner.
-     * @returns A config that can be directly used by the new mjolnir.
-     */
-    private getDefaultMjolnirConfig(managementRoomId: string): IConfig {
-        // These are keys that are allowed to be configured for provisioned mjolnirs.
-        // We need a restricted set so that someone doesn't accidentally enable webservers etc
-        // on every created Mjolnir, which would result in very confusing error messages.
-        const allowedKeys = [
-            "commands",
-            "verboseLogging",
-            "logLevel",
-            "syncOnStartup",
-            "verifyPermissionsOnStartup",
-            "fasterMembershipChecks",
-            "automaticallyRedactForReasons",
-            "protectAllJoinedRooms",
-            "backgroundDelayMS",
-        ];
-        const configTemplate = configRead();
-        const unusedKeys = Object.keys(configTemplate).filter(key => !allowedKeys.includes(key));
-        if (unusedKeys.length > 0) {
-            log.warn("The config provided for provisioned mjolnirs contains keys which are not used by the appservice.", unusedKeys);
-        }
-        const config = Config.util.extendDeep(
-            getDefaultConfig(),
-            allowedKeys.reduce((existingConfig: any, key: string) => {
-                return { ...existingConfig, [key]: configTemplate[key as keyof IConfig] }
-            }, {})
-        );
-
-        config.managementRoom = managementRoomId;
-        config.protectedRooms = [];
-        return config;
-    }
-
-    /**
      * Creates a new mjolnir for a user.
      * @param requestingUserId The user that is requesting this mjolnir and who will own it.
      * @param managementRoomId An existing matrix room to act as the management room.
@@ -94,7 +56,7 @@ export class MjolnirManager {
             await Mjolnir.setupMjolnirFromConfig(
                 client,
                 intentListener,
-                this.getDefaultMjolnirConfig(managementRoomId)
+                getProvisionedMjolnirConfig(managementRoomId)
             ),
             intentListener,
         );
