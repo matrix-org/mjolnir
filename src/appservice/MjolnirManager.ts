@@ -221,6 +221,13 @@ export class ManagedMjolnir {
     }
 }
 
+/**
+ * This is used to listen for events intended for a single mjolnir that resides in the appservice.
+ * This exists entirely because the Mjolnir class was previously designed only to receive events
+ * from a syncing matrix-bot-sdk MatrixClient. Since appservices provide a transactional push
+ * api for all users on the appservice, almost the opposite of sync, we needed to create an
+ * interface for both. See `MatrixEmitter`.
+ */
 export class MatrixIntentListener extends EventEmitter implements MatrixEmitter {
     constructor(private readonly mjolnirId: string) {
         super()
