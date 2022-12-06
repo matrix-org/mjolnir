@@ -9,6 +9,7 @@ import { Mjolnir } from "../../src/Mjolnir";
 import { ALL_RULE_TYPES, Recommendation, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/ListRule";
 import AccessControlUnit, { Access, EntityAccess } from "../../src/models/AccessControlUnit";
 import { randomUUID } from "crypto";
+import { MatrixSendClient } from "../../src/MatrixEmitter";
 
 /**
  * Create a policy rule in a policy room.
@@ -20,7 +21,7 @@ import { randomUUID } from "crypto";
  * @param template The template to use for the policy rule event.
  * @returns The event id of the newly created policy rule.
  */
-async function createPolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = { recommendation: 'm.ban' }, stateKey = `rule:${entity}`) {
+async function createPolicyRule(client: MatrixSendClient, policyRoomId: string, policyType: string, entity: string, reason: string, template = { recommendation: 'm.ban' }, stateKey = `rule:${entity}`) {
     return await client.sendStateEvent(policyRoomId, policyType, stateKey, {
         entity,
         reason,
@@ -37,7 +38,7 @@ async function createPolicyRule(client: MatrixClient, policyRoomId: string, poli
  * @param stateKey The key for the rule.
  * @returns The event id of the void rule that was created to override the old one.
  */
-async function removePolicyRule(client: MatrixClient, policyRoomId: string, policyType: string, entity: string, stateKey = `rule:${entity}`) {
+async function removePolicyRule(client: MatrixSendClient, policyRoomId: string, policyType: string, entity: string, stateKey = `rule:${entity}`) {
     return await client.sendStateEvent(policyRoomId, policyType, stateKey, {});
 }
 

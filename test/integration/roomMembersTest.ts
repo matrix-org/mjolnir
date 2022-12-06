@@ -310,7 +310,7 @@ describe("Test: Testing RoomMemberManager", function() {
 
         // Initially, the command should show that same result.
         for (let roomId of roomIds) {
-            const reply = await getFirstReply(mjolnir.client, mjolnir.managementRoomId, () => {
+            const reply = await getFirstReply(mjolnir.matrixEmitter, mjolnir.managementRoomId, () => {
                 const command = `!mjolnir status joins ${roomId}`;
                 return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
             });
@@ -328,7 +328,7 @@ describe("Test: Testing RoomMemberManager", function() {
             const roomId = roomIds[i];
             const joined = manager.getUsersInRoom(roomId, start, 100);
             assert.equal(joined.length, SAMPLE_SIZE / 2 /* half of the users */ + 1 /* mjolnir */, "We should now see all joined users in the room");
-            const reply = await getFirstReply(mjolnir.client, mjolnir.managementRoomId, () => {
+            const reply = await getFirstReply(mjolnir.matrixEmitter, mjolnir.managementRoomId, () => {
                 const command = `!mjolnir status joins ${roomId}`;
                 return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
             });
@@ -361,7 +361,7 @@ describe("Test: Testing RoomMemberManager", function() {
 
         for (let i = 0; i < roomIds.length; ++i) {
             const roomId = roomIds[i];
-            const reply = await getFirstReply(mjolnir.client, mjolnir.managementRoomId, () => {
+            const reply = await getFirstReply(mjolnir.matrixEmitter, mjolnir.managementRoomId, () => {
                 const command = `!mjolnir status joins ${roomId}`;
                 return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
             });
@@ -684,7 +684,7 @@ describe("Test: Testing RoomMemberManager", function() {
             assert.ok(joined.length >= 2 * SAMPLE_SIZE, `In experiment ${experiment.name}, we should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`);
 
             // Run experiment.
-            await getNthReply(mjolnir.client, mjolnir.managementRoomId, experiment.n, async () => {
+            await getNthReply(mjolnir.matrixEmitter, mjolnir.managementRoomId, experiment.n, async () => {
                 const command = experiment.command(roomId, roomAlias);
                 let result = await this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: 'm.text', body: command });
                 return result;

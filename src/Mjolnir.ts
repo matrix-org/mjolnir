@@ -18,7 +18,6 @@ import {
     extractRequestError,
     LogLevel,
     LogService,
-    MatrixClient,
     MembershipEvent,
     Permalinks,
 } from "matrix-bot-sdk";
@@ -39,7 +38,7 @@ import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
-import { MatrixEmitter } from "./MatrixEmitter";
+import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -89,14 +88,14 @@ export class Mjolnir {
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
-     * @param {MatrixClient} client
+     * @param {MatrixSendClient} client
      * @param options By default accepts invites from anyone.
      * @param {string} options.managementRoom The room to report ignored invitations to if `recordIgnoredInvites` is true.
      * @param {boolean} options.recordIgnoredInvites Whether to report invites that will be ignored to the `managementRoom`.
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
      * @param {string} options.acceptInvitesFromSpace A space of users to accept invites from, ignores invites form users not in this space.
      */
-    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixClient, options: { [key: string]: any }) {
+    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixSendClient, options: { [key: string]: any }) {
         mjolnir.matrixEmitter.on("room.invite", async (roomId: string, inviteEvent: any) => {
             const membershipEvent = new MembershipEvent(inviteEvent);
 
@@ -131,17 +130,16 @@ export class Mjolnir {
                     });
                 if (!spaceUserIds.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             }
-
             return client.joinRoom(roomId);
         });
     }
 
     /**
      * Create a new Mjolnir instance from a client and the options in the configuration file, ready to be started.
-     * @param {MatrixClient} client The client for Mjolnir to use.
+     * @param {MatrixSendClient} client The client for Mjolnir to use.
      * @returns A new Mjolnir instance that can be started without further setup.
      */
-    static async setupMjolnirFromConfig(client: MatrixClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
+    static async setupMjolnirFromConfig(client: MatrixSendClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
         const policyLists: PolicyList[] = [];
         const joinedRooms = await client.getJoinedRooms();
 
@@ -160,7 +158,7 @@ export class Mjolnir {
     }
 
     constructor(
-        public readonly client: MatrixClient,
+        public readonly client: MatrixSendClient,
         private readonly clientUserId: string,
         public readonly matrixEmitter: MatrixEmitter,
         public readonly managementRoomId: string,
@@ -236,7 +234,7 @@ export class Mjolnir {
             this.reportPoller = new ReportPoller(this, this.reportManager);
         }
         // Setup join/leave listener
-        this.roomJoins = new RoomMemberManager(this.client);
+        this.roomJoins = new RoomMemberManager(this.matrixEmitter);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
 
         this.protectionManager = new ProtectionManager(this);

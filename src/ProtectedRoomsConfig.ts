@@ -15,8 +15,9 @@ limitations under the License.
 */
 
 import AwaitLock from 'await-lock';
-import { extractRequestError, LogService, MatrixClient, Permalinks } from "matrix-bot-sdk";
+import { extractRequestError, LogService, Permalinks } from "matrix-bot-sdk";
 import { IConfig } from "./config";
+import { MatrixSendClient } from './MatrixEmitter';
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 
 /**
@@ -32,7 +33,7 @@ export default class ProtectedRoomsConfig {
     /** This is to prevent clobbering the account data for the protected rooms if several rooms are explicitly protected concurrently. */
     private accountDataLock = new AwaitLock();
 
-    constructor(private readonly client: MatrixClient) {
+    constructor(private readonly client: MatrixSendClient) {
 
     }
 

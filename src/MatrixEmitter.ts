@@ -15,11 +15,14 @@ limitations under the License.
 */
 
 import EventEmitter from "events";
+import { MatrixClient } from "matrix-bot-sdk";
 
 /**
  * This is an interface created in order to keep the event listener
- * Mjolnir uses for new events generic. This is because events
- * can come from `/sync` if we are in bot mode or from the appservice.
+ * Mjolnir uses for new events generic.
+ * Used to provide a unified API for messages received from matrix-bot-sdk (using GET /sync)
+ * when we're in single bot mode and messages received from matrix-appservice-bridge (using pushed /transaction)
+ * when we're in appservice mode.
  */
 export declare interface MatrixEmitter extends EventEmitter {
     on(event: 'room.event', listener: (roomId: string, mxEvent: any) => void ): this
@@ -43,3 +46,10 @@ export declare interface MatrixEmitter extends EventEmitter {
     start(): Promise<void>;
     stop(): void;
 }
+
+/**
+ * A `MatrixClient` without the properties of `MatrixEmitter`.
+ * This is in order to enforce listeners are added to `MatrixEmitter`s
+ * rather than on the matrix-bot-sdk version of the matrix client.
+ */
+export type MatrixSendClient = Omit<MatrixClient, keyof MatrixEmitter>;

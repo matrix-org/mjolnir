@@ -14,9 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogService, MatrixClient, RoomCreateOptions, UserID } from "matrix-bot-sdk";
+import { extractRequestError, LogService, RoomCreateOptions, UserID } from "matrix-bot-sdk";
 import { EventEmitter } from "events";
 import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
+import { MatrixSendClient } from "../MatrixEmitter";
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
@@ -104,7 +105,7 @@ class PolicyList extends EventEmitter {
      * @param roomRef A sharable/clickable matrix URL that refers to the room.
      * @param client A matrix client that is used to read the state of the room when `updateList` is called.
      */
-    constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixClient) {
+    constructor(public readonly roomId: string, public readonly roomRef: string, private client: MatrixSendClient) {
         super();
         this.batcher = new UpdateBatcher(this);
     }
@@ -118,7 +119,7 @@ class PolicyList extends EventEmitter {
      * @returns The room id for the newly created policy list.
      */
     public static async createList(
-        client: MatrixClient,
+        client: MatrixSendClient,
         shortcode: string,
         invite: string[],
         createRoomOptions: RoomCreateOptions = {}
