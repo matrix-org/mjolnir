@@ -56,9 +56,6 @@ declare interface PolicyList {
     // PolicyList.update is emitted when the PolicyList has pulled new rules from Matrix and informs listeners of any changes.
     on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[]) => void): this
     emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[]): boolean
-    // PolicyList.batch is emitted when the PolicyList has created a batch from the events provided by `updateForEvent`.
-    on(event: 'PolicyList.batch', listener: (list: PolicyList) => void): this
-    emit(event: 'PolicyList.batch', list: PolicyList): boolean
 }
 
 /**
@@ -476,7 +473,8 @@ export default PolicyList;
 
 /**
  * Helper class that emits a batch event on a `PolicyList` when it has made a batch
- * out of the events given to `addToBatch`.
+ * out of the Matrix events given to `addToBatch` via `updateForEvent`.
+ * The `UpdateBatcher` will then call `list.update()` on the associated `PolicyList` once it has finished batching events.
  */
 class UpdateBatcher {
     // Whether we are waiting for more events to form a batch.
@@ -510,7 +508,8 @@ class UpdateBatcher {
             await new Promise(resolve => setTimeout(resolve, this.waitPeriodMS));
         } while ((Date.now() - start) < this.maxWaitMS && this.latestEventId !== eventId)
         this.reset();
-        this.banList.emit('PolicyList.batch', this.banList);
+        // batching finished, update the associated list.
+        await this.banList.updateList();
     }
 
     /**
