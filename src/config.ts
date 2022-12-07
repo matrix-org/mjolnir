@@ -37,8 +37,13 @@ export interface IConfig {
         password: string;
     };
     dataPath: string;
-    acceptInvitesFromSpace: string;
+    /**
+     * If true, Mjolnir will only accept invites from users present in managementRoom.
+     * Otherwise a space must be provided to `acceptInvitesFromSpace`.
+     */
     autojoinOnlyIfManager: boolean;
+    /** Mjolnir will accept invites from members of this space if `autojoinOnlyIfManager` is false. */
+    acceptInvitesFromSpace: string;
     recordIgnoredInvites: boolean;
     managementRoom: string;
     verboseLogging: boolean;
@@ -127,7 +132,7 @@ const defaultConfig: IConfig = {
     },
     dataPath: "/data/storage",
     acceptInvitesFromSpace: '!noop:example.org',
-    autojoinOnlyIfManager: false,
+    autojoinOnlyIfManager: true,
     recordIgnoredInvites: false,
     managementRoom: "!noop:example.org",
     verboseLogging: false,
