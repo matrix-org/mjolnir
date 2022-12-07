@@ -31,7 +31,7 @@ import { ReportPoller } from "./report/ReportPoller";
 import { WebAPIs } from "./webapis/WebAPIs";
 import RuleServer from "./models/RuleServer";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
-import { IConfig } from "./config";
+import { getDefaultConfig, IConfig } from "./config";
 import PolicyList from "./models/PolicyList";
 import { ProtectedRoomsSet } from "./ProtectedRoomsSet";
 import ManagementRoomOutput from "./ManagementRoomOutput";
@@ -140,6 +140,9 @@ export class Mjolnir {
      * @returns A new Mjolnir instance that can be started without further setup.
      */
     static async setupMjolnirFromConfig(client: MatrixSendClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
+        if (!config.autojoinOnlyIfManager && config.acceptInvitesFromSpace === getDefaultConfig().acceptInvitesFromSpace) {
+            throw new TypeError("`autojoinOnlyIfManager` has been disabled, yet no space has been provided for `acceptInvitesFromSpace`.");
+        }
         const policyLists: PolicyList[] = [];
         const joinedRooms = await client.getJoinedRooms();
 
