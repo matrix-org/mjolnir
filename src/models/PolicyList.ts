@@ -18,6 +18,10 @@ import { extractRequestError, LogService, RoomCreateOptions, UserID } from "matr
 import { EventEmitter } from "events";
 import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
 import { MatrixSendClient } from "../MatrixEmitter";
+import AwaitLock from "await-lock";
+import { monotonicFactory } from "ulidx";
+
+const ulid = monotonicFactory();
 
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
@@ -54,8 +58,8 @@ export interface ListRuleChange {
 
 declare interface PolicyList {
     // PolicyList.update is emitted when the PolicyList has pulled new rules from Matrix and informs listeners of any changes.
-    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[]) => void): this
-    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[]): boolean
+    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[], revisionId: string) => void): this
+    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[], revisionId: string): boolean
 }
 
 /**
@@ -96,6 +100,18 @@ class PolicyList extends EventEmitter {
      */
     private static readonly EVENT_RULE_ANNOTATION_KEY = 'org.matrix.mjolnir.annotation.rule';
 
+    /**
+     * A ULID for the current revision of the list state.
+     * Each time we use `updateList` we create a new revision to represent the change of state.
+     * Listeners can then use the revision id to work out whether they have already applied
+     * the latest revision.
+     */
+    private revisionId = ulid();
+
+    /**
+     * A lock to protect `updateList` from a situation where one call to `getRoomState` can start and end before another.
+     */
+    private readonly updateListLock = new AwaitLock();
     /**
      * Construct a PolicyList, does not synchronize with the room.
      * @param roomId The id of the policy room, i.e. a room containing MSC2313 policies.
@@ -346,10 +362,24 @@ class PolicyList extends EventEmitter {
      * and updating the model to reflect the room.
      * @returns A description of any rules that were added, modified or removed from the list as a result of this update.
      */
-    public async updateList(): Promise<ListRuleChange[]> {
-        let changes: ListRuleChange[] = [];
+    public async updateList(): Promise<ReturnType<PolicyList["updateListWithState"]>> {
+        await this.updateListLock.acquireAsync();
+        try {
+            const state = await this.client.getRoomState(this.roomId);
+            return this.updateListWithState(state);
+        } finally {
+            this.updateListLock.release();
+        }
+    }
 
-        const state = await this.client.getRoomState(this.roomId);
+    /**
+     * Same as `updateList` but without async to make sure that no one uses await within the body.
+     * The reason no one should use await is to avoid a horrible race should `updateList` be called more than once.
+     * @param state Room state to update the list with, provided by `updateList`
+     * @returns Any changes that have been made to the PolicyList.
+     */
+    private updateListWithState(state: any): { revisionId: string, changes: ListRuleChange[] } {
+        const changes: ListRuleChange[] = [];
         for (const event of state) {
             if (event['state_key'] === '' && event['type'] === SHORTCODE_EVENT_TYPE) {
                 this.shortcode = (event['content'] || {})['shortcode'] || null;
@@ -445,7 +475,10 @@ class PolicyList extends EventEmitter {
                 changes.push({ rule, changeType, event, sender: event.sender, ...previousState ? { previousState } : {} });
             }
         }
-        this.emit('PolicyList.update', this, changes);
+        if (changes.length > 0) {
+            this.revisionId = ulid();
+            this.emit('PolicyList.update', this, changes, this.revisionId);
+        }
         if (this.batchedEvents.keys.length !== 0) {
             // The only reason why this isn't a TypeError is because we need to know about this when it happens, because it means
             // we're probably doing something wrong, on the other hand, if someone messes with a server implementation and
@@ -453,7 +486,7 @@ class PolicyList extends EventEmitter {
             // we don't want Mjolnir to stop working properly. Though, I am not confident a burried warning is going to alert us.
             LogService.warn("PolicyList", "The policy list is being informed about events that it cannot find in the room state, this is really bad and you should seek help.");
         }
-        return changes;
+        return { revisionId: this.revisionId, changes };
     }
 
     /**

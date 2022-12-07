@@ -18,5 +18,5 @@ import { Mjolnir } from "../Mjolnir";
 
 // !mjolnir sync
 export async function execSyncCommand(roomId: string, event: any, mjolnir: Mjolnir) {
-    return mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
+    return mjolnir.protectedRoomsTracker.syncLists();
 }
