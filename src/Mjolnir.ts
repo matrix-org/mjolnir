@@ -436,7 +436,6 @@ export class Mjolnir {
     private async addPolicyList(roomId: string, roomRef: string): Promise<PolicyList> {
         const list = new PolicyList(roomId, roomRef, this.client);
         this.ruleServer?.watch(list);
-        list.on('PolicyList.batch', (...args) => this.protectedRoomsTracker.syncWithPolicyList(...args));
         await list.updateList();
         this.policyLists.push(list);
         this.protectedRoomsTracker.watchList(list);

@@ -88,6 +88,12 @@ export class ProtectedRoomsSet {
      */
     private readonly accessControlUnit = new AccessControlUnit([]);
 
+    /**
+     * Intended to be `this.syncWithUpdatedPolicyList` so we can add it in `this.watchList` and remove it in `this.unwatchList`.
+     * Otherwise we would risk being informed about lists we no longer watch.
+     */
+    private readonly listUpdateListener: (list: PolicyList, changes: ListRuleChange[]) => void;
+
     constructor(
         private readonly client: MatrixSendClient,
         private readonly clientUserId: string,
@@ -108,6 +114,7 @@ export class ProtectedRoomsSet {
 
         // Setup room activity watcher
         this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker();
+        this.listUpdateListener = this.syncWithUpdatedPolicyList.bind(this);
     }
 
     /**
@@ -143,12 +150,14 @@ export class ProtectedRoomsSet {
         if (!this.policyLists.includes(policyList)) {
             this.policyLists.push(policyList);
             this.accessControlUnit.watchList(policyList);
+            policyList.on('PolicyList.update', this.listUpdateListener);
         }
     }
 
     public unwatchList(policyList: PolicyList): void {
         this.policyLists = this.policyLists.filter(list => list.roomId !== policyList.roomId);
         this.accessControlUnit.unwatchList(policyList);
+        policyList.off('PolicyList.update', this.listUpdateListener)
     }
 
     /**
@@ -248,15 +257,13 @@ export class ProtectedRoomsSet {
     }
 
     /**
-     * Pulls any changes to the rules that are in a policy room and updates all protected rooms
-     * with those changes. Does not fail if there are errors updating the room, these are reported to the management room.
+     * Updates all protected rooms with those any changes that have been made to a policy list.
+     * Does not fail if there are errors updating the room, these are reported to the management room.
+     * Do not use directly as a listener, use `this.listUpdateListener`.
      * @param policyList The `PolicyList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    public async syncWithPolicyList(policyList: PolicyList): Promise<void> {
-        // this bit can move away into a listener.
-        const changes = await policyList.updateList();
-
+    private async syncWithUpdatedPolicyList(policyList: PolicyList, changes: ListRuleChange[]): Promise<void> {
         let hadErrors = false;
         const [aclErrors, banErrors] = await Promise.all([
             this.applyServerAcls(this.policyLists, this.protectedRoomsByActivity()),
