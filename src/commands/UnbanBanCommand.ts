@@ -155,7 +155,7 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
 
         if (unbannedSomeone) {
             await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Syncing lists to ensure no users were accidentally unbanned`);
-            await mjolnir.protectedRoomsTracker.syncLists(mjolnir.config.verboseLogging);
+            await mjolnir.protectedRoomsTracker.syncLists();
         }
     };
 

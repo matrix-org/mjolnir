@@ -302,7 +302,7 @@ export class Mjolnir {
 
             if (this.config.verifyPermissionsOnStartup) {
                 await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
-                await this.protectedRoomsTracker.verifyPermissions(this.config.verboseLogging);
+                await this.protectedRoomsTracker.verifyPermissions();
             }
 
             // Start the bot.
@@ -311,7 +311,7 @@ export class Mjolnir {
             this.currentState = STATE_SYNCING;
             if (this.config.syncOnStartup) {
                 await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
+                await this.protectedRoomsTracker.syncLists();
             }
 
             this.currentState = STATE_RUNNING;
@@ -426,7 +426,7 @@ export class Mjolnir {
         }
 
         if (withSync) {
-            await this.protectedRoomsTracker.syncLists(this.config.verboseLogging);
+            await this.protectedRoomsTracker.syncLists();
         }
     }
 
