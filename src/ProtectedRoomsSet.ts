@@ -241,7 +241,8 @@ export class ProtectedRoomsSet {
     }
 
     /**
-     * Sync all the rooms with all the watched lists, banning and applying any changed ACLS.
+     * Update each watched list and then synchronize all the protected rooms with all the policies described in the watched lists,
+     * banning and applying any changed ACLS via `syncRoomsWithPolicies`.
      */
     public async syncLists() {
         for (const list of this.policyLists) {

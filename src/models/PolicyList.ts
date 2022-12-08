@@ -577,7 +577,7 @@ export class Revision {
      */
     private static makeULID = monotonicFactory();
 
-    /** 
+    /**
      * Is only public for the comparison method,
      * I feel like I'm missing something here and it is possible without
      */
