@@ -21,7 +21,7 @@ import ManagementRoomOutput from "./ManagementRoomOutput";
 import { MatrixSendClient } from "./MatrixEmitter";
 import AccessControlUnit, { Access } from "./models/AccessControlUnit";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "./models/ListRule";
-import PolicyList, { ListRuleChange } from "./models/PolicyList";
+import PolicyList, { ListRuleChange, Revision } from "./models/PolicyList";
 import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
@@ -92,12 +92,12 @@ export class ProtectedRoomsSet {
      * Intended to be `this.syncWithUpdatedPolicyList` so we can add it in `this.watchList` and remove it in `this.unwatchList`.
      * Otherwise we would risk being informed about lists we no longer watch.
      */
-    private readonly listUpdateListener: (list: PolicyList, changes: ListRuleChange[], revisionId: string) => void;
+    private readonly listUpdateListener: (list: PolicyList, changes: ListRuleChange[], revision: Revision) => void;
 
     /**
      * The revision of a each watched list that we have applied to protected rooms.
      */
-    private readonly listRevisions = new Map<PolicyList, /** The last revision we used to sync protected rooms. */ string>();
+    private readonly listRevisions = new Map<PolicyList, /** The last revision we used to sync protected rooms. */ Revision>();
 
     constructor(
         private readonly client: MatrixSendClient,
@@ -217,7 +217,7 @@ export class ProtectedRoomsSet {
     /**
      * Synchronize all the protected rooms with all of the policies described in the watched policy lists.
      */
-    public async syncRoomsWithPolicies() {
+    private async syncRoomsWithPolicies() {
         let hadErrors = false;
         const [aclErrors, banErrors] = await Promise.all([
             this.applyServerAcls(this.policyLists, this.protectedRoomsByActivity()),
@@ -245,11 +245,11 @@ export class ProtectedRoomsSet {
      */
     public async syncLists() {
         for (const list of this.policyLists) {
-            const { revisionId } = await list.updateList();
+            const { revision } = await list.updateList();
             const previousRevision = this.listRevisions.get(list);
-            if (previousRevision === undefined || revisionId > previousRevision) {
-                this.listRevisions.set(list, revisionId);
-                // we rely `this.listUpdateListener` to print the changes to the list.
+            if (previousRevision === undefined || revision.supersedes(previousRevision)) {
+                this.listRevisions.set(list, revision);
+                // we rely on `this.listUpdateListener` to print the changes to the list.
             }
         }
         await this.syncRoomsWithPolicies();
@@ -277,11 +277,11 @@ export class ProtectedRoomsSet {
      * @param policyList The `PolicyList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    private async syncWithUpdatedPolicyList(policyList: PolicyList, changes: ListRuleChange[], revisionId: string): Promise<void> {
+    private async syncWithUpdatedPolicyList(policyList: PolicyList, changes: ListRuleChange[], revision: Revision): Promise<void> {
         // avoid resyncing the rooms if we have already done so for the latest revision of this list.
         const previousRevision = this.listRevisions.get(policyList);
-        if (previousRevision === undefined || revisionId > previousRevision) {
-            this.listRevisions.set(policyList, revisionId);
+        if (previousRevision === undefined || revision.supersedes(previousRevision)) {
+            this.listRevisions.set(policyList, revision);
             await this.syncRoomsWithPolicies();
         }
         // This can fail if the change is very large and it is much less important than applying bans, so do it last.

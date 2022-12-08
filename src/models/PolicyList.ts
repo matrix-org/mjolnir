@@ -21,8 +21,6 @@ import { MatrixSendClient } from "../MatrixEmitter";
 import AwaitLock from "await-lock";
 import { monotonicFactory } from "ulidx";
 
-const ulid = monotonicFactory();
-
 export const SHORTCODE_EVENT_TYPE = "org.matrix.mjolnir.shortcode";
 
 export enum ChangeType {
@@ -58,8 +56,8 @@ export interface ListRuleChange {
 
 declare interface PolicyList {
     // PolicyList.update is emitted when the PolicyList has pulled new rules from Matrix and informs listeners of any changes.
-    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[], revisionId: string) => void): this
-    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[], revisionId: string): boolean
+    on(event: 'PolicyList.update', listener: (list: PolicyList, changes: ListRuleChange[], revision: Revision) => void): this
+    emit(event: 'PolicyList.update', list: PolicyList, changes: ListRuleChange[], revision: Revision): boolean
 }
 
 /**
@@ -101,12 +99,12 @@ class PolicyList extends EventEmitter {
     private static readonly EVENT_RULE_ANNOTATION_KEY = 'org.matrix.mjolnir.annotation.rule';
 
     /**
-     * A ULID for the current revision of the list state.
+     * An ID that represents the current version of the list state.
      * Each time we use `updateList` we create a new revision to represent the change of state.
-     * Listeners can then use the revision id to work out whether they have already applied
+     * Listeners can then use the revision to work out whether they have already applied
      * the latest revision.
      */
-    private revisionId = ulid();
+    private revisionId = new Revision();
 
     /**
      * A lock to protect `updateList` from a situation where one call to `getRoomState` can start and end before another.
@@ -378,7 +376,7 @@ class PolicyList extends EventEmitter {
      * @param state Room state to update the list with, provided by `updateList`
      * @returns Any changes that have been made to the PolicyList.
      */
-    private updateListWithState(state: any): { revisionId: string, changes: ListRuleChange[] } {
+    private updateListWithState(state: any): { revision: Revision, changes: ListRuleChange[] } {
         const changes: ListRuleChange[] = [];
         for (const event of state) {
             if (event['state_key'] === '' && event['type'] === SHORTCODE_EVENT_TYPE) {
@@ -476,7 +474,7 @@ class PolicyList extends EventEmitter {
             }
         }
         if (changes.length > 0) {
-            this.revisionId = ulid();
+            this.revisionId = new Revision();
             this.emit('PolicyList.update', this, changes, this.revisionId);
         }
         if (this.batchedEvents.keys.length !== 0) {
@@ -486,7 +484,7 @@ class PolicyList extends EventEmitter {
             // we don't want Mjolnir to stop working properly. Though, I am not confident a burried warning is going to alert us.
             LogService.warn("PolicyList", "The policy list is being informed about events that it cannot find in the room state, this is really bad and you should seek help.");
         }
-        return { revisionId: this.revisionId, changes };
+        return { revision: this.revisionId, changes };
     }
 
     /**
@@ -564,5 +562,37 @@ class UpdateBatcher {
         // (so the latency between them is percieved as much higher by
         // the time they get checked in `this.checkBatch`, thus batching fails).
         this.checkBatch(eventId);
+    }
+}
+
+/**
+ * Represents a specific version of the state contained in `PolicyList`.
+ * These are unique and can be compared with `supersedes`.
+ * We use a ULID to work out whether a revision supersedes another.
+ */
+export class Revision {
+
+    /**
+     * Ensures that ULIDs are monotonic.
+     */
+    private static makeULID = monotonicFactory();
+
+    /** 
+     * Is only public for the comparison method,
+     * I feel like I'm missing something here and it is possible without
+     */
+    public readonly ulid = Revision.makeULID();
+
+    constructor() {
+        // nothing to do.
+    }
+
+    /**
+     * Check whether this revision supersedes another revision.
+     * @param revision The revision we want to check this supersedes.
+     * @returns True if this Revision supersedes the other revision.
+     */
+    public supersedes(revision: Revision): boolean {
+        return this.ulid > revision.ulid;
     }
 }
