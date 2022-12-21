@@ -87,6 +87,12 @@ export class Mjolnir {
     public readonly reportManager: ReportManager;
 
     /**
+     * A list of references (matrix.to URLs) to policy lists that
+     * we could not resolve during startup.
+     */
+    private readonly failedStartupWatchListRefs: Set<string> = new Set();
+
+    /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixSendClient} client
      * @param options By default accepts invites from anyone.
@@ -442,6 +448,9 @@ export class Mjolnir {
         await list.updateList();
         this.policyLists.push(list);
         this.protectedRoomsTracker.watchList(list);
+
+        // If we have succeeded, let's remove this from the list of failed policy rooms.
+        this.failedStartupWatchListRefs.delete(roomRef);
         return list;
     }
 
@@ -452,16 +461,21 @@ export class Mjolnir {
 
         const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
         if (!joinedRooms.includes(roomId)) {
-            await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
+            await this.client.joinRoom(roomId, permalink.viaServers);
         }
 
-        if (this.policyLists.find(b => b.roomId === roomId)) return null;
+        if (this.policyLists.find(b => b.roomId === roomId)) {
+            // This room was already in our list of policy rooms, nothing else to do.
+            // Note that we bailout *after* the call to `joinRoom`, in case a user
+            // calls `watchList` in an attempt to repair something that was broken,
+            // e.g. a Mjölnir who could not join the room because of alias resolution
+            // or server being down, etc.
+            return null;
+        }
 
         const list = await this.addPolicyList(roomId, roomRef);
 
-        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
-            references: this.policyLists.map(b => b.roomRef),
-        });
+        await this.storeWatchedPolicyLists();
 
         await this.warnAboutUnprotectedPolicyListRoom(roomId);
 
@@ -480,9 +494,7 @@ export class Mjolnir {
             this.protectedRoomsTracker.unwatchList(list);
         }
 
-        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
-            references: this.policyLists.map(b => b.roomRef),
-        });
+        await this.storeWatchedPolicyLists();
         return list;
     }
 
@@ -523,7 +535,16 @@ export class Mjolnir {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
 
-            const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
+            let roomId;
+            try {
+                roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
+            } catch (ex) {
+                // Let's not fail startup because of a problem resolving a room id or an alias.
+                LogService.warn('Mjolnir', 'Could not resolve policy list room, skipping for this run', permalink.roomIdOrAlias)
+                await this.managementRoomOutput.logMessage(LogLevel.WARN, "Mjolnir", `Room ${permalink.roomIdOrAlias} could **not** be resolved, perhaps a server is down? Skipping this room. If this is a recurring problem, please consider removing this room.`);
+                this.failedStartupWatchListRefs.add(roomRef);
+                continue;
+            }
             if (!joinedRooms.includes(roomId)) {
                 await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
             }
@@ -531,6 +552,23 @@ export class Mjolnir {
             await this.warnAboutUnprotectedPolicyListRoom(roomId);
             await this.addPolicyList(roomId, roomRef);
         }
+    }
+
+    /**
+     * Store to account the list of policy rooms.
+     *
+     * We store both rooms that we are currently monitoring and rooms for which
+     * we could not setup monitoring, assuming that the setup is a transient issue
+     * that the user (or someone else) will eventually resolve.
+     */
+    private async storeWatchedPolicyLists() {
+        let list = this.policyLists.map(b => b.roomRef);
+        for (let entry of this.failedStartupWatchListRefs) {
+            list.push(entry);
+        }
+        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
+            references: list,
+        });
     }
 
     private async handleEvent(roomId: string, event: any) {
