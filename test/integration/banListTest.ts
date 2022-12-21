@@ -262,7 +262,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
         // Flood the watched list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
         const banListId = await moderator.createRoom({ invite: [mjolnirId] });
         await mjolnir.client.joinRoom(banListId);
-        await mjolnir.watchList(Permalinks.forRoom(banListId));
+        await mjolnir.policyListManager.watchList(Permalinks.forRoom(banListId));
         const acl = new ServerAcl(serverName).denyIpAddresses().allowServer("*");
         const evilServerCount = 200;
         for (let i = 0; i < evilServerCount; i++) {
@@ -278,7 +278,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
 
         // At this point we check that the state within Mjolnir is internally consistent, this is just because debugging the following
         // is a pita.
-        const list: PolicyList = this.mjolnir.policyLists[0]!;
+        const list: PolicyList = this.mjolnir.policyListManager.lists[0]!;
         assert.equal(list.serverRules.length, evilServerCount, `There should be ${evilServerCount} rules in here`);
 
         // Check each of the protected rooms for ACL events and make sure they were batched and are correct.
@@ -327,7 +327,7 @@ describe('Test: unbaning entities via the PolicyList.', function() {
         await moderator.setUserPowerLevel(await mjolnir.client.getUserId(), banListId, 100);
         await moderator.sendStateEvent(banListId, 'org.matrix.mjolnir.shortcode', '', { shortcode: "unban-test" });
         await mjolnir.client.joinRoom(banListId);
-        await mjolnir.watchList(Permalinks.forRoom(banListId));
+        await mjolnir.policyListManager.watchList(Permalinks.forRoom(banListId));
         // we use this to compare changes.
         const banList = new PolicyList(banListId, banListId, moderator);
         // we need two because we need to test the case where an entity has all rule types in the list
@@ -402,7 +402,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         // Flood the watched list with banned servers, which should prompt Mjolnir to update server ACL in protected rooms.
         const banListId = await moderator.createRoom({ invite: [mjolnirId] });
         await mjolnir.client.joinRoom(banListId);
-        await mjolnir.watchList(Permalinks.forRoom(banListId));
+        await mjolnir.policyListManager.watchList(Permalinks.forRoom(banListId));
 
         await mjolnir.protectedRoomsTracker.syncLists();
 
@@ -506,7 +506,7 @@ describe('Test: AccessControlUnit interaction with policy lists.', function() {
         assertAccess(Access.Allowed, aclUnit.getAccessForUser('@someone:matrix.org', "CHECK_SERVER"));
 
         // protect a room and check that only bad.example.com, *.ddns.example.com are in the deny ACL and not matrix.org
-        await mjolnir.watchList(policyList.roomRef);
+        await mjolnir.policyListManager.watchList(policyList.roomRef);
         const protectedRoom = await mjolnir.client.createRoom();
         await mjolnir.protectedRoomsTracker.addProtectedRoom(protectedRoom);
         await mjolnir.protectedRoomsTracker.syncLists();

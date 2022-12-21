@@ -22,7 +22,7 @@ import PolicyList from "../models/PolicyList";
 // !mjolnir import <room ID> <shortcode>
 export async function execImportCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const importRoomId = await mjolnir.client.resolveRoom(parts[2]);
-    const list = mjolnir.lists.find(b => b.listShortcode === parts[3]) as PolicyList;
+    const list = mjolnir.policyListManager.lists.find(b => b.listShortcode === parts[3]) as PolicyList;
     if (!list) {
         const errMessage = "Unable to find list - check your shortcode.";
         const errReply = RichReply.createFor(roomId, event, errMessage, errMessage);

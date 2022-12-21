@@ -125,7 +125,7 @@ export async function getFirstReaction(matrix: MatrixEmitter, targetRoom: string
  * @param client A client that isn't mjolnir to send the message with, as you will be invited to the room.
  * @returns The shortcode for the list that can be used to refer to the list in future commands.
  */
-export async function createBanList(managementRoom: string, mjolnir: MatrixClient, client: MatrixClient): Promise<string> {
+export async function createBanList(managementRoom: string, mjolnir: MatrixEmitter, client: MatrixClient): Promise<string> {
     const listName = crypto.randomUUID();
     const listCreationResponse = await getFirstReply(mjolnir, managementRoom, async () => {
         return await client.sendMessage(managementRoom, { msgtype: 'm.text', body: `!mjolnir list create ${listName} ${listName}`});

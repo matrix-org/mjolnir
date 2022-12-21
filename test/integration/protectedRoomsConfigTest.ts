@@ -1,6 +1,7 @@
 
 import { strict as assert } from "assert";
 import { MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
+import { MatrixSendClient } from "../../src/MatrixEmitter";
 import { Mjolnir } from "../../src/Mjolnir";
 import PolicyList from "../../src/models/PolicyList";
 import { newTestUser } from "./clientHelper";
@@ -12,7 +13,7 @@ async function createPolicyList(client: MatrixClient): Promise<PolicyList> {
     return new PolicyList(policyListId, Permalinks.forRoom(policyListId), client);
 }
 
-async function getProtectedRoomsFromAccountData(client: MatrixClient): Promise<string[]> {
+async function getProtectedRoomsFromAccountData(client: MatrixSendClient): Promise<string[]> {
     const rooms: { rooms?: string[] } = await client.getAccountData("org.matrix.mjolnir.protected_rooms");
     return rooms.rooms!;
 }
@@ -42,9 +43,9 @@ describe('Test: config.protectAllJoinedRooms behaves correctly.', function() {
             .forEach(roomId => assert.equal(implicitlyProtectedRooms.includes(roomId), true));
 
         // We create one policy list with Mjolnir, and we watch another that is maintained by someone else.
-        const policyListShortcode = await createBanList(mjolnir.managementRoomId, mjolnir.client, moderator);
+        const policyListShortcode = await createBanList(mjolnir.managementRoomId, mjolnir.matrixEmitter, moderator);
         const unprotectedWatchedList = await createPolicyList(moderator);
-        await mjolnir.watchList(unprotectedWatchedList.roomRef);
+        await mjolnir.policyListManager.watchList(unprotectedWatchedList.roomRef);
         await mjolnir.protectedRoomsTracker.syncLists();
 
         // We expect that the watched list will not be protected, despite config.protectAllJoinedRooms being true

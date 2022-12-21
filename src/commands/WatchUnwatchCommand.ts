@@ -19,7 +19,7 @@ import { Permalinks, RichReply } from "matrix-bot-sdk";
 
 // !mjolnir watch <room alias or ID>
 export async function execWatchCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const list = await mjolnir.watchList(Permalinks.forRoom(parts[2]));
+    const list = await mjolnir.policyListManager.watchList(Permalinks.forRoom(parts[2]));
     if (!list) {
         const replyText = "Cannot watch list due to error - is that a valid room alias?";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);
@@ -32,7 +32,7 @@ export async function execWatchCommand(roomId: string, event: any, mjolnir: Mjol
 
 // !mjolnir unwatch <room alias or ID>
 export async function execUnwatchCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const list = await mjolnir.unwatchList(Permalinks.forRoom(parts[2]));
+    const list = await mjolnir.policyListManager.unwatchList(Permalinks.forRoom(parts[2]));
     if (!list) {
         const replyText = "Cannot unwatch list due to error - is that a valid room alias?";
         const reply = RichReply.createFor(roomId, event, replyText, replyText);

@@ -19,7 +19,6 @@ import {
     LogLevel,
     LogService,
     MembershipEvent,
-    Permalinks,
 } from "matrix-bot-sdk";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
@@ -32,7 +31,7 @@ import { WebAPIs } from "./webapis/WebAPIs";
 import RuleServer from "./models/RuleServer";
 import { ThrottlingQueue } from "./queues/ThrottlingQueue";
 import { getDefaultConfig, IConfig } from "./config";
-import PolicyList from "./models/PolicyList";
+import { PolicyListManager } from "./models/PolicyList";
 import { ProtectedRoomsSet } from "./ProtectedRoomsSet";
 import ManagementRoomOutput from "./ManagementRoomOutput";
 import { ProtectionManager } from "./protections/ProtectionManager";
@@ -44,9 +43,6 @@ export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
 export const STATE_SYNCING = "syncing";
 export const STATE_RUNNING = "running";
-
-const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
-const WARN_UNPROTECTED_ROOM_EVENT_PREFIX = "org.matrix.mjolnir.unprotected_room_warning.for.";
 
 /**
  * Synapse will tell us where we last got to on polling reports, so we need
@@ -85,6 +81,8 @@ export class Mjolnir {
      * Handle user reports from the homeserver.
      */
     public readonly reportManager: ReportManager;
+
+    public readonly policyListManager: PolicyListManager;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -143,7 +141,6 @@ export class Mjolnir {
         if (!config.autojoinOnlyIfManager && config.acceptInvitesFromSpace === getDefaultConfig().acceptInvitesFromSpace) {
             throw new TypeError("`autojoinOnlyIfManager` has been disabled, yet no space has been provided for `acceptInvitesFromSpace`.");
         }
-        const policyLists: PolicyList[] = [];
         const joinedRooms = await client.getJoinedRooms();
 
         // Ensure we're also in the management room
@@ -154,7 +151,7 @@ export class Mjolnir {
         }
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
-        const mjolnir = new Mjolnir(client, await client.getUserId(), matrixEmitter, managementRoomId, config, policyLists, ruleServer);
+        const mjolnir = new Mjolnir(client, await client.getUserId(), matrixEmitter, managementRoomId, config, ruleServer);
         await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
@@ -166,11 +163,11 @@ export class Mjolnir {
         public readonly matrixEmitter: MatrixEmitter,
         public readonly managementRoomId: string,
         public readonly config: IConfig,
-        private policyLists: PolicyList[],
         // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
         public readonly ruleServer: RuleServer | null,
     ) {
         this.protectedRoomsConfig = new ProtectedRoomsConfig(client);
+        this.policyListManager = new PolicyListManager(this);
 
         // Setup bot.
 
@@ -247,10 +244,6 @@ export class Mjolnir {
         this.protectedRoomsTracker = new ProtectedRoomsSet(client, clientUserId, managementRoomId, this.managementRoomOutput, protections, config);
     }
 
-    public get lists(): PolicyList[] {
-        return this.policyLists;
-    }
-
     public get state(): string {
         return this.currentState;
     }
@@ -296,7 +289,7 @@ export class Mjolnir {
             this.protectedRoomsConfig.getExplicitlyProtectedRooms().forEach(this.protectRoom, this);
             // We have to build the policy lists before calling `resyncJoinedRooms` otherwise mjolnir will try to protect
             // every policy list we are already joined to, as mjolnir will not be able to distinguish them from normal rooms.
-            await this.buildWatchedPolicyLists();
+            await this.policyListManager.init();
             await this.resyncJoinedRooms(false);
             await this.protectionManager.start();
 
@@ -399,7 +392,7 @@ export class Mjolnir {
         // We filter out all policy rooms so that we only protect ones that are
         // explicitly protected, so that we don't try to protect lists that we are just watching.
         const filterOutManagementAndPolicyRooms = (roomId: string) => {
-            const policyListIds = this.policyLists.map(list => list.roomId);
+            const policyListIds = this.policyListManager.lists.map(list => list.roomId);
             return roomId !== this.managementRoomId && !policyListIds.includes(roomId);
         };
 
@@ -430,109 +423,6 @@ export class Mjolnir {
         }
     }
 
-
-    /**
-     * Helper for constructing `PolicyList`s and making sure they have the right listeners set up.
-     * @param roomId The room id for the `PolicyList`.
-     * @param roomRef A reference (matrix.to URL) for the `PolicyList`.
-     */
-    private async addPolicyList(roomId: string, roomRef: string): Promise<PolicyList> {
-        const list = new PolicyList(roomId, roomRef, this.client);
-        this.ruleServer?.watch(list);
-        await list.updateList();
-        this.policyLists.push(list);
-        this.protectedRoomsTracker.watchList(list);
-        return list;
-    }
-
-    public async watchList(roomRef: string): Promise<PolicyList | null> {
-        const joinedRooms = await this.client.getJoinedRooms();
-        const permalink = Permalinks.parseUrl(roomRef);
-        if (!permalink.roomIdOrAlias) return null;
-
-        const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
-        if (!joinedRooms.includes(roomId)) {
-            await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
-        }
-
-        if (this.policyLists.find(b => b.roomId === roomId)) return null;
-
-        const list = await this.addPolicyList(roomId, roomRef);
-
-        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
-            references: this.policyLists.map(b => b.roomRef),
-        });
-
-        await this.warnAboutUnprotectedPolicyListRoom(roomId);
-
-        return list;
-    }
-
-    public async unwatchList(roomRef: string): Promise<PolicyList | null> {
-        const permalink = Permalinks.parseUrl(roomRef);
-        if (!permalink.roomIdOrAlias) return null;
-
-        const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
-        const list = this.policyLists.find(b => b.roomId === roomId) || null;
-        if (list) {
-            this.policyLists.splice(this.policyLists.indexOf(list), 1);
-            this.ruleServer?.unwatch(list);
-            this.protectedRoomsTracker.unwatchList(list);
-        }
-
-        await this.client.setAccountData(WATCHED_LISTS_EVENT_TYPE, {
-            references: this.policyLists.map(b => b.roomRef),
-        });
-        return list;
-    }
-
-    public async warnAboutUnprotectedPolicyListRoom(roomId: string) {
-        if (!this.config.protectAllJoinedRooms) return; // doesn't matter
-        if (this.protectedRoomsConfig.getExplicitlyProtectedRooms().includes(roomId)) return; // explicitly protected
-
-        try {
-            const accountData: { warned: boolean } | null = await this.client.getAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId);
-            if (accountData && accountData.warned) return; // already warned
-        } catch (e) {
-            // Ignore - probably haven't warned about it yet
-        }
-
-        await this.managementRoomOutput.logMessage(LogLevel.WARN, "Mjolnir", `Not protecting ${roomId} - it is a ban list that this bot did not create. Add the room as protected if it is supposed to be protected. This warning will not appear again.`, roomId);
-        await this.client.setAccountData(WARN_UNPROTECTED_ROOM_EVENT_PREFIX + roomId, { warned: true });
-    }
-
-    /**
-     * Load the watched policy lists from account data, only used when Mjolnir is initialized.
-     */
-    private async buildWatchedPolicyLists() {
-        this.policyLists = [];
-        const joinedRooms = await this.client.getJoinedRooms();
-
-        let watchedListsEvent: { references?: string[] } | null = null;
-        try {
-            watchedListsEvent = await this.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
-        } catch (e) {
-            if (e.statusCode === 404) {
-                LogService.warn('Mjolnir', "Couldn't find account data for Mjolnir's watched lists, assuming first start.", extractRequestError(e));
-            } else {
-                throw e;
-            }
-        }
-
-        for (const roomRef of (watchedListsEvent?.references || [])) {
-            const permalink = Permalinks.parseUrl(roomRef);
-            if (!permalink.roomIdOrAlias) continue;
-
-            const roomId = await this.client.resolveRoom(permalink.roomIdOrAlias);
-            if (!joinedRooms.includes(roomId)) {
-                await this.client.joinRoom(permalink.roomIdOrAlias, permalink.viaServers);
-            }
-
-            await this.warnAboutUnprotectedPolicyListRoom(roomId);
-            await this.addPolicyList(roomId, roomRef);
-        }
-    }
-
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
         if (roomId === this.managementRoomId) {
@@ -548,7 +438,7 @@ export class Mjolnir {
 
         // Check for updated ban lists before checking protected rooms - the ban lists might be protected
         // themselves.
-        const policyList = this.policyLists.find(list => list.roomId === roomId);
+        const policyList = this.policyListManager.lists.find(list => list.roomId === roomId);
         if (policyList !== undefined) {
             if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
                 policyList.updateForEvent(event.event_id)

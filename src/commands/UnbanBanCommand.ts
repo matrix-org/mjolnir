@@ -59,7 +59,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
             else if (arg.startsWith("!") && !ruleType) ruleType = RULE_ROOM;
             else if (!ruleType) ruleType = RULE_SERVER;
         } else if (!list) {
-            const foundList = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === arg.toLowerCase());
+            const foundList = mjolnir.policyListManager.lists.find(b => b.listShortcode.toLowerCase() === arg.toLowerCase());
             if (foundList !== undefined) {
                 list = foundList;
             }
@@ -86,7 +86,7 @@ export async function parseArguments(roomId: string, event: any, mjolnir: Mjolni
     }
 
     if (!list) {
-        list = mjolnir.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode) || null;
+        list = mjolnir.policyListManager.lists.find(b => b.listShortcode.toLowerCase() === defaultShortcode) || null;
     }
 
     let replyMessage: string | null = null;
