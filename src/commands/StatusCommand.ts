@@ -86,9 +86,9 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
         }
         html += "</ul>";
     }
-    const subscribedLists = mjolnir.lists.filter(list => !mjolnir.explicitlyProtectedRooms.includes(list.roomId));
+    const subscribedLists = mjolnir.policyListManager.lists.filter(list => !mjolnir.explicitlyProtectedRooms.includes(list.roomId));
     renderPolicyLists("Subscribed policy lists", subscribedLists);
-    const subscribedAndProtectedLists = mjolnir.lists.filter(list => mjolnir.explicitlyProtectedRooms.includes(list.roomId));
+    const subscribedAndProtectedLists = mjolnir.policyListManager.lists.filter(list => mjolnir.explicitlyProtectedRooms.includes(list.roomId));
     renderPolicyLists("Subscribed and protected policy lists", subscribedAndProtectedLists);
 
     const reply = RichReply.createFor(roomId, event, text, html);
