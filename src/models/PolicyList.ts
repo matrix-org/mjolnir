@@ -686,6 +686,7 @@ export class PolicyListManager {
         if (!permalink.roomIdOrAlias) return null;
 
         const roomId = await this.mjolnir.client.resolveRoom(permalink.roomIdOrAlias);
+        this.failedStartupWatchListRefs.delete(roomRef);
         const list = this.policyLists.find(b => b.roomId === roomId) || null;
         if (list) {
             this.policyLists.splice(this.policyLists.indexOf(list), 1);
