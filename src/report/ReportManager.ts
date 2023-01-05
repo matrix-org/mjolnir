@@ -43,12 +43,16 @@ export const ABUSE_REPORT_KEY = "org.matrix.mjolnir.abuse.report";
 /// reports (see `IReportWithAction` for the content).
 export const ABUSE_ACTION_CONFIRMATION_KEY = "org.matrix.mjolnir.abuse.action.confirmation";
 
+/// MSC3215-style abuse report sent to the moderators (instead of to the homeserver admin).
+const EVENT_MODERATION_REQUEST = "org.matrix.msc3215.abuse.report";
+const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";
+
 const NATURE_DESCRIPTIONS_LIST: [string, string][] = [
     ["org.matrix.msc3215.abuse.nature.disagreement", "disagreement"],
     ["org.matrix.msc3215.abuse.nature.harassment", "harassment/bullying"],
     ["org.matrix.msc3215.abuse.nature.csam", "child sexual abuse material [likely illegal, consider warning authorities]"],
-    ["org.matrix.msc3215.abuse.nature.hate_speech", "spam"],
-    ["org.matrix.msc3215.abuse.nature.spam", "impersonation"],
+    ["org.matrix.msc3215.abuse.nature.hate_speech", "hate speech"],
+    ["org.matrix.msc3215.abuse.nature.spam", "spam"],
     ["org.matrix.msc3215.abuse.nature.impersonation", "impersonation"],
     ["org.matrix.msc3215.abuse.nature.doxxing", "non-consensual sharing of identifiable private information of a third party (doxxing)"],
     ["org.matrix.msc3215.abuse.nature.violence", "threats of violence or death, either to self or others"],
@@ -57,6 +61,10 @@ const NATURE_DESCRIPTIONS_LIST: [string, string][] = [
     ["org.matrix.msc3215.abuse.nature.ncii", "non consensual intimate imagery, including revenge porn"],
     ["org.matrix.msc3215.abuse.nature.nsfw", "NSFW content (pornography, gore...) in a SFW room"],
     ["org.matrix.msc3215.abuse.nature.disinformation", "disinformation"],
+    ["org.matrix.msc3215.abuse.nature.illegal", "illegal content [consider warning authorities]"],
+    ["org.matrix.msc3215.abuse.nature.toxic", "toxic behavior"],
+    ["org.matrix.msc3215.abuse.nature.other", "other"],
+    ["org.matrix.msc3215.abuse.nature.test", "just a test, please ignore"],
 ];
 const NATURE_DESCRIPTIONS = new Map(NATURE_DESCRIPTIONS_LIST);
 
@@ -80,6 +88,10 @@ export class ReportManager extends EventEmitter {
         super();
         // Configure bot interactions.
         mjolnir.matrixEmitter.on("room.event", async (roomId, event) => {
+            // Reactions within the room.
+            if (roomId !== mjolnir.managementRoomId) {
+                return;
+            }
             try {
                 switch (event["type"]) {
                     case "m.reaction": {
@@ -91,6 +103,20 @@ export class ReportManager extends EventEmitter {
                 LogService.error("ReportManager", "Uncaught error while handling an event", ex);
             }
         });
+        mjolnir.matrixEmitter.on("room.event", async (roomId, event) => {
+            // Moderation requests in ANY room.
+            try {
+                switch (event["type"]) {
+                    case EVENT_MODERATION_REQUEST: {
+                        await this.handleUntrustedModerationRequest(roomId, event);
+                        break;
+                    }
+                }
+            } catch (ex) {
+                LogService.error("ReportManager", "Uncaught error while handling an event", ex);
+            }
+        });
+
         this.displayManager = new DisplayManager(this);
     }
 
@@ -116,6 +142,52 @@ export class ReportManager extends EventEmitter {
         if (this.mjolnir.config.displayReports) {
             return this.displayManager.displayReportAndUI({ kind: Kind.SERVER_ABUSE_REPORT, event, reporterId, reason, moderationRoomId: this.mjolnir.managementRoomId });
         }
+    }
+
+    public async handleUntrustedModerationRequest(dmRoomId: string, report: any) {
+        let { event_id: eventId, nature, room_id: roomId, reporter: reporterId, comment } = report["content"] || {};
+
+        // SECURITY: check that we are expecting moderation requests from that room.
+        if (!roomId) {
+            LogService.warn("ReportManager", "Received a moderation request without `room_id`");
+            return;
+        }
+
+        // Performance note: we should cache this event, see https://github.com/matrix-org/mjolnir/pull/379.
+        let eventModeratorOf = await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
+        if (!eventModeratorOf) {
+            LogService.warn("ReportManager", "Received a moderation request but we are not moderating that room");
+            return;
+        }
+        if (eventModeratorOf["user_id"] !== await this.mjolnir.client.getUserId()) {
+            LogService.warn("ReportManager", "Received a moderation request but we are not the moderator bot for this room");
+            return;
+        }
+
+        // SAFETY: validate `comment`, `nature`.
+        if (comment && typeof comment !== "string") {
+            LogService.warn("ReportManager", "Received a moderation request with a comment that isn't a string");
+            return;
+        }
+        if (typeof nature !== "string" || !NATURE_DESCRIPTIONS.has(nature)) {
+            LogService.warn("ReportManager", "Received a moderation request with an invalid nature", nature);
+            return;
+        }
+
+        // Fetch the report and act upon it.
+        let event;
+        try {
+            event = await this.mjolnir.client.getEvent(roomId, eventId)
+        } catch (ex) {
+            LogService.warn("ReportManager", "Received a moderation request with an event that we cannot read", roomId, eventId, ex);
+            return;
+        }
+        this.emit("report.new", { roomId, reporterId, event: event, reason: comment });
+        if (this.mjolnir.config.displayReports) {
+            await this.displayManager.displayReportAndUI({ kind: Kind.MODERATION_REQUEST, nature, event, reporterId, reason: comment, moderationRoomId: this.mjolnir.managementRoomId });
+        }
+
+        await this.mjolnir.client.sendNotice(dmRoomId, "Thank you for your report, it has been sent to the moderators");
     }
 
     /**

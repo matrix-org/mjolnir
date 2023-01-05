@@ -71,7 +71,7 @@ export class MjolnirAppService {
         await bridge.initialise();
         const accessControlListId = await bridge.getBot().getClient().resolveRoom(config.accessControlList);
         const accessControl = await AccessControl.setupAccessControl(accessControlListId, bridge);
-        const mjolnirManager = await MjolnirManager.makeMjolnirManager(dataStore, bridge, accessControl);
+        const mjolnirManager = await MjolnirManager.makeMjolnirManager(dataStore, bridge, accessControl, config);
         const appService = new MjolnirAppService(
             config,
             bridge,
@@ -120,14 +120,32 @@ export class MjolnirAppService {
         if ('m.room.member' === mxEvent.type) {
             if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
                 log.info(`${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, attempting to provision them a mjolnir`);
+                let mjolnir = null;
                 try {
-                    await this.mjolnirManager.provisionNewMjolnir(mxEvent.sender)
+                    mjolnir = await this.mjolnirManager.getOrProvisionMjolnir(mxEvent.sender);
+                    mjolnir.start();
                 } catch (e: any) {
                     log.error(`Failed to provision a mjolnir for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`, e);
                     // continue, we still want to reject this invitation.
                 }
+
+                if (mjolnir) {
+                    // Let's try to invite the provisioned Mjölnir instead of the appservice bot.
+                    try {
+                        const mjolnirUserId = await mjolnir.getUserId();
+                        await this.bridge.getBot().getClient().joinRoom(mxEvent.room_id);
+                        await this.bridge.getBot().getClient().sendNotice(mxEvent.room_id, `Setting up moderation in this room.`);
+                        await this.bridge.getBot().getClient().inviteUser(mjolnirUserId, mxEvent.room_id);
+                        await mjolnir.joinRoom(mxEvent.room_id);
+                        log.info(`${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, substituted ${mjolnirUserId}`);
+                        await this.bridge.getBot().getClient().sendNotice(mxEvent.room_id, `You should now give ${mjolnirUserId} admin privileges.`);
+                    } catch (e: any) {
+                        log.error(`Failed to invite provisioned Mjölnir ${await mjolnir.getUserId()} for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`, e);
+                    }
+                }
+
                 try {
-                    // reject the invite to keep the room clean and make sure the invetee doesn't get confused and think this is their mjolnir.
+                    // reject the invite to keep the room clean and make sure the inviter doesn't get confused and think this is their mjolnir.
                     await this.bridge.getBot().getClient().leaveRoom(mxEvent.room_id);
                 } catch (e: any) {
                     log.warn("Unable to reject an invite to a room", e);
@@ -144,6 +162,7 @@ export class MjolnirAppService {
      */
     private async start(port: number) {
         log.info("Starting MjolnirAppService, Matrix-side to listen on port", port);
+        log.info("Bridge user id is", this.bridge.botUserId);
         this.api.start(this.config.webAPI.port);
         await this.bridge.listen(port);
         log.info("MjolnirAppService started successfully");

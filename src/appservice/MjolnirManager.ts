@@ -1,6 +1,7 @@
 import { Mjolnir } from "../Mjolnir";
 import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matrix-appservice-bridge";
 import { getProvisionedMjolnirConfig } from "../config";
+import { IConfig as IAppserviceConfig } from "./config/config";
 import PolicyList from "../models/PolicyList";
 import { Permalinks, MatrixClient } from "matrix-bot-sdk";
 import { DataStore } from "./datastore";
@@ -19,12 +20,14 @@ const log = new Logger('MjolnirManager');
  * * Informing mjolnirs about new events.
  */
 export class MjolnirManager {
-    private readonly mjolnirs: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
+    private readonly perMjolnirId: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
+    private readonly perOwnerId: Map</*the user id of the owner*/string, ManagedMjolnir> = new Map();
 
     private constructor(
         private readonly dataStore: DataStore,
         private readonly bridge: Bridge,
-        private readonly accessControl: AccessControl
+        private readonly accessControl: AccessControl,
+        private readonly config: IAppserviceConfig,
     ) {
 
     }
@@ -36,8 +39,8 @@ export class MjolnirManager {
      * @param accessControl Who has access to the bridge.
      * @returns A new mjolnir manager.
      */
-    public static async makeMjolnirManager(dataStore: DataStore, bridge: Bridge, accessControl: AccessControl): Promise<MjolnirManager> {
-        const mjolnirManager = new MjolnirManager(dataStore, bridge, accessControl);
+    public static async makeMjolnirManager(dataStore: DataStore, bridge: Bridge, accessControl: AccessControl, config: IAppserviceConfig): Promise<MjolnirManager> {
+        const mjolnirManager = new MjolnirManager(dataStore, bridge, accessControl, config);
         await mjolnirManager.createMjolnirsFromDataStore();
         return mjolnirManager;
     }
@@ -50,7 +53,8 @@ export class MjolnirManager {
      * @returns A new managed mjolnir.
      */
     public async makeInstance(requestingUserId: string, managementRoomId: string, client: MatrixClient): Promise<ManagedMjolnir> {
-        const intentListener = new MatrixIntentListener(await client.getUserId());
+        let mjolnirUserId = await client.getUserId();
+        const intentListener = new MatrixIntentListener(mjolnirUserId);
         const managedMjolnir = new ManagedMjolnir(
             requestingUserId,
             await Mjolnir.setupMjolnirFromConfig(
@@ -61,7 +65,11 @@ export class MjolnirManager {
             intentListener,
         );
         await managedMjolnir.start();
-        this.mjolnirs.set(await client.getUserId(), managedMjolnir);
+        if (this.config.displayName) {
+            await client.setDisplayName(this.config.displayName);
+        }
+        this.perMjolnirId.set(mjolnirUserId, managedMjolnir);
+        this.perOwnerId.set(requestingUserId, managedMjolnir);
         return managedMjolnir;
     }
 
@@ -72,7 +80,7 @@ export class MjolnirManager {
      * @returns The matching managed mjolnir instance.
      */
     public getMjolnir(mjolnirId: string, ownerId: string): ManagedMjolnir|undefined {
-        const mjolnir = this.mjolnirs.get(mjolnirId);
+        const mjolnir = this.perMjolnirId.get(mjolnirId);
         if (mjolnir) {
             if (mjolnir.ownerId !== ownerId) {
                 throw new Error(`${mjolnirId} is owned by a different user to ${ownerId}`);
@@ -93,7 +101,7 @@ export class MjolnirManager {
         // TODO we need to use the database for this but also provide the utility
         // for going from a MjolnirRecord to a ManagedMjolnir.
         // https://github.com/matrix-org/mjolnir/issues/409
-        return [...this.mjolnirs.values()].filter(mjolnir => mjolnir.ownerId !== ownerId);
+        return [...this.perMjolnirId.values()].filter(mjolnir => mjolnir.ownerId !== ownerId);
     }
 
     /**
@@ -102,7 +110,15 @@ export class MjolnirManager {
     public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
         // TODO We need a way to map a room id (that the event is from) to a set of managed mjolnirs that should be informed.
         // https://github.com/matrix-org/mjolnir/issues/412
-        [...this.mjolnirs.values()].forEach((mj: ManagedMjolnir) => mj.onEvent(request));
+        [...this.perMjolnirId.values()].forEach((mj: ManagedMjolnir) => mj.onEvent(request));
+    }
+
+    public async getOrProvisionMjolnir(requestingUserId: string): Promise<ManagedMjolnir> {
+        const existingMjolnir = this.perOwnerId.get(requestingUserId);
+        if (existingMjolnir) {
+            return existingMjolnir;
+        }
+        return this.provisionNewMjolnir(requestingUserId);
     }
 
     /**
@@ -110,7 +126,7 @@ export class MjolnirManager {
      * @param requestingUserId The mxid of the user we are creating a mjolnir for.
      * @returns The matrix id of the new mjolnir and its management room.
      */
-    public async provisionNewMjolnir(requestingUserId: string): Promise<[string, string]> {
+    public async provisionNewMjolnir(requestingUserId: string): Promise<ManagedMjolnir> {
         const access = this.accessControl.getUserAccess(requestingUserId);
         if (access.outcome !== Access.Allowed) {
             throw new Error(`${requestingUserId} tried to provision a mjolnir when they do not have access ${access.outcome} ${access.rule?.reason ?? 'no reason specified'}`);
@@ -135,7 +151,7 @@ export class MjolnirManager {
                 management_room: managementRoomId,
             });
 
-            return [mjIntent.userId, managementRoomId];
+            return mjolnir;
         } else {
             throw new Error(`User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`);
         }
@@ -219,6 +235,10 @@ export class ManagedMjolnir {
      */
     public async start(): Promise<void> {
         await this.mjolnir.start();
+    }
+
+    public async getUserId(): Promise<string> {
+        return await this.mjolnir.client.getUserId();
     }
 }
 

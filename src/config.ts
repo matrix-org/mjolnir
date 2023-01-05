@@ -322,5 +322,9 @@ export function getProvisionedMjolnirConfig(managementRoomId: string): IConfig {
 
     config.managementRoom = managementRoomId;
     config.protectedRooms = [];
+
+    // Configure Mjölnir to accept invites automatically (necessary for requesting moderation)
+    config.autojoinOnlyIfManager = false;
+    config.acceptInvitesFromSpace = "";
     return config;
 }

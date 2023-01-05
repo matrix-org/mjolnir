@@ -42,6 +42,7 @@ import { execKickCommand } from "./KickCommand";
 import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
 import { parse as tokenize } from "shell-quote";
 import { execSinceCommand } from "./SinceCommand";
+import { execSetupProtectedRoom } from "./SetupDecentralizedReportingCommand";
 
 
 export const COMMAND_PREFIX = "!mjolnir";
@@ -101,6 +102,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execAddProtectedRoom(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'remove') {
             return await execRemoveProtectedRoom(roomId, event, mjolnir, parts);
+        } else if (parts[1] === 'rooms' && parts.length > 3 && parts[2] === 'setup') {
+            return await execSetupProtectedRoom(roomId, event, mjolnir, parts);
         } else if (parts[1] === 'rooms' && parts.length === 2) {
             return await execListProtectedRooms(roomId, event, mjolnir);
         } else if (parts[1] === 'move' && parts.length > 3) {
@@ -156,6 +159,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir rooms                                                      - Lists all the protected rooms\n" +
                 "!mjolnir rooms add <room alias/ID>                                  - Adds a protected room (may cause high server load)\n" +
                 "!mjolnir rooms remove <room alias/ID>                               - Removes a protected room\n" +
+                "!mjolnir rooms setup <room alias/ID> reporting                      - Setup decentralized reporting in a room\n" +
                 "!mjolnir move <room alias> <room alias/ID>                          - Moves a <room alias> to a new <room ID>\n" +
                 "!mjolnir directory add <room alias/ID>                              - Publishes a room in the server's room directory\n" +
                 "!mjolnir directory remove <room alias/ID>                           - Removes a room from the server's room directory\n" +
