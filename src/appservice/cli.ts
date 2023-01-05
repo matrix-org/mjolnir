@@ -1,6 +1,7 @@
 import { Cli } from "matrix-appservice-bridge";
 import { MjolnirAppService } from "./AppService";
 import { IConfig } from "./config/config";
+import * as utils from "../utils";
 
 /**
  * This file provides the entrypoint for the appservice mode for mjolnir.
@@ -20,6 +21,8 @@ const cli = new Cli({
         if (config === null) {
             throw new Error("Couldn't load config");
         }
+        utils.initializeSentry(config);
+        utils.initializeGlobalPerformanceMetrics(config);
         await MjolnirAppService.run(port, config, cli.getRegistrationFilePath());
     }
 });

@@ -177,6 +177,19 @@ health:
     # Defaults to 418.
     unhealthyStatus: 418
 
+  openMetrics:
+    # Whether openMetrics should be enabled (default false, activated for tests)
+    enabled: true
+
+    # The port to expose the webserver on. Defaults to 8081.
+    port: 9090
+
+    # The address to listen for requests on. Defaults to all addresses.
+    address: "0.0.0.0"
+
+    # The path to expose the monitoring endpoint at. Defaults to `/metrics`
+    endpoint: "/metrics"
+
 # Options for exposing web APIs.
 web:
   # Whether to enable web APIs.

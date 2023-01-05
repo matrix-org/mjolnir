@@ -38,6 +38,7 @@ import { ProtectionManager } from "./protections/ProtectionManager";
 import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
+import { OpenMetrics } from "./webapis/OpenMetrics";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -64,6 +65,7 @@ export class Mjolnir {
     private protectedRoomsConfig: ProtectedRoomsConfig;
     public readonly protectedRoomsTracker: ProtectedRoomsSet;
     private webapis: WebAPIs;
+    private openMetrics: OpenMetrics;
     public taskQueue: ThrottlingQueue;
     /**
      * Reporting back to the management room.
@@ -233,6 +235,7 @@ export class Mjolnir {
         if (config.pollReports) {
             this.reportPoller = new ReportPoller(this, this.reportManager);
         }
+        this.openMetrics = new OpenMetrics(this.config);
         // Setup join/leave listener
         this.roomJoins = new RoomMemberManager(this.matrixEmitter);
         this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
@@ -261,6 +264,7 @@ export class Mjolnir {
      * Start Mjölnir.
      */
     public async start() {
+        LogService.info("Mjolnir", "Starting Mjolnir instance");
         try {
             // Start the web server.
             console.log("Starting web server");
@@ -279,7 +283,7 @@ export class Mjolnir {
                 }
                 this.reportPoller.start(reportPollSetting.from);
             }
-
+            await this.openMetrics.start();
             // Load the state.
             this.currentState = STATE_CHECKING_PERMISSIONS;
 
@@ -330,6 +334,7 @@ export class Mjolnir {
         this.matrixEmitter.stop();
         this.webapis.stop();
         this.reportPoller?.stop();
+        this.openMetrics.stop();
     }
 
     /**

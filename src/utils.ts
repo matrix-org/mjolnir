@@ -25,9 +25,10 @@ import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
 import * as Sentry from '@sentry/node';
 import * as _ from '@sentry/tracing'; // Performing the import activates tracing.
+import { collectDefaultMetrics, Counter, Histogram, register } from "prom-client";
 
 import ManagementRoomOutput from "./ManagementRoomOutput";
-import { IConfig } from "./config";
+import { IHealthConfig } from "./config";
 import { MatrixSendClient } from "./MatrixEmitter";
 
 // Define a few aliases to simplify parsing durations.
@@ -402,16 +403,61 @@ export function patchMatrixClient() {
 }
 
 /**
+ * Initialize performance measurements for the matrix client.
+ *
+ * This method is idempotent. If `config` specifies that Open Metrics
+ * should not be used, it does nothing.
+ */
+export function initializeGlobalPerformanceMetrics(config: IHealthConfig) {
+    if (isGlobalPerformanceMetricsCollectorInitialized || !config.health?.openMetrics?.enabled) {
+        return;
+    }
+
+    // Collect the Prometheus-recommended metrics.
+    collectDefaultMetrics({ register });
+
+    // Collect matrix-bot-sdk-related metrics.
+    let originalRequestFn = getRequestFn();
+    let perfHistogram = new Histogram({
+        name: "mjolnir_performance_http_request",
+        help: "Duration of HTTP requests in seconds",
+    });
+    let successfulRequestsCounter = new Counter({
+        name: "mjolnir_status_api_request_pass",
+        help: "Number of successful API requests",
+    });
+    let failedRequestsCounter = new Counter({
+        name: "mjolnir_status_api_request_fail",
+        help: "Number of failed API requests",
+    });
+    setRequestFn(async (params: { [k: string]: any }, cb: any) => {
+        let timer = perfHistogram.startTimer();
+        return await originalRequestFn(params, function(error: object, response: any, body: string) {
+            // Stop timer before calling callback.
+            timer();
+            if (error) {
+                failedRequestsCounter.inc();
+            } else {
+                successfulRequestsCounter.inc();
+            }
+            cb(error, response, body);
+        });
+    });
+    isGlobalPerformanceMetricsCollectorInitialized = true;
+}
+let isGlobalPerformanceMetricsCollectorInitialized = false;
+
+/**
  * Initialize Sentry for error monitoring and reporting.
  *
  * This method is idempotent. If `config` specifies that Sentry
  * should not be used, it does nothing.
  */
-export function initializeSentry(config: IConfig) {
+export function initializeSentry(config: IHealthConfig) {
     if (sentryInitialized) {
         return;
     }
-    if (config.health.sentry) {
+    if (config.health?.sentry) {
         // Configure error monitoring with Sentry.
         let sentry = config.health.sentry;
         Sentry.init({

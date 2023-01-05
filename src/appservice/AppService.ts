@@ -20,6 +20,7 @@ import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
 import { IConfig } from "./config/config";
 import { AccessControl } from "./AccessControl";
+import { OpenMetrics } from "../webapis/OpenMetrics";
 
 const log = new Logger("AppService");
 /**
@@ -29,6 +30,7 @@ const log = new Logger("AppService");
 export class MjolnirAppService {
 
     private readonly api: Api;
+    private readonly openMetrics: OpenMetrics;
 
     /**
      * The constructor is private because we want to ensure intialization steps are followed,
@@ -42,6 +44,7 @@ export class MjolnirAppService {
         private readonly dataStore: DataStore,
     ) {
         this.api = new Api(config.homeserver.url, mjolnirManager);
+        this.openMetrics = new OpenMetrics(config);
     }
 
     /**
@@ -144,6 +147,8 @@ export class MjolnirAppService {
         this.api.start(this.config.webAPI.port);
         await this.bridge.listen(port);
         log.info("MjolnirAppService started successfully");
+
+        await this.openMetrics.start();
     }
 
     /**
@@ -153,6 +158,7 @@ export class MjolnirAppService {
         await this.bridge.close();
         await this.dataStore.close();
         await this.api.close();
+        this.openMetrics.stop();
     }
 
     /**

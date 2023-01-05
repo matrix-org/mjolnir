@@ -49,7 +49,7 @@ export class WebAPIs {
 
         // configure /report API.
         if (this.config.web.abuseReporting.enabled) {
-            console.log(`configuring ${API_PREFIX}/report/:room_id/:event_id...`);
+            LogService.info(`configuring ${API_PREFIX}/report/:room_id/:event_id...`);
             this.webController.options(`${API_PREFIX}/report/:room_id/:event_id`, async (request, response) => {
                 // reply with CORS options
                 response.header("Access-Control-Allow-Origin", "*");
@@ -66,7 +66,7 @@ export class WebAPIs {
                 response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
                 await this.handleReport({ request, response, roomId: request.params.room_id, eventId: request.params.event_id })
             });
-            console.log(`configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
+            LogService.info(`configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
         }
 
         // configure ruleServer API.
@@ -88,7 +88,7 @@ export class WebAPIs {
 
     public stop() {
         if (this.httpServer) {
-            console.log("Stopping WebAPIs.");
+            LogService.info("Stopping WebAPIs.");
             this.httpServer.close();
             this.httpServer = undefined;
         }
