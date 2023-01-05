@@ -16,7 +16,89 @@ const EVENT_MODERATED_BY = "org.matrix.msc3215.room.moderation.moderated_by";
 const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";
 const EVENT_MODERATION_REQUEST = "org.matrix.msc3215.abuse.report";
 
+enum SetupMechanism {
+    ManualCommand,
+    Protection
+}
+
 describe("Test: Requesting moderation", async () => {
+    it(`Mjölnir can setup a room for moderation requests using !mjolnir command`, async function() {
+        // Create a few users and a room, make sure that Mjölnir is moderator in the room.
+        let goodUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-good-user" }});
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-bad-user" }});
+
+        let roomId = await goodUser.createRoom({ invite: [await badUser.getUserId(), await this.mjolnir.client.getUserId()] });
+        await goodUser.inviteUser(await badUser.getUserId(), roomId);
+        await badUser.joinRoom(roomId);
+        await goodUser.setUserPowerLevel(await this.mjolnir.client.getUserId(), roomId, 100);
+
+        // Setup moderated_by/moderator_of.
+        await this.mjolnir.client.sendText(this.mjolnir.managementRoomId, `!mjolnir rooms setup ${roomId} reporting`);
+
+        // Wait until moderated_by/moderator_of are setup
+        while (true) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            try {
+                await goodUser.getRoomStateEvent(roomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
+            } catch (ex) {
+                console.log("moderated_by not setup yet, waiting");
+                continue;
+            }
+            try {
+                await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
+            } catch (ex) {
+                console.log("moderator_of not setup yet, waiting");
+                continue;
+            }
+            break;
+        }
+    });
+    it(`Mjölnir can setup a room for moderation requests using room protections`, async function() {
+        await this.mjolnir.protectionManager.enableProtection("LocalAbuseReports");
+
+        // Create a few users and a room, make sure that Mjölnir is moderator in the room.
+        let goodUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-good-user" }});
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-bad-user" }});
+
+        let roomId = await goodUser.createRoom({ invite: [await badUser.getUserId(), await this.mjolnir.client.getUserId()] });
+        await goodUser.inviteUser(await badUser.getUserId(), roomId);
+        await badUser.joinRoom(roomId);
+        await this.mjolnir.client.joinRoom(roomId);
+        await goodUser.setUserPowerLevel(await this.mjolnir.client.getUserId(), roomId, 100);
+
+        // Wait until Mjölnir has joined the room.
+        while (true) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const joinedRooms = await this.mjolnir.client.getJoinedRooms();
+            console.debug("Looking for room", roomId, "in", joinedRooms);
+            if (joinedRooms.some(joinedRoomId => joinedRoomId == roomId)) {
+                break;
+            } else {
+                console.log("Mjölnir hasn't joined the room yet, waiting");
+            }
+        }
+
+        // Setup moderated_by/moderator_of.
+        this.mjolnir.addProtectedRoom(roomId);
+
+        // Wait until moderated_by/moderator_of are setup
+        while (true) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            try {
+                await goodUser.getRoomStateEvent(roomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
+            } catch (ex) {
+                console.log("moderated_by not setup yet, waiting");
+                continue;
+            }
+            try {
+                await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
+            } catch (ex) {
+                console.log("moderator_of not setup yet, waiting");
+                continue;
+            }
+            break;
+        }
+    });
     it(`Mjölnir propagates moderation requests`, async function() {
         this.timeout(90000);
 
