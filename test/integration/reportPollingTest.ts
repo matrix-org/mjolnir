@@ -1,5 +1,5 @@
 import { Mjolnir } from "../../src/Mjolnir";
-import { IProtection } from "../../src/protections/IProtection";
+import { Protection } from "../../src/protections/IProtection";
 import { newTestUser } from "./clientHelper";
 
 describe("Test: Report polling", function() {
@@ -15,18 +15,21 @@ describe("Test: Report polling", function() {
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
         const eventId = await client.sendMessage(protectedRoomId, {msgtype: "m.text", body: "uwNd3q"});
+        class CustomProtection extends Protection {
+            name = "jYvufI";
+            description = "A test protection";
+            settings = { };
+            constructor(private resolve) {
+                super();
+            }
+            async handleReport (mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) {
+                if (reason === "x5h1Je") {
+                    this.resolve(null);
+                }
+            }
+        }
         await new Promise(async resolve => {
-            await this.mjolnir.protectionManager.registerProtection(new class implements IProtection {
-                name = "jYvufI";
-                description = "A test protection";
-                settings = { };
-                handleEvent = async (mjolnir: Mjolnir, roomId: string, event: any) => { };
-                handleReport = (mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) => {
-                    if (reason === "x5h1Je") {
-                        resolve(null);
-                    }
-                };
-            });
+            await this.mjolnir.protectionManager.registerProtection(new CustomProtection(resolve));
             await this.mjolnir.protectionManager.enableProtection("jYvufI");
             await client.doRequest(
                 "POST",

@@ -104,12 +104,6 @@ export class ProtectedRoomsSet {
         private readonly clientUserId: string,
         private readonly managementRoomId: string,
         private readonly managementRoomOutput: ManagementRoomOutput,
-        /**
-         * The protection manager is only used to verify the permissions
-         * that the protection manager requires are correct for this set of rooms.
-         * The protection manager is not really compatible with this abstraction yet
-         * because of a direct dependency on the protection manager in Mjolnir commands.
-         */
         private readonly protectionManager: ProtectionManager,
         private readonly config: IConfig,
     ) {
@@ -264,11 +258,13 @@ export class ProtectedRoomsSet {
         }
         this.protectedRooms.add(roomId);
         this.protectedRoomActivityTracker.addProtectedRoom(roomId);
+        this.protectionManager.addProtectedRoom(roomId);
     }
 
     public removeProtectedRoom(roomId: string): void {
         this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
         this.protectedRooms.delete(roomId);
+        this.protectionManager.removeProtectedRoom(roomId);
     }
 
     /**

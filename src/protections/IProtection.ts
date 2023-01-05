@@ -31,11 +31,26 @@ export abstract class Protection {
     readonly requiredStatePermissions: string[] = [];
     abstract settings: { [setting: string]: AbstractProtectionSetting<any, any> };
 
+    /**
+     * A new room has been added to the list of rooms to protect with this protection.
+     */
+    async startProtectingRoom(mjolnir: Mjolnir, roomId: string) {
+        // By default, do nothing.
+    }
+
+    /**
+     * A room has been removed from the list of rooms to protect with this protection.
+     */
+    async stopProtectingRoom(mjolnir: Mjolnir, roomId: string) {
+        // By default, do nothing.
+    }
+
     /*
      * Handle a single event from a protected room, to decide if we need to
      * respond to it
      */
     async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<Consequence[] | any> {
+        // By default, do nothing.
     }
 
     /*
@@ -43,6 +58,7 @@ export abstract class Protection {
      * need to respond to it
      */
     async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
+        // By default, do nothing.
     }
 
     /**

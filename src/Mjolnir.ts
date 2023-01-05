@@ -243,8 +243,13 @@ export class Mjolnir {
         this.protectionManager = new ProtectionManager(this);
 
         this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, client, config);
-        const protections = new ProtectionManager(this);
-        this.protectedRoomsTracker = new ProtectedRoomsSet(client, clientUserId, managementRoomId, this.managementRoomOutput, protections, config);
+        this.protectedRoomsTracker = new ProtectedRoomsSet(
+            client,
+            clientUserId,
+            managementRoomId,
+            this.managementRoomOutput,
+            this.protectionManager,
+            config);
     }
 
     public get state(): string {
