@@ -75,3 +75,19 @@ homeserver:
     remote:
       per_second: 10000
       burst_count: 10000
+
+# Creating a few users simplifies testing.
+users:
+  - localname: admin
+    admin: true
+    rooms:
+      - public: true
+        name: "List of users"
+        alias: access-control-list
+        members:
+          - admin
+          - user_in_mjolnir_for_all
+  # This user can use Mjölnir-for-all
+  - localname: user_in_mjolnir_for_all
+  # This user cannot
+  - localname: user_regular

@@ -154,9 +154,9 @@ export class Api {
 
         // TODO: provisionNewMjolnir will throw if it fails...
         // https://github.com/matrix-org/mjolnir/issues/408
-        const [mjolnirId, managementRoom] = await this.mjolnirManager.provisionNewMjolnir(userId);
+        const mjolnir = await this.mjolnirManager.provisionNewMjolnir(userId);
 
-        response.status(200).json({ mxid: mjolnirId, roomId: managementRoom });
+        response.status(200).json({ mxid: await mjolnir.getUserId(), roomId: mjolnir.managementRoomId });
     }
 
     /**

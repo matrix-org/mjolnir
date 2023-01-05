@@ -264,13 +264,6 @@ describe("Test: Reporting abuse", async () => {
         console.log("Test: Reporting abuse - send reports");
 
         // Time to report.
-        let reportToFind = {
-            reporterId: goodUserId,
-            accusedId: badUserId,
-            eventId: badEventId,
-            text: badText,
-            comment: null,
-        };
         try {
             await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`);
         } catch (e) {

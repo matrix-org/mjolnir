@@ -11,3 +11,6 @@ accessControlList: "#access-control-list:localhost:9999"
 
 webAPI:
   port: 9001
+
+bot:
+  displayName: Moderation bot
