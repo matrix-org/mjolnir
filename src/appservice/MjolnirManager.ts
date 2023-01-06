@@ -65,8 +65,8 @@ export class MjolnirManager {
             intentListener,
         );
         await managedMjolnir.start();
-        if (this.config.displayName) {
-            await client.setDisplayName(this.config.displayName);
+        if (this.config.bot.displayName) {
+            await client.setDisplayName(this.config.bot.displayName);
         }
         this.perMjolnirId.set(mjolnirUserId, managedMjolnir);
         this.perOwnerId.set(requestingUserId, managedMjolnir);

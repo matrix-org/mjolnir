@@ -75,16 +75,21 @@ export interface IConfig {
             address: string;
         }
     },
-    /** a display name */
-    displayName?: string,
+    bot: {
+        /** a display name */
+        displayName?: string,
+    },
 }
 
 export function read(configPath: string): IConfig {
     const content = fs.readFileSync(configPath, "utf8");
     const parsed = load(content);
     const config = (parsed as object) as IConfig;
-    if (!config.displayName) {
-        config.displayName = "Moderation Bot";
+    if (!config.bot) {
+        config.bot = {};
+    }
+    if (!config.bot.displayName) {
+        config.bot.displayName = "Moderation Bot";
     }
     return config;
 }
