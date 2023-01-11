@@ -85,11 +85,15 @@ export function read(configPath: string): IConfig {
     const content = fs.readFileSync(configPath, "utf8");
     const parsed = load(content);
     const config = (parsed as object) as IConfig;
+    addDefaults(config);
+    return config;
+}
+
+export function addDefaults(config: IConfig) {
     if (!config.bot) {
         config.bot = {};
     }
     if (!config.bot.displayName) {
         config.bot.displayName = "Moderation Bot";
     }
-    return config;
 }
