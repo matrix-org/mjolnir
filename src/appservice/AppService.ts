@@ -18,7 +18,7 @@ import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, Matr
 import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
-import { IConfig } from "./config/config";
+import { IConfig as IAppserviceConfig } from "./config/config";
 import { AccessControl } from "./AccessControl";
 import { OpenMetrics } from "../webapis/OpenMetrics";
 
@@ -37,7 +37,7 @@ export class MjolnirAppService {
      * use `makeMjolnirAppService`.
      */
     private constructor(
-        public readonly config: IConfig,
+        public readonly config: IAppserviceConfig,
         public readonly bridge: Bridge,
         private readonly mjolnirManager: MjolnirManager,
         private readonly accessControl: AccessControl,
@@ -54,7 +54,7 @@ export class MjolnirAppService {
      * @param registrationFilePath A file path to the registration file to read the namespace and tokens from.
      * @returns A new `MjolnirAppService`.
      */
-    public static async makeMjolnirAppService(config: IConfig, dataStore: DataStore, registrationFilePath: string) {
+    public static async makeMjolnirAppService(config: IAppserviceConfig, dataStore: DataStore, registrationFilePath: string) {
         const bridge = new Bridge({
             homeserverUrl: config.homeserver.url,
             domain: config.homeserver.domain,
@@ -92,7 +92,7 @@ export class MjolnirAppService {
      * @param config The parsed configuration file.
      * @param registrationFilePath A path to their homeserver registration file.
      */
-    public static async run(port: number, config: IConfig, registrationFilePath: string): Promise<MjolnirAppService> {
+    public static async run(port: number, config: IAppserviceConfig, registrationFilePath: string): Promise<MjolnirAppService> {
         Logger.configure(config.logging ?? { console: "debug" });
         const dataStore = new PgDataStore(config.db.connectionString);
         await dataStore.init();

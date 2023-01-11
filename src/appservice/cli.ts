@@ -1,6 +1,6 @@
 import { Cli } from "matrix-appservice-bridge";
 import { MjolnirAppService } from "./AppService";
-import { IConfig } from "./config/config";
+import { IConfig as IAppserviceConfig, addDefaults } from "./config/config";
 import * as utils from "../utils";
 
 /**
@@ -17,10 +17,11 @@ const cli = new Cli({
     },
     generateRegistration: MjolnirAppService.generateRegistration,
     run: async function(port: number) {
-        const config: IConfig | null = cli.getConfig() as any;
+        const config: IAppserviceConfig | null = cli.getConfig() as any;
         if (config === null) {
             throw new Error("Couldn't load config");
         }
+        addDefaults(config);
         utils.initializeSentry(config);
         utils.initializeGlobalPerformanceMetrics(config);
         await MjolnirAppService.run(port, config, cli.getRegistrationFilePath());
