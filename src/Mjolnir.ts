@@ -39,6 +39,7 @@ import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 import { OpenMetrics } from "./webapis/OpenMetrics";
+import * as UntrustedContent from "./UntrustedContent";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -50,6 +51,9 @@ export const STATE_RUNNING = "running";
  * to store that for pagination on further polls
  */
 export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
+const REPORT_POLL_EXPECTED_CONTENT = new UntrustedContent.SubTypeObjectContent({
+    "from": UntrustedContent.NUMBER_CONTENT
+});
 
 export class Mjolnir {
     private displayName: string;
@@ -279,6 +283,12 @@ export class Mjolnir {
                 let reportPollSetting: { from: number } = { from: 0 };
                 try {
                     reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
+                    reportPollSetting = REPORT_POLL_EXPECTED_CONTENT.fallback(reportPollSetting,
+                        () => {
+                            this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "invalid report poll settings, ignoring");
+                            return ({ from: 0 })
+                        }
+                    );
                 } catch (err) {
                     if (err.body?.errcode !== "M_NOT_FOUND") {
                         throw err;

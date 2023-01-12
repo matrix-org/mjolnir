@@ -21,6 +21,7 @@ import { MatrixSendClient } from "../MatrixEmitter";
 import AwaitLock from "await-lock";
 import { monotonicFactory } from "ulidx";
 import { Mjolnir } from "../Mjolnir";
+import * as UntrustedContent from "../UntrustedContent";
 
 /**
  * Account data event type used to store the permalinks to each of the policylists.
@@ -33,6 +34,9 @@ import { Mjolnir } from "../Mjolnir";
  * ```
  */
 export const WATCHED_LISTS_EVENT_TYPE = "org.matrix.mjolnir.watched_lists";
+const WATCHED_LISTS_EXPECTED_CONTENT = new UntrustedContent.SubTypeObjectContent({
+    references: UntrustedContent.STRING_CONTENT.array()
+});
 
 /**
  * A prefix used to record that we have already warned at least once that a PolicyList room is unprotected.
@@ -707,7 +711,13 @@ export class PolicyListManager {
 
         let watchedListsEvent: { references?: string[] } | null = null;
         try {
-            watchedListsEvent = await this.mjolnir.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
+            watchedListsEvent = WATCHED_LISTS_EXPECTED_CONTENT.fallback(
+                await this.mjolnir.client.getAccountData(WATCHED_LISTS_EVENT_TYPE),
+                () => {
+                    LogService.warn('Mjolnir', "Invalid account data for Mjolnir's watched lists, assuming first start.");
+                    return null;
+                }
+            );
         } catch (e) {
             if (e.statusCode === 404) {
                 LogService.warn('Mjolnir', "Couldn't find account data for Mjolnir's watched lists, assuming first start.", extractRequestError(e));
