@@ -16,7 +16,8 @@ limitations under the License.
 
 import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, MatrixUser, Logger } from "matrix-appservice-bridge";
 import { MjolnirManager } from ".//MjolnirManager";
-import { DataStore, PgDataStore } from ".//datastore";
+import { DataStore } from ".//datastore";
+import { PgDataStore } from "./postgres/PgDataStore";
 import { Api } from "./Api";
 import { IConfig as IAppserviceConfig } from "./config/config";
 import { AccessControl } from "./AccessControl";

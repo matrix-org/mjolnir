@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { Client } from "pg";
 
 export interface MjolnirRecord {
     local_part: string,
@@ -56,53 +55,4 @@ export interface DataStore {
     lookupByLocalPart(localPart: string): Promise<MjolnirRecord[]>;
 }
 
-export class PgDataStore implements DataStore {
-    private pgClient: Client;
 
-    constructor(connectionString: string) {
-        this.pgClient = new Client({ connectionString: connectionString });
-    }
-
-    public async init(): Promise<void> {
-        await this.pgClient.connect();
-    }
-
-    public async close(): Promise<void> {
-        await this.pgClient.end()
-    }
-
-    public async list(): Promise<MjolnirRecord[]> {
-        const result = await this.pgClient.query<MjolnirRecord>("SELECT local_part, owner, management_room FROM mjolnir");
-
-        if (!result.rowCount) {
-            return [];
-        }
-
-        return result.rows;
-    }
-
-    public async store(mjolnirRecord: MjolnirRecord): Promise<void> {
-        await this.pgClient.query(
-            "INSERT INTO mjolnir (local_part, owner, management_room) VALUES ($1, $2, $3)",
-            [mjolnirRecord.local_part, mjolnirRecord.owner, mjolnirRecord.management_room],
-        );
-    }
-
-    public async lookupByOwner(owner: string): Promise<MjolnirRecord[]> {
-        const result = await this.pgClient.query<MjolnirRecord>(
-            "SELECT local_part, owner, management_room FROM mjolnir WHERE owner = $1",
-            [owner],
-        );
-
-        return result.rows;
-    }
-
-    public async lookupByLocalPart(localPart: string): Promise<MjolnirRecord[]> {
-        const result = await this.pgClient.query<MjolnirRecord>(
-            "SELECT local_part, owner, management_room FROM mjolnir WHERE local_part = $1",
-            [localPart],
-        );
-
-        return result.rows;
-    }
-}
