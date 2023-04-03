@@ -205,7 +205,9 @@ export class Mjolnir {
                 event['content']['body'] = COMMAND_PREFIX + restOfBody;
                 LogService.info("Mjolnir", `Command being run by ${event['sender']}: ${event['content']['body']}`);
 
-                await client.sendReadReceipt(roomId, event['event_id']);
+                client.sendReadReceipt(roomId, event['event_id']).catch((e: any) => {
+                    LogService.warn("Mjolnir", "Error sending read receipt: ", e);
+                });
                 return handleCommand(roomId, event, this);
             }
         });
