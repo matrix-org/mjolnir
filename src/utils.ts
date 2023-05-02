@@ -86,16 +86,20 @@ export async function redactUserMessagesIn(client: MatrixSendClient, managementR
     for (const targetRoomId of targetRoomIds) {
         await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
 
-        await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
-            for (const victimEvent of eventsToRedact) {
-                await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
-                if (!noop) {
-                    await client.redactEvent(targetRoomId, victimEvent['event_id']);
-                } else {
-                    await managementRoom.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
+        try {
+            await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
+                for (const victimEvent of eventsToRedact) {
+                    await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
+                    if (!noop) {
+                        await client.redactEvent(targetRoomId, victimEvent['event_id']);
+                    } else {
+                        await managementRoom.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
+                    }
                 }
-            }
-        });
+            });
+        } catch (error) {
+            await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Caught an error while trying to redact messages for ${userIdOrGlob} in ${targetRoomId}: ${error}`, targetRoomId);
+        }
     }
 }
 
