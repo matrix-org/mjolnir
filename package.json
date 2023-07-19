@@ -61,7 +61,7 @@
     "prom-client": "^14.1.0",
     "shell-quote": "^1.7.3",
     "ulidx": "^0.3.0",
-    "yaml": "^2.1.1"
+    "yaml": "^2.2.2"
   },
   "engines": {
     "node": ">=16.0.0"
