@@ -5,6 +5,7 @@ import { CreateMjolnirResponse, MjolnirWebAPIClient } from "../utils/webAPIClien
 import { MatrixClient } from "matrix-bot-sdk";
 import { getFirstReply } from "../../integration/commands/commandUtils";
 import expect from "expect";
+import dns from 'node:dns';
 
 
 interface Context extends Mocha.Context {
