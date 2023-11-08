@@ -22,7 +22,7 @@ please keep an eye on the pull request for feedback.
 ## Development
 
 To run unit tests in a local development environment, you can use `yarn test`
-and `yarn lint`.
+and `yarn lint`
 
 ### mx-tester
 
