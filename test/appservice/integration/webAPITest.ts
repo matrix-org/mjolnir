@@ -13,6 +13,7 @@ interface Context extends Mocha.Context {
     moderator?: MatrixClient
 }
 
+dns.setDefaultResultOrder('ipv4first');
 
 describe("Test that the app service can provision a mjolnir when requested from the web API", function () {
     afterEach(function(this: Context) {
