@@ -3,6 +3,7 @@ import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 import { register } from "prom-client";
 import dns from 'node:dns';
 
+// Necessary for CI: Node 17+ defaults to using ipv6 first, but Github Actions does not support ipv6
 dns.setDefaultResultOrder('ipv4first');
 
 // When Mjolnir starts (src/index.ts) it clobbers the config by resolving the management room

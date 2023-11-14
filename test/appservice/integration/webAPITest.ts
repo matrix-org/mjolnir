@@ -13,6 +13,7 @@ interface Context extends Mocha.Context {
     moderator?: MatrixClient
 }
 
+// Necessary for CI: Node 17+ defaults to using ipv6 first, but Github Actions does not support ipv6
 dns.setDefaultResultOrder('ipv4first');
 
 describe("Test that the app service can provision a mjolnir when requested from the web API", function () {
