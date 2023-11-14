@@ -30,7 +30,7 @@
     "@types/jsdom": "^16.2.11",
     "@types/mocha": "^9.0.0",
     "@types/nedb": "^1.8.12",
-    "@types/node": "^16.7.10",
+    "@types/node": "^18.0.0",
     "@types/pg": "^8.6.5",
     "@types/request": "^2.48.8",
     "@types/shell-quote": "1.7.1",
@@ -64,6 +64,6 @@
     "yaml": "^2.2.2"
   },
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   }
 }

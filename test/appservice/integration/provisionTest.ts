@@ -3,11 +3,15 @@ import { newTestUser } from "../../integration/clientHelper";
 import { getFirstReply } from "../../integration/commands/commandUtils";
 import { MatrixClient } from "matrix-bot-sdk";
 import { MjolnirAppService } from "../../../src/appservice/AppService";
+import dns from 'node:dns';
 
 interface Context extends Mocha.Context {
     moderator?: MatrixClient,
     appservice?:  MjolnirAppService
 }
+
+// Necessary for CI: Node 17+ defaults to using ipv6 first, but Github Actions does not support ipv6
+dns.setDefaultResultOrder('ipv4first');
 
 describe("Test that the app service can provision a mjolnir on invite of the appservice bot", function () {
     afterEach(function(this: Context) {
