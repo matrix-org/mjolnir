@@ -18,7 +18,12 @@ import AwaitLock from 'await-lock';
 import { extractRequestError, LogService, Permalinks } from "matrix-bot-sdk";
 import { IConfig } from "./config";
 import { MatrixSendClient } from './MatrixEmitter';
+import * as UntrustedContent from './UntrustedContent';
+
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
+const PROTECTED_ROOMS_EXPECTED_CONTENT = new UntrustedContent.SubTypeObjectContent({
+    rooms: UntrustedContent.STRING_CONTENT.array().optional()
+});
 
 /**
  * Manages the set of rooms that the user has EXPLICITLY asked to be protected.
@@ -65,7 +70,12 @@ export default class ProtectedRoomsConfig {
     public async loadProtectedRoomsFromAccountData(): Promise<void> {
         LogService.debug("ProtectedRoomsConfig", "Loading protected rooms...");
         try {
-            const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+            let data: { rooms?: string[] } | null = PROTECTED_ROOMS_EXPECTED_CONTENT.fallback(
+                await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE),
+            () => {
+                LogService.warn("ProtectedRoomsConfig", "Invalid data, assuming empty data");
+                return null;
+            });
             if (data && data['rooms']) {
                 for (const roomId of data['rooms']) {
                     this.explicitlyProtectedRooms.add(roomId);
@@ -116,10 +126,19 @@ export default class ProtectedRoomsConfig {
         //       but it doesn't stop a third party client on the same account racing with us instead.
         await this.accountDataLock.acquireAsync();
         try {
-            const additionalProtectedRooms: string[] = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE)
-                .then((rooms: {rooms?: string[]}) => Array.isArray(rooms?.rooms) ? rooms.rooms : [])
-                .catch(e => (LogService.warn("ProtectedRoomsConfig", "Could not load protected rooms from account data", extractRequestError(e)), []));
-
+            const untrustedAdditionalProtectedRooms = await
+                this
+                    .client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE)
+                    .catch(e => {
+                        LogService.warn("ProtectedRoomsConfig", "Could not load protected rooms from account data", extractRequestError(e));
+                        return [];
+                    });
+            let additionalProtectedRooms = PROTECTED_ROOMS_EXPECTED_CONTENT.fallback(untrustedAdditionalProtectedRooms,
+                () => {
+                    LogService.warn("ProtectedRoomsConfig", "Invalid list of protected rooms, restarting with an empty list");
+                    return [];
+                }
+            );
             const roomsToSave = new Set([...this.explicitlyProtectedRooms.keys(), ...additionalProtectedRooms]);
             excludeRooms.forEach(roomsToSave.delete, roomsToSave);
             await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: Array.from(roomsToSave.keys()) });
