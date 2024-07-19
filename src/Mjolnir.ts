@@ -479,6 +479,19 @@ export class Mjolnir {
         return await this.client.doRequest("POST", endpoint);
     }
 
+    public async suspendSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
+        const body = {"suspend": true}
+        return await this.client.doRequest("PUT", endpoint, null, body);
+    }
+
+    public async unSuspendSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
+        const body = {"suspend": false}
+        return await this.client.doRequest("PUT", endpoint, null, body);
+    }
+
+
     public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
         return await this.client.doRequest("DELETE", endpoint, null, {
