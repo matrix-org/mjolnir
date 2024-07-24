@@ -658,9 +658,20 @@ export class PolicyListManager {
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
-        const roomId = await this.mjolnir.client.resolveRoom(permalink.roomIdOrAlias);
+        let roomId: string;
+        let viaServers;
+        if (permalink.roomIdOrAlias.startsWith("!")) {
+            roomId = permalink.roomIdOrAlias
+            viaServers = permalink.viaServers
+        }
+        else {
+            const roomInfo = await this.mjolnir.client.lookupRoomAlias(permalink.roomIdOrAlias)
+            roomId = roomInfo.roomId
+            viaServers = roomInfo.residentServers
+        }
+
         if (!joinedRooms.includes(roomId)) {
-            await this.mjolnir.client.joinRoom(roomId, permalink.viaServers);
+            await this.mjolnir.client.joinRoom(roomId, viaServers);
         }
 
         if (this.policyLists.find(b => b.roomId === roomId)) {
