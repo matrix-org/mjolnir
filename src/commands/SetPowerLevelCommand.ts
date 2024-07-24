@@ -19,7 +19,7 @@ import { extractRequestError, LogLevel, LogService } from "matrix-bot-sdk";
 
 // !mjolnir powerlevel <user ID> <level> [room]
 export async function execSetPowerLevelCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const victim = parts[2];
+    const target = parts[2];
     const level = Math.round(Number(parts[3]));
     const inRoom = parts[4];
 
@@ -27,10 +27,10 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
 
     for (const targetRoomId of targetRooms) {
         try {
-            await mjolnir.client.setUserPowerLevel(victim, targetRoomId, level);
+            await mjolnir.client.setUserPowerLevel(target, targetRoomId, level);
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : '<no message>');
-            await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "SetPowerLevelCommand", `Failed to set power level of ${victim} to ${level} in ${targetRoomId}: ${message}`, targetRoomId);
+            await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "SetPowerLevelCommand", `Failed to set power level of ${target} to ${level} in ${targetRoomId}: ${message}`, targetRoomId);
             LogService.error("SetPowerLevelCommand", extractRequestError(e));
         }
     }

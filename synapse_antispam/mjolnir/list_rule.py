@@ -50,5 +50,5 @@ class ListRule(object):
         self.reason = reason
         self.kind = rule_type_to_stable(kind)
 
-    def matches(self, victim):
-        return self.regex.match(victim)
+    def matches(self, target):
+        return self.regex.match(target)
