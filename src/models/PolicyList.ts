@@ -663,8 +663,7 @@ export class PolicyListManager {
         if (permalink.roomIdOrAlias.startsWith("!")) {
             roomId = permalink.roomIdOrAlias
             viaServers = permalink.viaServers
-        }
-        else {
+        } else {
             const roomInfo = await this.mjolnir.client.lookupRoomAlias(permalink.roomIdOrAlias)
             roomId = roomInfo.roomId
             viaServers = roomInfo.residentServers
