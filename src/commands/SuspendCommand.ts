@@ -18,7 +18,7 @@ import {Mjolnir} from "../Mjolnir";
 import {RichReply} from "matrix-bot-sdk";
 
 export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const victim = parts[2];
+    const target = parts[2];
 
     const isAdmin = await mjolnir.isSynapseAdmin();
     if (!isAdmin) {
@@ -29,8 +29,8 @@ export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mj
         return;
     }
 
-    await mjolnir.suspendSynapseUser(victim);
-    const msg = `User ${victim} has been suspended.`
+    await mjolnir.suspendSynapseUser(target);
+    const msg = `User ${target} has been suspended.`
     const confirmation = RichReply.createFor(roomId, event, msg, msg);
     confirmation['msgtype'] = "m.notice";
     await mjolnir.client.sendMessage(roomId, confirmation)

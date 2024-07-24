@@ -17,8 +17,8 @@ limitations under the License.
 import {Mjolnir} from "../Mjolnir";
 import {RichReply} from "matrix-bot-sdk";
 
-export async function execUnSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const victim = parts[2];
+export async function execUnsuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const target = parts[2];
 
     const isAdmin = await mjolnir.isSynapseAdmin();
     if (!isAdmin) {
@@ -29,8 +29,8 @@ export async function execUnSuspendCommand(roomId: string, event: any, mjolnir: 
         return;
     }
 
-    await mjolnir.unSuspendSynapseUser(victim);
-    const msg = `User ${victim}'s suspension has been reversed.`
+    await mjolnir.unsuspendSynapseUser(target);
+    const msg = `User ${target}'s suspension has been reversed.`
     const confirmation = RichReply.createFor(roomId, event, msg, msg);
     confirmation['msgtype'] = "m.notice";
     mjolnir.client.sendMessage(roomId, confirmation)

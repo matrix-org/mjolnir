@@ -485,7 +485,7 @@ export class Mjolnir {
         return await this.client.doRequest("PUT", endpoint, null, body);
     }
 
-    public async unSuspendSynapseUser(userId: string): Promise<any> {
+    public async unsuspendSynapseUser(userId: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
         const body = {"suspend": false}
         return await this.client.doRequest("PUT", endpoint, null, body);
