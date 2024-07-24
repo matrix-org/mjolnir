@@ -19,6 +19,10 @@ import PolicyList from "../models/PolicyList";
 import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "matrix-bot-sdk";
 import { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
+import * as UntrustedContent from "../UntrustedContent";
+const DEFAULT_LIST_EXPECTED_CONTENT = new UntrustedContent.SubTypeObjectContent({
+    shortcode: UntrustedContent.STRING_CONTENT
+});
 
 interface Arguments {
     list: PolicyList | null;
@@ -31,7 +35,8 @@ interface Arguments {
 export async function parseArguments(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]): Promise<Arguments | null> {
     let defaultShortcode: string | null = null;
     try {
-        const data: { shortcode: string } = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
+        const untrustedData = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
+        const data: { shortcode: string | null } = DEFAULT_LIST_EXPECTED_CONTENT.fallback(untrustedData, () => ({ shortcode: null }));
         defaultShortcode = data['shortcode'];
     } catch (e) {
         LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");

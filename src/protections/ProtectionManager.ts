@@ -31,6 +31,7 @@ import { htmlEscape } from "../utils";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { LocalAbuseReports } from "./LocalAbuseReports";
+import * as UntrustedContent from "../UntrustedContent";
 
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -45,6 +46,10 @@ const PROTECTIONS: Protection[] = [
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
+const ENABLED_PROTECTIONS_EXPECTED_CONTENT = new UntrustedContent.SubTypeObjectContent({
+    enabled: UntrustedContent.STRING_CONTENT.array(),
+}).optional();
+
 const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
 
 /**
@@ -87,7 +92,10 @@ export class ProtectionManager {
 
         let enabledProtections: { enabled: string[] } | null = null;
         try {
-            enabledProtections = await this.mjolnir.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            enabledProtections = ENABLED_PROTECTIONS_EXPECTED_CONTENT.fallback(
+                await this.mjolnir.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE),
+                () => null
+            );
         } catch {
             // this setting either doesn't exist, or we failed to read it (bad network?)
             // TODO: retry on certain failures?
