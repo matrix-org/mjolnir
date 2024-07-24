@@ -88,12 +88,12 @@ export async function redactUserMessagesIn(client: MatrixSendClient, managementR
 
         try {
             await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
-                for (const victimEvent of eventsToRedact) {
-                    await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${victimEvent['event_id']} in ${targetRoomId}`, targetRoomId);
+                for (const targetEvent of eventsToRedact) {
+                    await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${targetEvent['event_id']} in ${targetRoomId}`, targetRoomId);
                     if (!noop) {
-                        await client.redactEvent(targetRoomId, victimEvent['event_id']);
+                        await client.redactEvent(targetRoomId, targetEvent['event_id']);
                     } else {
-                        await managementRoom.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${victimEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
+                        await managementRoom.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${targetEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
                     }
                 }
             });
