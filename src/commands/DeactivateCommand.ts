@@ -19,7 +19,7 @@ import { RichReply } from "matrix-bot-sdk";
 
 // !mjolnir deactivate <user ID>
 export async function execDeactivateCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const victim = parts[2];
+    const target = parts[2];
 
     const isAdmin = await mjolnir.isSynapseAdmin();
     if (!isAdmin) {
@@ -30,6 +30,6 @@ export async function execDeactivateCommand(roomId: string, event: any, mjolnir:
         return;
     }
 
-    await mjolnir.deactivateSynapseUser(victim);
+    await mjolnir.deactivateSynapseUser(target);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

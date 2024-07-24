@@ -35,6 +35,7 @@ modules:
 
 
 homeserver:
+  docker: element-hq/synapse:latest
   # Basic configuration.
   server_name: localhost:9999
   public_baseurl: http://localhost:9999
@@ -75,6 +76,10 @@ homeserver:
     remote:
       per_second: 10000
       burst_count: 10000
+
+  experimental_features:
+    msc3823_account_suspension: true
+
 
 # Creating a few users simplifies testing.
 users:

@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Matrix.org Foundation C.I.C.
+Copyright 2024 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,23 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import {Mjolnir} from "../Mjolnir";
+import {RichReply} from "matrix-bot-sdk";
 
-// !mjolnir shutdown room <room> [<message>]
-export async function execShutdownRoomCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const target = parts[3];
-    const reason = parts.slice(4).join(" ") || undefined;
+export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const target = parts[2];
 
     const isAdmin = await mjolnir.isSynapseAdmin();
     if (!isAdmin) {
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply['msgtype'] = "m.notice";
-        mjolnir.client.sendMessage(roomId, reply);
+        await mjolnir.client.sendMessage(roomId, reply);
         return;
     }
 
-    await mjolnir.shutdownSynapseRoom(await mjolnir.client.resolveRoom(target), reason);
+    await mjolnir.suspendSynapseUser(target);
+    const msg = `User ${target} has been suspended.`
+    const confirmation = RichReply.createFor(roomId, event, msg, msg);
+    confirmation['msgtype'] = "m.notice";
+    await mjolnir.client.sendMessage(roomId, confirmation)
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
 }

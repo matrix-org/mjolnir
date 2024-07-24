@@ -38,7 +38,7 @@ export class MessageIsMedia extends Protection {
             const content = event['content'] || {};
             const msgtype = content['msgtype'] || 'm.text';
             const formattedBody = content['formatted_body'] || '';
-            const isMedia = msgtype === 'm.image' || msgtype === 'm.video' || formattedBody.toLowerCase().includes('<img');
+            const isMedia = msgtype === 'm.image' || msgtype === 'm.video' || msgtype === 'm.sticker' || formattedBody.toLowerCase().includes('<img');
             if (isMedia) {
                 await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MessageIsMedia", `Redacting event from ${event['sender']} for posting an image/video. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
                 // Redact the event

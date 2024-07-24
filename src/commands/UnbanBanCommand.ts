@@ -137,15 +137,15 @@ export async function execUnbanCommand(roomId: string, event: any, mjolnir: Mjol
             const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ['ban'], undefined);
             await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Found ${members.length} banned user(s)`);
             for (const member of members) {
-                const victim = member.membershipFor;
+                const target = member.membershipFor;
                 if (member.membership !== 'ban') continue;
-                if (rule.test(victim)) {
-                    await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${victim} in ${protectedRoomId}`, protectedRoomId);
+                if (rule.test(target)) {
+                    await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "UnbanBanCommand", `Unbanning ${target} in ${protectedRoomId}`, protectedRoomId);
 
                     if (!mjolnir.config.noop) {
-                        await mjolnir.client.unbanUser(victim, protectedRoomId);
+                        await mjolnir.client.unbanUser(target, protectedRoomId);
                     } else {
-                        await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${victim} in ${protectedRoomId} but Mjolnir is running in no-op mode`, protectedRoomId);
+                        await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "UnbanBanCommand", `Attempted to unban ${target} in ${protectedRoomId} but Mjolnir is running in no-op mode`, protectedRoomId);
                     }
 
                     unbannedSomeone = true;
