@@ -179,7 +179,7 @@ describe("Test: Protection settings", function() {
         });
         await reply;
 
-        await client.sendMessage(room, {"m.new_content": {msgtype: "m.image", body: ""}, body: "", msgtype: "m.text"})
+        await client.sendMessage(room, {body: "", msgtype: "m.text", "m.new_content": {msgtype: "m.image", body: ""}, "m.relates_to": {"rel_type": "m.replace"}})
         let reply2 = () => new Promise((resolve, reject) => {
             client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
                 if (event.content.body.includes("Redacting event")) {
@@ -190,3 +190,4 @@ describe("Test: Protection settings", function() {
         await reply2;
     });
 });
+
