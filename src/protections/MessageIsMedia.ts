@@ -37,7 +37,7 @@ export class MessageIsMedia extends Protection {
         if (event['type'] === 'm.room.message') {
             let content = event['content'] || {};
             const relation = content["m.relates_to"]
-            if (relation && relation["rel_type"] === "m.replace") {
+            if (relation?.["rel_type"] === "m.replace") {
                 content = content?.["m.new_content"] ?? content;
             }
             const msgtype = content['msgtype'] || 'm.text';
