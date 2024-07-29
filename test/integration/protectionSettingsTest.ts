@@ -6,12 +6,16 @@ import { ProtectionSettingValidationError } from "../../src/protections/Protecti
 import { NumberProtectionSetting, StringProtectionSetting, StringListProtectionSetting } from "../../src/protections/ProtectionSettings";
 import { newTestUser, noticeListener } from "./clientHelper";
 import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
+import {MessageIsMedia} from "../../src/protections/MessageIsMedia";
 
 describe("Test: Protection settings", function() {
     let client;
+    let room;
     this.beforeEach(async function () {
         client = await newTestUser(this.config.homeserverUrl, { name: { contains: "protection-settings" }});
         await client.start();
+        room = await client.createRoom();
+        await client.joinRoom(room)
     })
     this.afterEach(async function () {
         await client.stop();
@@ -157,6 +161,33 @@ describe("Test: Protection settings", function() {
             (await replyPromise).content.body.split("\n", 3)[2],
             "Changed d0sNrt.test to asd2 (was asd1)"
         )
+    });
+    it("Events are checked for new content under media protections", async function() {
+        this.timeout(20000);
+        await client.joinRoom(this.config.managementRoom);
+
+        await this.mjolnir.protectionManager.registerProtection(new MessageIsMedia());
+
+        // send a regular media message to make sure protections are running
+        await client.sendMessage(room, {msgtype: "m.image", body: ""})
+        let reply = () => new Promise((resolve, reject) => {
+            client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
+                if (event.content.body.includes("Redacting event")) {
+                    resolve(event);
+                }
+            }))
+        });
+        await reply;
+
+        await client.sendMessage(room, {body: "", msgtype: "m.text", "m.new_content": {msgtype: "m.image", body: ""}, "m.relates_to": {"rel_type": "m.replace"}})
+        let reply2 = () => new Promise((resolve, reject) => {
+            client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {
+                if (event.content.body.includes("Redacting event")) {
+                    resolve(event);
+                }
+            }))
+        });
+        await reply2;
     });
 });
 
