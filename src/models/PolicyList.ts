@@ -659,10 +659,13 @@ export class PolicyListManager {
         if (!permalink.roomIdOrAlias) return null;
 
         let roomId: string;
-        let viaServers;
+        let viaServers: string[];
         if (permalink.roomIdOrAlias.startsWith("!")) {
+            // get alias and then use alias to get via servers
+            const alias = await this.mjolnir.client.getPublishedAlias(permalink.roomIdOrAlias)
+            const roomInformation = await this.mjolnir.client.lookupRoomAlias(alias)
             roomId = permalink.roomIdOrAlias
-            viaServers = permalink.viaServers
+            viaServers = roomInformation.residentServers
         } else {
             const roomInfo = await this.mjolnir.client.lookupRoomAlias(permalink.roomIdOrAlias)
             roomId = roomInfo.roomId
@@ -682,7 +685,8 @@ export class PolicyListManager {
             return null;
         }
 
-        const list = await this.addPolicyList(roomId, roomRef);
+        const newRef = Permalinks.forRoom(roomId, viaServers)
+        const list = await this.addPolicyList(roomId, newRef);
 
         await this.storeWatchedPolicyLists();
 
