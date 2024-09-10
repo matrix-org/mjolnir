@@ -258,3 +258,8 @@ pollReports: false
 # Whether or not new reports, received either by webapi or polling,
 # should be printed to our managementRoom.
 displayReports: true
+
+# How sensitive the NsfwProtection should be, which determines if an image should be redacted. A number between 0 - .99,
+# with a lower number indicating greater sensitivity, possibly resulting in images being more aggressively flagged
+# and redacted as NSFW
+nsfwSensitivity: .6

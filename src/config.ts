@@ -174,6 +174,7 @@ export interface IConfig {
             enabled: boolean;
         }
     }
+    nsfwSensitivity: number
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
@@ -248,7 +249,7 @@ const defaultConfig: IConfig = {
             enabled: false,
         },
     },
-
+    nsfwSensitivity: .6,
     // Needed to make the interface happy.
     RUNTIME: {
     },
