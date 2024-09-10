@@ -46,6 +46,7 @@
   "dependencies": {
     "@sentry/node": "^7.17.2",
     "@sentry/tracing": "^7.17.2",
+    "@tensorflow/tfjs-node": "^4.21.0",
     "await-lock": "^2.2.2",
     "body-parser": "^1.20.1",
     "config": "^3.3.8",
@@ -56,6 +57,7 @@
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
     "matrix-appservice-bridge": "8.1.2",
+    "nsfwjs": "^4.1.0",
     "parse-duration": "^1.0.2",
     "pg": "^8.8.0",
     "prom-client": "^14.1.0",

@@ -31,6 +31,7 @@ import { htmlEscape } from "../utils";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { LocalAbuseReports } from "./LocalAbuseReports";
+import {NsfwProtection} from "./NsfwProtection";
 
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -42,6 +43,7 @@ const PROTECTIONS: Protection[] = [
     new DetectFederationLag(),
     new JoinWaveShortCircuit(),
     new LocalAbuseReports(),
+    new NsfwProtection()
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
@@ -100,6 +102,9 @@ export class ProtectionManager {
             protection.settings[key].setValue(value);
         }
         if (protection.enabled) {
+            if (protection.name == "NsfwProtection") {
+                (protection as NsfwProtection).initialize()
+            }
             for (let roomId of this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
                 await protection.startProtectingRoom(this.mjolnir, roomId);
             }
