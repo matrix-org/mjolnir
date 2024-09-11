@@ -67,7 +67,7 @@ export class NsfwProtection extends Protection {
 
                             }
                         }
-                    } else if (prediction["className"] === "Hentai"){
+                    } else if (prediction["className"] === "Hentai") {
                         if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                             await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "NSFWProtection", `Redacting ${event["event_id"]} for inappropriate content.`);
                             try {

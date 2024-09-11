@@ -102,7 +102,7 @@ export class ProtectionManager {
             protection.settings[key].setValue(value);
         }
         if (protection.enabled) {
-            if (protection.name == "NsfwProtection") {
+            if (protection.name === "NsfwProtection") {
                 (protection as NsfwProtection).initialize()
             }
             for (let roomId of this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
