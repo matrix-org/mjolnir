@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "skipLibCheck": true,
         "alwaysStrict": true,
         "esModuleInterop": true,
         "experimentalDecorators": true,

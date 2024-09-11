@@ -1,6 +1,5 @@
 import { read as configRead } from "../../src/config";
 import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
-import { register } from "prom-client";
 import dns from 'node:dns';
 
 // Necessary for CI: Node 17+ defaults to using ipv6 first, but Github Actions does not support ipv6
