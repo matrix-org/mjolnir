@@ -50,7 +50,7 @@
     "await-lock": "^2.2.2",
     "body-parser": "^1.20.1",
     "config": "^3.3.8",
-    "express": "^4.19",
+    "express": "^4.20",
     "html-to-text": "^8.0.0",
     "humanize-duration": "^3.27.1",
     "humanize-duration-ts": "^2.1.1",
