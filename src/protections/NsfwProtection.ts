@@ -47,17 +47,16 @@ export class NsfwProtection extends Protection {
         if (event['type'] === 'm.room.message') {
             const content = event['content'] || {};
             const msgtype = content['msgtype'] || 'm.text';
-            const formattedBody = content['formatted_body'] || '';
-            const isMedia = msgtype === 'm.image' || formattedBody.toLowerCase().includes('<img');
+            const isMedia = msgtype === 'm.image';
 
             if (isMedia) {
-                const mxc = content["url"]
-                const image = await mjolnir.client.downloadContent(mxc)
+                const mxc = content["url"];
+                const image = await mjolnir.client.downloadContent(mxc);
                 const decodedImage = await node.decodeImage(image.data, 3);
-                const predictions = await this.model.classify(decodedImage)
+                const predictions = await this.model.classify(decodedImage);
 
                 for (const prediction of predictions) {
-                    if (prediction["className"] === "Porn") {
+                    if (["Hentai", "Porn"].includes(prediction["className"])) {
                         if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                             await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "NSFWProtection", `Redacting ${event["event_id"]} for inappropriate content.`);
                             try {
@@ -65,20 +64,11 @@ export class NsfwProtection extends Protection {
                             } catch (err) {
                                 await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"]}: ${err}`);
 
-                            }
-                        }
-                    } else if (prediction["className"] === "Hentai") {
-                        if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
-                            await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "NSFWProtection", `Redacting ${event["event_id"]} for inappropriate content.`);
-                            try {
-                                mjolnir.client.redactEvent(roomId, event["event_id"])
-                            } catch (err) {
-                                await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"]}: ${err}`);
                             }
                         }
                     }
                 }
-                decodedImage.dispose()
+                decodedImage.dispose();
             }
         }
     }

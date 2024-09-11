@@ -15,7 +15,7 @@ describe("Test: NSFW protection", function () {
         room = await client.createRoom({ invite: [mjolnirId] });
         await client.joinRoom(room);
         await client.joinRoom(this.config.managementRoom);
-        await client.setUserPowerLevel(mjolnirId, room, 100)
+        await client.setUserPowerLevel(mjolnirId, room, 100);
     })
     this.afterEach(async function () {
         await client.stop();
@@ -34,12 +34,12 @@ describe("Test: NSFW protection", function () {
                 return await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir enable NsfwProtection` });
         });
 
-        const data = readFileSync('test_tree.jpg')
-        const mxc = await client.uploadContent(data, 'image/png')
-        let content = {"msgtype": "m.image", "body": "test.jpeg", "url": mxc}
-        let imageMessage = await client.sendMessage(room, content)
+        const data = readFileSync('test_tree.jpg');
+        const mxc = await client.uploadContent(data, 'image/png');
+        let content = {"msgtype": "m.image", "body": "test.jpeg", "url": mxc};
+        let imageMessage = await client.sendMessage(room, content);
 
-        await delay(500)
+        await delay(500);
         let processedImage = await client.getEvent(room, imageMessage);
         assert.equal(Object.keys(processedImage.content).length, 3, "This event should not have been redacted");
     });
@@ -47,19 +47,19 @@ describe("Test: NSFW protection", function () {
     it("Nsfw protection redacts nsfw images", async function() {
         this.timeout(20000);
         // dial the sensitivity on the protection way up so that all images are flagged as NSFW
-        this.mjolnir.config.nsfwSensitivity = 0.0
+        this.mjolnir.config.nsfwSensitivity = 0.0;
 
         await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir rooms add ${room}` });
         await getFirstReaction(client, this.mjolnir.managementRoomId, '✅', async () => {
                 return await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: `!mjolnir enable NsfwProtection` });
         });
 
-        const data = readFileSync('test_tree.jpg')
-        const mxc = await client.uploadContent(data, 'image/png')
-        let content = {"msgtype": "m.image", "body": "test.jpeg", "url": mxc}
-        let imageMessage = await client.sendMessage(room, content)
+        const data = readFileSync('test_tree.jpg');
+        const mxc = await client.uploadContent(data, 'image/png');
+        let content = {"msgtype": "m.image", "body": "test.jpeg", "url": mxc};
+        let imageMessage = await client.sendMessage(room, content);
 
-        await delay(500)
+        await delay(500);
         let processedImage = await client.getEvent(room, imageMessage);
         assert.equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
     });
