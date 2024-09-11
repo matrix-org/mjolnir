@@ -48,7 +48,7 @@
     "@sentry/tracing": "^7.17.2",
     "@tensorflow/tfjs-node": "^4.21.0",
     "await-lock": "^2.2.2",
-    "body-parser": "^1.20.1",
+    "body-parser": "^1.20.3",
     "config": "^3.3.8",
     "express": "^4.19",
     "html-to-text": "^8.0.0",
