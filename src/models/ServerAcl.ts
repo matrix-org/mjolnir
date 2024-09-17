@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixGlob } from "matrix-bot-sdk";
+import { MatrixGlob } from "@vector-im/matrix-bot-sdk";
 import { setToArray } from "../utils";
 
 export interface ServerAclContent {

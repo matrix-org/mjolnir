@@ -3,7 +3,7 @@ import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matri
 import { getProvisionedMjolnirConfig } from "../config";
 import { IConfig as IAppserviceConfig } from "./config/config";
 import PolicyList from "../models/PolicyList";
-import { Permalinks, MatrixClient } from "matrix-bot-sdk";
+import { Permalinks, MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { DataStore } from "./datastore";
 import { AccessControl } from "./AccessControl";
 import { Access } from "../models/AccessControlUnit";
@@ -140,7 +140,7 @@ export class MjolnirManager {
                 invite: [requestingUserId],
                 name: `${requestingUserId}'s mjolnir`
             });
-
+            // @ts-ignore
             const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjIntent.matrixClient);
             await mjolnir.createFirstList(requestingUserId, "list");
 
@@ -183,6 +183,7 @@ export class MjolnirManager {
                 await this.makeInstance(
                     mjolnirRecord.owner,
                     mjolnirRecord.management_room,
+                    // @ts-ignore
                     mjIntent.matrixClient,
                 ).catch((e: any) => {
                     log.error(`Could not start mjolnir ${mjolnirRecord.local_part} for ${mjolnirRecord.owner}:`, e);

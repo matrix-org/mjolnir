@@ -1,6 +1,7 @@
 import { read as configRead } from "../../src/config";
 import { makeMjolnir, teardownManagementRoom } from "./mjolnirSetupUtils";
 import dns from 'node:dns';
+import { teardownCryptoStores } from "./clientHelper";
 
 // Necessary for CI: Node 17+ defaults to using ipv6 first, but Github Actions does not support ipv6
 dns.setDefaultResultOrder('ipv4first');
@@ -39,6 +40,7 @@ export const mochaHooks = {
             ]);
             // remove alias from management room and leave it.
             await teardownManagementRoom(this.mjolnir.client, this.mjolnir.managementRoomId, this.managementRoomAlias);
+            await teardownCryptoStores();
             console.error("---- completed test", JSON.stringify(this.currentTest.title), "\n\n"); // Makes MatrixClient error logs a bit easier to parse.
         }
     ]

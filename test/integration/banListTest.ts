@@ -1,6 +1,6 @@
 import { strict as assert } from "assert";
 import { newTestUser } from "./clientHelper";
-import { LogService, MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
+import { LogService, MatrixClient, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import PolicyList, { ChangeType } from "../../src/models/PolicyList";
 import { ServerAcl } from "../../src/models/ServerAcl";
 import { getFirstReaction } from "./commands/commandUtils";

@@ -1,8 +1,17 @@
 import { HmacSHA1 } from "crypto-js";
-import { getRequestFn, LogService, MatrixClient, MemoryStorageProvider, PantalaimonClient } from "matrix-bot-sdk";
+import {
+    getRequestFn,
+    LogService,
+    MatrixClient,
+    MemoryStorageProvider,
+    PantalaimonClient,
+    RustSdkCryptoStorageProvider
+} from "@vector-im/matrix-bot-sdk";
+import { promises as fs } from "fs";
 
 const REGISTRATION_ATTEMPTS = 10;
 const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
+let CryptoStorePaths: string[] = [];
 
 /**
  * Register a user using the synapse admin api that requires the use of a registration secret rather than an admin user.
@@ -15,7 +24,7 @@ const REGISTRATION_RETRY_BASE_DELAY_MS = 100;
  * @param admin True to make the user an admin, false otherwise.
  * @returns The response from synapse.
  */
-export async function registerUser(homeserver: string, username: string, displayname: string, password: string, admin: boolean): Promise<void> {
+export async function registerUser(homeserver: string, username: string, displayname: string, password: string, admin: boolean): Promise<any> {
     let registerUrl = `${homeserver}/_synapse/admin/v1/register`
     const data: {nonce: string} = await new Promise((resolve, reject) => {
         getRequestFn()({uri: registerUrl, method: "GET", timeout: 60000}, (error: any, response: any, resBody: any) => {
@@ -25,8 +34,7 @@ export async function registerUser(homeserver: string, username: string, display
     const nonce = data.nonce!;
     let mac = HmacSHA1(`${nonce}\0${username}\0${password}\0${admin ? 'admin' : 'notadmin'}`, 'REGISTRATION_SHARED_SECRET');
     for (let i = 1; i <= REGISTRATION_ATTEMPTS; ++i) {
-        try {
-            const params = {
+        const params = {
                 uri: registerUrl,
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
@@ -40,15 +48,55 @@ export async function registerUser(homeserver: string, username: string, display
                 }),
                 timeout: 60000
             }
+        try {
             return await new Promise((resolve, reject) => {
-                getRequestFn()(params, (error: any) => error ? reject(error) : resolve());
+                getRequestFn()(params, (error: any, response: any, respBody: any) => {
+                    if (error) {
+                        reject(error)
+                    }
+                    if (response.statusCode != 200) {
+                        reject(JSON.parse(response.body))
+                    }
+                    resolve(JSON.parse(respBody));
+                });
             });
         } catch (ex) {
+            let err;
+            if (ex instanceof Error) {
+                err = ex.body.errcode
+            } else {
+                err = ex.errcode
+            }
             // In case of timeout or throttling, backoff and retry.
-            if (ex?.code === 'ESOCKETTIMEDOUT' || ex?.code === 'ETIMEDOUT'
-                || ex?.body?.errcode === 'M_LIMIT_EXCEEDED') {
+            if (err === 'ESOCKETTIMEDOUT' || err === 'ETIMEDOUT'
+                || err === 'M_LIMIT_EXCEEDED') {
                 await new Promise(resolve => setTimeout(resolve, REGISTRATION_RETRY_BASE_DELAY_MS * i * i));
                 continue;
+            }
+            if (err === 'M_USER_IN_USE') {
+                console.log("logging in")
+                const loginUrl = `${homeserver}/_matrix/client/r0/login`
+                const params = {
+                    uri: loginUrl,
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        "type": "m.login.password",
+                        "identifier": {
+                          "type": "m.id.user",
+                          "user": username
+                        },
+                        "password": password
+                    }),
+                    timeout: 60000
+                }
+                return await new Promise((resolve, reject) => {
+                    getRequestFn()(params, (error: any, result: any, respBody: any) => {
+                        let resp = JSON.parse(respBody)
+                        console.log(resp)
+                        error ? reject(error) : resolve(resp.access_token)
+                    });
+                });
             }
             throw ex;
         }
@@ -179,4 +227,15 @@ export function noticeListener(targetRoomdId: string, cb: (event: any) => void) 
         if (event?.content?.msgtype !== "m.notice") return;
             cb(event);
     }
+}
+
+export async function teardownCryptoStores () {
+    await Promise.all(CryptoStorePaths.map(p => fs.rm(p, { force: true, recursive: true})));
+    CryptoStorePaths = [];
+}
+
+export async function getTempCryptoStore() {
+    const cryptoDir = await fs.mkdtemp('mjolnir-integration-test');
+    CryptoStorePaths.push(cryptoDir);
+    return new RustSdkCryptoStorageProvider(cryptoDir, 0);
 }

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 
 export const DEFAULT_LIST_EVENT_TYPE = "org.matrix.mjolnir.default_list";
 

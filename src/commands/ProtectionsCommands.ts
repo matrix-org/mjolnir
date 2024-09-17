@@ -16,7 +16,7 @@ limitations under the License.
 
 import { htmlEscape } from "../utils";
 import { Mjolnir } from "../Mjolnir";
-import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
+import { extractRequestError, LogService, RichReply } from "@vector-im/matrix-bot-sdk";
 import { isListSetting } from "../protections/ProtectionSettings";
 
 // !mjolnir enable <protection>

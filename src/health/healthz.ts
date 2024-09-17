@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import * as http from "http";
-import { LogService } from "matrix-bot-sdk";
+import { LogService } from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "../config";
 // allowed to use the global configuration since this is only intended to be used by `src/index.ts`.
 

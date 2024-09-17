@@ -63,7 +63,8 @@
     "prom-client": "^14.1.0",
     "shell-quote": "^1.7.3",
     "ulidx": "^0.3.0",
-    "yaml": "^2.2.2"
+    "yaml": "^2.2.2",
+    "@vector-im/matrix-bot-sdk": "^0.7.1-element.0"
   },
   "engines": {
     "node": ">=18.0.0"

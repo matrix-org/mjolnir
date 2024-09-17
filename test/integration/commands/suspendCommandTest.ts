@@ -16,7 +16,7 @@ limitations under the License.
 
 import {newTestUser} from "../clientHelper";
 import {strict as assert} from "assert";
-import { MatrixClient, RoomCreateOptions } from "matrix-bot-sdk";
+import { MatrixClient, RoomCreateOptions } from "@vector-im/matrix-bot-sdk";
 import { read as configRead } from "../../../src/config";
 
 describe("Test: suspend/unsuspend command", function () {

@@ -3,7 +3,7 @@ import { strict as assert } from "assert";
 import { newTestUser } from "./clientHelper";
 import { Mjolnir } from "../../src/Mjolnir";
 import { read as configRead } from "../../src/config";
-import { getRequestFn, LogService } from "matrix-bot-sdk";
+import { getRequestFn, LogService } from "@vector-im/matrix-bot-sdk";
 import { createBanList, getFirstReaction } from "./commands/commandUtils";
 
 /**

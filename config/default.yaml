@@ -9,6 +9,19 @@ rawHomeserverUrl: "https://matrix.org"
 # Matrix Access Token to use, Mjolnir will only use this if pantalaimon.use is false.
 accessToken: "YOUR_TOKEN_HERE"
 
+# Options related to native encryption
+encryption:
+  # whether to use native encryption in mjolnir, rather than using pantalaimon as a proxy
+  # note that if encryption is enabled here, pantaliamon must be disabled, and vice versa
+  use: true
+
+  # the username to log in with
+  username: "mjolnir"
+
+  # the password to log in with
+  password: "password"
+
+
 # Options related to Pantalaimon (https://github.com/matrix-org/pantalaimon)
 pantalaimon:
   # Whether or not Mjolnir will use pantalaimon to access the matrix homeserver,

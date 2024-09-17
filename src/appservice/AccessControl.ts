@@ -17,7 +17,7 @@ limitations under the License.
 import { Bridge } from "matrix-appservice-bridge";
 import AccessControlUnit, { EntityAccess } from "../models/AccessControlUnit";
 import PolicyList from "../models/PolicyList";
-import { Permalinks } from "matrix-bot-sdk";
+import { Permalinks } from "@vector-im/matrix-bot-sdk";
 
 /**
  * Utility to manage which users have access to the application service,
@@ -47,6 +47,7 @@ export class AccessControl {
         const accessControlList = new PolicyList(
             accessControlListId,
             Permalinks.forRoom(accessControlListId),
+            // @ts-ignore
             bridge.getBot().getClient()
         );
         const accessControlUnit = new AccessControlUnit([accessControlList]);

@@ -19,7 +19,8 @@ import {
     LogLevel,
     LogService,
     MembershipEvent,
-} from "matrix-bot-sdk";
+    MatrixClient
+} from "@vector-im/matrix-bot-sdk";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -136,10 +137,10 @@ export class Mjolnir {
 
     /**
      * Create a new Mjolnir instance from a client and the options in the configuration file, ready to be started.
-     * @param {MatrixSendClient} client The client for Mjolnir to use.
+     * @param {MatrixClient} client The client for Mjolnir to use.
      * @returns A new Mjolnir instance that can be started without further setup.
      */
-    static async setupMjolnirFromConfig(client: MatrixSendClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
+    static async setupMjolnirFromConfig(client: MatrixClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
         if (!config.autojoinOnlyIfManager && config.acceptInvitesFromSpace === getDefaultConfig().acceptInvitesFromSpace) {
             throw new TypeError("`autojoinOnlyIfManager` has been disabled but you have not set `acceptInvitesFromSpace`. Please make it empty to accept invites from everywhere or give it a namespace alias or room id.");
         }

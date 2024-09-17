@@ -20,7 +20,7 @@ import {
     MatrixGlob,
     getRequestFn,
     setRequestFn,
-} from "matrix-bot-sdk";
+} from "@vector-im/matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
 import * as Sentry from '@sentry/node';

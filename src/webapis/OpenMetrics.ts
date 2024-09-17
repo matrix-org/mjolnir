@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Server } from "http";
 import express from "express";
-import { LogService } from "matrix-bot-sdk";
+import { LogService } from "@vector-im/matrix-bot-sdk";
 import { IHealthConfig } from "../config";
 import { collectDefaultMetrics, register } from "prom-client";
 

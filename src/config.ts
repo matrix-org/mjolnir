@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as fs from "fs";
 import { load } from "js-yaml";
-import { MatrixClient, LogService } from "matrix-bot-sdk";
+import { MatrixClient, LogService } from "@vector-im/matrix-bot-sdk";
 import Config from "config";
 
 export interface IHealthConfig {
@@ -70,6 +70,11 @@ export interface IConfig {
     homeserverUrl: string;
     rawHomeserverUrl: string;
     accessToken: string;
+    encryption: {
+        use: boolean;
+        username: string;
+        password: string;
+    }
     pantalaimon: {
         use: boolean;
         username: string;
@@ -189,6 +194,11 @@ const defaultConfig: IConfig = {
     homeserverUrl: "http://localhost:8008",
     rawHomeserverUrl: "http://localhost:8008",
     accessToken: "NONE_PROVIDED",
+    encryption: {
+        use: true,
+        username: "",
+        password: "",
+    },
     pantalaimon: {
         use: false,
         username: "",

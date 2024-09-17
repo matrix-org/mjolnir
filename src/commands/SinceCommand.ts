@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, LogService, RichReply } from "matrix-bot-sdk";
+import { LogLevel, LogService, RichReply } from "@vector-im/matrix-bot-sdk";
 import { htmlEscape, parseDuration } from "../utils";
 import { ParseEntry } from "shell-quote";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";

@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { Permalinks, RichReply } from "matrix-bot-sdk";
+import { Permalinks, RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir watch <room alias or ID>
 export async function execWatchCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

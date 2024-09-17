@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 
 import { newTestUser } from "../clientHelper";
 import { getMessagesByUserIn } from "../../../src/utils";
-import { LogService } from "matrix-bot-sdk";
+import { LogService } from "@vector-im/matrix-bot-sdk";
 import { getFirstReaction } from "./commandUtils";
 
  describe("Test: The redaction command", function () {
