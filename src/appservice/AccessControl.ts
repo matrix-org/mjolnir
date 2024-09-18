@@ -47,7 +47,8 @@ export class AccessControl {
         const accessControlList = new PolicyList(
             accessControlListId,
             Permalinks.forRoom(accessControlListId),
-            // @ts-ignore
+            // @ts-ignore - mismatch between client using @vector-im/matrix-bot-sdk and matrix-appservice-bridge using
+            // matrix-bot-sdk
             bridge.getBot().getClient()
         );
         const accessControlUnit = new AccessControlUnit([accessControlList]);

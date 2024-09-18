@@ -140,7 +140,8 @@ export class MjolnirManager {
                 invite: [requestingUserId],
                 name: `${requestingUserId}'s mjolnir`
             });
-            // @ts-ignore
+            // @ts-ignore - mismatch between client using @vector-im/matrix-bot-sdk and matrix-appservice-bridge using
+            // matrix-bot-sdk
             const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjIntent.matrixClient);
             await mjolnir.createFirstList(requestingUserId, "list");
 
@@ -183,7 +184,8 @@ export class MjolnirManager {
                 await this.makeInstance(
                     mjolnirRecord.owner,
                     mjolnirRecord.management_room,
-                    // @ts-ignore
+                    // @ts-ignore - mismatch between client using @vector-im/matrix-bot-sdk and matrix-appservice-bridge using
+                    // matrix-bot-sdk
                     mjIntent.matrixClient,
                 ).catch((e: any) => {
                     log.error(`Could not start mjolnir ${mjolnirRecord.local_part} for ${mjolnirRecord.owner}:`, e);

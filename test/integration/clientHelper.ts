@@ -63,6 +63,7 @@ export async function registerUser(homeserver: string, username: string, display
         } catch (ex) {
             let err;
             if (ex instanceof Error) {
+                // @ts-ignore - objectively this works, a temp hack anyway
                 err = ex.body.errcode
             } else {
                 err = ex.errcode

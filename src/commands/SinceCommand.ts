@@ -139,6 +139,7 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
         }
 
         //...or as a duration
+        // @ts-ignore
         maybeMaxAgeMS = parseDuration(source);
         if (maybeMaxAgeMS && !Number.isNaN(maybeMaxAgeMS)) {
             maybeMaxAgeMS = Math.abs(maybeMaxAgeMS);

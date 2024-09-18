@@ -176,6 +176,7 @@ export class DurationMSProtectionSetting extends AbstractProtectionSetting<numbe
 
     fromString(data: string) {
         let number = parseDuration(data);
+        // @ts-ignore
         return isNaN(number) ? undefined : number;
     }
     validate(data: number) {

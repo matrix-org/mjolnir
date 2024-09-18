@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogLevel, LogService, Permalinks, RoomCreateOptions, UserID } from "@vector-im/matrix-bot-sdk";
+import {
+    extractRequestError,
+    LogLevel,
+    LogService,
+    Permalinks,
+    RoomCreateOptions,
+    UserID
+} from "@vector-im/matrix-bot-sdk";
 import { EventEmitter } from "events";
 import { ALL_RULE_TYPES, EntityType, ListRule, Recommendation, ROOM_RULE_TYPES, RULE_ROOM, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES, USER_RULE_TYPES } from "./ListRule";
 import { MatrixSendClient } from "../MatrixEmitter";

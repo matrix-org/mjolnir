@@ -47,6 +47,7 @@
     "@sentry/node": "^7.17.2",
     "@sentry/tracing": "^7.17.2",
     "@tensorflow/tfjs-node": "^4.21.0",
+    "@vector-im/matrix-bot-sdk": "^0.7.1-element.0",
     "await-lock": "^2.2.2",
     "body-parser": "^1.20.1",
     "config": "^3.3.8",
@@ -63,8 +64,7 @@
     "prom-client": "^14.1.0",
     "shell-quote": "^1.7.3",
     "ulidx": "^0.3.0",
-    "yaml": "^2.2.2",
-    "@vector-im/matrix-bot-sdk": "^0.7.1-element.0"
+    "yaml": "^2.2.2"
   },
   "engines": {
     "node": ">=18.0.0"
