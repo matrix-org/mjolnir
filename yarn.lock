@@ -537,10 +537,10 @@
   resolved "https://registry.npmjs.org/@ungap/promise-all-settled/-/promise-all-settled-1.1.2.tgz"
   integrity sha512-sL/cEvJWAnClXw0wHk85/2L0G6Sj8UB0Ctc1TEMbKSsmpRosqhwj9gWgFRZSrBr2f9tiXISwNhCPmlfqUqyb9Q==
 
-"@vector-im/matrix-bot-sdk@^0.7.1-element.5":
-  version "0.7.1-element.5"
-  resolved "https://registry.yarnpkg.com/@vector-im/matrix-bot-sdk/-/matrix-bot-sdk-0.7.1-element.5.tgz#ce4b47a96a2138165bf8f73b1bc31641ac37645b"
-  integrity sha512-jLe9aZIQHPJVC18A99eAzxQpQbw0lw2o7nk36NK2zyT1SpntQ7PGDu76O5ADSIc9dzssqjs7gSp2vpmeVIaTkA==
+"@vector-im/matrix-bot-sdk@^0.7.1-element.6":
+  version "0.7.1-element.6"
+  resolved "https://registry.yarnpkg.com/@vector-im/matrix-bot-sdk/-/matrix-bot-sdk-0.7.1-element.6.tgz#d1f8a86d3bd60084d92d150f42a48b25199871e1"
+  integrity sha512-0KfyTpQV5eyY4vPUZW89t7EZf1YF0UyFkyYqpsxL/6S7XIlbTMC4onod7vx/QpKC0lSREmwIiXx2JSjExP6CIw==
   dependencies:
     "@matrix-org/matrix-sdk-crypto-nodejs" "0.2.0-beta.1"
     "@types/express" "^4.17.21"
@@ -2596,14 +2596,14 @@ make-error@^1.1.1:
   resolved "https://registry.npmjs.org/make-error/-/make-error-1.3.6.tgz"
   integrity sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==
 
-matrix-appservice-bridge@10.3.0:
-  version "10.3.0"
-  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-10.3.0.tgz#3e753aec7459e3ebcd9d864d90c19f66ac663c6b"
-  integrity sha512-+xlUOfp5gT28iv4yIxv2ETVCq1tiHn8BL0ks7UpU6wCpGCJgnoswP7A2yzkDCfiUxrhGgyWuhaN0WJCj1IXsPg==
+matrix-appservice-bridge@10.3.1:
+  version "10.3.1"
+  resolved "https://registry.yarnpkg.com/matrix-appservice-bridge/-/matrix-appservice-bridge-10.3.1.tgz#8f45b616a69ddd599bc8e4fb9b60c950cce10550"
+  integrity sha512-umBLAqLUdm6TefEdQuHUE0QfSmbtJf+LnHDYRM5XwpMjScIXQ/5pI6559gVQrxVVT5T58jbNuoJCz2+8+XLr3Q==
   dependencies:
     "@alloc/quick-lru" "^5.2.0"
     "@types/nedb" "^1.8.16"
-    "@vector-im/matrix-bot-sdk" "^0.7.1-element.5"
+    "@vector-im/matrix-bot-sdk" "^0.7.1-element.6"
     chalk "^4.1.0"
     express "^4.18.2"
     express-rate-limit "^7.1.5"
