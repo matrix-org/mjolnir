@@ -35,7 +35,7 @@ describe("Test: Mention spam protection", function () {
 
         await delay(500);
         const fetchedEvent = await client.getEvent(room, testMessage);
-        assert.equal(Object.keys(fetchedEvent.content).length, 3, "This event should not have been redacted");
+        assert.equal(Object.keys(fetchedEvent.content).length, 2, "This event should not have been redacted");
     });
 
     it("does not redact a message with some mentions", async function() {
@@ -46,22 +46,20 @@ describe("Test: Mention spam protection", function () {
         // Also covers HTML mentions
         const messageWithTextMentions = await client.sendText(room, 'Hello world @foo:bar @beep:boop @test:here');
         const messageWithMMentions = await client.sendMessage(room, {
-            content: {
-                msgtype: 'm.text',
-                body: 'Hello world',
-                ['m.mentions']: {
-                    user_ids: [
-                        "@foo:bar",
-                        "@beep:boop",
-                        "@test:here"
-                    ]
-                }
+            msgtype: 'm.text',
+            body: 'Hello world',
+            ['m.mentions']: {
+                user_ids: [
+                    "@foo:bar",
+                    "@beep:boop",
+                    "@test:here"
+                ]
             }
         });
 
         await delay(500);
         const fetchedTextEvent = await client.getEvent(room, messageWithTextMentions);
-        assert.equal(Object.keys(fetchedTextEvent.content).length, 3, "This event should not have been redacted");
+        assert.equal(Object.keys(fetchedTextEvent.content).length, 2, "This event should not have been redacted");
         const fetchedMentionsEvent = await client.getEvent(room, messageWithMMentions);
         assert.equal(Object.keys(fetchedMentionsEvent.content).length, 3, "This event should not have been redacted");
     });
@@ -75,12 +73,10 @@ describe("Test: Mention spam protection", function () {
         const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS}, (_, i) => `@user${i}:example.org`);
         const messageWithTextMentions = await client.sendText(room, 'Hello world ' + mentionUsers.join(' '));
         const messageWithMMentions = await client.sendMessage(room, {
-            content: {
-                msgtype: 'm.text',
-                body: 'Hello world',
-                ['m.mentions']: {
-                    user_ids: mentionUsers
-                }
+            msgtype: 'm.text',
+            body: 'Hello world',
+            ['m.mentions']: {
+                user_ids: mentionUsers
             }
         });
 
