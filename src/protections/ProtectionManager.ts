@@ -308,7 +308,7 @@ export class ProtectionManager {
                     LogService.error("ProtectionManager", "Error handling protection: " + protection.name);
                     LogService.error("ProtectionManager", "Failed event: " + eventPermalink);
                     LogService.error("ProtectionManager", extractRequestError(e));
-                    await this.mjolnir.client.sendNotice(this.mjolnir.managementRoomId, "There was an error processing an event through a protection - see log for details. Event: " + eventPermalink);
+                    await this.mjolnir.client.sendNotice(this.mjolnir.managementRoomId, `There was an error processing an event through a protection (${protection.name}) - see log for details. Event: ${eventPermalink}`);
                     continue;
                 }
 
