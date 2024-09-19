@@ -72,7 +72,7 @@ export class MentionSpam extends Protection {
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         if (event['type'] === 'm.room.message') {
             let content = event['content'] || {};
-            const explicitMentions = content["m.mentions"]?.["m.user_ids"];
+            const explicitMentions = content["m.mentions"]?.user_ids;
             const hitLimit = this.checkMentions(content.body, content.formatted_body, explicitMentions);
             if (hitLimit) {
                 await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionSpam", `Redacting event from ${event['sender']} for spamming mentions. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
