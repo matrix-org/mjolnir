@@ -19,13 +19,13 @@ import { Mjolnir } from "../Mjolnir";
 import { LogLevel, Permalinks, UserID } from "matrix-bot-sdk";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 
-export const DEFAULT_MAX_MENTIONS = 8;
+export const DEFAULT_MAX_MENTIONS = 10;
 const USER_ID_REGEX = /@[^:]*:.+/;
 
 export class MentionSpam extends Protection {
 
     settings = {
-        maxMentions: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS),
+        maxMentionsRedact: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS),
     };
 
     constructor() {
