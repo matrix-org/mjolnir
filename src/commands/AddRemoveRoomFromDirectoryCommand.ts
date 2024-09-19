@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 
 async function addRemoveFromDirectory(inRoomId: string, event: any, mjolnir: Mjolnir, roomRef: string, visibility: "public" | "private") {
     const isAdmin = await mjolnir.isSynapseAdmin();

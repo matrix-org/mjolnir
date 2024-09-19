@@ -4,7 +4,7 @@ import { ensureAliasedRoomExists } from "../../integration/mjolnirSetupUtils";
 import { read as configRead, IConfig } from "../../../src/appservice/config/config";
 import { newTestUser } from "../../integration/clientHelper";
 import PolicyList from "../../../src/models/PolicyList";
-import { CreateEvent, MatrixClient } from "matrix-bot-sdk";
+import { CreateEvent, MatrixClient } from "@vector-im/matrix-bot-sdk";
 
 export function readTestConfig(): IConfig {
     return configRead(path.join(__dirname, "../../../src/appservice/config/config.harness.yaml"));

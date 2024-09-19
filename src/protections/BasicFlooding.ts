@@ -17,7 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, LogService } from "matrix-bot-sdk";
+import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 
 // if this is exceeded, we'll ban the user for spam and redact their messages
 export const DEFAULT_MAX_PER_MINUTE = 10;

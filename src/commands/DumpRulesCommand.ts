@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
 import { EntityType } from "../models/ListRule";
 import { htmlEscape } from "../utils";

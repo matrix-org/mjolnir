@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { LogLevel } from "matrix-bot-sdk";
+import { LogLevel } from "@vector-im/matrix-bot-sdk";
 import ManagementRoomOutput from "../../src/ManagementRoomOutput";
 
 describe("Test: utils", function() {

@@ -17,7 +17,7 @@ limitations under the License.
 import {Protection} from "./IProtection";
 import {Mjolnir} from "../Mjolnir";
 import {NumberProtectionSetting} from "./ProtectionSettings";
-import {LogLevel} from "matrix-bot-sdk";
+import {LogLevel} from "@vector-im/matrix-bot-sdk";
 
 const DEFAULT_MAX_PER_TIMESCALE = 50;
 const DEFAULT_TIMESCALE_MINUTES = 60;

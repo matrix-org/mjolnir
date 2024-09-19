@@ -17,7 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { DurationMSProtectionSetting, NumberProtectionSetting, StringSetProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, UserID } from "matrix-bot-sdk";
+import { LogLevel, UserID } from "@vector-im/matrix-bot-sdk";
 
 const DEFAULT_BUCKET_DURATION_MS = 10_000;
 const DEFAULT_BUCKET_NUMBER = 6;

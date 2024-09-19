@@ -17,7 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import * as nsfw from 'nsfwjs';
-import {LogLevel} from "matrix-bot-sdk";
+import {LogLevel} from "@vector-im/matrix-bot-sdk";
 import { node } from '@tensorflow/tfjs-node';
 
 

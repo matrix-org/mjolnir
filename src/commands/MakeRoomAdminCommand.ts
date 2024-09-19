@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir make admin <room> [<user ID>]
 export async function execMakeRoomAdminCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
