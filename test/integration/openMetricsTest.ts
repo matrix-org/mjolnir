@@ -1,5 +1,5 @@
 import { strict as assert } from "assert";
-import { getRequestFn } from "matrix-bot-sdk";
+import { getRequestFn } from "@vector-im/matrix-bot-sdk";
 
 import { IConfig } from "../../src/config";
 

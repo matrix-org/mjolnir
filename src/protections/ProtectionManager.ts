@@ -24,7 +24,7 @@ import { MessageIsMedia } from "./MessageIsMedia";
 import { TrustedReporters } from "./TrustedReporters";
 import { JoinWaveShortCircuit } from "./JoinWaveShortCircuit";
 import { Mjolnir } from "../Mjolnir";
-import { extractRequestError, LogLevel, LogService, Permalinks } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, Permalinks } from "@vector-im/matrix-bot-sdk";
 import { ProtectionSettingValidationError } from "./ProtectionSettings";
 import { Consequence } from "./consequence";
 import { htmlEscape } from "../utils";

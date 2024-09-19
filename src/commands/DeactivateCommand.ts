@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir deactivate <user ID>
 export async function execDeactivateCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

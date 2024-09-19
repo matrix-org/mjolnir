@@ -19,7 +19,7 @@ import {
     LogLevel,
     LogService,
     MembershipEvent,
-} from "matrix-bot-sdk";
+} from "@vector-im/matrix-bot-sdk";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";

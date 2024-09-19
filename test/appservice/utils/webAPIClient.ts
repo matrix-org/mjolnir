@@ -1,5 +1,5 @@
 import * as request from "request";
-import { MatrixClient } from "matrix-bot-sdk";
+import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 
 interface OpenIDTokenInfo {
     access_token: string,

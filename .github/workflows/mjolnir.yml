@@ -20,7 +20,7 @@ jobs:
     - name: Specifically use node 18 like in the readme.
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '20'
     - run: yarn install
     - run: yarn build
     - run: yarn lint
@@ -32,7 +32,7 @@ jobs:
     - name: Specifically use node 18 like in the readme.
       uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '20'
     - run: yarn install
     - run: yarn test
   integration:
@@ -43,7 +43,7 @@ jobs:
     - uses: actions/checkout@v3
     - uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '20'
     - name: Fetch and build mx-tester (cached across runs)
       uses: baptiste0928/cargo-install@v1
       with:
@@ -65,7 +65,7 @@ jobs:
     - uses: actions/checkout@v3
     - uses: actions/setup-node@v3
       with:
-        node-version: '18'
+        node-version: '20'
     - name: Fetch and build mx-tester (cached across runs)
       uses: baptiste0928/cargo-install@v1
       with:

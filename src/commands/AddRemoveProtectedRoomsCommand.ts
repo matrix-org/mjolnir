@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { extractRequestError, LogLevel, LogService } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir rooms add <room alias/ID>
 export async function execAddProtectedRoom(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

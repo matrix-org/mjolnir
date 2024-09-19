@@ -1,4 +1,4 @@
-import { MatrixClient } from "matrix-bot-sdk";
+import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { Mjolnir } from "../../src/Mjolnir"
 import { newTestUser } from "./clientHelper";
 

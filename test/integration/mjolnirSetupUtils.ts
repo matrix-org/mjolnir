@@ -20,7 +20,7 @@ import {
     LogService,
     LogLevel,
     RichConsoleLogger
-} from "matrix-bot-sdk";
+} from "@vector-im/matrix-bot-sdk";
 
 import { Mjolnir}  from '../../src/Mjolnir';
 import { overrideRatelimitForUser, registerUser } from "./clientHelper";

@@ -25,7 +25,7 @@ import {
     PantalaimonClient,
     RichConsoleLogger,
     SimpleFsStorageProvider
-} from "matrix-bot-sdk";
+} from "@vector-im/matrix-bot-sdk";
 
 import { read as configRead } from "./config";
 import { Mjolnir } from "./Mjolnir";

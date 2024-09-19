@@ -1,6 +1,6 @@
 import {newTestUser} from "./clientHelper";
 
-import {MatrixClient} from "matrix-bot-sdk";
+import {MatrixClient} from "@vector-im/matrix-bot-sdk";
 import {getFirstReaction} from "./commands/commandUtils";
 import {strict as assert} from "assert";
 import { readFileSync } from 'fs';

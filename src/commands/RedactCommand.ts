@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { redactUserMessagesIn } from "../utils";
-import { Permalinks } from "matrix-bot-sdk";
+import { Permalinks } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir redact <user ID> [room alias] [limit]
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

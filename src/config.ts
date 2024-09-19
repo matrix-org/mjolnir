@@ -16,7 +16,7 @@ limitations under the License.
 
 import * as fs from "fs";
 import { load } from "js-yaml";
-import { MatrixClient, LogService } from "matrix-bot-sdk";
+import { MatrixClient, LogService } from "@vector-im/matrix-bot-sdk";
 import Config from "config";
 
 export interface IHealthConfig {
