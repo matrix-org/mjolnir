@@ -71,7 +71,7 @@ describe("Test: Mention spam protection", function () {
         });
         // Also covers HTML mentions
         const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `@user${i}:example.org`);
-        const messageWithTextMentions = await client.sendText(room, 'Hello world ' + mentionUsers.join(' '));
+        const messageWithTextMentions = await client.sendText(room, mentionUsers.join(' '));
         const messageWithMMentions = await client.sendMessage(room, {
             msgtype: 'm.text',
             body: 'Hello world',
