@@ -60,10 +60,9 @@ export class NsfwProtection extends Protection {
                         if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                             await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "NSFWProtection", `Redacting ${event["event_id"]} for inappropriate content.`);
                             try {
-                                mjolnir.client.redactEvent(roomId, event["event_id"])
+                                await mjolnir.client.redactEvent(roomId, event["event_id"]);
                             } catch (err) {
                                 await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"]}: ${err}`);
-
                             }
                         }
                     }
