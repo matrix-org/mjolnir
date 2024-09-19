@@ -67,6 +67,7 @@ export class MjolnirAppService {
                 onEvent: () => {throw new Error("Mjolnir uninitialized")},
             },
             suppressEcho: false,
+            disableStores: true,
         });
         await bridge.initialise();
         const accessControlListId = await bridge.getBot().getClient().resolveRoom(config.accessControlList);
