@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import EventEmitter from "events";
-import { MatrixClient } from "matrix-bot-sdk";
+import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 
 /**
  * This is an interface created in order to keep the event listener

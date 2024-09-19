@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 import { htmlEscape } from "../utils";
 
 // !mjolnir move <alias> <new room ID>

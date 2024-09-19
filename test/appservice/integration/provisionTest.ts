@@ -1,7 +1,7 @@
 import { isPolicyRoom, readTestConfig, setupHarness } from "../utils/harness";
 import { newTestUser } from "../../integration/clientHelper";
 import { getFirstReply } from "../../integration/commands/commandUtils";
-import { MatrixClient } from "matrix-bot-sdk";
+import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { MjolnirAppService } from "../../../src/appservice/AppService";
 import dns from 'node:dns';
 

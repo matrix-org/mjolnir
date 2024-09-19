@@ -18,7 +18,7 @@ import { Mjolnir } from "../Mjolnir";
 import { execStatusCommand } from "./StatusCommand";
 import { execBanCommand, execUnbanCommand } from "./UnbanBanCommand";
 import { execDumpRulesCommand, execRulesMatchingCommand } from "./DumpRulesCommand";
-import { extractRequestError, LogService, RichReply } from "matrix-bot-sdk";
+import { extractRequestError, LogService, RichReply } from "@vector-im/matrix-bot-sdk";
 import { htmlEscape } from "../utils";
 import { execSyncCommand } from "./SyncCommand";
 import { execPermissionCheckCommand } from "./PermissionCheckCommand";

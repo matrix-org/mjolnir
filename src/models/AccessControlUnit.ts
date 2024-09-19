@@ -16,7 +16,7 @@ limitations under the License.
 
 import PolicyList, { ChangeType, ListRuleChange } from "./PolicyList";
 import { EntityType, ListRule, Recommendation, RULE_SERVER, RULE_USER } from "./ListRule";
-import { LogService, UserID } from "matrix-bot-sdk";
+import { LogService, UserID } from "@vector-im/matrix-bot-sdk";
 import { ServerAcl } from "./ServerAcl";
 
 /**

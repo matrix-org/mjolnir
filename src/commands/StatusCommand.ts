@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, STATE_SYNCING } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 import { htmlEscape, parseDuration } from "../utils";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
 import PolicyList from "../models/PolicyList";

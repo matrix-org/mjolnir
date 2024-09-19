@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogLevel } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel } from "@vector-im/matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
 
 export type Task<T> = (queue: ThrottlingQueue) => Promise<T>;

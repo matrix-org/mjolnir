@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixGlob, Permalinks, UserID } from "matrix-bot-sdk";
+import { LogLevel, LogService, MatrixGlob, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoomOutput";

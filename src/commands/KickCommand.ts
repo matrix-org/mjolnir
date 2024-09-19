@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, MatrixGlob, RichReply } from "matrix-bot-sdk";
+import { LogLevel, MatrixGlob, RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {

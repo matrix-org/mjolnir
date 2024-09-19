@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MatrixGlob } from "matrix-bot-sdk";
+import { MatrixGlob } from "@vector-im/matrix-bot-sdk";
 
 export enum EntityType {
     /// `entity` is to be parsed as a glob of users IDs

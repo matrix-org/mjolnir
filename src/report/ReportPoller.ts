@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir, REPORT_POLL_EVENT_TYPE } from "../Mjolnir";
 import { ReportManager } from './ReportManager';
-import { LogLevel } from "matrix-bot-sdk";
+import { LogLevel } from "@vector-im/matrix-bot-sdk";
 
 class InvalidStateError extends Error { }
 

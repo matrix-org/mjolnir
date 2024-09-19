@@ -1,5 +1,5 @@
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel } from "matrix-bot-sdk";
+import { LogLevel } from "@vector-im/matrix-bot-sdk";
 
 const EVENT_MODERATED_BY = "org.matrix.msc3215.room.moderation.moderated_by";
 const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";

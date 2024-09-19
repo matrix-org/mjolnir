@@ -1,6 +1,6 @@
 
 import { strict as assert } from "assert";
-import { MatrixClient, Permalinks, UserID } from "matrix-bot-sdk";
+import { MatrixClient, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { MatrixSendClient } from "../../src/MatrixEmitter";
 import { Mjolnir } from "../../src/Mjolnir";
 import PolicyList from "../../src/models/PolicyList";

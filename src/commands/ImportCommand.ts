@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "matrix-bot-sdk";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 import { EntityType } from "../models/ListRule";
 import PolicyList from "../models/PolicyList";
 

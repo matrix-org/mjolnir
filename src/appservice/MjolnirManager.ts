@@ -3,7 +3,7 @@ import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matri
 import { getProvisionedMjolnirConfig } from "../config";
 import { IConfig as IAppserviceConfig } from "./config/config";
 import PolicyList from "../models/PolicyList";
-import { Permalinks, MatrixClient } from "matrix-bot-sdk";
+import { Permalinks, MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { DataStore } from "./datastore";
 import { AccessControl } from "./AccessControl";
 import { Access } from "../models/AccessControlUnit";

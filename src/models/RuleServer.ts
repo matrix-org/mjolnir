@@ -15,7 +15,7 @@ limitations under the License.
 */
 import BanList, { ChangeType, ListRuleChange } from "./PolicyList"
 import * as crypto from "crypto";
-import { LogService } from "matrix-bot-sdk";
+import { LogService } from "@vector-im/matrix-bot-sdk";
 import { EntityType, ListRule } from "./ListRule";
 import PolicyList from "./PolicyList";
 

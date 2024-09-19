@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, LogService } from "matrix-bot-sdk";
+import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { isTrueJoinEvent } from "../utils";
 
 export class FirstMessageIsImage extends Protection {

@@ -1,6 +1,6 @@
 import { strict as assert } from "assert";
 
-import { UserID } from "matrix-bot-sdk";
+import { UserID } from "@vector-im/matrix-bot-sdk";
 import { Suite } from "mocha";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DetectFederationLag, LAG_STATE_EVENT } from "../../src/protections/DetectFederationLag";
