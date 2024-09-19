@@ -70,7 +70,7 @@ describe("Test: Mention spam protection", function () {
                 return await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: "!mjolnir enable MentionSpam" });
         });
         // Also covers HTML mentions
-        const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS}, (_, i) => `@user${i}:example.org`);
+        const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `@user${i}:example.org`);
         const messageWithTextMentions = await client.sendText(room, 'Hello world ' + mentionUsers.join(' '));
         const messageWithMMentions = await client.sendMessage(room, {
             msgtype: 'm.text',
