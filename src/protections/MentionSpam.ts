@@ -75,12 +75,12 @@ export class MentionSpam extends Protection {
             const explicitMentions = content["m.mentions"]?.["m.user_ids"];
             const hitLimit = this.checkMentions(content.body, content.formatted_body, explicitMentions);
             if (hitLimit) {
-                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MessageIsMedia", `Redacting event from ${event['sender']} for spamming mentions. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
+                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionSpam", `Redacting event from ${event['sender']} for spamming mentions. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
                 // Redact the event
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "Message was detected as spam.");
                 } else {
-                    await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MessageIsMedia", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionSpam", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
             }
         }
