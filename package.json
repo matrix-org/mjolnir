@@ -56,7 +56,8 @@
     "humanize-duration-ts": "^2.1.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
-    "matrix-appservice-bridge": "8.1.2",
+    "@vector-im/matrix-bot-sdk": "^0.7.1-element.5",
+    "matrix-appservice-bridge": "10.3.0",
     "nsfwjs": "^4.1.0",
     "parse-duration": "^1.0.2",
     "pg": "^8.8.0",
@@ -66,6 +67,6 @@
     "yaml": "^2.2.2"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   }
 }
