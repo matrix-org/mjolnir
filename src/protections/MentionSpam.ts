@@ -25,7 +25,7 @@ const USER_ID_REGEX = /@[^:]*:.+/;
 export class MentionSpam extends Protection {
 
     settings = {
-        maxMentionsRedact: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS),
+        maxMentions: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS),
     };
 
     constructor() {
