@@ -1,5 +1,5 @@
 /*
-Copyright 2019 - 2022 The Matrix.org Foundation C.I.C.
+Copyright 2019 - 2024 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import { MessageIsMedia } from "./MessageIsMedia";
 import { TrustedReporters } from "./TrustedReporters";
 import { JoinWaveShortCircuit } from "./JoinWaveShortCircuit";
 import { Mjolnir } from "../Mjolnir";
-import { extractRequestError, LogLevel, LogService, Permalinks } from "matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, Permalinks } from "@vector-im/matrix-bot-sdk";
 import { ProtectionSettingValidationError } from "./ProtectionSettings";
 import { Consequence } from "./consequence";
 import { htmlEscape } from "../utils";
@@ -32,6 +32,7 @@ import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { LocalAbuseReports } from "./LocalAbuseReports";
 import {NsfwProtection} from "./NsfwProtection";
+import { MentionSpam } from "./MentionSpam";
 
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -43,7 +44,8 @@ const PROTECTIONS: Protection[] = [
     new DetectFederationLag(),
     new JoinWaveShortCircuit(),
     new LocalAbuseReports(),
-    new NsfwProtection()
+    new NsfwProtection(),
+    new MentionSpam()
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
