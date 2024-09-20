@@ -20,7 +20,7 @@ import { LogLevel, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 
 export const DEFAULT_MAX_MENTIONS = 10;
-const USER_ID_REGEX = /@[^:]*:.+/;
+const USER_ID_SIGIL_REGEX = /(@|%40)/;
 
 export class MentionSpam extends Protection {
 
@@ -49,7 +49,7 @@ export class MentionSpam extends Protection {
         if (typeof body === "string") {
             let found = 0;
             for (const word of body.split(/\s/)) {
-                if (USER_ID_REGEX.test(word.trim())) {
+                if (USER_ID_SIGIL_REGEX.test(word.trim())) {
                     if (++found > max) {
                         return true;
                     }
@@ -59,7 +59,7 @@ export class MentionSpam extends Protection {
         if (typeof htmlBody === "string") {
             let found = 0;
             for (const word of htmlBody.split(/\s/)) {
-                if (USER_ID_REGEX.test(word.trim())) {
+                if (USER_ID_SIGIL_REGEX.test(word.trim())) {
                     if (++found > max) {
                         return true;
                     }
