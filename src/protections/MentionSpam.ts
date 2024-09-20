@@ -20,7 +20,6 @@ import { LogLevel, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 
 export const DEFAULT_MAX_MENTIONS = 10;
-const USER_ID_SIGIL_REGEX = /(@|%40)/;
 
 export class MentionSpam extends Protection {
 
@@ -41,31 +40,16 @@ export class MentionSpam extends Protection {
 
     public checkMentions(body: unknown|undefined, htmlBody: unknown|undefined, mentionArray: unknown|undefined): boolean {
         const max = this.settings.maxMentions.value;
-        const minMessageLength = max * 3; // "@:a"
         if (Array.isArray(mentionArray)) {
             if (mentionArray.length > this.settings.maxMentions.value) {
                 return true;
             }
         }
-        if (typeof body === "string" && body.length > minMessageLength) {
-            let found = 0;
-            for (const word of body.split(/\s/)) {
-                if (USER_ID_SIGIL_REGEX.test(word.trim())) {
-                    if (++found > max) {
-                        return true;
-                    }
-                }
-            }
+        if (typeof body === "string" && body.split('@').length - 1 > max) {
+            return true;
         }
-        if (typeof htmlBody === "string" && htmlBody.length > minMessageLength) {
-            let found = 0;
-            for (const word of htmlBody.split(/\s/)) {
-                if (USER_ID_SIGIL_REGEX.test(word.trim())) {
-                    if (++found > max) {
-                        return true;
-                    }
-                }
-            }
+        if (typeof htmlBody === "string" && htmlBody.split('%40').length - 1 > max) {
+            return true;
         }
         return false;
     }
