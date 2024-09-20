@@ -40,10 +40,8 @@ export class MentionSpam extends Protection {
 
     public checkMentions(body: unknown|undefined, htmlBody: unknown|undefined, mentionArray: unknown|undefined): boolean {
         const max = this.settings.maxMentions.value;
-        if (Array.isArray(mentionArray)) {
-            if (mentionArray.length > this.settings.maxMentions.value) {
-                return true;
-            }
+        if (Array.isArray(mentionArray) && mentionArray.length > max) {
+            return true;
         }
         if (typeof body === "string" && body.split('@').length - 1 > max) {
             return true;
