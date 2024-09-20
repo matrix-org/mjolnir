@@ -41,12 +41,13 @@ export class MentionSpam extends Protection {
 
     public checkMentions(body: unknown|undefined, htmlBody: unknown|undefined, mentionArray: unknown|undefined): boolean {
         const max = this.settings.maxMentions.value;
+        const minMessageLength = max * 3; // "@:a"
         if (Array.isArray(mentionArray)) {
             if (mentionArray.length > this.settings.maxMentions.value) {
                 return true;
             }
         }
-        if (typeof body === "string") {
+        if (typeof body === "string" && body.length > minMessageLength) {
             let found = 0;
             for (const word of body.split(/\s/)) {
                 if (USER_ID_SIGIL_REGEX.test(word.trim())) {
@@ -56,7 +57,7 @@ export class MentionSpam extends Protection {
                 }
             }
         }
-        if (typeof htmlBody === "string") {
+        if (typeof htmlBody === "string" && htmlBody.length > minMessageLength) {
             let found = 0;
             for (const word of htmlBody.split(/\s/)) {
                 if (USER_ID_SIGIL_REGEX.test(word.trim())) {
