@@ -34,6 +34,7 @@ describe("Test: Mention spam protection", function () {
         const testMessage = await client.sendText(room, 'Hello world');
 
         await delay(500);
+
         const fetchedEvent = await client.getEvent(room, testMessage);
         assert.equal(Object.keys(fetchedEvent.content).length, 2, "This event should not have been redacted");
     });
@@ -44,22 +45,26 @@ describe("Test: Mention spam protection", function () {
                 return await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text', body: "!mjolnir enable MentionSpam" });
         });
         // Also covers HTML mentions
-        const messageWithTextMentions = await client.sendText(room, 'Hello world @foo:bar @beep:boop @test:here');
+        const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS}, (_, i) => `@user${i}:example.org`);
+        const messageWithTextMentions = await client.sendText(room, mentionUsers.join(' '));
+        const messageWithHTMLMentions = await client.sendHtmlText(room, 
+            mentionUsers.map(u => `<a href=\"https://matrix.to/#/${encodeURIComponent(u)}\">${u}</a>`).join(' '));
         const messageWithMMentions = await client.sendMessage(room, {
             msgtype: 'm.text',
             body: 'Hello world',
             ['m.mentions']: {
-                user_ids: [
-                    "@foo:bar",
-                    "@beep:boop",
-                    "@test:here"
-                ]
+                user_ids: mentionUsers
             }
         });
 
         await delay(500);
+
         const fetchedTextEvent = await client.getEvent(room, messageWithTextMentions);
         assert.equal(Object.keys(fetchedTextEvent.content).length, 2, "This event should not have been redacted");
+
+        const fetchedHTMLEvent = await client.getEvent(room, messageWithHTMLMentions);
+        assert.equal(Object.keys(fetchedHTMLEvent.content).length, 4, "This event should not have been redacted");
+
         const fetchedMentionsEvent = await client.getEvent(room, messageWithMMentions);
         assert.equal(Object.keys(fetchedMentionsEvent.content).length, 3, "This event should not have been redacted");
     });
@@ -72,6 +77,8 @@ describe("Test: Mention spam protection", function () {
         // Also covers HTML mentions
         const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `@user${i}:example.org`);
         const messageWithTextMentions = await client.sendText(room, mentionUsers.join(' '));
+        const messageWithHTMLMentions = await client.sendHtmlText(room, 
+            mentionUsers.map(u => `<a href=\"https://matrix.to/#/${encodeURIComponent(u)}\">${u}</a>`).join(' '));
         const messageWithMMentions = await client.sendMessage(room, {
             msgtype: 'm.text',
             body: 'Hello world',
@@ -81,8 +88,13 @@ describe("Test: Mention spam protection", function () {
         });
 
         await delay(500);
+
         const fetchedTextEvent = await client.getEvent(room, messageWithTextMentions);
         assert.equal(Object.keys(fetchedTextEvent.content).length, 0, "This event should have been redacted");
+
+        const fetchedHTMLEvent = await client.getEvent(room, messageWithHTMLMentions);
+        assert.equal(Object.keys(fetchedHTMLEvent.content).length, 0, "This event should have been redacted");
+
         const fetchedMentionsEvent = await client.getEvent(room, messageWithMMentions);
         assert.equal(Object.keys(fetchedMentionsEvent.content).length, 0, "This event should have been redacted");
     });
