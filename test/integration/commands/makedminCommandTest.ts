@@ -33,6 +33,8 @@ describe("Test: The make admin command", function () {
         LogService.debug("makeadminTest", `moderator creating targetRoom: ${targetRoom}; and inviting ${mjolnirUserId}`);
         await moderator.sendMessage(this.mjolnir.managementRoomId, { msgtype: 'm.text.', body: `!mjolnir rooms add ${targetRoom}` });
         LogService.debug("makeadminTest", `Adding targetRoom: ${targetRoom}`);
+        // allow bot time to join room
+        await new Promise(resolve => setTimeout(resolve, 1000));
         try {
             await moderator.start();
             await userA.start();

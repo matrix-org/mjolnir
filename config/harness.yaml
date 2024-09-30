@@ -16,7 +16,7 @@ rawHomeserverUrl: "http://localhost:8081"
 pantalaimon:
   # If true, accessToken above is ignored and the username/password below will be
   # used instead. The access token of the bot will be stored in the dataPath.
-  use: true
+  use: false
 
   # The username to login with.
   username: mjolnir
@@ -24,6 +24,11 @@ pantalaimon:
   # The password to login with. Can be removed after the bot has logged in once and
   # stored the access token.
   password: mjolnir
+
+encryption:
+  use: true
+  username: test
+  password: testPassword
 
 # The directory the bot should store various bits of information in
 dataPath: "./test/harness/mjolnir-data/"

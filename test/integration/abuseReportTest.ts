@@ -1,8 +1,7 @@
 import { strict as assert } from "assert";
 
-import { matrixClient } from "./mjolnirSetupUtils";
 import { newTestUser } from "./clientHelper";
-import { ReportManager, ABUSE_ACTION_CONFIRMATION_KEY, ABUSE_REPORT_KEY } from "../../src/report/ReportManager";
+import { ABUSE_REPORT_KEY } from "../../src/report/ReportManager";
 
 /**
  * Test the ability to turn abuse reports into room messages.
@@ -30,8 +29,9 @@ describe("Test: Reporting abuse", async () => {
             this.timeout(90000);
 
             // Listen for any notices that show up.
+            await new Promise(resolve => setTimeout(resolve, 1000));
             let notices: any[] = [];
-            this.mjolnir.client.on("room.event", (roomId, event) => {
+            this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
                 if (roomId = this.mjolnir.managementRoomId) {
                     notices.push(event);
                 }
@@ -225,8 +225,9 @@ describe("Test: Reporting abuse", async () => {
         this.timeout(60000);
 
         // Listen for any notices that show up.
+        await new Promise(resolve => setTimeout(resolve, 1000));
         let notices: any[] = [];
-        this.mjolnir.client.on("room.event", (roomId, event) => {
+        this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
             if (roomId = this.mjolnir.managementRoomId) {
                 notices.push(event);
             }
@@ -244,8 +245,8 @@ describe("Test: Reporting abuse", async () => {
         let badUserId = await badUser.getUserId();
 
         let roomId = await moderatorUser.createRoom({ invite: [await badUser.getUserId()] });
-        await moderatorUser.inviteUser(await goodUser.getUserId(), roomId);
-        await moderatorUser.inviteUser(await badUser.getUserId(), roomId);
+        await moderatorUser.inviteUser(goodUserId, roomId);
+        await moderatorUser.inviteUser(badUserId, roomId);
         await badUser.joinRoom(roomId);
         await goodUser.joinRoom(roomId);
 
@@ -257,9 +258,9 @@ describe("Test: Reporting abuse", async () => {
         // Exchange a few messages.
         let goodText = `GOOD: ${Math.random()}`; // Will NOT be reported.
         let badText = `BAD: ${Math.random()}`;   // Will be reported as abuse.
-        let goodEventId = await goodUser.sendText(roomId, goodText);
+        await goodUser.sendText(roomId, goodText);
         let badEventId = await badUser.sendText(roomId, badText);
-        let goodEventId2 = await goodUser.sendText(roomId, goodText);
+        await goodUser.sendText(roomId, goodText);
 
         console.log("Test: Reporting abuse - send reports");
 

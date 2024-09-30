@@ -15,7 +15,6 @@ limitations under the License.
 */
 import {
     MatrixClient,
-    PantalaimonClient,
     MemoryStorageProvider,
     LogService,
     LogLevel,
@@ -23,7 +22,7 @@ import {
 } from "@vector-im/matrix-bot-sdk";
 
 import { Mjolnir}  from '../../src/Mjolnir';
-import { overrideRatelimitForUser, registerUser } from "./clientHelper";
+import {getTempCryptoStore, overrideRatelimitForUser, registerUser} from "./clientHelper";
 import { initializeGlobalPerformanceMetrics, initializeSentry, patchMatrixClient } from "../../src/utils";
 import { IConfig } from "../../src/config";
 
@@ -54,15 +53,9 @@ async function configureMjolnir(config: IConfig) {
     initializeSentry(config);
     initializeGlobalPerformanceMetrics(config);
 
-    try {
-        await registerUser(config.homeserverUrl, config.pantalaimon.username, config.pantalaimon.username, config.pantalaimon.password, true)
-    } catch (e) {
-        if (e?.body?.errcode === 'M_USER_IN_USE') {
-            console.log(`${config.pantalaimon.username} already registered, skipping`);
-            return;
-        }
-        throw e;
-    };
+    let accessToken = await registerUser(config.homeserverUrl, config.encryption.username, config.encryption.username, config.encryption.password, true)
+
+    return accessToken
 }
 
 export function mjolnir(): Mjolnir | null {
@@ -78,12 +71,14 @@ let globalMjolnir: Mjolnir | null;
  * Return a test instance of Mjolnir.
  */
 export async function makeMjolnir(config: IConfig): Promise<Mjolnir> {
-    await configureMjolnir(config);
+    let accessToken = await configureMjolnir(config);
+    let cryptoStore = await getTempCryptoStore()
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
-    const pantalaimon = new PantalaimonClient(config.homeserverUrl, new MemoryStorageProvider());
-    const client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+    let client = new MatrixClient(config.homeserverUrl, accessToken, new MemoryStorageProvider(), cryptoStore);
+    await client.crypto.prepare()
+
     await overrideRatelimitForUser(config.homeserverUrl, await client.getUserId());
     patchMatrixClient();
     await ensureAliasedRoomExists(client, config.managementRoom);
