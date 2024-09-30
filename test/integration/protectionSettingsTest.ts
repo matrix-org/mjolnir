@@ -144,6 +144,7 @@ describe("Test: Protection settings", function() {
             settings = { test: new StringProtectionSetting() };
         });
 
+        await new Promise(resolve => setTimeout(resolve, 5000));
         let replyPromise: Promise<any> = new Promise((resolve, reject) => {
             let i = 0;
             client.on('room.message', noticeListener(this.mjolnir.managementRoomId, (event) => {

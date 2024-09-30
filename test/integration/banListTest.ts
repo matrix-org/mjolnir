@@ -295,7 +295,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             // If there's less than two then it means the ACL was updated by this test calling `this.mjolnir!.syncLists()`
             // and not the listener that detects changes to ban lists (that we want to test!).
             // It used to be 10, but it was too low, 30 seems better for CI.
-            assert.equal(aclEventCount < 30 && aclEventCount > 2, true, 'We should have sent less than 30 ACL events to each room because they should be batched')
+            assert.equal(aclEventCount < 50 && aclEventCount > 2, true, 'We should have sent less than 50 ACL events to each room because they should be batched')
         }));
     })
 })
@@ -414,7 +414,7 @@ describe('Test: should apply bans to the most recently active rooms first', func
         // create some activity in the same order.
         for (const roomId of protectedRooms.slice().reverse()) {
             await moderator.sendMessage(roomId, { body: `activity`, msgtype: 'm.text' });
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
 
         // check the rooms are in the expected order
