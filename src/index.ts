@@ -73,8 +73,7 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
             const accessToken = await Promise.resolve(storage.readValue("access_token"));
             if (accessToken) {
                 client = new MatrixClient(config.homeserverUrl, accessToken, storage, cryptoStorage);
-            }
-            else {
+            } else {
                 const auth = new MatrixAuth(config.homeserverUrl)
                 const tempClient = await auth.passwordLogin(config.encryption.username, config.encryption.password)
                 client = new MatrixClient(config.homeserverUrl, tempClient.accessToken, storage, cryptoStorage);

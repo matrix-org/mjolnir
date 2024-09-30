@@ -130,7 +130,7 @@ async function registerNewTestUser(homeserver: string, options: RegistrationOpti
  *
  * @returns A new `MatrixClient` session for a unique test user.
  */
-export async function newTestUser(homeserver: string, options: RegistrationOptions, encrypted: boolean = false): Promise<MatrixClient> {
+export async function newTestUser(homeserver: string, options: RegistrationOptions, encrypted = false): Promise<MatrixClient> {
     const accessToken = await registerNewTestUser(homeserver, options);
     let client;
     if (encrypted) {
