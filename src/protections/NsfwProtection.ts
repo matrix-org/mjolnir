@@ -45,29 +45,28 @@ export class NsfwProtection extends Protection {
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         if (event['type'] === 'm.room.message') {
-            const content = event['content'] || {};
-            const msgtype = content['msgtype'] || 'm.text';
-            const formattedBody = content['formatted_body'] || '';
-            const isMedia = msgtype === 'm.image' || formattedBody.toLowerCase().includes('<img');
+            let content = JSON.stringify(event['content']);
+            content = content.replace(/"|{|}/g, '')
+            if (!content.toLowerCase().includes("mxc")) {
+                return;
+             }
+            // try and grab a human-readable alias for more helpful management room output
+            const maybeAlias = await mjolnir.client.getPublishedAlias(roomId)
+            const room = maybeAlias ? maybeAlias : roomId
 
-            if (isMedia) {
-                let mxc;
-                if (formattedBody) {
-                    const body = content["body"]
-                    const mxcRegex = /(mxc?:\/\/[^\s]+)/g;
-                    const url = body.match(mxcRegex)
-                    if (url) {
-                        mxc = url[0]
-                    }
-                } else {
-                     mxc = content["url"];
-                }
+            const mxcs = content.match(/(mxc?:\/\/[^\s]+)/gim);
+            if (!mxcs) {
+                //something's gone wrong with the regex
+                await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `Unable to find any mxcs in  ${event["event_id"]} in ${room}`);
+                return;
+            }
+
+            // @ts-ignore - see null check immediately above
+            for (const mxc of mxcs) {
                 const image = await mjolnir.client.downloadContent(mxc);
                 const decodedImage = await node.decodeImage(image.data, 3);
                 const predictions = await this.model.classify(decodedImage);
-                // try and grab a human-readable alias for more helpful management room output
-                const maybeAlias = await mjolnir.client.getPublishedAlias(roomId)
-                const room = maybeAlias ? maybeAlias : roomId
+
 
                 for (const prediction of predictions) {
                     if (["Hentai", "Porn"].includes(prediction["className"])) {
@@ -75,7 +74,7 @@ export class NsfwProtection extends Protection {
                             try {
                                 await mjolnir.client.redactEvent(roomId, event["event_id"]);
                             } catch (err) {
-                                await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"] in {room}}: ${err}`);
+                                await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"]} in ${room}: ${err}`);
                             }
                             let eventId = event["event_id"]
                             let body = `Redacted an image in ${room} ${eventId}`
