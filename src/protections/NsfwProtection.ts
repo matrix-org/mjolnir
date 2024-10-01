@@ -46,6 +46,7 @@ export class NsfwProtection extends Protection {
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         if (event['type'] === 'm.room.message') {
             let content = JSON.stringify(event['content']);
+            // clean up brackets and "" to simplify regex
             content = content.replace(/"|{|}/g, '')
             if (!content.toLowerCase().includes("mxc")) {
                 return;
