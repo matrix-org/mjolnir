@@ -1,6 +1,6 @@
 {
   "name": "mjolnir",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "A moderation tool for Matrix",
   "main": "lib/index.js",
   "repository": "git@github.com:matrix-org/mjolnir.git",
@@ -44,11 +44,12 @@
     "typescript-formatter": "^7.2"
   },
   "dependencies": {
-    "axios": "^1.7.6",
     "@sentry/node": "^7.17.2",
     "@sentry/tracing": "^7.17.2",
     "@tensorflow/tfjs-node": "^4.21.0",
+    "@vector-im/matrix-bot-sdk": "^0.7.1-element.6",
     "await-lock": "^2.2.2",
+    "axios": "^1.7.6",
     "body-parser": "^1.20.1",
     "config": "^3.3.8",
     "express": "^4.20",
@@ -57,7 +58,6 @@
     "humanize-duration-ts": "^2.1.1",
     "js-yaml": "^4.1.0",
     "jsdom": "^16.6.0",
-    "@vector-im/matrix-bot-sdk": "^0.7.1-element.6",
     "matrix-appservice-bridge": "10.3.1",
     "nsfwjs": "^4.1.0",
     "parse-duration": "^1.0.2",
