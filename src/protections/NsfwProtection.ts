@@ -47,23 +47,50 @@ export class NsfwProtection extends Protection {
         if (event['type'] === 'm.room.message') {
             const content = event['content'] || {};
             const msgtype = content['msgtype'] || 'm.text';
-            const isMedia = msgtype === 'm.image';
+            const formattedBody = content['formatted_body'] || '';
+            const isMedia = msgtype === 'm.image' || formattedBody.toLowerCase().includes('<img');
 
             if (isMedia) {
-                const mxc = content["url"];
+                let mxc;
+                if (formattedBody) {
+                    const body = content["body"]
+                    const mxcRegex = /(mxc?:\/\/[^\s]+)/g;
+                    const url = body.match(mxcRegex)
+                    if (url) {
+                        mxc = url[0]
+                    }
+                } else {
+                     mxc = content["url"];
+                }
                 const image = await mjolnir.client.downloadContent(mxc);
                 const decodedImage = await node.decodeImage(image.data, 3);
                 const predictions = await this.model.classify(decodedImage);
+                // try and grab a human-readable alias for more helpful management room output
+                const maybeAlias = await mjolnir.client.getPublishedAlias(roomId)
+                const room = maybeAlias ? maybeAlias : roomId
 
                 for (const prediction of predictions) {
                     if (["Hentai", "Porn"].includes(prediction["className"])) {
                         if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
-                            await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "NSFWProtection", `Redacting ${event["event_id"]} for inappropriate content.`);
                             try {
                                 await mjolnir.client.redactEvent(roomId, event["event_id"]);
                             } catch (err) {
-                                await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"]}: ${err}`);
+                                await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `There was an error redacting ${event["event_id"] in {room}}: ${err}`);
                             }
+                            let eventId = event["event_id"]
+                            let body = `Redacted an image in ${room} ${eventId}`
+                            let formatted_body = `<details>
+                                                  <summary>Redacted an image in ${room}</summary>
+                                                  <pre>${eventId}  ${room}</pre>
+                                                  </details>`
+                            let msg = {
+                                msgtype: "m.notice",
+                                body: body,
+                                format: "org.matrix.custom.html",
+                                formatted_body: formatted_body
+                            };
+                            await mjolnir.client.sendMessage(mjolnir.managementRoomId, msg);
+                            break
                         }
                     }
                 }
