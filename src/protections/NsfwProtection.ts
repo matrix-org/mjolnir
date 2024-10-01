@@ -80,9 +80,9 @@ export class NsfwProtection extends Protection {
                             let body = `Redacted an image in ${room} ${eventId}`
                             let formatted_body = `<details>
                                                   <summary>Redacted an image in ${room}</summary>
-                                                  <pre>${eventId}  ${room}</pre>
+                                                  <pre>${eventId}</pre>  <pre></pre>${room}</pre>
                                                   </details>`
-                            let msg = {
+                            const msg = {
                                 msgtype: "m.notice",
                                 body: body,
                                 format: "org.matrix.custom.html",
