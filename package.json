@@ -44,6 +44,7 @@
     "typescript-formatter": "^7.2"
   },
   "dependencies": {
+    "axios": "^1.7.6",
     "@sentry/node": "^7.17.2",
     "@sentry/tracing": "^7.17.2",
     "@tensorflow/tfjs-node": "^4.21.0",

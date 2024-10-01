@@ -34,8 +34,8 @@ the ACL format while membership bans are applied on sight. Within Matrix it is n
 ban a set of users by glob/regex, so Mjolnir monitors the rooms it protects for membership changes and
 bans people who match rules when they join/are invited.
 
-Mjolnir can run through Pantalaimon if your coordination room is encrypted (this is recommended). Your
-coordination/management room is where you and all of your moderators can speak to Mjolnir and update the
+It is recommended that your management room be encrypted. Ensure that you have enabled encryption in the configuration
+Your coordination/management room is where you and all of your moderators can speak to Mjolnir and update the
 rules it uses. Be sure to keep this room private to avoid unauthorized access to the bot.
 
 Note that Mjolnir performs all its moderation actions as itself rather than encouraging you to use your

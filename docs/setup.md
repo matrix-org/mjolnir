@@ -1,7 +1,7 @@
 # Setting up Mjolnir
 
-It is recommended to use [Pantalaimon](https://github.com/matrix-org/pantalaimon) so your management
-room can be encrypted. This also applies if you are looking to moderate an encrypted room.
+It is recommended that your management room be encrypted. To ensure that your bot can communicate with encrypted rooms,
+ensure that you have encryption enabled in the config.
 
 If you aren't using encrypted rooms anywhere, get an access token by opening Element in a
 seperate browser profile or incognito tab, and log in as the bot. Then, go to "All Settings", "Help & About", and
@@ -39,7 +39,8 @@ See the below links for corresponding installation documentation;
 
 After installation, create a room, and ensure the mjolnir has joined. This will be your "management room".
 
-If you're using pantalaimon, this room can be encrypted. If you're not using pantalaimon, this room **can not** be encrypted.
+It is highly recommended that this room be encrypted. Ensure that you have properly configured your mjolnir to use
+encryption in the configuration. 
 
 Acquire the room ID of this room, in Element Web you can find this via `(Room Name) -> Settings -> Advanced -> "Internal Room ID"`.
 
