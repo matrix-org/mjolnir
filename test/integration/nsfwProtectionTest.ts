@@ -59,8 +59,20 @@ describe("Test: NSFW protection", function () {
         let content = {"msgtype": "m.image", "body": "test.jpeg", "url": mxc};
         let imageMessage = await client.sendMessage(room, content);
 
+        let formatted_body = `<img src=${mxc} />`
+        let htmlContent = {
+                                msgtype: "m.image",
+                                body: formatted_body,
+                                format: "org.matrix.custom.html",
+                                formatted_body: formatted_body
+                            };
+        let htmlMessage = await client.sendMessage(room, htmlContent)
+
         await delay(500);
         let processedImage = await client.getEvent(room, imageMessage);
         assert.equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
+
+        let processedHtml = await client.getEvent(room, htmlMessage)
+        assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted")
     });
 });
