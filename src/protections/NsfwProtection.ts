@@ -46,8 +46,6 @@ export class NsfwProtection extends Protection {
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         if (event['type'] === 'm.room.message') {
             let content = JSON.stringify(event['content']);
-            // clean up brackets and "" to simplify regex
-            content = content.replace(/"|{|}/g, '')
             if (!content.toLowerCase().includes("mxc")) {
                 return;
              }
@@ -55,7 +53,7 @@ export class NsfwProtection extends Protection {
             const maybeAlias = await mjolnir.client.getPublishedAlias(roomId)
             const room = maybeAlias ? maybeAlias : roomId
 
-            const mxcs = content.match(/(mxc?:\/\/[^\s]+)/gim);
+            const mxcs = content.match(/(mxc?:\/\/[^\s'"]+)/gim);
             if (!mxcs) {
                 //something's gone wrong with the regex
                 await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "NSFWProtection", `Unable to find any mxcs in  ${event["event_id"]} in ${room}`);
