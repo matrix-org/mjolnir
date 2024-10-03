@@ -79,7 +79,8 @@ describe("Test: Mention spam protection", function () {
         const mentionDisplaynames = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `Test User ${i}`);
 
         // Pre-set the displayname cache.
-        this.mjolnir.protectionManager.protections.roomDisplaynameCache.set(room, mentionDisplaynames);
+        let protection = this.mjolnir.protectionManager.protections.get('MentionSpam')
+        protection.roomDisplaynameCache.set(room, mentionDisplaynames);
 
         const messageWithTextMentions = await client.sendText(room, mentionUsers.join(' '));
         const messageWithHTMLMentions = await client.sendHtmlText(room, 
@@ -92,7 +93,6 @@ describe("Test: Mention spam protection", function () {
             }
         });
         const messageWithDisplaynameMentions = await client.sendText(room, mentionDisplaynames.join(' '));
-
 
         await delay(500);
 
