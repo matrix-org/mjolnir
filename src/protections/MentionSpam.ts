@@ -77,7 +77,7 @@ export class MentionSpam extends Protection {
     public checkDisplaynameMentions(body: unknown|undefined, htmlBody: unknown|undefined, displaynames: string[]): boolean {
         const max = this.settings.maxMentions.value;
         const bodyWords = ((typeof body === "string" && body) || "").toLowerCase();
-        if (displaynames.filter(s => bodyWords.includes(s)).length > max) {
+        if (displaynames.filter(s => bodyWords.includes(s.toLowerCase())).length > max) {
             return true;
         }
         const htmlBodyWords = decodeURIComponent((typeof htmlBody === "string" && htmlBody) || "").toLowerCase();
