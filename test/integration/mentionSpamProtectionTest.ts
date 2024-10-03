@@ -76,6 +76,11 @@ describe("Test: Mention spam protection", function () {
         });
         // Also covers HTML mentions
         const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `@user${i}:example.org`);
+        const mentionDisplaynames = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `Test User ${i}`);
+
+        // Pre-set the displayname cache.
+        this.mjolnir.protectionManager.protections.roomDisplaynameCache.set(room, mentionDisplaynames);
+
         const messageWithTextMentions = await client.sendText(room, mentionUsers.join(' '));
         const messageWithHTMLMentions = await client.sendHtmlText(room, 
             mentionUsers.map(u => `<a href=\"https://matrix.to/#/${encodeURIComponent(u)}\">${u}</a>`).join(' '));
@@ -86,6 +91,8 @@ describe("Test: Mention spam protection", function () {
                 user_ids: mentionUsers
             }
         });
+        const messageWithDisplaynameMentions = await client.sendText(room, mentionDisplaynames.join(' '));
+
 
         await delay(500);
 
@@ -97,5 +104,8 @@ describe("Test: Mention spam protection", function () {
 
         const fetchedMentionsEvent = await client.getEvent(room, messageWithMMentions);
         assert.equal(Object.keys(fetchedMentionsEvent.content).length, 0, "This event should have been redacted");
+
+        const fetchedDisplaynameEvent = await client.getEvent(room, messageWithDisplaynameMentions);
+        assert.equal(Object.keys(fetchedDisplaynameEvent.content).length, 0, "This event should have been redacted");
     });
 });
