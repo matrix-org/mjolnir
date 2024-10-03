@@ -69,7 +69,7 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
         if (config.pantalaimon.use) {
             const pantalaimon = new PantalaimonClient(config.homeserverUrl, storage);
             client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
-        } else {
+        } else if (config.encryption.use) {
             const accessToken = await Promise.resolve(storage.readValue("access_token"));
             if (accessToken) {
                 client = new MatrixClient(config.homeserverUrl, accessToken, storage, cryptoStorage);
@@ -78,7 +78,6 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
                 const tempClient = await auth.passwordLogin(config.encryption.username, config.encryption.password)
                 client = new MatrixClient(config.homeserverUrl, tempClient.accessToken, storage, cryptoStorage);
             }
-
             try {
                 LogService.info("index", "Preparing encrypted client...")
                 await client.crypto.prepare();
@@ -86,8 +85,8 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
                 LogService.error("Index", `Error preparing encrypted client ${e}`)
                 throw e
             }
-
-
+        } else {
+            client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);
         }
         patchMatrixClient();
         config.RUNTIME.client = client;
