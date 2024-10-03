@@ -70,11 +70,11 @@ export interface IConfig {
     homeserverUrl: string;
     rawHomeserverUrl: string;
     accessToken: string;
-        encryption: {
+    encryption: {
         use: boolean;
         username: string;
         password: string;
-    }
+    };
     pantalaimon: {
         use: boolean;
         username: string;
@@ -194,8 +194,8 @@ const defaultConfig: IConfig = {
     homeserverUrl: "http://localhost:8008",
     rawHomeserverUrl: "http://localhost:8008",
     accessToken: "NONE_PROVIDED",
-        encryption: {
-        use: true,
+    encryption: {
+        use: false,
         username: "name",
         password: "pass",
     },
