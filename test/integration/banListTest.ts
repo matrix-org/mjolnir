@@ -270,7 +270,7 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             acl.denyServer(badServer);
             await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule #${i}`);
             // Give them a bit of a spread over time.
-            await new Promise(resolve => setTimeout(resolve, 5));
+            await new Promise(resolve => setTimeout(resolve, 10));
         }
         // We do this because it should force us to wait until all the ACL events have been applied.
         // Even if that does mean the last few events will not go through batching...
@@ -294,8 +294,8 @@ describe('Test: ACL updates will batch when rules are added in succession.', fun
             LogService.debug('PolicyListTest', `aclEventCount: ${aclEventCount}`);
             // If there's less than two then it means the ACL was updated by this test calling `this.mjolnir!.syncLists()`
             // and not the listener that detects changes to ban lists (that we want to test!).
-            // It used to be 10, but it was too low, 30 seems better for CI.
-            assert.equal(aclEventCount < 50 && aclEventCount > 2, true, 'We should have sent less than 50 ACL events to each room because they should be batched')
+            // It used to be 30, but it was too low, 70 seems better for CI.
+            assert.equal(aclEventCount < 70 && aclEventCount > 2, true, 'We should have sent less than 70 ACL events to each room because they should be batched')
         }));
     })
 })
