@@ -17,7 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import * as nsfw from 'nsfwjs';
-import {LogLevel} from "@vector-im/matrix-bot-sdk";
+import {LogLevel, LogService} from "@vector-im/matrix-bot-sdk";
 import { node } from '@tensorflow/tfjs-node';
 
 
@@ -63,7 +63,15 @@ export class NsfwProtection extends Protection {
             // @ts-ignore - see null check immediately above
             for (const mxc of mxcs) {
                 const image = await mjolnir.client.downloadContent(mxc);
-                const decodedImage = await node.decodeImage(image.data, 3);
+
+                let decodedImage;
+                try {
+                    decodedImage = await node.decodeImage(image.data, 3);
+                } catch (e) {
+                    LogService.error("NsfwProtection", `There was an error processing an image: ${e}`);
+                    continue;
+                }
+
                 const predictions = await this.model.classify(decodedImage);
 
 
@@ -79,7 +87,7 @@ export class NsfwProtection extends Protection {
                             let body = `Redacted an image in ${room} ${eventId}`
                             let formatted_body = `<details>
                                                   <summary>Redacted an image in ${room}</summary>
-                                                  <pre>${eventId}</pre>  <pre></pre>${room}</pre>
+                                                  <pre>${eventId}</pre>  <pre>${room}</pre>
                                                   </details>`
                             const msg = {
                                 msgtype: "m.notice",
