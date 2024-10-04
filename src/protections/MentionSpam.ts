@@ -25,7 +25,7 @@ export const DEFAULT_MAX_MENTIONS = 10;
 export class MentionSpam extends Protection {
 
     private roomDisplaynameCache = new LRUCache<string, string[]>({
-        ttl: 1000 * 60 * 24,
+        ttl: 1000 * 60 * 24, // 24 minutes
         ttlAutopurge: true,
     });
 
