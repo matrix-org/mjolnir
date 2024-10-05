@@ -320,6 +320,8 @@ export class Mjolnir {
 
             this.currentState = STATE_RUNNING;
             await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
+            // update protected rooms set
+            this.protectedRoomsTracker.isAdmin = await this.isSynapseAdmin()
         } catch (err) {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
