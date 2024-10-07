@@ -5,9 +5,9 @@
 .vscode/
 
 /.github
-/.config
-/.docs
-/.src/appservice/config
+/config
+/docs
+/src/appservice/config
 
 /*.log
 package-lock.json
