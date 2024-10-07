@@ -107,5 +107,17 @@ describe("Test: Mention spam protection", function () {
 
         const fetchedDisplaynameEvent = await client.getEvent(room, messageWithDisplaynameMentions);
         assert.equal(Object.keys(fetchedDisplaynameEvent.content).length, 0, "This event should have been redacted");
+
+        // send messages after activating protection, they should be auto-redacted
+        const messages = [];
+        for (let i = 0; i < 10; i++) {
+            let nextMessage = await client.sendText(room, `hello${i}`);
+            messages.push(nextMessage)
+        }
+
+        messages.forEach(async (eventID) => {
+            await client.getEvent(room, eventID);
+            assert.equal(Object.keys(fetchedDisplaynameEvent.content).length, 0, "This event should have been redacted");
+        })
     });
 });
