@@ -104,6 +104,7 @@ export class MentionSpam extends Protection {
                 // Redact the event
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event['event_id'], "Message was detected as spam.");
+                    mjolnir.unlistedUserRedactionHandler.addUser(event['sender']);
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MentionSpam", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
                 }
