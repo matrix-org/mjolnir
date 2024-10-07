@@ -19,7 +19,6 @@ import { Mjolnir } from "../Mjolnir";
 import { LogLevel, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 
 export class MessageIsVoice extends Protection {
-
     settings = {};
 
     constructor() {
@@ -27,22 +26,31 @@ export class MessageIsVoice extends Protection {
     }
 
     public get name(): string {
-        return 'MessageIsVoiceProtection';
+        return "MessageIsVoiceProtection";
     }
     public get description(): string {
         return "If a user posts a voice message, that message will be redacted. No bans are issued.";
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-        if (event['type'] === 'm.room.message' && event['content']) {
-            if (event['content']['msgtype'] !== 'm.audio') return;
-            if (event['content']['org.matrix.msc3245.voice'] === undefined) return;
-            await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "MessageIsVoice", `Redacting event from ${event['sender']} for posting a voice message. ${Permalinks.forEvent(roomId, event['event_id'], [new UserID(await mjolnir.client.getUserId()).domain])}`);
+        if (event["type"] === "m.room.message" && event["content"]) {
+            if (event["content"]["msgtype"] !== "m.audio") return;
+            if (event["content"]["org.matrix.msc3245.voice"] === undefined) return;
+            await mjolnir.managementRoomOutput.logMessage(
+                LogLevel.INFO,
+                "MessageIsVoice",
+                `Redacting event from ${event["sender"]} for posting a voice message. ${Permalinks.forEvent(roomId, event["event_id"], [new UserID(await mjolnir.client.getUserId()).domain])}`,
+            );
             // Redact the event
             if (!mjolnir.config.noop) {
-                await mjolnir.client.redactEvent(roomId, event['event_id'], "Voice messages are not permitted here");
+                await mjolnir.client.redactEvent(roomId, event["event_id"], "Voice messages are not permitted here");
             } else {
-                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "MessageIsVoice", `Tried to redact ${event['event_id']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                await mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.WARN,
+                    "MessageIsVoice",
+                    `Tried to redact ${event["event_id"]} in ${roomId} but Mjolnir is running in no-op mode`,
+                    roomId,
+                );
             }
         }
     }

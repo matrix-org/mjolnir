@@ -7,9 +7,12 @@ const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";
 // !mjolnir rooms setup <room alias/ID> reporting
 export async function execSetupProtectedRoom(commandRoomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     // For the moment, we only accept a subcommand `reporting`.
-    if (parts[4] !== 'reporting') {
-        await mjolnir.client.sendNotice(commandRoomId, "Invalid subcommand for `rooms setup <room alias/ID> subcommand`, expected one of \"reporting\"");
-        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '❌');
+    if (parts[4] !== "reporting") {
+        await mjolnir.client.sendNotice(
+            commandRoomId,
+            'Invalid subcommand for `rooms setup <room alias/ID> subcommand`, expected one of "reporting"',
+        );
+        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event["event_id"], "❌");
         return;
     }
     const protectedRoomId = await mjolnir.client.joinRoom(parts[3]);
@@ -20,7 +23,11 @@ export async function execSetupProtectedRoom(commandRoomId: string, event: any, 
         // A backup of the previous state in case we need to rollback.
         let previousState: /* previous content */ any | /* there was no previous content */ null;
         try {
-            previousState = await mjolnir.client.getRoomStateEvent(protectedRoomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
+            previousState = await mjolnir.client.getRoomStateEvent(
+                protectedRoomId,
+                EVENT_MODERATED_BY,
+                EVENT_MODERATED_BY,
+            );
         } catch (ex) {
             previousState = null;
         }
@@ -43,7 +50,12 @@ export async function execSetupProtectedRoom(commandRoomId: string, event: any, 
             // is bad. Attempt to rollback.
             try {
                 if (previousState) {
-                    await mjolnir.client.sendStateEvent(protectedRoomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY, previousState);
+                    await mjolnir.client.sendStateEvent(
+                        protectedRoomId,
+                        EVENT_MODERATED_BY,
+                        EVENT_MODERATED_BY,
+                        previousState,
+                    );
                 } else {
                     await mjolnir.client.redactEvent(protectedRoomId, eventId, "Rolling back incomplete MSC3215 setup");
                 }
@@ -52,10 +64,9 @@ export async function execSetupProtectedRoom(commandRoomId: string, event: any, 
                 throw ex;
             }
         }
-
     } catch (ex) {
         mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "execSetupProtectedRoom", ex.message);
-        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '❌');
+        await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event["event_id"], "❌");
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event["event_id"], "✅");
 }

@@ -3,7 +3,7 @@
  */
 
 import { makeMjolnir } from "./mjolnirSetupUtils";
-import { read as configRead } from '../../src/config';
+import { read as configRead } from "../../src/config";
 
 (async () => {
     const config = configRead();

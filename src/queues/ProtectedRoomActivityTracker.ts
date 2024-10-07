@@ -23,11 +23,11 @@ limitations under the License.
  *
  */
 export class ProtectedRoomActivityTracker {
-    private protectedRoomActivities = new Map<string/*room id*/, number/*last event timestamp*/>();
+    private protectedRoomActivities = new Map<string /*room id*/, number /*last event timestamp*/>();
     /**
      * A slot to cache the rooms for `protectedRoomsByActivity` ordered so the most recently active room is first.
      */
-    private activeRoomsCache: null|string[] = null
+    private activeRoomsCache: null | string[] = null;
 
     /**
      * Inform the tracker that a new room is being protected by Mjolnir.
@@ -69,10 +69,9 @@ export class ProtectedRoomActivityTracker {
     public protectedRoomsByActivity(): string[] {
         if (!this.activeRoomsCache) {
             this.activeRoomsCache = [...this.protectedRoomActivities]
-            .sort((a, b) => b[1] - a[1])
-            .map(pair => pair[0]);
+                .sort((a, b) => b[1] - a[1])
+                .map((pair) => pair[0]);
         }
         return this.activeRoomsCache;
     }
 }
-

@@ -25,7 +25,7 @@ parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
 parseDuration["months"] = parseDuration["month"];
 parseDuration["years"] = parseDuration["year"];
 
-export class ProtectionSettingValidationError extends Error {};
+export class ProtectionSettingValidationError extends Error {}
 
 /*
  * @param TChange Type for individual pieces of data (e.g. `string`)
@@ -33,7 +33,7 @@ export class ProtectionSettingValidationError extends Error {};
  */
 export class AbstractProtectionSetting<TChange, TValue> extends EventEmitter {
     // the current value of this setting
-    value: TValue
+    value: TValue;
 
     /*
      * Deserialise a value for this setting type from a string
@@ -89,7 +89,6 @@ export function isListSetting(object: any): object is AbstractProtectionListSett
     return object instanceof AbstractProtectionListSetting;
 }
 
-
 export class StringProtectionSetting extends AbstractProtectionSetting<string, string> {
     value = "";
     fromString = (data: string): string => data;
@@ -106,7 +105,7 @@ export class StringListProtectionSetting extends AbstractProtectionListSetting<s
     }
     removeValue(data: string): string[] {
         this.emit("remove", data);
-        this.value =  this.value.filter(i => i !== data);
+        this.value = this.value.filter((i) => i !== data);
         return this.value;
     }
 }
@@ -134,14 +133,10 @@ export class MXIDListProtectionSetting extends StringListProtectionSetting {
 }
 
 export class NumberProtectionSetting extends AbstractProtectionSetting<number, number> {
-    min: number|undefined;
-    max: number|undefined;
+    min: number | undefined;
+    max: number | undefined;
 
-    constructor(
-            defaultValue: number,
-            min: number|undefined = undefined,
-            max: number|undefined = undefined
-    ) {
+    constructor(defaultValue: number, min: number | undefined = undefined, max: number | undefined = undefined) {
         super();
         this.setValue(defaultValue);
         this.min = min;
@@ -153,9 +148,9 @@ export class NumberProtectionSetting extends AbstractProtectionSetting<number, n
         return isNaN(number) ? undefined : number;
     }
     validate(data: number) {
-        return (!isNaN(data)
-            && (this.min === undefined || this.min <= data)
-            && (this.max === undefined || data <= this.max))
+        return (
+            !isNaN(data) && (this.min === undefined || this.min <= data) && (this.max === undefined || data <= this.max)
+        );
     }
 }
 
@@ -166,9 +161,9 @@ export class NumberProtectionSetting extends AbstractProtectionSetting<number, n
  */
 export class DurationMSProtectionSetting extends AbstractProtectionSetting<number, number> {
     constructor(
-            defaultValue: number,
-            public readonly minMS: number|undefined = undefined,
-            public readonly maxMS: number|undefined = undefined
+        defaultValue: number,
+        public readonly minMS: number | undefined = undefined,
+        public readonly maxMS: number | undefined = undefined,
     ) {
         super();
         this.setValue(defaultValue);
@@ -179,8 +174,10 @@ export class DurationMSProtectionSetting extends AbstractProtectionSetting<numbe
         return isNaN(number) ? undefined : number;
     }
     validate(data: number) {
-        return (!isNaN(data)
-            && (this.minMS === undefined || this.minMS <= data)
-            && (this.maxMS === undefined || data <= this.maxMS))
+        return (
+            !isNaN(data) &&
+            (this.minMS === undefined || this.minMS <= data) &&
+            (this.maxMS === undefined || data <= this.maxMS)
+        );
     }
 }

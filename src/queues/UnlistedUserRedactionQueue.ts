@@ -26,8 +26,7 @@ import { Mjolnir } from "../Mjolnir";
 export class UnlistedUserRedactionQueue {
     private usersToRedact: Set<string> = new Set<string>();
 
-    constructor() {
-    }
+    constructor() {}
 
     public addUser(userId: string) {
         this.usersToRedact.add(userId);
@@ -42,17 +41,28 @@ export class UnlistedUserRedactionQueue {
     }
 
     public async handleEvent(roomId: string, event: any, mjolnir: Mjolnir) {
-        if (this.isUserQueued(event['sender'])) {
-            const permalink = Permalinks.forEvent(roomId, event['event_id']);
+        if (this.isUserQueued(event["sender"])) {
+            const permalink = Permalinks.forEvent(roomId, event["event_id"]);
             try {
-                LogService.info("AutomaticRedactionQueue", `Redacting event because the user is listed as bad: ${permalink}`)
+                LogService.info(
+                    "AutomaticRedactionQueue",
+                    `Redacting event because the user is listed as bad: ${permalink}`,
+                );
                 if (!mjolnir.config.noop) {
-                    await mjolnir.client.redactEvent(roomId, event['event_id']);
+                    await mjolnir.client.redactEvent(roomId, event["event_id"]);
                 } else {
-                    await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Tried to redact ${permalink} but Mjolnir is running in no-op mode`);
+                    await mjolnir.managementRoomOutput.logMessage(
+                        LogLevel.WARN,
+                        "AutomaticRedactionQueue",
+                        `Tried to redact ${permalink} but Mjolnir is running in no-op mode`,
+                    );
                 }
             } catch (e) {
-                mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "AutomaticRedactionQueue", `Unable to redact message: ${permalink}`);
+                mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.WARN,
+                    "AutomaticRedactionQueue",
+                    `Unable to redact message: ${permalink}`,
+                );
                 LogService.warn("AutomaticRedactionQueue", extractRequestError(e));
             }
         }

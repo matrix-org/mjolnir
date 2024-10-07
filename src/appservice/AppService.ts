@@ -14,7 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { AppServiceRegistration, Bridge, Request, WeakEvent, BridgeContext, MatrixUser, Logger } from "matrix-appservice-bridge";
+import {
+    AppServiceRegistration,
+    Bridge,
+    Request,
+    WeakEvent,
+    BridgeContext,
+    MatrixUser,
+    Logger,
+} from "matrix-appservice-bridge";
 import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
@@ -28,7 +36,6 @@ const log = new Logger("AppService");
  * the entrypoint of the application.
  */
 export class MjolnirAppService {
-
     private readonly api: Api;
     private readonly openMetrics: OpenMetrics;
 
@@ -54,7 +61,11 @@ export class MjolnirAppService {
      * @param registrationFilePath A file path to the registration file to read the namespace and tokens from.
      * @returns A new `MjolnirAppService`.
      */
-    public static async makeMjolnirAppService(config: IAppserviceConfig, dataStore: DataStore, registrationFilePath: string) {
+    public static async makeMjolnirAppService(
+        config: IAppserviceConfig,
+        dataStore: DataStore,
+        registrationFilePath: string,
+    ) {
         const bridge = new Bridge({
             homeserverUrl: config.homeserver.url,
             domain: config.homeserver.domain,
@@ -63,8 +74,12 @@ export class MjolnirAppService {
             // It also allows us to combine constructor/initialize logic
             // to make the code base much simpler. A small hack to pay for an overall less hacky code base.
             controller: {
-                onUserQuery: () => {throw new Error("Mjolnir uninitialized")},
-                onEvent: () => {throw new Error("Mjolnir uninitialized")},
+                onUserQuery: () => {
+                    throw new Error("Mjolnir uninitialized");
+                },
+                onEvent: () => {
+                    throw new Error("Mjolnir uninitialized");
+                },
             },
             suppressEcho: false,
             disableStores: true,
@@ -73,13 +88,7 @@ export class MjolnirAppService {
         const accessControlListId = await bridge.getBot().getClient().resolveRoom(config.accessControlList);
         const accessControl = await AccessControl.setupAccessControl(accessControlListId, bridge);
         const mjolnirManager = await MjolnirManager.makeMjolnirManager(dataStore, bridge, accessControl, config);
-        const appService = new MjolnirAppService(
-            config,
-            bridge,
-            mjolnirManager,
-            accessControl,
-            dataStore
-        );
+        const appService = new MjolnirAppService(config, bridge, mjolnirManager, accessControl, dataStore);
         bridge.opts.controller = {
             onUserQuery: appService.onUserQuery.bind(appService),
             onEvent: appService.onEvent.bind(appService),
@@ -93,7 +102,11 @@ export class MjolnirAppService {
      * @param config The parsed configuration file.
      * @param registrationFilePath A path to their homeserver registration file.
      */
-    public static async run(port: number, config: IAppserviceConfig, registrationFilePath: string): Promise<MjolnirAppService> {
+    public static async run(
+        port: number,
+        config: IAppserviceConfig,
+        registrationFilePath: string,
+    ): Promise<MjolnirAppService> {
         Logger.configure(config.logging ?? { console: "debug" });
         const dataStore = new PgDataStore(config.db.connectionString);
         await dataStore.init();
@@ -103,7 +116,7 @@ export class MjolnirAppService {
         return service;
     }
 
-    public onUserQuery (queriedUser: MatrixUser) {
+    public onUserQuery(queriedUser: MatrixUser) {
         return {}; // auto-provision users with no additonal data
     }
 
@@ -118,15 +131,20 @@ export class MjolnirAppService {
         const mxEvent = request.getData();
         // Provision a new mjolnir for the invitee when the appservice bot (designated by this.bridge.botUserId) is invited to a room.
         // Acts as an alternative to the web api provided for the widget.
-        if ('m.room.member' === mxEvent.type) {
-            if ('invite' === mxEvent.content['membership'] && mxEvent.state_key === this.bridge.botUserId) {
-                log.info(`${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, attempting to provision them a mjolnir`);
+        if ("m.room.member" === mxEvent.type) {
+            if ("invite" === mxEvent.content["membership"] && mxEvent.state_key === this.bridge.botUserId) {
+                log.info(
+                    `${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, attempting to provision them a mjolnir`,
+                );
                 let mjolnir = null;
                 try {
                     mjolnir = await this.mjolnirManager.getOrProvisionMjolnir(mxEvent.sender);
                     mjolnir.start();
                 } catch (e: any) {
-                    log.error(`Failed to provision a mjolnir for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`, e);
+                    log.error(
+                        `Failed to provision a mjolnir for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`,
+                        e,
+                    );
                     // continue, we still want to reject this invitation.
                 }
 
@@ -135,13 +153,24 @@ export class MjolnirAppService {
                     try {
                         const mjolnirUserId = await mjolnir.getUserId();
                         await this.bridge.getBot().getClient().joinRoom(mxEvent.room_id);
-                        await this.bridge.getBot().getClient().sendNotice(mxEvent.room_id, `Setting up moderation in this room.`);
+                        await this.bridge
+                            .getBot()
+                            .getClient()
+                            .sendNotice(mxEvent.room_id, `Setting up moderation in this room.`);
                         await this.bridge.getBot().getClient().inviteUser(mjolnirUserId, mxEvent.room_id);
                         await mjolnir.joinRoom(mxEvent.room_id);
-                        log.info(`${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, substituted ${mjolnirUserId}`);
-                        await this.bridge.getBot().getClient().sendNotice(mxEvent.room_id, `You should now give ${mjolnirUserId} admin privileges.`);
+                        log.info(
+                            `${mxEvent.sender} has sent an invitation to the appservice bot ${this.bridge.botUserId}, substituted ${mjolnirUserId}`,
+                        );
+                        await this.bridge
+                            .getBot()
+                            .getClient()
+                            .sendNotice(mxEvent.room_id, `You should now give ${mjolnirUserId} admin privileges.`);
                     } catch (e: any) {
-                        log.error(`Failed to invite provisioned Mjölnir ${await mjolnir.getUserId()} for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`, e);
+                        log.error(
+                            `Failed to invite provisioned Mjölnir ${await mjolnir.getUserId()} for ${mxEvent.sender} after they invited ${this.bridge.botUserId}:`,
+                            e,
+                        );
                     }
                 }
 
@@ -153,7 +182,7 @@ export class MjolnirAppService {
                 }
             }
         }
-        this.accessControl.handleEvent(mxEvent['room_id'], mxEvent);
+        this.accessControl.handleEvent(mxEvent["room_id"], mxEvent);
         this.mjolnirManager.onEvent(request, context);
     }
 
@@ -187,7 +216,10 @@ export class MjolnirAppService {
      * @param reg Any existing paramaters to be included in the registration, to be mutated by this method.
      * @param callback To call when the registration has been generated with the final registration.
      */
-    public static generateRegistration(reg: AppServiceRegistration, callback: (finalRegistration: AppServiceRegistration) => void) {
+    public static generateRegistration(
+        reg: AppServiceRegistration,
+        callback: (finalRegistration: AppServiceRegistration) => void,
+    ) {
         reg.setId(AppServiceRegistration.generateToken());
         reg.setHomeserverToken(AppServiceRegistration.generateToken());
         reg.setAppServiceToken(AppServiceRegistration.generateToken());

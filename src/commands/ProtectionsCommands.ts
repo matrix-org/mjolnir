@@ -23,7 +23,7 @@ import { isListSetting } from "../protections/ProtectionSettings";
 export async function execEnableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     try {
         await mjolnir.protectionManager.enableProtection(parts[2]);
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
     } catch (e) {
         LogService.error("ProtectionsCommands", extractRequestError(e));
 
@@ -37,7 +37,7 @@ export async function execEnableProtection(roomId: string, event: any, mjolnir: 
 enum ConfigAction {
     Set,
     Add,
-    Remove
+    Remove,
 }
 
 /*
@@ -55,7 +55,7 @@ async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], ac
         return `Unknown protection ${protectionName}`;
     }
 
-    const defaultSettings = protection.settings
+    const defaultSettings = protection.settings;
     const settingName = settingParts[0];
     const stringValue = parts[1];
 
@@ -186,8 +186,7 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
 
     html += "</ul>";
 
-    if (!anySettings)
-        html = text = "No settings found";
+    if (!anySettings) html = text = "No settings found";
 
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
@@ -197,18 +196,18 @@ export async function execConfigGetProtection(roomId: string, event: any, mjolni
 // !mjolnir disable <protection>
 export async function execDisableProtection(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     await mjolnir.protectionManager.disableProtection(parts[2]);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
 // !mjolnir protections
 export async function execListProtections(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const enabledProtections = mjolnir.protectionManager.enabledProtections.map(p => p.name);
+    const enabledProtections = mjolnir.protectionManager.enabledProtections.map((p) => p.name);
 
     let html = "Available protections:<ul>";
     let text = "Available protections:\n";
 
     for (const [protectionName, protection] of mjolnir.protectionManager.protections) {
-        const emoji = enabledProtections.includes(protectionName) ? '🟢 (enabled)' : '🔴 (disabled)';
+        const emoji = enabledProtections.includes(protectionName) ? "🟢 (enabled)" : "🔴 (disabled)";
         html += `<li>${emoji} <code>${protectionName}</code> - ${protection.description}</li>`;
         text += `* ${emoji} ${protectionName} - ${protection.description}\n`;
     }
