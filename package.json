@@ -10,7 +10,7 @@
   "scripts": {
     "build": "tsc",
     "postbuild": "rm -rf lib/test/ && cp -r lib/src/* lib/ && rm -rf lib/src/",
-    "lint": "tslint --project ./tsconfig.json -t stylish",
+    "lint": "tslint --project ./tsconfig.json -t stylish && npx prettier . --check",
     "start:dev": "yarn build && node --async-stack-traces lib/index.js",
     "test": "ts-mocha --project ./tsconfig.json test/commands/**/*.ts",
     "test:integration": "NODE_ENV=harness ts-mocha --async-stack-traces --require test/integration/fixtures.ts --timeout 300000 --project ./tsconfig.json \"test/integration/**/*Test.ts\"",
