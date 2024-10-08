@@ -58,6 +58,10 @@ export class FirstMessageIsImage extends Protection {
             if (isMedia && this.justJoined[roomId].includes(event['sender'])) {
                 await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Banning ${event['sender']} for posting an image as the first thing after joining in ${roomId}.`);
                 if (!mjolnir.config.noop) {
+                    if (mjolnir.moderators.includes(event["sender"])) {
+                        await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "BasicFlooding", `Attempting to ban ${event["sender"]} but they are member of moderation room, aborting.`);
+                        return;
+                    }
                     await mjolnir.client.banUser(event['sender'], roomId, "spam");
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "FirstMessageIsImage", `Tried to ban ${event['sender']} in ${roomId} but Mjolnir is running in no-op mode`, roomId);

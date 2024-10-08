@@ -248,6 +248,10 @@ async function execSinceCommandAux(destinationRoomId: string, event: any, mjolni
                 case Action.Ban: {
                     for (let join of recentJoins) {
                         try {
+                            if (mjolnir.moderators.includes(join.userId)) {
+                                await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "SinceCommand", `Attempting to ban user ${join.userId} but this is a member of the management room, skipping.`);
+                                continue;
+                            }
                             await mjolnir.client.banUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
                         } catch (ex) {
