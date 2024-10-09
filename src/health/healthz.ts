@@ -22,7 +22,7 @@ import { IConfig } from "../config";
 export class Healthz {
     private healthCode: number;
 
-    constructor(private config: IConfig) { }
+    constructor(private config: IConfig) {}
 
     public set isHealthy(val: boolean) {
         this.healthCode = val ? this.config.health.healthz.healthyStatus : this.config.health.healthz.unhealthyStatus;
@@ -38,7 +38,10 @@ export class Healthz {
             res.end(`health code: ${this.healthCode}`);
         });
         server.listen(this.config.health.healthz.port, this.config.health.healthz.address, () => {
-            LogService.info("Healthz", `Listening for health requests on ${this.config.health.healthz.address}:${this.config.health.healthz.port}`);
+            LogService.info(
+                "Healthz",
+                `Listening for health requests on ${this.config.health.healthz.address}:${this.config.health.healthz.port}`,
+            );
         });
     }
 }

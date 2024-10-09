@@ -61,7 +61,10 @@ export class OpenMetrics {
         }
 
         LogService.info("Starting OpenMetrics server.");
-        this.httpServer = this.webController.listen(this.config.health.openMetrics!.port, this.config.health.openMetrics!.address);
+        this.httpServer = this.webController.listen(
+            this.config.health.openMetrics!.port,
+            this.config.health.openMetrics!.address,
+        );
         this.webController.options(this.config.health.openMetrics!.address, async (_request, response) => {
             // reply with CORS options
             response.header("Access-Control-Allow-Origin", "*");
@@ -78,7 +81,7 @@ export class OpenMetrics {
             response.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, Date");
             response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
             try {
-                response.set('Content-Type', register.contentType);
+                response.set("Content-Type", register.contentType);
                 response.end(await register.metrics());
             } catch (ex) {
                 response.status(500).end(ex);
@@ -97,6 +100,6 @@ export class OpenMetrics {
     }
 
     public get isEnabled(): boolean {
-        return !!this.httpServer
+        return !!this.httpServer;
     }
 }

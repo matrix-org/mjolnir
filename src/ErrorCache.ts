@@ -29,10 +29,9 @@ const TRIGGER_INTERVALS: { [key: string]: number } = {
  * The ErrorCache is an attempt to make sure the error is reported only once.
  */
 export default class ErrorCache {
-    private roomsToErrors: Map<string/*room id*/, Map<string /*error kind*/, number>> = new Map();
+    private roomsToErrors: Map<string /*room id*/, Map<string /*error kind*/, number>> = new Map();
 
-    constructor() {
-    }
+    constructor() {}
 
     /**
      * Reset the error cache for a room/kind in the situation where circumstances have changed e.g. if Mjolnir has been informed via sync of a `m.room.power_levels` event in the room, we would want to clear `ERROR_KIND_PERMISSION`
@@ -68,7 +67,7 @@ export default class ErrorCache {
         const now = new Date().getTime();
         const interval = TRIGGER_INTERVALS[kind];
 
-        if ((now - lastTriggerTime) >= interval) {
+        if (now - lastTriggerTime >= interval) {
             triggers.set(kind, now);
             return true;
         } else {

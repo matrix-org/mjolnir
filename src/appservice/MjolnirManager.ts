@@ -11,7 +11,7 @@ import { randomUUID } from "crypto";
 import EventEmitter from "events";
 import { MatrixEmitter } from "../MatrixEmitter";
 
-const log = new Logger('MjolnirManager');
+const log = new Logger("MjolnirManager");
 
 /**
  * The MjolnirManager is responsible for:
@@ -20,17 +20,15 @@ const log = new Logger('MjolnirManager');
  * * Informing mjolnirs about new events.
  */
 export class MjolnirManager {
-    private readonly perMjolnirId: Map</*the user id of the mjolnir*/string, ManagedMjolnir> = new Map();
-    private readonly perOwnerId: Map</*the user id of the owner*/string, ManagedMjolnir> = new Map();
+    private readonly perMjolnirId: Map</*the user id of the mjolnir*/ string, ManagedMjolnir> = new Map();
+    private readonly perOwnerId: Map</*the user id of the owner*/ string, ManagedMjolnir> = new Map();
 
     private constructor(
         private readonly dataStore: DataStore,
         private readonly bridge: Bridge,
         private readonly accessControl: AccessControl,
         private readonly config: IAppserviceConfig,
-    ) {
-
-    }
+    ) {}
 
     /**
      * Create the mjolnir manager from the datastore and the access control.
@@ -39,7 +37,12 @@ export class MjolnirManager {
      * @param accessControl Who has access to the bridge.
      * @returns A new mjolnir manager.
      */
-    public static async makeMjolnirManager(dataStore: DataStore, bridge: Bridge, accessControl: AccessControl, config: IAppserviceConfig): Promise<MjolnirManager> {
+    public static async makeMjolnirManager(
+        dataStore: DataStore,
+        bridge: Bridge,
+        accessControl: AccessControl,
+        config: IAppserviceConfig,
+    ): Promise<MjolnirManager> {
         const mjolnirManager = new MjolnirManager(dataStore, bridge, accessControl, config);
         await mjolnirManager.createMjolnirsFromDataStore();
         return mjolnirManager;
@@ -52,16 +55,16 @@ export class MjolnirManager {
      * @param client A client for the appservice virtual user that the new mjolnir should use.
      * @returns A new managed mjolnir.
      */
-    public async makeInstance(requestingUserId: string, managementRoomId: string, client: MatrixClient): Promise<ManagedMjolnir> {
+    public async makeInstance(
+        requestingUserId: string,
+        managementRoomId: string,
+        client: MatrixClient,
+    ): Promise<ManagedMjolnir> {
         let mjolnirUserId = await client.getUserId();
         const intentListener = new MatrixIntentListener(mjolnirUserId);
         const managedMjolnir = new ManagedMjolnir(
             requestingUserId,
-            await Mjolnir.setupMjolnirFromConfig(
-                client,
-                intentListener,
-                getProvisionedMjolnirConfig(managementRoomId)
-            ),
+            await Mjolnir.setupMjolnirFromConfig(client, intentListener, getProvisionedMjolnirConfig(managementRoomId)),
             intentListener,
         );
         await managedMjolnir.start();
@@ -78,7 +81,7 @@ export class MjolnirManager {
      * @param ownerId The owner of the mjolnir. We ask for it explicitly to not leak access to another user's mjolnir.
      * @returns The matching managed mjolnir instance.
      */
-    public getMjolnir(mjolnirId: string, ownerId: string): ManagedMjolnir|undefined {
+    public getMjolnir(mjolnirId: string, ownerId: string): ManagedMjolnir | undefined {
         const mjolnir = this.perMjolnirId.get(mjolnirId);
         if (mjolnir) {
             if (mjolnir.ownerId !== ownerId) {
@@ -100,7 +103,7 @@ export class MjolnirManager {
         // TODO we need to use the database for this but also provide the utility
         // for going from a MjolnirRecord to a ManagedMjolnir.
         // https://github.com/matrix-org/mjolnir/issues/409
-        return [...this.perMjolnirId.values()].filter(mjolnir => mjolnir.ownerId !== ownerId);
+        return [...this.perMjolnirId.values()].filter((mjolnir) => mjolnir.ownerId !== ownerId);
     }
 
     /**
@@ -128,7 +131,9 @@ export class MjolnirManager {
     public async provisionNewMjolnir(requestingUserId: string): Promise<ManagedMjolnir> {
         const access = this.accessControl.getUserAccess(requestingUserId);
         if (access.outcome !== Access.Allowed) {
-            throw new Error(`${requestingUserId} tried to provision a mjolnir when they do not have access ${access.outcome} ${access.rule?.reason ?? 'no reason specified'}`);
+            throw new Error(
+                `${requestingUserId} tried to provision a mjolnir when they do not have access ${access.outcome} ${access.rule?.reason ?? "no reason specified"}`,
+            );
         }
         const provisionedMjolnirs = await this.dataStore.lookupByOwner(requestingUserId);
         if (provisionedMjolnirs.length === 0) {
@@ -136,9 +141,9 @@ export class MjolnirManager {
             const mjIntent = await this.makeMatrixIntent(mjolnirLocalPart);
 
             const managementRoomId = await mjIntent.matrixClient.createRoom({
-                preset: 'private_chat',
+                preset: "private_chat",
                 invite: [requestingUserId],
-                name: `${requestingUserId}'s mjolnir`
+                name: `${requestingUserId}'s mjolnir`,
             });
 
             const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjIntent.matrixClient);
@@ -152,7 +157,9 @@ export class MjolnirManager {
 
             return mjolnir;
         } else {
-            throw new Error(`User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`);
+            throw new Error(
+                `User: ${requestingUserId} has already provisioned ${provisionedMjolnirs.length} mjolnirs.`,
+            );
         }
     }
 
@@ -178,7 +185,10 @@ export class MjolnirManager {
             const access = this.accessControl.getUserAccess(mjolnirRecord.owner);
             if (access.outcome !== Access.Allowed) {
                 // Don't await, we don't want to clobber initialization just because we can't tell someone they're no longer allowed.
-                mjIntent.matrixClient.sendNotice(mjolnirRecord.management_room, `Your mjolnir has been disabled by the administrator: ${access.rule?.reason ?? "no reason supplied"}`);
+                mjIntent.matrixClient.sendNotice(
+                    mjolnirRecord.management_room,
+                    `Your mjolnir has been disabled by the administrator: ${access.rule?.reason ?? "no reason supplied"}`,
+                );
             } else {
                 await this.makeInstance(
                     mjolnirRecord.owner,
@@ -187,7 +197,10 @@ export class MjolnirManager {
                 ).catch((e: any) => {
                     log.error(`Could not start mjolnir ${mjolnirRecord.local_part} for ${mjolnirRecord.owner}:`, e);
                     // Don't await, we don't want to clobber initialization if this fails.
-                    mjIntent.matrixClient.sendNotice(mjolnirRecord.management_room, `Your mjolnir could not be started. Please alert the administrator`);
+                    mjIntent.matrixClient.sendNotice(
+                        mjolnirRecord.management_room,
+                        `Your mjolnir could not be started. Please alert the administrator`,
+                    );
                 });
             }
         }
@@ -199,7 +212,7 @@ export class ManagedMjolnir {
         public readonly ownerId: string,
         private readonly mjolnir: Mjolnir,
         private readonly matrixEmitter: MatrixIntentListener,
-    ) { }
+    ) {}
 
     public async onEvent(request: Request<WeakEvent>) {
         this.matrixEmitter.handleEvent(request.getData());
@@ -213,12 +226,9 @@ export class ManagedMjolnir {
     }
 
     public async createFirstList(mjolnirOwnerId: string, shortcode: string) {
-        const listRoomId = await PolicyList.createList(
-            this.mjolnir.client,
-            shortcode,
-            [mjolnirOwnerId],
-            { name: `${mjolnirOwnerId}'s policy room` }
-        );
+        const listRoomId = await PolicyList.createList(this.mjolnir.client, shortcode, [mjolnirOwnerId], {
+            name: `${mjolnirOwnerId}'s policy room`,
+        });
         const roomRef = Permalinks.forRoom(listRoomId);
         await this.mjolnir.addProtectedRoom(listRoomId);
         return await this.mjolnir.policyListManager.watchList(roomRef);
@@ -250,31 +260,30 @@ export class ManagedMjolnir {
  */
 export class MatrixIntentListener extends EventEmitter implements MatrixEmitter {
     constructor(private readonly mjolnirId: string) {
-        super()
+        super();
     }
 
     public handleEvent(mxEvent: WeakEvent) {
         // These are ordered to be the same as matrix-bot-sdk's MatrixClient
         // They shouldn't need to be, but they are just in case it matters.
-        if (mxEvent['type'] === 'm.room.member' &&  mxEvent.state_key === this.mjolnirId) {
-            if (mxEvent['content']['membership'] === 'leave') {
-                this.emit('room.leave', mxEvent.room_id, mxEvent);
+        if (mxEvent["type"] === "m.room.member" && mxEvent.state_key === this.mjolnirId) {
+            if (mxEvent["content"]["membership"] === "leave") {
+                this.emit("room.leave", mxEvent.room_id, mxEvent);
             }
-            if (mxEvent['content']['membership'] === 'invite') {
-                this.emit('room.invite', mxEvent.room_id, mxEvent);
+            if (mxEvent["content"]["membership"] === "invite") {
+                this.emit("room.invite", mxEvent.room_id, mxEvent);
             }
-            if (mxEvent['content']['membership'] === 'join') {
-                this.emit('room.join', mxEvent.room_id, mxEvent);
+            if (mxEvent["content"]["membership"] === "join") {
+                this.emit("room.join", mxEvent.room_id, mxEvent);
             }
         }
-        if (mxEvent.type === 'm.room.message') {
-            this.emit('room.message', mxEvent.room_id, mxEvent);
+        if (mxEvent.type === "m.room.message") {
+            this.emit("room.message", mxEvent.room_id, mxEvent);
         }
-        if (mxEvent.type === 'm.room.tombstone' && mxEvent.state_key === '') {
-            this.emit('room.archived', mxEvent.room_id, mxEvent);
+        if (mxEvent.type === "m.room.tombstone" && mxEvent.state_key === "") {
+            this.emit("room.archived", mxEvent.room_id, mxEvent);
         }
-        this.emit('room.event', mxEvent.room_id, mxEvent);
-
+        this.emit("room.event", mxEvent.room_id, mxEvent);
     }
 
     /**

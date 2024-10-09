@@ -23,20 +23,20 @@ export async function execMakeRoomAdminCommand(roomId: string, event: any, mjoln
     if (!mjolnir.config.admin?.enableMakeRoomAdminCommand || !isAdmin) {
         const message = "Either the command is disabled or I am not running as homeserver administrator.";
         const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
+        reply["msgtype"] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
         return;
     }
 
     let err = await mjolnir.makeUserRoomAdmin(await mjolnir.client.resolveRoom(parts[3]), parts[4]);
-    if (err instanceof Error || typeof (err) === "string") {
+    if (err instanceof Error || typeof err === "string") {
         const errMsg = "Failed to process command:";
-        const message = typeof (err) === "string" ? `${errMsg}: ${err}` : `${errMsg}: ${err.message}`;
+        const message = typeof err === "string" ? `${errMsg}: ${err}` : `${errMsg}: ${err.message}`;
         const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
+        reply["msgtype"] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
         return;
     } else {
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
     }
 }

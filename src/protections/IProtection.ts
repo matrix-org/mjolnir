@@ -25,7 +25,7 @@ import { Consequence } from "./consequence";
  * Protections are guaranteed to be run before redaction handlers.
  */
 export abstract class Protection {
-    abstract readonly name: string
+    abstract readonly name: string;
     abstract readonly description: string;
     enabled = false;
     readonly requiredStatePermissions: string[] = [];
@@ -57,14 +57,20 @@ export abstract class Protection {
      * Handle a single reported event from a protecte room, to decide if we
      * need to respond to it
      */
-    async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
+    async handleReport(
+        mjolnir: Mjolnir,
+        roomId: string,
+        reporterId: string,
+        event: any,
+        reason?: string,
+    ): Promise<any> {
         // By default, do nothing.
     }
 
     /**
      * Return status information for `!mjolnir status ${protectionName}`.
      */
-    async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
+    async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{ html: string; text: string } | null> {
         // By default, protections don't have any status to show.
         return null;
     }

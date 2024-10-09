@@ -30,9 +30,10 @@ const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";
  * Setup decentralized abuse reports in protected rooms.
  */
 export class LocalAbuseReports extends Protection {
-    settings: { };
+    settings: {};
     public readonly name = "LocalAbuseReports";
-    public readonly description = "Enables MSC3215-compliant web clients to send abuse reports to the moderator instead of the homeserver admin";
+    public readonly description =
+        "Enables MSC3215-compliant web clients to send abuse reports to the moderator instead of the homeserver admin";
     readonly requiredStatePermissions = [EVENT_MODERATED_BY];
 
     /**
@@ -45,7 +46,11 @@ export class LocalAbuseReports extends Protection {
             // Fetch the previous state of the room, to avoid overwriting any existing setup.
             let previousState: /* previous content */ any | /* there was no previous content */ null;
             try {
-                previousState = await mjolnir.client.getRoomStateEvent(protectedRoomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
+                previousState = await mjolnir.client.getRoomStateEvent(
+                    protectedRoomId,
+                    EVENT_MODERATED_BY,
+                    EVENT_MODERATED_BY,
+                );
             } catch (ex) {
                 previousState = null;
             }
@@ -55,8 +60,13 @@ export class LocalAbuseReports extends Protection {
                     return;
                 } else {
                     // There is a setup already, but it's not for us. Don't overwrite it.
-                    let protectedRoomAliasOrId = await mjolnir.client.getPublishedAlias(protectedRoomId) || protectedRoomId;
-                    mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "LocalAbuseReports", `Room ${protectedRoomAliasOrId} is already setup for decentralized abuse reports with bot ${previousState["user_id"]} and room ${previousState["room_id"]}, not overwriting automatically. To overwrite, use command \`!mjolnir rooms setup ${protectedRoomId} reporting\``);
+                    let protectedRoomAliasOrId =
+                        (await mjolnir.client.getPublishedAlias(protectedRoomId)) || protectedRoomId;
+                    mjolnir.managementRoomOutput.logMessage(
+                        LogLevel.INFO,
+                        "LocalAbuseReports",
+                        `Room ${protectedRoomAliasOrId} is already setup for decentralized abuse reports with bot ${previousState["user_id"]} and room ${previousState["room_id"]}, not overwriting automatically. To overwrite, use command \`!mjolnir rooms setup ${protectedRoomId} reporting\``,
+                    );
                     return;
                 }
             }
@@ -71,7 +81,11 @@ export class LocalAbuseReports extends Protection {
                     user_id: userId,
                 });
             } catch (ex) {
-                mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "LocalAbuseReports", `Could not autoset protected room -> moderation room link: ${ex.message}. To set it manually, use command \`!mjolnir rooms setup ${protectedRoomId} reporting\``);
+                mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "LocalAbuseReports",
+                    `Could not autoset protected room -> moderation room link: ${ex.message}. To set it manually, use command \`!mjolnir rooms setup ${protectedRoomId} reporting\``,
+                );
                 return;
             }
 
@@ -83,7 +97,11 @@ export class LocalAbuseReports extends Protection {
             } catch (ex) {
                 // If the second `sendStateEvent` fails, we could end up with a room half setup, which
                 // is bad. Attempt to rollback.
-                mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "LocalAbuseReports", `Could not autoset moderation room -> protected room link: ${ex.message}. To set it manually, use command \`!mjolnir rooms setup ${protectedRoomId} reporting\``);
+                mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "LocalAbuseReports",
+                    `Could not autoset moderation room -> protected room link: ${ex.message}. To set it manually, use command \`!mjolnir rooms setup ${protectedRoomId} reporting\``,
+                );
                 try {
                     await mjolnir.client.redactEvent(protectedRoomId, eventId, "Rolling back incomplete MSC3215 setup");
                 } finally {

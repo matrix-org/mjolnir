@@ -1,4 +1,3 @@
-
 import { strict as assert } from "assert";
 import { MatrixClient, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { MatrixSendClient } from "../../src/MatrixEmitter";
@@ -18,8 +17,8 @@ async function getProtectedRoomsFromAccountData(client: MatrixSendClient): Promi
     return rooms.rooms!;
 }
 
-describe('Test: config.protectAllJoinedRooms behaves correctly.', function() {
-    it('does not clobber the account data.', async function() {
+describe("Test: config.protectAllJoinedRooms behaves correctly.", function () {
+    it("does not clobber the account data.", async function () {
         // set up account data for a protected room with your own list and a watched list.
         const mjolnir: Mjolnir = this.mjolnir!;
 
@@ -27,20 +26,20 @@ describe('Test: config.protectAllJoinedRooms behaves correctly.', function() {
         const moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
         await moderator.joinRoom(mjolnir.managementRoomId);
         const implicitlyProtectedRooms = await Promise.all(
-            [...Array(2).keys()].map(_ => moderator.createRoom({ preset: "public_chat" }))
+            [...Array(2).keys()].map((_) => moderator.createRoom({ preset: "public_chat" })),
         );
-        await Promise.all(
-            implicitlyProtectedRooms.map(roomId => mjolnir.client.joinRoom(roomId))
-        );
+        await Promise.all(implicitlyProtectedRooms.map((roomId) => mjolnir.client.joinRoom(roomId)));
 
         // we sync and check that none of them end up in account data
         await mjolnir.protectedRoomsTracker.syncLists();
-        (await getProtectedRoomsFromAccountData(mjolnir.client))
-            .forEach(roomId => assert.equal(implicitlyProtectedRooms.includes(roomId), false));
-        
+        (await getProtectedRoomsFromAccountData(mjolnir.client)).forEach((roomId) =>
+            assert.equal(implicitlyProtectedRooms.includes(roomId), false),
+        );
+
         // ... but they are protected
-        mjolnir.protectedRoomsTracker.getProtectedRooms()
-            .forEach(roomId => assert.equal(implicitlyProtectedRooms.includes(roomId), true));
+        mjolnir.protectedRoomsTracker
+            .getProtectedRooms()
+            .forEach((roomId) => assert.equal(implicitlyProtectedRooms.includes(roomId), true));
 
         // We create one policy list with Mjolnir, and we watch another that is maintained by someone else.
         const policyListShortcode = await createBanList(mjolnir.managementRoomId, mjolnir.matrixEmitter, moderator);
@@ -60,6 +59,5 @@ describe('Test: config.protectAllJoinedRooms behaves correctly.', function() {
         // Confirm that it is the right room, since we only get the shortcode back when using the command to create a list.
         const shortcodeInfo = await mjolnir.client.getRoomStateEvent(policyListId, "org.matrix.mjolnir.shortcode", "");
         assert.equal(shortcodeInfo.shortcode, policyListShortcode);
-    })
+    });
 });
-

@@ -47,7 +47,10 @@ export class ThrottlingQueue {
      *
      * @param delayMS The default delay between executing two tasks, in ms.
      */
-    constructor(private mjolnir: Mjolnir, delayMS: number) {
+    constructor(
+        private mjolnir: Mjolnir,
+        delayMS: number,
+    ) {
         this.timeout = null;
         this.delayMS = delayMS;
         this._tasks = [];
@@ -84,7 +87,7 @@ export class ThrottlingQueue {
                     resolve(result);
                 } catch (ex) {
                     reject(ex);
-                };
+                }
             };
             this.tasks.push(wrapper);
             this.start();
@@ -180,8 +183,8 @@ export class ThrottlingQueue {
         } catch (ex) {
             await this.mjolnir.managementRoomOutput.logMessage(
                 LogLevel.WARN,
-                'Error while executing task',
-                extractRequestError(ex)
+                "Error while executing task",
+                extractRequestError(ex),
             );
         } finally {
             this.stop();

@@ -5,24 +5,23 @@ import { CreateMjolnirResponse, MjolnirWebAPIClient } from "../utils/webAPIClien
 import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { getFirstReply } from "../../integration/commands/commandUtils";
 import expect from "expect";
-import dns from 'node:dns';
-
+import dns from "node:dns";
 
 interface Context extends Mocha.Context {
-    appservice?: MjolnirAppService
-    moderator?: MatrixClient
+    appservice?: MjolnirAppService;
+    moderator?: MatrixClient;
 }
 
 // Necessary for CI: Node 17+ defaults to using ipv6 first, but Github Actions does not support ipv6
-dns.setDefaultResultOrder('ipv4first');
+dns.setDefaultResultOrder("ipv4first");
 
 describe("Test that the app service can provision a mjolnir when requested from the web API", function () {
-    afterEach(function(this: Context) {
+    afterEach(function (this: Context) {
         this.moderator?.stop();
         if (this.appservice) {
             return this.appservice.close();
         } else {
-            console.warn("Missing Appservice in this context, so cannot stop it.")
+            console.warn("Missing Appservice in this context, so cannot stop it.");
             return Promise.resolve(); // TS7030: Not all code paths return a value.
         }
     });
@@ -37,10 +36,10 @@ describe("Test that the app service can provision a mjolnir when requested from 
         // have the moderator invite the appservice bot in order to request a new mjolnir
         this.moderator = moderator;
         const roomsInvitedTo: string[] = [];
-        const mjolnirDetails: CreateMjolnirResponse = await new Promise(async resolve => {
+        const mjolnirDetails: CreateMjolnirResponse = await new Promise(async (resolve) => {
             const mjolnirDetailsPromise = apiClient.createMjolnir(roomToProtectId);
-            moderator.on('room.invite', (roomId: string) => {
-                roomsInvitedTo.push(roomId)
+            moderator.on("room.invite", (roomId: string) => {
+                roomsInvitedTo.push(roomId);
                 // the appservice should invite it to a policy room and a management room.
                 if (roomsInvitedTo.length === 2) {
                     mjolnirDetailsPromise.then(resolve);
@@ -48,13 +47,13 @@ describe("Test that the app service can provision a mjolnir when requested from 
             });
             await moderator.start();
         });
-        await Promise.all(roomsInvitedTo.map(roomId => moderator.joinRoom(roomId)));
-        const managementRoomId = roomsInvitedTo.filter(async roomId => !(await isPolicyRoom(moderator, roomId)))[0];
+        await Promise.all(roomsInvitedTo.map((roomId) => moderator.joinRoom(roomId)));
+        const managementRoomId = roomsInvitedTo.filter(async (roomId) => !(await isPolicyRoom(moderator, roomId)))[0];
         expect(managementRoomId).toBe(mjolnirDetails.managementRoomId);
         // Check that the newly provisioned mjolnir is actually responsive.
         const event = await getFirstReply(moderator, managementRoomId, () => {
-            return moderator.sendMessage(managementRoomId, { body: `!mjolnir status`, msgtype: 'm.text' });
-        })
+            return moderator.sendMessage(managementRoomId, { body: `!mjolnir status`, msgtype: "m.text" });
+        });
         expect(event.sender).toBe(mjolnirDetails.mjolnirUserId);
-    })
-})
+    });
+});

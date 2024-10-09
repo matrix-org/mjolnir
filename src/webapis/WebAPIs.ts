@@ -21,7 +21,6 @@ import RuleServer from "../models/RuleServer";
 import { ReportManager } from "../report/ReportManager";
 import { IConfig } from "../config";
 
-
 /**
  * A common prefix for all web-exposed APIs.
  */
@@ -33,7 +32,11 @@ export class WebAPIs {
     private webController: express.Express = express();
     private httpServer?: Server;
 
-    constructor(private reportManager: ReportManager, private readonly config: IConfig, private readonly ruleServer: RuleServer|null) {
+    constructor(
+        private reportManager: ReportManager,
+        private readonly config: IConfig,
+        private readonly ruleServer: RuleServer | null,
+    ) {
         // Setup JSON parsing.
         this.webController.use(express.json());
     }
@@ -64,7 +67,12 @@ export class WebAPIs {
                 response.header("Access-Control-Allow-Origin", "*");
                 response.header("Access-Control-Allow-Headers", "X-Requested-With, Content-Type, Authorization, Date");
                 response.header("Access-Control-Allow-Methods", "POST, OPTIONS");
-                await this.handleReport({ request, response, roomId: request.params.room_id, eventId: request.params.event_id })
+                await this.handleReport({
+                    request,
+                    response,
+                    roomId: request.params.room_id,
+                    eventId: request.params.event_id,
+                });
             });
             LogService.info(`configuring ${API_PREFIX}/report/:room_id/:event_id... DONE`);
         }
@@ -80,7 +88,11 @@ export class WebAPIs {
             }
             const ruleServer: RuleServer = this.ruleServer;
             this.webController.get(updatesUrl, async (request, response) => {
-                await this.handleRuleServerUpdate(ruleServer, { request, response, since: request.query.since as string});
+                await this.handleRuleServerUpdate(ruleServer, {
+                    request,
+                    response,
+                    since: request.query.since as string,
+                });
             });
             LogService.info("WebAPIs", `configuring ${updatesUrl}... DONE`);
         }
@@ -104,7 +116,17 @@ export class WebAPIs {
      * @param request The request. Its body SHOULD hold an object `{reason?: string}`
      * @param response The response. Used to propagate HTTP success/error.
      */
-    async handleReport({ roomId, eventId, request, response }: { roomId: string, eventId: string, request: express.Request, response: express.Response }) {
+    async handleReport({
+        roomId,
+        eventId,
+        request,
+        response,
+    }: {
+        roomId: string;
+        eventId: string;
+        request: express.Request;
+        response: express.Response;
+    }) {
         // To display any kind of useful information, we need
         //
         // 1. The reporter id;
@@ -120,11 +142,11 @@ export class WebAPIs {
                 let accessToken: string | undefined = undefined;
 
                 // Authentication mechanism 1: Request header.
-                let authorization = request.get('Authorization');
+                let authorization = request.get("Authorization");
 
                 if (authorization) {
                     [, accessToken] = AUTHORIZATION.exec(authorization)!;
-                } else if (typeof(request.query["access_token"]) === 'string') {
+                } else if (typeof request.query["access_token"] === "string") {
                     // Authentication mechanism 2: Access token as query parameter.
                     accessToken = request.query["access_token"];
                 } else {
@@ -195,7 +217,10 @@ export class WebAPIs {
         }
     }
 
-    async handleRuleServerUpdate(ruleServer: RuleServer, { since, request, response }: { since: string, request: express.Request, response: express.Response }) {
+    async handleRuleServerUpdate(
+        ruleServer: RuleServer,
+        { since, request, response }: { since: string; request: express.Request; response: express.Response },
+    ) {
         // FIXME Have to do this because express sends keep alive by default and during tests.
         // The server will never be able to close because express never closes the sockets, only stops accepting new connections.
         // See https://github.com/matrix-org/mjolnir/issues/139#issuecomment-1012221479.

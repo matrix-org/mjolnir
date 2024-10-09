@@ -28,9 +28,7 @@ export class ServerAcl {
     private deniedServers: Set<string> = new Set<string>();
     private allowIps = false;
 
-    public constructor(public readonly homeserver: string) {
-
-    }
+    public constructor(public readonly homeserver: string) {}
 
     /**
      * Checks the ACL for any entries that might ban ourself.
@@ -40,7 +38,7 @@ export class ServerAcl {
         // The reason we do this check here rather than in the `denyServer` method
         // is because `literalAclContent` exists and also we want to be defensive about someone
         // mutating `this.deniedServers` via another method in the future.
-        const entries: string[] = []
+        const entries: string[] = [];
         for (const server of this.deniedServers) {
             const glob = new MatrixGlob(server);
             if (!glob.test(this.homeserver)) {
@@ -103,9 +101,9 @@ export class ServerAcl {
     public matches(acl: any): boolean {
         if (!acl) return false;
 
-        const allow = acl['allow'];
-        const deny = acl['deny'];
-        const ips = acl['allow_ip_literals'];
+        const allow = acl["allow"];
+        const deny = acl["deny"];
+        const ips = acl["allow_ip_literals"];
 
         let allowMatches = true; // until proven false
         let denyMatches = true; // until proven false
