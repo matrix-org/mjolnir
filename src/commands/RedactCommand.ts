@@ -22,7 +22,7 @@ import { Permalinks } from "@vector-im/matrix-bot-sdk";
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const userId = parts[2];
 
-    let targetRoom: string|null = null;
+    let targetRoom: string | null = null;
     let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later
     if (parts.length > 3 && isNaN(limit)) {
         targetRoom = await mjolnir.client.resolveRoom(parts[3]);

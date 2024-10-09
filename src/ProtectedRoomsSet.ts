@@ -104,7 +104,7 @@ export class ProtectedRoomsSet {
     /**
      * whether the mjolnir instance is server admin
      */
-     public isAdmin = false;
+    public isAdmin = false;
 
     constructor(
         private readonly client: MatrixSendClient,

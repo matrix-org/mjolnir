@@ -353,7 +353,7 @@ export class Mjolnir {
             this.currentState = STATE_RUNNING;
 
             await this.managementRoomOutput.logMessage(
-                LogLevel.INFO, 
+                LogLevel.INFO,
                 "Mjolnir@startup",
                 "Startup complete. Now monitoring rooms.",
             );

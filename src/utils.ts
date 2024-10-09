@@ -19,7 +19,8 @@ import {
     LogService,
     MatrixGlob,
     getRequestFn,
-    setRequestFn, extractRequestError,
+    setRequestFn,
+    extractRequestError,
 } from "@vector-im/matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
@@ -73,36 +74,72 @@ export function isTrueJoinEvent(event: any): boolean {
     return membership === "join" && prevMembership !== "join";
 }
 
-async function adminRedactUserMessagesIn(client: MatrixSendClient, managementRoom: ManagementRoomOutput, userId: string, targetRooms: string[], limit = 1000) {
-        let redactID: string;
-        const body = {"limit": limit, "rooms": targetRooms};
-        const redactEndpoint = `/_synapse/admin/v1/user/${userId}/redact`;
-        const response = await client.doRequest("GET", redactEndpoint, null, body);
-        redactID = response["redact_id"];
-        await managementRoom.logMessage(LogLevel.INFO, "utils#redactUserMessagesIn", `Successfully requested redaction, ID for task is ${redactID}`);
-    }
+async function adminRedactUserMessagesIn(
+    client: MatrixSendClient,
+    managementRoom: ManagementRoomOutput,
+    userId: string,
+    targetRooms: string[],
+    limit = 1000,
+) {
+    let redactID: string;
+    const body = { limit: limit, rooms: targetRooms };
+    const redactEndpoint = `/_synapse/admin/v1/user/${userId}/redact`;
+    const response = await client.doRequest("GET", redactEndpoint, null, body);
+    redactID = response["redact_id"];
+    await managementRoom.logMessage(
+        LogLevel.INFO,
+        "utils#redactUserMessagesIn",
+        `Successfully requested redaction, ID for task is ${redactID}`,
+    );
+}
 
-async function botRedactUserMessagesIn(client: MatrixSendClient, managementRoom: ManagementRoomOutput, userIdOrGlob: string, targetRooms: string [], limit = 1000, noop = false) {
-        for (const targetRoomId of targetRooms) {
-            await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`, targetRoomId);
+async function botRedactUserMessagesIn(
+    client: MatrixSendClient,
+    managementRoom: ManagementRoomOutput,
+    userIdOrGlob: string,
+    targetRooms: string[],
+    limit = 1000,
+    noop = false,
+) {
+    for (const targetRoomId of targetRooms) {
+        await managementRoom.logMessage(
+            LogLevel.DEBUG,
+            "utils#redactUserMessagesIn",
+            `Fetching sent messages for ${userIdOrGlob} in ${targetRoomId} to redact...`,
+            targetRoomId,
+        );
 
-            try {
-                await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
-                    for (const targetEvent of eventsToRedact) {
-                        await managementRoom.logMessage(LogLevel.DEBUG, "utils#redactUserMessagesIn", `Redacting ${targetEvent['event_id']} in ${targetRoomId}`, targetRoomId);
-                        if (!noop) {
-                            await client.redactEvent(targetRoomId, targetEvent['event_id']);
-                        } else {
-                            await managementRoom.logMessage(LogLevel.WARN, "utils#redactUserMessagesIn", `Tried to redact ${targetEvent['event_id']} in ${targetRoomId} but Mjolnir is running in no-op mode`, targetRoomId);
-                        }
+        try {
+            await getMessagesByUserIn(client, userIdOrGlob, targetRoomId, limit, async (eventsToRedact) => {
+                for (const targetEvent of eventsToRedact) {
+                    await managementRoom.logMessage(
+                        LogLevel.DEBUG,
+                        "utils#redactUserMessagesIn",
+                        `Redacting ${targetEvent["event_id"]} in ${targetRoomId}`,
+                        targetRoomId,
+                    );
+                    if (!noop) {
+                        await client.redactEvent(targetRoomId, targetEvent["event_id"]);
+                    } else {
+                        await managementRoom.logMessage(
+                            LogLevel.WARN,
+                            "utils#redactUserMessagesIn",
+                            `Tried to redact ${targetEvent["event_id"]} in ${targetRoomId} but Mjolnir is running in no-op mode`,
+                            targetRoomId,
+                        );
                     }
-                });
-            } catch (error) {
-                await managementRoom.logMessage(LogLevel.ERROR, "utils#redactUserMessagesIn", `Caught an error while trying to redact messages for ${userIdOrGlob} in ${targetRoomId}: ${error}`, targetRoomId);
-            }
+                }
+            });
+        } catch (error) {
+            await managementRoom.logMessage(
+                LogLevel.ERROR,
+                "utils#redactUserMessagesIn",
+                `Caught an error while trying to redact messages for ${userIdOrGlob} in ${targetRoomId}: ${error}`,
+                targetRoomId,
+            );
         }
     }
-
+}
 
 /**
  * Redact a user's messages in a set of rooms.
@@ -119,22 +156,30 @@ async function botRedactUserMessagesIn(client: MatrixSendClient, managementRoom:
  */
 
 export async function redactUserMessagesIn(
-    client: MatrixSendClient, 
-    managementRoom: ManagementRoomOutput, 
-    userIdOrGlob: string, 
-    targetRoomIds: string[], 
+    client: MatrixSendClient,
+    managementRoom: ManagementRoomOutput,
+    userIdOrGlob: string,
+    targetRoomIds: string[],
     isAdmin: boolean,
-    limit = 1000, 
-    noop = false) {
+    limit = 1000,
+    noop = false,
+) {
     const usingGlob = userIdOrGlob.includes("*");
     // if admin use the Admin API, but admin endpoint does not support globs
     if (isAdmin && !usingGlob) {
         try {
-            await adminRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit)
+            await adminRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit);
         } catch (e) {
-            LogService.error("utils#redactUserMessagesIn", `Error using admin API to redact messages: ${extractRequestError(e)}`);
-            await managementRoom.logMessage(LogLevel.ERROR, "utils#redactUserMessagesIn", `Error using admin API to redact messages for user ${userIdOrGlob}, please check logs for more info - falling
-            back to non-admin redaction process.`);
+            LogService.error(
+                "utils#redactUserMessagesIn",
+                `Error using admin API to redact messages: ${extractRequestError(e)}`,
+            );
+            await managementRoom.logMessage(
+                LogLevel.ERROR,
+                "utils#redactUserMessagesIn",
+                `Error using admin API to redact messages for user ${userIdOrGlob}, please check logs for more info - falling
+            back to non-admin redaction process.`,
+            );
             await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit, noop);
         }
     } else {

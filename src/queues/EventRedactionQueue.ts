@@ -52,9 +52,10 @@ export class RedactUserInRoom implements QueuedRedaction {
 
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
         await managementRoom.logMessage(
-            LogLevel.DEBUG, 
+            LogLevel.DEBUG,
             "Mjolnir",
-            `Redacting events from ${this.userId} in room ${this.roomId}.`);
+            `Redacting events from ${this.userId} in room ${this.roomId}.`,
+        );
         await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], this.isAdmin);
     }
 
