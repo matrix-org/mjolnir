@@ -1,17 +1,17 @@
 import { MatrixClient } from "@vector-im/matrix-bot-sdk";
-import { Mjolnir } from "../../src/Mjolnir"
+import { Mjolnir } from "../../src/Mjolnir";
 import { newTestUser } from "./clientHelper";
 
-describe("Test: Accept Invites From Space", function() {
-    let client: MatrixClient|undefined;
+describe("Test: Accept Invites From Space", function () {
+    let client: MatrixClient | undefined;
     this.beforeEach(async function () {
-        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "spacee" }});
+        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "spacee" } });
         await client.start();
-    })
+    });
     this.afterEach(async function () {
         await client.stop();
-    })
-    it("Mjolnir should accept an invite from a user in a nominated Space", async function() {
+    });
+    it("Mjolnir should accept an invite from a user in a nominated Space", async function () {
         this.timeout(20000);
 
         const mjolnir: Mjolnir = this.mjolnir!;
@@ -20,7 +20,7 @@ describe("Test: Accept Invites From Space", function() {
         const space = await client.createSpace({
             name: "mjolnir space invite test",
             invites: [mjolnirUserId],
-            isPublic: false
+            isPublic: false,
         });
 
         await this.mjolnir.client.joinRoom(space.roomId);
@@ -29,14 +29,14 @@ describe("Test: Accept Invites From Space", function() {
         mjolnir.config.autojoinOnlyIfManager = false;
         mjolnir.config.acceptInvitesFromSpace = space.roomId;
 
-        const promise = new Promise(async resolve => {
+        const promise = new Promise(async (resolve) => {
             const newRoomId = await client.createRoom({ invite: [mjolnirUserId] });
             client.on("room.event", (roomId, event) => {
                 if (
-                    roomId === newRoomId
-                    && event.type === "m.room.member"
-                    && event.sender === mjolnirUserId
-                    && event.content?.membership === "join"
+                    roomId === newRoomId &&
+                    event.type === "m.room.member" &&
+                    event.sender === mjolnirUserId &&
+                    event.content?.membership === "join"
                 ) {
                     resolve(null);
                 }
@@ -45,4 +45,3 @@ describe("Test: Accept Invites From Space", function() {
         await promise;
     });
 });
-

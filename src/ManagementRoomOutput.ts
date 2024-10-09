@@ -15,7 +15,15 @@ limitations under the License.
 */
 
 import * as Sentry from "@sentry/node";
-import { extractRequestError, LogLevel, LogService, MessageType, Permalinks, TextualMessageEventContent, UserID } from "@vector-im/matrix-bot-sdk";
+import {
+    extractRequestError,
+    LogLevel,
+    LogService,
+    MessageType,
+    Permalinks,
+    TextualMessageEventContent,
+    UserID,
+} from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "./config";
 import { MatrixSendClient } from "./MatrixEmitter";
 import { htmlEscape } from "./utils";
@@ -31,14 +39,11 @@ const levelToFn = {
  * Allows the different componenets of mjolnir to send messages back to the management room without introducing a dependency on the entirity of a `Mjolnir` instance.
  */
 export default class ManagementRoomOutput {
-
     constructor(
         private readonly managementRoomId: string,
         private readonly client: MatrixSendClient,
         private readonly config: IConfig,
-    ) {
-
-    }
+    ) {}
 
     /**
      * Take an arbitrary string and a set of room IDs, and return a
@@ -52,7 +57,11 @@ export default class ManagementRoomOutput {
      * @param msgtype The desired message type of the returned TextualMessageEventContent
      * @returns A TextualMessageEventContent with replaced room IDs
      */
-    private async replaceRoomIdsWithPills(text: string, roomIds: Set<string>, msgtype: MessageType = "m.text"): Promise<TextualMessageEventContent> {
+    private async replaceRoomIdsWithPills(
+        text: string,
+        roomIds: Set<string>,
+        msgtype: MessageType = "m.text",
+    ): Promise<TextualMessageEventContent> {
         const content: TextualMessageEventContent = {
             body: text,
             formatted_body: htmlEscape(text),
@@ -62,24 +71,33 @@ export default class ManagementRoomOutput {
 
         // Though spec doesn't say so, room ids that have slashes in them are accepted by Synapse and Dendrite unfortunately for us.
         const escapeRegex = (v: string): string => {
-            return v.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            return v.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
         };
 
-        const viaServers = [(new UserID(await this.client.getUserId())).domain];
+        const viaServers = [new UserID(await this.client.getUserId()).domain];
         for (const roomId of roomIds) {
             let alias = roomId;
             try {
                 alias = (await this.client.getPublishedAlias(roomId)) || roomId;
             } catch (e) {
                 // This is a recursive call, so tell the function not to try and call us
-                await this.logMessage(LogLevel.WARN, "utils", `Failed to resolve room alias for ${roomId} - see console for details`, null, true);
+                await this.logMessage(
+                    LogLevel.WARN,
+                    "utils",
+                    `Failed to resolve room alias for ${roomId} - see console for details`,
+                    null,
+                    true,
+                );
                 LogService.warn("utils", extractRequestError(e));
             }
             const regexRoomId = new RegExp(escapeRegex(roomId), "g");
             content.body = content.body.replace(regexRoomId, alias);
             if (content.formatted_body) {
                 const permalink = Permalinks.forRoom(alias, alias !== roomId ? [] : viaServers);
-                content.formatted_body = content.formatted_body.replace(regexRoomId, `<a href="${permalink}">${htmlEscape(alias)}</a>`);
+                content.formatted_body = content.formatted_body.replace(
+                    regexRoomId,
+                    `<a href="${permalink}">${htmlEscape(alias)}</a>`,
+                );
             }
         }
 
@@ -95,9 +113,15 @@ export default class ManagementRoomOutput {
      * @param additionalRoomIds The roomIds in the message that we want to be replaced by room pills.
      * @param isRecursive Whether logMessage is being called from logMessage.
      */
-    public async logMessage(level: LogLevel, module: string, message: string | any, additionalRoomIds: string[] | string | null = null, isRecursive = false): Promise<any> {
+    public async logMessage(
+        level: LogLevel,
+        module: string,
+        message: string | any,
+        additionalRoomIds: string[] | string | null = null,
+        isRecursive = false,
+    ): Promise<any> {
         if (level === LogLevel.ERROR) {
-            Sentry.captureMessage(`${module}: ${message}`, 'error');
+            Sentry.captureMessage(`${module}: ${message}`, "error");
         }
         if (!additionalRoomIds) additionalRoomIds = [];
         if (!Array.isArray(additionalRoomIds)) additionalRoomIds = [additionalRoomIds];

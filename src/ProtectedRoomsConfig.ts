@@ -14,28 +14,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import AwaitLock from 'await-lock';
+import AwaitLock from "await-lock";
 import { extractRequestError, LogService, Permalinks } from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "./config";
-import { MatrixSendClient } from './MatrixEmitter';
+import { MatrixSendClient } from "./MatrixEmitter";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 
 /**
  * Manages the set of rooms that the user has EXPLICITLY asked to be protected.
  */
 export default class ProtectedRoomsConfig {
-
     /**
      * These are rooms that we EXPLICITLY asked Mjolnir to protect, usually via the `rooms add` command.
      * These are NOT all of the rooms that mjolnir is protecting as with `config.protectAllJoinedRooms`.
      */
-    private explicitlyProtectedRooms = new Set</*room id*/string>();
+    private explicitlyProtectedRooms = new Set</*room id*/ string>();
     /** This is to prevent clobbering the account data for the protected rooms if several rooms are explicitly protected concurrently. */
     private accountDataLock = new AwaitLock();
 
-    constructor(private readonly client: MatrixSendClient) {
-
-    }
+    constructor(private readonly client: MatrixSendClient) {}
 
     /**
      * Load any rooms that have been explicitly protected from a Mjolnir config.
@@ -66,14 +63,18 @@ export default class ProtectedRoomsConfig {
         LogService.debug("ProtectedRoomsConfig", "Loading protected rooms...");
         try {
             const data: { rooms?: string[] } | null = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
-            if (data && data['rooms']) {
-                for (const roomId of data['rooms']) {
+            if (data && data["rooms"]) {
+                for (const roomId of data["rooms"]) {
                     this.explicitlyProtectedRooms.add(roomId);
                 }
             }
         } catch (e) {
             if (e.statusCode === 404) {
-                LogService.warn("ProtectedRoomsConfig", "Couldn't find any explicitly protected rooms from Mjolnir's account data, assuming first start.", extractRequestError(e));
+                LogService.warn(
+                    "ProtectedRoomsConfig",
+                    "Couldn't find any explicitly protected rooms from Mjolnir's account data, assuming first start.",
+                    extractRequestError(e),
+                );
             } else {
                 throw e;
             }
@@ -104,7 +105,7 @@ export default class ProtectedRoomsConfig {
      * @returns The rooms that are marked as explicitly protected in both the config and Mjolnir's account data.
      */
     public getExplicitlyProtectedRooms(): string[] {
-        return [...this.explicitlyProtectedRooms.keys()]
+        return [...this.explicitlyProtectedRooms.keys()];
     }
 
     /**
@@ -116,9 +117,19 @@ export default class ProtectedRoomsConfig {
         //       but it doesn't stop a third party client on the same account racing with us instead.
         await this.accountDataLock.acquireAsync();
         try {
-            const additionalProtectedRooms: string[] = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE)
-                .then((rooms: {rooms?: string[]}) => Array.isArray(rooms?.rooms) ? rooms.rooms : [])
-                .catch(e => (LogService.warn("ProtectedRoomsConfig", "Could not load protected rooms from account data", extractRequestError(e)), []));
+            const additionalProtectedRooms: string[] = await this.client
+                .getAccountData(PROTECTED_ROOMS_EVENT_TYPE)
+                .then((rooms: { rooms?: string[] }) => (Array.isArray(rooms?.rooms) ? rooms.rooms : []))
+                .catch(
+                    (e) => (
+                        LogService.warn(
+                            "ProtectedRoomsConfig",
+                            "Could not load protected rooms from account data",
+                            extractRequestError(e),
+                        ),
+                        []
+                    ),
+                );
 
             const roomsToSave = new Set([...this.explicitlyProtectedRooms.keys(), ...additionalProtectedRooms]);
             excludeRooms.forEach(roomsToSave.delete, roomsToSave);

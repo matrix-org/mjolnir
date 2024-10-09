@@ -21,10 +21,9 @@ import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { isTrueJoinEvent } from "../utils";
 
 export class WordList extends Protection {
-
     settings = {};
 
-    private justJoined: { [roomId: string]: { [username: string]: Date} } = {};
+    private justJoined: { [roomId: string]: { [username: string]: Date } } = {};
     private badWords?: RegExp;
 
     constructor() {
@@ -32,16 +31,17 @@ export class WordList extends Protection {
     }
 
     public get name(): string {
-        return 'WordList';
+        return "WordList";
     }
     public get description(): string {
-        return "If a user posts a monitored word a set amount of time after joining, they " +
-            "will be banned from that room.  This will not publish the ban to a ban list.";
+        return (
+            "If a user posts a monitored word a set amount of time after joining, they " +
+            "will be banned from that room.  This will not publish the ban to a ban list."
+        );
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-
-        const content = event['content'] || {};
+        const content = event["content"] || {};
         const minsBeforeTrusting = mjolnir.config.protections.wordlist.minutesBeforeTrusting;
 
         if (minsBeforeTrusting > 0) {
@@ -49,54 +49,60 @@ export class WordList extends Protection {
 
             // When a new member logs in, store the time they joined.  This will be useful
             // when we need to check if a message was sent within 20 minutes of joining
-            if (event['type'] === 'm.room.member') {
+            if (event["type"] === "m.room.member") {
                 if (isTrueJoinEvent(event)) {
                     const now = new Date();
-                    this.justJoined[roomId][event['state_key']] = now;
-                    LogService.info("WordList", `${event['state_key']} joined ${roomId} at ${now.toDateString()}`);
-                } else if (content['membership'] === 'leave' || content['membership'] === 'ban') {
-                    delete this.justJoined[roomId][event['sender']]
+                    this.justJoined[roomId][event["state_key"]] = now;
+                    LogService.info("WordList", `${event["state_key"]} joined ${roomId} at ${now.toDateString()}`);
+                } else if (content["membership"] === "leave" || content["membership"] === "ban") {
+                    delete this.justJoined[roomId][event["sender"]];
                 }
 
                 return;
             }
         }
 
-        if (event['type'] === 'm.room.message') {
-            const message = content['formatted_body'] || content['body'] || null;
+        if (event["type"] === "m.room.message") {
+            const message = content["formatted_body"] || content["body"] || null;
             if (!message) {
                 return;
             }
 
             // Check conditions first
             if (minsBeforeTrusting > 0) {
-                const joinTime = this.justJoined[roomId][event['sender']]
-                if (joinTime) { // Disregard if the user isn't recently joined
+                const joinTime = this.justJoined[roomId][event["sender"]];
+                if (joinTime) {
+                    // Disregard if the user isn't recently joined
 
                     // Check if they did join recently, was it within the timeframe
                     const now = new Date();
                     if (now.valueOf() - joinTime.valueOf() > minsBeforeTrusting * 60 * 1000) {
-                        delete this.justJoined[roomId][event['sender']] // Remove the user
-                        LogService.info("WordList", `${event['sender']} is no longer considered suspect`);
-                        return
+                        delete this.justJoined[roomId][event["sender"]]; // Remove the user
+                        LogService.info("WordList", `${event["sender"]} is no longer considered suspect`);
+                        return;
                     }
-
                 } else {
                     // The user isn't in the recently joined users list, no need to keep
                     // looking
-                    return
+                    return;
                 }
             }
             if (!this.badWords) {
                 // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
                 const escapeRegExp = (string: string) => {
-                    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
                 };
 
                 // Create a mega-regex from all the tiny words.
-                const words = mjolnir.config.protections.wordlist.words.filter(word => word.length !== 0).map(escapeRegExp);
+                const words = mjolnir.config.protections.wordlist.words
+                    .filter((word) => word.length !== 0)
+                    .map(escapeRegExp);
                 if (words.length === 0) {
-                    mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "WordList", `Someone turned on the word list protection without configuring any words. Disabling.`);
+                    mjolnir.managementRoomOutput.logMessage(
+                        LogLevel.ERROR,
+                        "WordList",
+                        `Someone turned on the word list protection without configuring any words. Disabling.`,
+                    );
                     this.enabled = false;
                     return;
                 }

@@ -13,9 +13,8 @@ const REPORT_NOTICE_REGEXPS = {
     room: /Room (?<roomAliasOrId>[^ ]*)/,
     event: /Event (?<eventId>[^ ]*) Go to event/,
     content: /Content (?<eventContent>.*)/,
-    comments: /Comments Comments (?<comments>.*)/
+    comments: /Comments Comments (?<comments>.*)/,
 };
-
 
 describe("Test: Reporting abuse", async () => {
     // Testing with successive versions of the API.
@@ -24,22 +23,26 @@ describe("Test: Reporting abuse", async () => {
     // both versions are still in use in the wild.
     // Note that this version change only affects the actual URL at which reports
     // are sent.
-    for (let endpoint of ['v3', 'r0']) {
-        it(`Mjölnir intercepts abuse reports with endpoint ${endpoint}`, async function() {
+    for (let endpoint of ["v3", "r0"]) {
+        it(`Mjölnir intercepts abuse reports with endpoint ${endpoint}`, async function () {
             this.timeout(90000);
 
             // Listen for any notices that show up.
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
             let notices: any[] = [];
             this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
-                if (roomId = this.mjolnir.managementRoomId) {
+                if ((roomId = this.mjolnir.managementRoomId)) {
                     notices.push(event);
                 }
             });
 
             // Create a few users and a room.
-            let goodUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-good-user" }});
-            let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-bad-user" }});
+            let goodUser = await newTestUser(this.config.homeserverUrl, {
+                name: { contains: "reporting-abuse-good-user" },
+            });
+            let badUser = await newTestUser(this.config.homeserverUrl, {
+                name: { contains: "reporting-abuse-bad-user" },
+            });
             let goodUserId = await goodUser.getUserId();
             let badUserId = await badUser.getUserId();
 
@@ -50,11 +53,11 @@ describe("Test: Reporting abuse", async () => {
             console.log("Test: Reporting abuse - send messages");
             // Exchange a few messages.
             let goodText = `GOOD: ${Math.random()}`; // Will NOT be reported.
-            let badText = `BAD: ${Math.random()}`;   // Will be reported as abuse.
-            let badText2 = `BAD: ${Math.random()}`;   // Will be reported as abuse.
+            let badText = `BAD: ${Math.random()}`; // Will be reported as abuse.
+            let badText2 = `BAD: ${Math.random()}`; // Will be reported as abuse.
             let badText3 = `<b>BAD</b>: ${Math.random()}`; // Will be reported as abuse.
-            let badText4 = [...Array(1024)].map(_ => `${Math.random()}`).join(""); // Text is too long.
-            let badText5 = [...Array(1024)].map(_ => "ABC").join("\n"); // Text has too many lines.
+            let badText4 = [...Array(1024)].map((_) => `${Math.random()}`).join(""); // Text is too long.
+            let badText5 = [...Array(1024)].map((_) => "ABC").join("\n"); // Text has too many lines.
             let badEventId = await badUser.sendText(roomId, badText);
             let badEventId2 = await badUser.sendText(roomId, badText2);
             let badEventId3 = await badUser.sendText(roomId, badText3);
@@ -63,11 +66,14 @@ describe("Test: Reporting abuse", async () => {
             let badEvent2Comment = `COMMENT: ${Math.random()}`;
 
             console.log("Test: Reporting abuse - send reports");
-            let reportsToFind: any[] = []
+            let reportsToFind: any[] = [];
 
             // Time to report, first without a comment, then with one.
             try {
-                await goodUser.doRequest("POST", `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`);
+                await goodUser.doRequest(
+                    "POST",
+                    `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`,
+                );
                 reportsToFind.push({
                     reporterId: goodUserId,
                     accusedId: badUserId,
@@ -81,9 +87,14 @@ describe("Test: Reporting abuse", async () => {
             }
 
             try {
-                await goodUser.doRequest("POST", `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId2)}`, "", {
-                    reason: badEvent2Comment
-                });
+                await goodUser.doRequest(
+                    "POST",
+                    `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId2)}`,
+                    "",
+                    {
+                        reason: badEvent2Comment,
+                    },
+                );
                 reportsToFind.push({
                     reporterId: goodUserId,
                     accusedId: badUserId,
@@ -97,7 +108,11 @@ describe("Test: Reporting abuse", async () => {
             }
 
             try {
-                await goodUser.doRequest("POST", `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId3)}`, "");
+                await goodUser.doRequest(
+                    "POST",
+                    `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId3)}`,
+                    "",
+                );
                 reportsToFind.push({
                     reporterId: goodUserId,
                     accusedId: badUserId,
@@ -111,7 +126,11 @@ describe("Test: Reporting abuse", async () => {
             }
 
             try {
-                await goodUser.doRequest("POST", `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId4)}`, "");
+                await goodUser.doRequest(
+                    "POST",
+                    `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId4)}`,
+                    "",
+                );
                 reportsToFind.push({
                     reporterId: goodUserId,
                     accusedId: badUserId,
@@ -126,7 +145,11 @@ describe("Test: Reporting abuse", async () => {
             }
 
             try {
-                await goodUser.doRequest("POST", `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId5)}`, "");
+                await goodUser.doRequest(
+                    "POST",
+                    `/_matrix/client/${endpoint}/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId5)}`,
+                    "",
+                );
                 reportsToFind.push({
                     reporterId: goodUserId,
                     accusedId: badUserId,
@@ -141,12 +164,15 @@ describe("Test: Reporting abuse", async () => {
             }
 
             console.log("Test: Reporting abuse - wait");
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 1000));
             let found: any[] = [];
             for (let toFind of reportsToFind) {
                 for (let event of notices) {
                     if ("content" in event && "body" in event.content) {
-                        if (!(ABUSE_REPORT_KEY in event.content) || event.content[ABUSE_REPORT_KEY].event_id != toFind.eventId) {
+                        if (
+                            !(ABUSE_REPORT_KEY in event.content) ||
+                            event.content[ABUSE_REPORT_KEY].event_id != toFind.eventId
+                        ) {
                             // Not a report or not our report.
                             continue;
                         }
@@ -173,26 +199,67 @@ describe("Test: Reporting abuse", async () => {
                         assert(body.length < 3000, `The report shouldn't be too long ${body.length}`);
                         assert(body.split("\n").length < 200, "The report shouldn't have too many newlines.");
 
-                        assert.equal(matches.get("event")!.groups!.eventId, toFind.eventId, "The report should specify the correct event id");;
+                        assert.equal(
+                            matches.get("event")!.groups!.eventId,
+                            toFind.eventId,
+                            "The report should specify the correct event id",
+                        );
 
-                        assert.equal(matches.get("reporter")!.groups!.reporterId, toFind.reporterId, "The report should specify the correct reporter");
-                        assert.equal(report.reporter_id, toFind.reporterId, "The embedded report should specify the correct reporter");
-                        assert.ok(toFind.reporterId.includes(matches.get("reporter")!.groups!.reporterDisplay), "The report should display the correct reporter");
+                        assert.equal(
+                            matches.get("reporter")!.groups!.reporterId,
+                            toFind.reporterId,
+                            "The report should specify the correct reporter",
+                        );
+                        assert.equal(
+                            report.reporter_id,
+                            toFind.reporterId,
+                            "The embedded report should specify the correct reporter",
+                        );
+                        assert.ok(
+                            toFind.reporterId.includes(matches.get("reporter")!.groups!.reporterDisplay),
+                            "The report should display the correct reporter",
+                        );
 
-                        assert.equal(matches.get("accused")!.groups!.accusedId, toFind.accusedId, "The report should specify the correct accused");
-                        assert.equal(report.accused_id, toFind.accusedId, "The embedded report should specify the correct accused");
-                        assert.ok(toFind.accusedId.includes(matches.get("accused")!.groups!.accusedDisplay), "The report should display the correct reporter");
+                        assert.equal(
+                            matches.get("accused")!.groups!.accusedId,
+                            toFind.accusedId,
+                            "The report should specify the correct accused",
+                        );
+                        assert.equal(
+                            report.accused_id,
+                            toFind.accusedId,
+                            "The embedded report should specify the correct accused",
+                        );
+                        assert.ok(
+                            toFind.accusedId.includes(matches.get("accused")!.groups!.accusedDisplay),
+                            "The report should display the correct reporter",
+                        );
 
                         if (toFind.text) {
-                            assert.equal(matches.get("content")!.groups!.eventContent, toFind.text, "The report should contain the text we inserted in the event");
+                            assert.equal(
+                                matches.get("content")!.groups!.eventContent,
+                                toFind.text,
+                                "The report should contain the text we inserted in the event",
+                            );
                         }
                         if (toFind.textPrefix) {
-                            assert.ok(matches.get("content")!.groups!.eventContent.startsWith(toFind.textPrefix), `The report should contain a prefix of the long text we inserted in the event: ${toFind.textPrefix} in? ${matches.get("content")!.groups!.eventContent}`);
+                            assert.ok(
+                                matches.get("content")!.groups!.eventContent.startsWith(toFind.textPrefix),
+                                `The report should contain a prefix of the long text we inserted in the event: ${toFind.textPrefix} in? ${matches.get("content")!.groups!.eventContent}`,
+                            );
                         }
                         if (toFind.comment) {
-                            assert.equal(matches.get("comments")!.groups!.comments, toFind.comment, "The report should contain the comment we added");
+                            assert.equal(
+                                matches.get("comments")!.groups!.comments,
+                                toFind.comment,
+                                "The report should contain the comment we added",
+                            );
                         }
-                        assert.equal(matches.get("room")!.groups!.roomAliasOrId, roomId, "The report should specify the correct room");
+                        assert.equal(
+                            matches.get("room")!.groups!.roomAliasOrId,
+                            roomId,
+                            "The report should specify the correct room",
+                        );
                         assert.equal(report.room_id, roomId, "The embedded report should specify the correct room");
                         found.push(toFind);
                         break;
@@ -221,26 +288,28 @@ describe("Test: Reporting abuse", async () => {
             }
         });
     }
-    it('The redact action works', async function() {
+    it("The redact action works", async function () {
         this.timeout(60000);
 
         // Listen for any notices that show up.
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
         let notices: any[] = [];
         this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
-            if (roomId = this.mjolnir.managementRoomId) {
+            if ((roomId = this.mjolnir.managementRoomId)) {
                 notices.push(event);
             }
         });
 
         // Create a moderator.
-        let moderatorUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reporting-abuse-moderator-user" }});
+        let moderatorUser = await newTestUser(this.config.homeserverUrl, {
+            name: { contains: "reporting-abuse-moderator-user" },
+        });
         this.mjolnir.client.inviteUser(await moderatorUser.getUserId(), this.mjolnir.managementRoomId);
         await moderatorUser.joinRoom(this.mjolnir.managementRoomId);
 
         // Create a few users and a room.
-        let goodUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reacting-abuse-good-user" }});
-        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reacting-abuse-bad-user" }});
+        let goodUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reacting-abuse-good-user" } });
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "reacting-abuse-bad-user" } });
         let goodUserId = await goodUser.getUserId();
         let badUserId = await badUser.getUserId();
 
@@ -257,7 +326,7 @@ describe("Test: Reporting abuse", async () => {
         console.log("Test: Reporting abuse - send messages");
         // Exchange a few messages.
         let goodText = `GOOD: ${Math.random()}`; // Will NOT be reported.
-        let badText = `BAD: ${Math.random()}`;   // Will be reported as abuse.
+        let badText = `BAD: ${Math.random()}`; // Will be reported as abuse.
         await goodUser.sendText(roomId, goodText);
         let badEventId = await badUser.sendText(roomId, badText);
         await goodUser.sendText(roomId, goodText);
@@ -266,14 +335,17 @@ describe("Test: Reporting abuse", async () => {
 
         // Time to report.
         try {
-            await goodUser.doRequest("POST", `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`);
+            await goodUser.doRequest(
+                "POST",
+                `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`,
+            );
         } catch (e) {
             console.error("Could not send first report", e.body || e);
             throw e;
         }
 
         console.log("Test: Reporting abuse - wait");
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         let mjolnirRooms = new Set(await this.mjolnir.client.getJoinedRooms());
         assert.ok(mjolnirRooms.has(roomId), "Mjölnir should be a member of the room");
@@ -318,7 +390,7 @@ describe("Test: Reporting abuse", async () => {
         }
         assert.ok(redactButtonId, "We should have found the redact button");
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // This should have triggered a confirmation request, with more buttons!
         let confirmEventId = null;
@@ -344,10 +416,14 @@ describe("Test: Reporting abuse", async () => {
         }
         assert.ok(confirmEventId, "We should have found the confirm button");
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         // This should have redacted the message.
         let newBadEvent = await this.mjolnir.client.getEvent(roomId, badEventId);
-        assert.deepEqual(Object.keys(newBadEvent.content), [], "Redaction should have removed the content of the offending event");
+        assert.deepEqual(
+            Object.keys(newBadEvent.content),
+            [],
+            "Redaction should have removed the content of the offending event",
+        );
     });
 });

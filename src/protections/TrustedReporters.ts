@@ -33,7 +33,7 @@ export class TrustedReporters extends Protection {
         alertThreshold: new NumberProtectionSetting(3),
         // -1 means 'disabled'
         redactThreshold: new NumberProtectionSetting(-1),
-        banThreshold: new NumberProtectionSetting(-1)
+        banThreshold: new NumberProtectionSetting(-1),
     };
 
     constructor() {
@@ -41,16 +41,22 @@ export class TrustedReporters extends Protection {
     }
 
     public get name(): string {
-        return 'TrustedReporters';
+        return "TrustedReporters";
     }
     public get description(): string {
         return "Count reports from trusted reporters and take a configured action";
     }
 
-    public async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string): Promise<any> {
+    public async handleReport(
+        mjolnir: Mjolnir,
+        roomId: string,
+        reporterId: string,
+        event: any,
+        reason?: string,
+    ): Promise<any> {
         if (!this.settings.mxids.value.includes(reporterId)) {
             // not a trusted user, we're not interested
-            return
+            return;
         }
 
         let reporters = this.recentReported.get(event.id);
@@ -86,12 +92,10 @@ export class TrustedReporters extends Protection {
             await mjolnir.client.banUser(event.userId, roomId, "abuse detected");
         }
 
-
         if (met.length > 0) {
             await mjolnir.client.sendMessage(mjolnir.config.managementRoom, {
                 msgtype: "m.notice",
-                body: `message ${event.id} reported by ${[...reporters].join(', ')}. `
-                    + `actions: ${met.join(', ')}`
+                body: `message ${event.id} reported by ${[...reporters].join(", ")}. ` + `actions: ${met.join(", ")}`,
             });
         }
     }
