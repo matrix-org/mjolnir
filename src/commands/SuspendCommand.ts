@@ -14,8 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {Mjolnir} from "../Mjolnir";
-import {RichReply} from "@vector-im/matrix-bot-sdk";
+import { Mjolnir } from "../Mjolnir";
+import { RichReply } from "@vector-im/matrix-bot-sdk";
 
 export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];
@@ -24,15 +24,15 @@ export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mj
     if (!isAdmin) {
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
+        reply["msgtype"] = "m.notice";
         await mjolnir.client.sendMessage(roomId, reply);
         return;
     }
 
     await mjolnir.suspendSynapseUser(target);
-    const msg = `User ${target} has been suspended.`
+    const msg = `User ${target} has been suspended.`;
     const confirmation = RichReply.createFor(roomId, event, msg, msg);
-    confirmation['msgtype'] = "m.notice";
-    await mjolnir.client.sendMessage(roomId, confirmation)
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    confirmation["msgtype"] = "m.notice";
+    await mjolnir.client.sendMessage(roomId, confirmation);
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }

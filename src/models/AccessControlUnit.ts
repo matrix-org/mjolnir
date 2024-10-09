@@ -34,12 +34,15 @@ class ListRuleCache {
     /**
      * Glob rules always have to be scanned against every entity.
      */
-    private readonly globRules: Map<string/** The entity that the rules specify */, ListRule[]> = new Map();
+    private readonly globRules: Map<string /** The entity that the rules specify */, ListRule[]> = new Map();
     /**
      * This table allows us to skip matching an entity against every literal.
      */
-    private readonly literalRules: Map<string/* the string literal */, ListRule[]/* the rules matching this literal */> = new Map();
-    private readonly listUpdateListener: ((list: PolicyList, changes: ListRuleChange[]) => void);
+    private readonly literalRules: Map<
+        string /* the string literal */,
+        ListRule[] /* the rules matching this literal */
+    > = new Map();
+    private readonly listUpdateListener: (list: PolicyList, changes: ListRuleChange[]) => void;
 
     constructor(
         /**
@@ -59,7 +62,7 @@ class ListRuleCache {
      * @param entity e.g. an mxid for a user, the server name for a server.
      * @returns A single `ListRule` matching the entity.
      */
-    public getAnyRuleForEntity(entity: string): ListRule|null {
+    public getAnyRuleForEntity(entity: string): ListRule | null {
         const literalRule = this.literalRules.get(entity);
         if (literalRule !== undefined) {
             return literalRule[0];
@@ -78,7 +81,7 @@ class ListRuleCache {
      * @param list A PolicyList.
      */
     public watchList(list: PolicyList): void {
-        list.on('PolicyList.update', this.listUpdateListener);
+        list.on("PolicyList.update", this.listUpdateListener);
         const rules = list.rulesOfKind(this.entityType, this.recommendation);
         rules.forEach(this.internRule, this);
     }
@@ -89,7 +92,7 @@ class ListRuleCache {
      * @param list A PolicyList.
      */
     public unwatchList(list: PolicyList): void {
-        list.removeListener('PolicyList.update', this.listUpdateListener);
+        list.removeListener("PolicyList.update", this.listUpdateListener);
         const rules = list.rulesOfKind(this.entityType, this.recommendation);
         rules.forEach(this.uninternRule, this);
     }
@@ -105,7 +108,7 @@ class ListRuleCache {
      * Returns all the rules in the cache, without duplicates from different lists.
      */
     public get allRules(): ListRule[] {
-        return [...this.literalRules.values(), ...this.globRules.values()].map(rules => rules[0]);
+        return [...this.literalRules.values(), ...this.globRules.values()].map((rules) => rules[0]);
     }
 
     /**
@@ -121,7 +124,9 @@ class ListRuleCache {
         const removeRuleFromMap = (map: Map<string, ListRule[]>) => {
             const entry = map.get(rule.entity);
             if (entry !== undefined) {
-                const newEntry = entry.filter(internedRule => internedRule.sourceEvent.event_id !== rule.sourceEvent.event_id);
+                const newEntry = entry.filter(
+                    (internedRule) => internedRule.sourceEvent.event_id !== rule.sourceEvent.event_id,
+                );
                 if (newEntry.length === 0) {
                     map.delete(rule.entity);
                 } else {
@@ -152,7 +157,7 @@ class ListRuleCache {
             } else {
                 map.set(rule.entity, [rule]);
             }
-        }
+        };
         if (rule.isGlob()) {
             addRuleToMap(this.globRules);
         } else {
@@ -204,8 +209,8 @@ export enum Access {
  * If the access is `Banned`, then a single rule that bans the entity will be included.
  */
 export interface EntityAccess {
-    readonly outcome: Access,
-    readonly rule?: ListRule,
+    readonly outcome: Access;
+    readonly rule?: ListRule;
 }
 
 /**
@@ -216,7 +221,7 @@ export default class AccessControlUnit {
     private readonly serverBans = new ListRuleCache(RULE_SERVER, Recommendation.Ban);
     private readonly userAllows = new ListRuleCache(RULE_USER, Recommendation.Allow);
     private readonly serverAllows = new ListRuleCache(RULE_SERVER, Recommendation.Allow);
-    private readonly caches = [this.userBans, this.serverBans, this.userAllows, this.serverAllows]
+    private readonly caches = [this.userBans, this.serverBans, this.userAllows, this.serverAllows];
 
     constructor(policyLists: PolicyList[]) {
         policyLists.forEach(this.watchList, this);
@@ -268,7 +273,7 @@ export default class AccessControlUnit {
         // We have to infer that a rule exists for '*' if the allowCache is empty, otherwise you brick the ACL.
         const allowRule = allowCache.getAnyRuleForEntity(entity);
         if (allowRule === null && !allowCache.isEmpty()) {
-            return { outcome: Access.NotAllowed }
+            return { outcome: Access.NotAllowed };
         }
         // Now check if the entity is banned.
         const banRule = bannedCache.getAnyRuleForEntity(entity);
@@ -289,21 +294,26 @@ export default class AccessControlUnit {
         const allowedServers = this.serverAllows.allRules;
         // Allowed servers (allow).
         if (allowedServers.length === 0) {
-            acl.allowServer('*');
+            acl.allowServer("*");
         } else {
             for (const rule of allowedServers) {
                 acl.allowServer(rule.entity);
             }
             if (this.getAccessForServer(serverName).outcome === Access.NotAllowed) {
                 acl.allowServer(serverName);
-                LogService.warn('AccessControlUnit', `The server ${serverName} we are operating from was not on the allowed when constructing the server ACL, so it will be injected it into the server acl. Please check the ACL lists.`)
+                LogService.warn(
+                    "AccessControlUnit",
+                    `The server ${serverName} we are operating from was not on the allowed when constructing the server ACL, so it will be injected it into the server acl. Please check the ACL lists.`,
+                );
             }
         }
         // Banned servers (deny).
         for (const rule of this.serverBans.allRules) {
             if (rule.isMatch(serverName)) {
-                LogService.warn('AccessControlUnit', `The server ${serverName} we are operating from was found to be banned by ${rule.entity} by a rule from the event: ${rule.sourceEvent.event_id}, `
-                    + 'while constructing a server acl. Ignoring the rule. Please check the ACL lists.'
+                LogService.warn(
+                    "AccessControlUnit",
+                    `The server ${serverName} we are operating from was found to be banned by ${rule.entity} by a rule from the event: ${rule.sourceEvent.event_id}, ` +
+                        "while constructing a server acl. Ignoring the rule. Please check the ACL lists.",
                 );
             } else {
                 acl.denyServer(rule.entity);

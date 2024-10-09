@@ -44,10 +44,10 @@ export const LAG_STATE_EVENT = "org.mjolnir.monitoring.lag";
  */
 type HistogramSettings = {
     // The width of a bucket, in ms.
-    bucketDurationMS: number,
+    bucketDurationMS: number;
     // The number of buckets.
     bucketNumber: number;
-}
+};
 
 /**
  * A histogram with time as x and some arbitrary value T as y.
@@ -71,14 +71,14 @@ class TimedHistogram<T> {
      */
     protected buckets: {
         start: Date;
-        events: T[]
+        events: T[];
     }[];
 
     /**
      * Construct an empty TimedHistogram
      */
     constructor(private settings: HistogramSettings) {
-        this.buckets = []
+        this.buckets = [];
     }
 
     /**
@@ -103,7 +103,7 @@ class TimedHistogram<T> {
         // Otherwise, initialize an entry, then prune columns that are too old.
         this.buckets.push({
             start: now,
-            events: [event]
+            events: [event],
         });
         this.trimBuckets(this.settings, now);
     }
@@ -160,10 +160,7 @@ class Stats {
         }
         if (this.length === 1) {
             // `values[Math.ceil(this.length / 2)]` below fails when `this.length == 1`.
-            this.min =
-                this.max =
-                this.mean =
-                this.median = values[0];
+            this.min = this.max = this.mean = this.median = values[0];
             this.stddev = 0;
             return;
         }
@@ -190,15 +187,15 @@ class Stats {
         }
     }
 
-    public round(): { min: number, max: number, mean: number, median: number, stddev: number, length: number } {
+    public round(): { min: number; max: number; mean: number; median: number; stddev: number; length: number } {
         return {
             min: Math.round(this.min),
             max: Math.round(this.max),
             mean: Math.round(this.mean),
             median: Math.round(this.median),
             stddev: Math.round(this.stddev),
-            length: this.length
-        }
+            length: this.length,
+        };
     }
 }
 
@@ -290,14 +287,14 @@ class ServerInfo {
  * will remain active until the value decreases below `exitWarningZone`.
  */
 type WarningThresholds = {
-    enterWarningZone: number,
-    exitWarningZone: number
-}
+    enterWarningZone: number;
+    exitWarningZone: number;
+};
 
 enum AlertDiff {
     Start,
     Stop,
-    NoChange
+    NoChange,
 }
 
 /**
@@ -346,10 +343,13 @@ class RoomInfo {
 
     constructor(now: Date) {
         this.serverLags = new Map();
-        this.totalLag = new ServerInfo({
-            bucketDurationMS: DEFAULT_BUCKET_DURATION_MS,
-            bucketNumber: DEFAULT_BUCKET_NUMBER
-        }, now);
+        this.totalLag = new ServerInfo(
+            {
+                bucketDurationMS: DEFAULT_BUCKET_DURATION_MS,
+                bucketNumber: DEFAULT_BUCKET_NUMBER,
+            },
+            now,
+        );
     }
 
     /**
@@ -361,7 +361,13 @@ class RoomInfo {
      * @param thresholds The thresholds to use to determine whether an origin server is currently lagging.
      * @param now Instant at which all of this was measured.
      */
-    pushLag(serverId: string, lag: number, settings: HistogramSettings, thresholds: WarningThresholds, now: Date = new Date()): AlertDiff {
+    pushLag(
+        serverId: string,
+        lag: number,
+        settings: HistogramSettings,
+        thresholds: WarningThresholds,
+        now: Date = new Date(),
+    ): AlertDiff {
         this.latestMessage = now;
 
         // Update per-server lag.
@@ -492,23 +498,41 @@ export class DetectFederationLag extends Protection {
         // How long we should remember lag in a room (`bucketDuration * bucketNumber` ms).
         bucketNumber: new NumberProtectionSetting(DEFAULT_BUCKET_NUMBER, 1),
         // How much lag before the local homeserver is considered lagging.
-        localHomeserverLagEnterWarningZone: new DurationMSProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
+        localHomeserverLagEnterWarningZone: new DurationMSProtectionSetting(
+            DEFAULT_LOCAL_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
+            1,
+        ),
         // How much lag before the local homeserver is considered not lagging anymore.
-        localHomeserverLagExitWarningZone: new DurationMSProtectionSetting(DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
+        localHomeserverLagExitWarningZone: new DurationMSProtectionSetting(
+            DEFAULT_LOCAL_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
+            1,
+        ),
         // How much lag before a federated homeserver is considered lagging.
-        federatedHomeserverLagEnterWarningZone: new DurationMSProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS, 1),
+        federatedHomeserverLagEnterWarningZone: new DurationMSProtectionSetting(
+            DEFAULT_FEDERATED_HOMESERVER_LAG_ENTER_WARNING_ZONE_MS,
+            1,
+        ),
         // How much lag before a federated homeserver is considered not lagging anymore.
-        federatedHomeserverLagExitWarningZone: new DurationMSProtectionSetting(DEFAULT_FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS, 1),
+        federatedHomeserverLagExitWarningZone: new DurationMSProtectionSetting(
+            DEFAULT_FEDERATED_HOMESERVER_LAG_EXIT_WARNING_ZONE_MS,
+            1,
+        ),
         // How much time we should wait before printing a new warning.
         warnAgainAfter: new DurationMSProtectionSetting(DEFAULT_REWARN_AFTER_MS, 1),
         // How many federated homeservers it takes to trigger an alert.
         // You probably want to update this if you're monitoring a room that
         // has many underpowered homeservers.
-        numberOfLaggingFederatedHomeserversEnterWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_ENTER_WARNING_ZONE, 1),
+        numberOfLaggingFederatedHomeserversEnterWarningZone: new NumberProtectionSetting(
+            DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_ENTER_WARNING_ZONE,
+            1,
+        ),
         // How many federated homeservers it takes before we're considered not on alert anymore.
         // You probably want to update this if you're monitoring a room that
         // has many underpowered homeservers.
-        numberOfLaggingFederatedHomeserversExitWarningZone: new NumberProtectionSetting(DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_EXIT_WARNING_ZONE, 1),
+        numberOfLaggingFederatedHomeserversExitWarningZone: new NumberProtectionSetting(
+            DEFAULT_NUMBER_OF_LAGGING_FEDERATED_SERVERS_EXIT_WARNING_ZONE,
+            1,
+        ),
         // How long to wait before actually collecting statistics.
         // Used to avoid being misled by Mjölnir catching up with old messages on first sync.
         initialDelayGrace: new DurationMSProtectionSetting(DEFAULT_INITIAL_DELAY_GRACE_MS, 0),
@@ -531,7 +555,7 @@ export class DetectFederationLag extends Protection {
         this.settings.bucketNumber.removeAllListeners();
     }
     public get name(): string {
-        return 'DetectFederationLag';
+        return "DetectFederationLag";
     }
     public get description(): string {
         return `Warn moderators if either the local homeserver starts lagging by ${this.settings.localHomeserverLagEnterWarningZone.value}ms or at least ${this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value} start lagging by at least ${this.settings.federatedHomeserverLagEnterWarningZone.value}ms.`;
@@ -558,12 +582,12 @@ export class DetectFederationLag extends Protection {
             // Room is ignored.
             return;
         }
-        const sender = event['sender'] as string;
+        const sender = event["sender"] as string;
         if (typeof sender !== "string") {
             // Ill-formed event.
             return;
         }
-        if (sender === await mjolnir.client.getUserId()) {
+        if (sender === (await mjolnir.client.getUserId())) {
             // Let's not create loops.
             return;
         }
@@ -573,7 +597,7 @@ export class DetectFederationLag extends Protection {
             return;
         }
 
-        const origin = event['origin_server_ts'] as number;
+        const origin = event["origin_server_ts"] as number;
         if (typeof origin !== "number" || isNaN(origin)) {
             // Ill-formed event.
             return;
@@ -591,18 +615,17 @@ export class DetectFederationLag extends Protection {
             this.lagPerRoom.set(roomId, roomInfo);
         }
 
-        const localDomain = new UserID(await mjolnir.client.getUserId()).domain
+        const localDomain = new UserID(await mjolnir.client.getUserId()).domain;
         const isLocalDomain = domain === localDomain;
-        const thresholds =
-            isLocalDomain
-                ? {
-                    enterWarningZone: this.settings.localHomeserverLagEnterWarningZone.value,
-                    exitWarningZone: this.settings.localHomeserverLagExitWarningZone.value,
-                }
-                : {
-                    enterWarningZone: this.settings.federatedHomeserverLagEnterWarningZone.value,
-                    exitWarningZone: this.settings.federatedHomeserverLagExitWarningZone.value,
-                };
+        const thresholds = isLocalDomain
+            ? {
+                  enterWarningZone: this.settings.localHomeserverLagEnterWarningZone.value,
+                  exitWarningZone: this.settings.localHomeserverLagExitWarningZone.value,
+              }
+            : {
+                  enterWarningZone: this.settings.federatedHomeserverLagEnterWarningZone.value,
+                  exitWarningZone: this.settings.federatedHomeserverLagExitWarningZone.value,
+              };
 
         const diff = roomInfo.pushLag(domain, delay, this.latestHistogramSettings, thresholds, now);
         if (diff === AlertDiff.NoChange) {
@@ -618,8 +641,10 @@ export class DetectFederationLag extends Protection {
 
         // Check whether an alarm needs to be raised!
         const isLocalDomainOnAlert = roomInfo.isServerOnAlert(localDomain);
-        if (roomInfo.alerts > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value
-            || isLocalDomainOnAlert) {
+        if (
+            roomInfo.alerts > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value ||
+            isLocalDomainOnAlert
+        ) {
             // Raise the alarm!
             if (!roomInfo.latestAlertStart) {
                 roomInfo.latestAlertStart = now;
@@ -627,23 +652,35 @@ export class DetectFederationLag extends Protection {
             roomInfo.latestAlertStart = now;
             // Background-send message.
             const stats = roomInfo.globalStats();
-            /* do not await */ mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "FederationLag",
-                `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomInfo.latestAlertStart}.\n${roomInfo.alerts} homeservers are lagging: ${[...roomInfo.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`);
+            /* do not await */ mjolnir.managementRoomOutput.logMessage(
+                LogLevel.WARN,
+                "FederationLag",
+                `Room ${roomId} is experiencing ${isLocalDomainOnAlert ? "LOCAL" : "federated"} lag since ${roomInfo.latestAlertStart}.\n${roomInfo.alerts} homeservers are lagging: ${[...roomInfo.serversOnAlert()].sort()} .\nRoom lag statistics: ${JSON.stringify(stats, null, 2)}.`,
+            );
             // Drop a state event, for the use of potential other bots.
-            const warnStateEventId = await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, LAG_STATE_EVENT, roomId, {
-                domains: [...roomInfo.serversOnAlert()],
+            const warnStateEventId = await mjolnir.client.sendStateEvent(
+                mjolnir.managementRoomId,
+                LAG_STATE_EVENT,
                 roomId,
-                // We need to round the stats, as Matrix doesn't support floating-point
-                // numbers in messages.
-                stats: stats?.round(),
-                since: roomInfo.latestAlertStart,
-            });
+                {
+                    domains: [...roomInfo.serversOnAlert()],
+                    roomId,
+                    // We need to round the stats, as Matrix doesn't support floating-point
+                    // numbers in messages.
+                    stats: stats?.round(),
+                    since: roomInfo.latestAlertStart,
+                },
+            );
             roomInfo.warnStateEventId = warnStateEventId;
-        } else if (roomInfo.alerts < this.settings.numberOfLaggingFederatedHomeserversExitWarningZone.value
-            || !isLocalDomainOnAlert) {
+        } else if (
+            roomInfo.alerts < this.settings.numberOfLaggingFederatedHomeserversExitWarningZone.value ||
+            !isLocalDomainOnAlert
+        ) {
             // Stop the alarm!
-            /* do not await */ mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "FederationLag",
-                `Room ${roomId} lag has decreased to an acceptable level. Currently, ${roomInfo.alerts} homeservers are still lagging`
+            /* do not await */ mjolnir.managementRoomOutput.logMessage(
+                LogLevel.INFO,
+                "FederationLag",
+                `Room ${roomId} lag has decreased to an acceptable level. Currently, ${roomInfo.alerts} homeservers are still lagging`,
             );
             if (roomInfo.warnStateEventId) {
                 const warnStateEventId = roomInfo.warnStateEventId;
@@ -677,19 +714,21 @@ export class DetectFederationLag extends Protection {
     }
 
     private getOldestAcceptableData(now: Date): Date {
-        return new Date(now.getTime() - this.latestHistogramSettings.bucketDurationMS * this.latestHistogramSettings.bucketNumber)
+        return new Date(
+            now.getTime() - this.latestHistogramSettings.bucketDurationMS * this.latestHistogramSettings.bucketNumber,
+        );
     }
     private updateLatestHistogramSettings() {
         this.latestHistogramSettings = Object.freeze({
             bucketDurationMS: this.settings.bucketDuration.value,
             bucketNumber: this.settings.bucketNumber.value,
         });
-    };
+    }
 
     /**
      * Return (mostly) human-readable lag status.
      */
-    public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{html: string, text: string} | null> {
+    public async statusCommand(mjolnir: Mjolnir, subcommand: string[]): Promise<{ html: string; text: string } | null> {
         const roomId = subcommand[0] || "*";
         const localDomain = new UserID(await mjolnir.client.getUserId()).domain;
         const annotatedStats = (roomInfo: RoomInfo) => {
@@ -701,7 +740,9 @@ export class DetectFederationLag extends Protection {
             const numberOfServersOnAlert = roomInfo.alerts;
             if (isLocalDomainOnAlert) {
                 (stats as any)["warning"] = "Local homeserver is lagging";
-            } else if (numberOfServersOnAlert > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value) {
+            } else if (
+                numberOfServersOnAlert > this.settings.numberOfLaggingFederatedHomeserversEnterWarningZone.value
+            ) {
                 (stats as any)["warning"] = `${numberOfServersOnAlert} homeservers are lagging`;
             }
             return stats;
@@ -713,7 +754,7 @@ export class DetectFederationLag extends Protection {
             const result: any = {};
 
             for (const [perRoomId, perRoomInfo] of this.lagPerRoom.entries()) {
-                const key = await mjolnir.client.getPublishedAlias(perRoomId) || perRoomId;
+                const key = (await mjolnir.client.getPublishedAlias(perRoomId)) || perRoomId;
                 result[key] = annotatedStats(perRoomInfo);
             }
             text = JSON.stringify(result, null, 2);
@@ -735,8 +776,8 @@ export class DetectFederationLag extends Protection {
             }
         }
         return {
-                text,
-                html
-        }
+            text,
+            html,
+        };
     }
 }

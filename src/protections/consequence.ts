@@ -6,7 +6,10 @@ export class Consequence {
      * @param reason Brief explanation of why we're taking an action, printed to management room.
      *  this will be HTML escaped before printing, just in case it has user-provided data
      */
-    constructor(public name: string, public reason: string) { }
+    constructor(
+        public name: string,
+        public reason: string,
+    ) {}
 }
 
 export class ConsequenceAlert extends Consequence {

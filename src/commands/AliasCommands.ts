@@ -27,7 +27,7 @@ export async function execMoveAliasCommand(roomId: string, event: any, mjolnir: 
     if (!isAdmin) {
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
+        reply["msgtype"] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
         return;
     }
@@ -36,7 +36,7 @@ export async function execMoveAliasCommand(roomId: string, event: any, mjolnir: 
     const newRoomId = await mjolnir.client.resolveRoom(targetRoom);
     await mjolnir.client.createRoomAlias(movingAlias, newRoomId);
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
 // !mjolnir alias add <alias> <target room>
@@ -48,7 +48,7 @@ export async function execAddAliasCommand(roomId: string, event: any, mjolnir: M
     if (!isAdmin) {
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
+        reply["msgtype"] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
         return;
     }
@@ -56,7 +56,7 @@ export async function execAddAliasCommand(roomId: string, event: any, mjolnir: M
     const newRoomId = await mjolnir.client.resolveRoom(targetRoom);
     await mjolnir.client.createRoomAlias(aliasToAdd, newRoomId);
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
 // !mjolnir alias remove <alias>
@@ -67,14 +67,14 @@ export async function execRemoveAliasCommand(roomId: string, event: any, mjolnir
     if (!isAdmin) {
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
-        reply['msgtype'] = "m.notice";
+        reply["msgtype"] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
         return;
     }
 
     await mjolnir.client.deleteRoomAlias(aliasToRemove);
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
 // !mjolnir resolve <alias>

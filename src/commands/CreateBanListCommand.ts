@@ -23,12 +23,9 @@ export async function execCreateListCommand(roomId: string, event: any, mjolnir:
     const shortcode = parts[3];
     const aliasLocalpart = parts[4];
 
-    const listRoomId = await PolicyList.createList(
-        mjolnir.client,
-        shortcode,
-        [event['sender']],
-        { room_alias_name: aliasLocalpart }
-    );
+    const listRoomId = await PolicyList.createList(mjolnir.client, shortcode, [event["sender"]], {
+        room_alias_name: aliasLocalpart,
+    });
 
     const roomRef = Permalinks.forRoom(listRoomId);
     await mjolnir.policyListManager.watchList(roomRef);

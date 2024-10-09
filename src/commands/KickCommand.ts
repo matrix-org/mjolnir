@@ -46,9 +46,9 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
             rooms = [await mjolnir.client.resolveRoom(parts[3])];
             reasonIndex = 4;
         }
-        reason = parts.slice(reasonIndex).join(' ') || '<no reason supplied>';
+        reason = parts.slice(reasonIndex).join(" ") || "<no reason supplied>";
     }
-    if (!reason) reason = '<none supplied>';
+    if (!reason) reason = "<none supplied>";
 
     for (const protectedRoomId of rooms) {
         const members = await mjolnir.client.getRoomMembers(protectedRoomId, undefined, ["join"], ["ban", "leave"]);
@@ -57,7 +57,12 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
             const target = member.membershipFor;
 
             if (kickRule.test(target)) {
-                await mjolnir.managementRoomOutput.logMessage(LogLevel.DEBUG, "KickCommand", `Removing ${target} in ${protectedRoomId}`, protectedRoomId);
+                await mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.DEBUG,
+                    "KickCommand",
+                    `Removing ${target} in ${protectedRoomId}`,
+                    protectedRoomId,
+                );
 
                 if (!mjolnir.config.noop) {
                     try {
@@ -65,14 +70,23 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                             return mjolnir.client.kickUser(target, protectedRoomId, reason);
                         });
                     } catch (e) {
-                        await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "KickCommand", `An error happened while trying to kick ${target}: ${e}`);
+                        await mjolnir.managementRoomOutput.logMessage(
+                            LogLevel.WARN,
+                            "KickCommand",
+                            `An error happened while trying to kick ${target}: ${e}`,
+                        );
                     }
                 } else {
-                    await mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "KickCommand", `Tried to kick ${target} in ${protectedRoomId} but the bot is running in no-op mode.`, protectedRoomId);
+                    await mjolnir.managementRoomOutput.logMessage(
+                        LogLevel.WARN,
+                        "KickCommand",
+                        `Tried to kick ${target} in ${protectedRoomId} but the bot is running in no-op mode.`,
+                        protectedRoomId,
+                    );
                 }
             }
         }
     }
 
-    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    return mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }

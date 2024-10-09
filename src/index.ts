@@ -20,17 +20,18 @@ import { Healthz } from "./health/healthz";
 
 import {
     LogLevel,
-    LogService, MatrixAuth,
+    LogService,
+    MatrixAuth,
     MatrixClient,
     PantalaimonClient,
-    RichConsoleLogger, RustSdkCryptoStorageProvider,
-    SimpleFsStorageProvider
+    RichConsoleLogger,
+    RustSdkCryptoStorageProvider,
+    SimpleFsStorageProvider,
 } from "@vector-im/matrix-bot-sdk";
 
 import { read as configRead } from "./config";
 import { Mjolnir } from "./Mjolnir";
 import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient } from "./utils";
-
 
 (async function () {
     const config = configRead();
@@ -57,33 +58,38 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
 
     let bot: Mjolnir | null = null;
     try {
-        const storagePath = path.isAbsolute(config.dataPath) ? config.dataPath : path.join(__dirname, '../', config.dataPath);
+        const storagePath = path.isAbsolute(config.dataPath)
+            ? config.dataPath
+            : path.join(__dirname, "../", config.dataPath);
         const storage = new SimpleFsStorageProvider(path.join(storagePath, "bot.json"));
-        const cryptoStorage = new RustSdkCryptoStorageProvider(storagePath, 0)
+        const cryptoStorage = new RustSdkCryptoStorageProvider(storagePath, 0);
 
         if (config.encryption.use && config.pantalaimon.use) {
-            throw Error('Cannot enable both pantalaimon and encryption at the same time. Remove one from the config.');
+            throw Error("Cannot enable both pantalaimon and encryption at the same time. Remove one from the config.");
         }
 
         let client: MatrixClient;
         if (config.pantalaimon.use) {
             const pantalaimon = new PantalaimonClient(config.homeserverUrl, storage);
-            client = await pantalaimon.createClientWithCredentials(config.pantalaimon.username, config.pantalaimon.password);
+            client = await pantalaimon.createClientWithCredentials(
+                config.pantalaimon.username,
+                config.pantalaimon.password,
+            );
         } else if (config.encryption.use) {
             const accessToken = await Promise.resolve(storage.readValue("access_token"));
             if (accessToken) {
                 client = new MatrixClient(config.homeserverUrl, accessToken, storage, cryptoStorage);
             } else {
-                const auth = new MatrixAuth(config.homeserverUrl)
-                const tempClient = await auth.passwordLogin(config.encryption.username, config.encryption.password)
+                const auth = new MatrixAuth(config.homeserverUrl);
+                const tempClient = await auth.passwordLogin(config.encryption.username, config.encryption.password);
                 client = new MatrixClient(config.homeserverUrl, tempClient.accessToken, storage, cryptoStorage);
             }
             try {
-                LogService.info("index", "Preparing encrypted client...")
+                LogService.info("index", "Preparing encrypted client...");
                 await client.crypto.prepare();
             } catch (e) {
-                LogService.error("Index", `Error preparing encrypted client ${e}`)
-                throw e
+                LogService.error("Index", `Error preparing encrypted client ${e}`);
+                throw e;
             }
         } else {
             client = new MatrixClient(config.homeserverUrl, config.accessToken, storage);

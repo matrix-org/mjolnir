@@ -14,12 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {
-    extractRequestError,
-    LogLevel,
-    LogService,
-    MembershipEvent,
-} from "@vector-im/matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, MembershipEvent } from "@vector-im/matrix-bot-sdk";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -95,7 +90,11 @@ export class Mjolnir {
      * @param {boolean} options.autojoinOnlyIfManager Whether to only accept an invitation by a user present in the `managementRoom`.
      * @param {string} options.acceptInvitesFromSpace A space of users to accept invites from, ignores invites form users not in this space.
      */
-    private static addJoinOnInviteListener(mjolnir: Mjolnir, client: MatrixSendClient, options: { [key: string]: any }) {
+    private static addJoinOnInviteListener(
+        mjolnir: Mjolnir,
+        client: MatrixSendClient,
+        options: { [key: string]: any },
+    ) {
         mjolnir.matrixEmitter.on("room.invite", async (roomId: string, inviteEvent: any) => {
             const membershipEvent = new MembershipEvent(inviteEvent);
 
@@ -104,12 +103,14 @@ export class Mjolnir {
 
                 await client.sendMessage(mjolnir.managementRoomId, {
                     msgtype: "m.text",
-                    body: `${membershipEvent.sender} has invited me to ${roomId} but the config prevents me from accepting the invitation. `
-                        + `If you would like this room protected, use "!mjolnir rooms add ${roomId}" so I can accept the invite.`,
+                    body:
+                        `${membershipEvent.sender} has invited me to ${roomId} but the config prevents me from accepting the invitation. ` +
+                        `If you would like this room protected, use "!mjolnir rooms add ${roomId}" so I can accept the invite.`,
                     format: "org.matrix.custom.html",
-                    formatted_body: `${htmlEscape(membershipEvent.sender)} has invited me to ${htmlEscape(roomId)} but the config prevents me from `
-                        + `accepting the invitation. If you would like this room protected, use <code>!mjolnir rooms add ${htmlEscape(roomId)}</code> `
-                        + `so I can accept the invite.`,
+                    formatted_body:
+                        `${htmlEscape(membershipEvent.sender)} has invited me to ${htmlEscape(roomId)} but the config prevents me from ` +
+                        `accepting the invitation. If you would like this room protected, use <code>!mjolnir rooms add ${htmlEscape(roomId)}</code> ` +
+                        `so I can accept the invite.`,
                 });
             };
 
@@ -118,16 +119,19 @@ export class Mjolnir {
                 if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             } else if (options.acceptInvitesFromSpace) {
                 const spaceId = await client.resolveRoom(options.acceptInvitesFromSpace);
-                const spaceUserIds = await client.getJoinedRoomMembers(spaceId)
-                    .catch(async e => {
-                        if (e.body?.errcode === "M_FORBIDDEN") {
-                            await mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, 'Mjolnir', `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`);
-                            await client.joinRoom(spaceId);
-                            return await client.getJoinedRoomMembers(spaceId);
-                        } else {
-                            return Promise.reject(e);
-                        }
-                    });
+                const spaceUserIds = await client.getJoinedRoomMembers(spaceId).catch(async (e) => {
+                    if (e.body?.errcode === "M_FORBIDDEN") {
+                        await mjolnir.managementRoomOutput.logMessage(
+                            LogLevel.ERROR,
+                            "Mjolnir",
+                            `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`,
+                        );
+                        await client.joinRoom(spaceId);
+                        return await client.getJoinedRoomMembers(spaceId);
+                    } else {
+                        return Promise.reject(e);
+                    }
+                });
                 if (!spaceUserIds.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             }
             return client.joinRoom(roomId);
@@ -139,9 +143,18 @@ export class Mjolnir {
      * @param {MatrixSendClient} client The client for Mjolnir to use.
      * @returns A new Mjolnir instance that can be started without further setup.
      */
-    static async setupMjolnirFromConfig(client: MatrixSendClient, matrixEmitter: MatrixEmitter, config: IConfig): Promise<Mjolnir> {
-        if (!config.autojoinOnlyIfManager && config.acceptInvitesFromSpace === getDefaultConfig().acceptInvitesFromSpace) {
-            throw new TypeError("`autojoinOnlyIfManager` has been disabled but you have not set `acceptInvitesFromSpace`. Please make it empty to accept invites from everywhere or give it a namespace alias or room id.");
+    static async setupMjolnirFromConfig(
+        client: MatrixSendClient,
+        matrixEmitter: MatrixEmitter,
+        config: IConfig,
+    ): Promise<Mjolnir> {
+        if (
+            !config.autojoinOnlyIfManager &&
+            config.acceptInvitesFromSpace === getDefaultConfig().acceptInvitesFromSpace
+        ) {
+            throw new TypeError(
+                "`autojoinOnlyIfManager` has been disabled but you have not set `acceptInvitesFromSpace`. Please make it empty to accept invites from everywhere or give it a namespace alias or room id.",
+            );
         }
         const joinedRooms = await client.getJoinedRooms();
 
@@ -153,8 +166,19 @@ export class Mjolnir {
         }
 
         const ruleServer = config.web.ruleServer ? new RuleServer() : null;
-        const mjolnir = new Mjolnir(client, await client.getUserId(), matrixEmitter, managementRoomId, config, ruleServer);
-        await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "index", "Mjolnir is starting up. Use !mjolnir to query status.");
+        const mjolnir = new Mjolnir(
+            client,
+            await client.getUserId(),
+            matrixEmitter,
+            managementRoomId,
+            config,
+            ruleServer,
+        );
+        await mjolnir.managementRoomOutput.logMessage(
+            LogLevel.INFO,
+            "index",
+            "Mjolnir is starting up. Use !mjolnir to query status.",
+        );
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
         return mjolnir;
     }
@@ -177,35 +201,35 @@ export class Mjolnir {
 
         matrixEmitter.on("room.message", async (roomId, event) => {
             if (roomId !== this.managementRoomId) return;
-            if (!event['content']) return;
+            if (!event["content"]) return;
 
-            const content = event['content'];
-            if (content['msgtype'] === "m.text" && content['body']) {
+            const content = event["content"];
+            if (content["msgtype"] === "m.text" && content["body"]) {
                 const prefixes = [
                     COMMAND_PREFIX,
                     this.localpart + ":",
                     this.displayName + ":",
-                    await client.getUserId() + ":",
+                    (await client.getUserId()) + ":",
                     this.localpart + " ",
                     this.displayName + " ",
-                    await client.getUserId() + " ",
-                    ...config.commands.additionalPrefixes.map(p => `!${p}`),
-                    ...config.commands.additionalPrefixes.map(p => `${p}:`),
-                    ...config.commands.additionalPrefixes.map(p => `${p} `),
+                    (await client.getUserId()) + " ",
+                    ...config.commands.additionalPrefixes.map((p) => `!${p}`),
+                    ...config.commands.additionalPrefixes.map((p) => `${p}:`),
+                    ...config.commands.additionalPrefixes.map((p) => `${p} `),
                     ...config.commands.additionalPrefixes,
                 ];
                 if (config.commands.allowNoPrefix) prefixes.push("!");
 
-                const prefixUsed = prefixes.find(p => content['body'].toLowerCase().startsWith(p.toLowerCase()));
+                const prefixUsed = prefixes.find((p) => content["body"].toLowerCase().startsWith(p.toLowerCase()));
                 if (!prefixUsed) return;
 
                 // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
-                let restOfBody = content['body'].substring(prefixUsed.length);
+                let restOfBody = content["body"].substring(prefixUsed.length);
                 if (!restOfBody.startsWith(" ")) restOfBody = ` ${restOfBody}`;
-                event['content']['body'] = COMMAND_PREFIX + restOfBody;
-                LogService.info("Mjolnir", `Command being run by ${event['sender']}: ${event['content']['body']}`);
+                event["content"]["body"] = COMMAND_PREFIX + restOfBody;
+                LogService.info("Mjolnir", `Command being run by ${event["sender"]}: ${event["content"]["body"]}`);
 
-                client.sendReadReceipt(roomId, event['event_id']).catch((e: any) => {
+                client.sendReadReceipt(roomId, event["event_id"]).catch((e: any) => {
                     LogService.warn("Mjolnir", "Error sending read receipt: ", e);
                 });
                 return handleCommand(roomId, event, this);
@@ -221,14 +245,17 @@ export class Mjolnir {
             return this.resyncJoinedRooms();
         });
 
-        client.getUserId().then(userId => {
-            this.localpart = userId.split(':')[0].substring(1);
-            return client.getUserProfile(userId);
-        }).then(profile => {
-            if (profile['displayname']) {
-                this.displayName = profile['displayname'];
-            }
-        });
+        client
+            .getUserId()
+            .then((userId) => {
+                this.localpart = userId.split(":")[0].substring(1);
+                return client.getUserProfile(userId);
+            })
+            .then((profile) => {
+                if (profile["displayname"]) {
+                    this.displayName = profile["displayname"];
+                }
+            });
 
         // Setup Web APIs
         console.log("Creating Web APIs");
@@ -251,7 +278,8 @@ export class Mjolnir {
             managementRoomId,
             this.managementRoomOutput,
             this.protectionManager,
-            config);
+            config,
+        );
     }
 
     public get state(): string {
@@ -285,7 +313,11 @@ export class Mjolnir {
                     if (err.body?.errcode !== "M_NOT_FOUND") {
                         throw err;
                     } else {
-                        this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "report poll setting does not exist yet");
+                        this.managementRoomOutput.logMessage(
+                            LogLevel.INFO,
+                            "Mjolnir@startup",
+                            "report poll setting does not exist yet",
+                        );
                     }
                 }
                 this.reportPoller.start(reportPollSetting.from);
@@ -319,7 +351,12 @@ export class Mjolnir {
             }
 
             this.currentState = STATE_RUNNING;
-            await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Startup complete. Now monitoring rooms.");
+
+            await this.managementRoomOutput.logMessage(
+                LogLevel.INFO, 
+                "Mjolnir@startup",
+                "Startup complete. Now monitoring rooms.",
+            );
             // update protected rooms set
             this.protectedRoomsTracker.isAdmin = await this.isSynapseAdmin();
         } catch (err) {
@@ -327,7 +364,11 @@ export class Mjolnir {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
                 this.stop();
-                await this.managementRoomOutput.logMessage(LogLevel.ERROR, "Mjolnir@startup", "Startup failed due to error - see console");
+                await this.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "Mjolnir@startup",
+                    "Startup failed due to error - see console",
+                );
             } catch (e) {
                 LogService.error("Mjolnir", `Failed to report startup error to the management room: ${e}`);
             }
@@ -352,7 +393,7 @@ export class Mjolnir {
      * FIXME: In future ProtectedRoomsSet on this mjolnir should not be public and should also be accessed via a delegator method.
      */
     public get explicitlyProtectedRooms(): string[] {
-        return this.protectedRoomsConfig.getExplicitlyProtectedRooms()
+        return this.protectedRoomsConfig.getExplicitlyProtectedRooms();
     }
 
     /**
@@ -406,7 +447,7 @@ export class Mjolnir {
         // We filter out all policy rooms so that we only protect ones that are
         // explicitly protected, so that we don't try to protect lists that we are just watching.
         const filterOutManagementAndPolicyRooms = (roomId: string) => {
-            const policyListIds = this.policyListManager.lists.map(list => list.roomId);
+            const policyListIds = this.policyListManager.lists.map((list) => list.roomId);
             return roomId !== this.managementRoomId && !policyListIds.includes(roomId);
         };
 
@@ -440,22 +481,25 @@ export class Mjolnir {
     private async handleEvent(roomId: string, event: any) {
         // Check for UISI errors
         if (roomId === this.managementRoomId) {
-            if (event['type'] === 'm.room.message' && event['content'] && event['content']['body']) {
-                if (event['content']['body'] === "** Unable to decrypt: The sender's device has not sent us the keys for this message. **") {
+            if (event["type"] === "m.room.message" && event["content"] && event["content"]["body"]) {
+                if (
+                    event["content"]["body"] ===
+                    "** Unable to decrypt: The sender's device has not sent us the keys for this message. **"
+                ) {
                     // UISI
-                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '⚠');
-                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], 'UISI');
-                    await this.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '🚨');
+                    await this.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "⚠");
+                    await this.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "UISI");
+                    await this.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "🚨");
                 }
             }
         }
 
         // Check for updated ban lists before checking protected rooms - the ban lists might be protected
         // themselves.
-        const policyList = this.policyListManager.lists.find(list => list.roomId === roomId);
+        const policyList = this.policyListManager.lists.find((list) => list.roomId === roomId);
         if (policyList !== undefined) {
-            if (ALL_BAN_LIST_RULE_TYPES.includes(event['type']) || event['type'] === 'm.room.redaction') {
-                policyList.updateForEvent(event.event_id)
+            if (ALL_BAN_LIST_RULE_TYPES.includes(event["type"]) || event["type"] === "m.room.redaction") {
+                policyList.updateForEvent(event.event_id);
             }
         }
 
@@ -468,7 +512,7 @@ export class Mjolnir {
         try {
             const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
             const response = await this.client.doRequest("GET", endpoint);
-            return response['admin'];
+            return response["admin"];
         } catch (e) {
             LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
             LogService.error("Mjolnir", extractRequestError(e));
@@ -483,23 +527,22 @@ export class Mjolnir {
 
     public async suspendSynapseUser(userId: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
-        const body = {"suspend": true}
+        const body = { suspend: true };
         return await this.client.doRequest("PUT", endpoint, null, body);
     }
 
     public async unsuspendSynapseUser(userId: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
-        const body = {"suspend": false}
+        const body = { suspend: false };
         return await this.client.doRequest("PUT", endpoint, null, body);
     }
-
 
     public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
         return await this.client.doRequest("DELETE", endpoint, null, {
             new_room_user_id: await this.client.getUserId(),
             block: true,
-            message: message /* If `undefined`, we'll use Synapse's default message. */
+            message: message /* If `undefined`, we'll use Synapse's default message. */,
         });
     }
 
@@ -513,11 +556,10 @@ export class Mjolnir {
         try {
             const endpoint = `/_synapse/admin/v1/rooms/${roomId}/make_room_admin`;
             return await this.client.doRequest("POST", endpoint, null, {
-                user_id: userId || await this.client.getUserId(), /* if not specified make the bot administrator */
+                user_id: userId || (await this.client.getUserId()) /* if not specified make the bot administrator */,
             });
         } catch (e) {
             return extractRequestError(e);
         }
     }
 }
-

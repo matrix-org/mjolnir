@@ -44,8 +44,7 @@ import { htmlEscape } from "./utils";
  * as in future we might want to borrow this class to represent a space https://github.com/matrix-org/mjolnir/issues/283.
  */
 export class ProtectedRoomsSet {
-
-    private protectedRooms = new Set</* room id */string>();
+    private protectedRooms = new Set</* room id */ string>();
 
     /**
      * These are the `m.bans` we want to synchronize across this set of rooms.
@@ -97,7 +96,10 @@ export class ProtectedRoomsSet {
     /**
      * The revision of a each watched list that we have applied to protected rooms.
      */
-    private readonly listRevisions = new Map<PolicyList, /** The last revision we used to sync protected rooms. */ Revision>();
+    private readonly listRevisions = new Map<
+        PolicyList,
+        /** The last revision we used to sync protected rooms. */ Revision
+    >();
 
     /**
      * whether the mjolnir instance is server admin
@@ -142,8 +144,8 @@ export class ProtectedRoomsSet {
         return this.automaticRedactionReasons;
     }
 
-    public getProtectedRooms () {
-        return [...this.protectedRooms.keys()]
+    public getProtectedRooms() {
+        return [...this.protectedRooms.keys()];
     }
 
     public isProtectedRoom(roomId: string): boolean {
@@ -154,14 +156,14 @@ export class ProtectedRoomsSet {
         if (!this.policyLists.includes(policyList)) {
             this.policyLists.push(policyList);
             this.accessControlUnit.watchList(policyList);
-            policyList.on('PolicyList.update', this.listUpdateListener);
+            policyList.on("PolicyList.update", this.listUpdateListener);
         }
     }
 
     public unwatchList(policyList: PolicyList): void {
-        this.policyLists = this.policyLists.filter(list => list.roomId !== policyList.roomId);
+        this.policyLists = this.policyLists.filter((list) => list.roomId !== policyList.roomId);
         this.accessControlUnit.unwatchList(policyList);
-        policyList.off('PolicyList.update', this.listUpdateListener)
+        policyList.off("PolicyList.update", this.listUpdateListener);
     }
 
     /**
@@ -184,24 +186,31 @@ export class ProtectedRoomsSet {
     }
 
     public async handleEvent(roomId: string, event: any) {
-        if (event['sender'] === this.clientUserId) {
-            throw new TypeError("`ProtectedRooms::handleEvent` should not be used to inform about events sent by mjolnir.");
+        if (event["sender"] === this.clientUserId) {
+            throw new TypeError(
+                "`ProtectedRooms::handleEvent` should not be used to inform about events sent by mjolnir.",
+            );
         }
         if (!this.protectedRooms.has(roomId)) {
             return; // We're not protecting this room.
         }
         this.protectedRoomActivityTracker.handleEvent(roomId, event);
-        if (event['type'] === 'm.room.power_levels' && event['state_key'] === '') {
+        if (event["type"] === "m.room.power_levels" && event["state_key"] === "") {
             // power levels were updated - recheck permissions
             this.errorCache.resetError(roomId, ERROR_KIND_PERMISSION);
-            await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir", `Power levels changed in ${roomId} - checking permissions...`, roomId);
+            await this.managementRoomOutput.logMessage(
+                LogLevel.DEBUG,
+                "Mjolnir",
+                `Power levels changed in ${roomId} - checking permissions...`,
+                roomId,
+            );
             const errors = await this.protectionManager.verifyPermissionsIn(roomId);
             const hadErrors = await this.printActionResult(errors);
             if (!hadErrors) {
                 await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir", `All permissions look OK.`);
             }
             return;
-        } else if (event['type'] === "m.room.member") {
+        } else if (event["type"] === "m.room.member") {
             // The reason we have to apply bans on each member change is because
             // we cannot eagerly ban users (that is to ban them when they have never been a member)
             // as they can be force joined to a room they might not have known existed.
@@ -220,12 +229,12 @@ export class ProtectedRoomsSet {
         let hadErrors = false;
         const [aclErrors, banErrors] = await Promise.all([
             this.applyServerAcls(this.policyLists, this.protectedRoomsByActivity()),
-            this.applyUserBans(this.protectedRoomsByActivity())
+            this.applyUserBans(this.protectedRoomsByActivity()),
         ]);
         const redactionErrors = await this.processRedactionQueue();
-        hadErrors = hadErrors || await this.printActionResult(aclErrors, "Errors updating server ACLs:");
-        hadErrors = hadErrors || await this.printActionResult(banErrors, "Errors updating member bans:");
-        hadErrors = hadErrors || await this.printActionResult(redactionErrors, "Error updating redactions:");
+        hadErrors = hadErrors || (await this.printActionResult(aclErrors, "Errors updating server ACLs:"));
+        hadErrors = hadErrors || (await this.printActionResult(banErrors, "Errors updating member bans:"));
+        hadErrors = hadErrors || (await this.printActionResult(redactionErrors, "Error updating redactions:"));
 
         if (!hadErrors) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
@@ -279,7 +288,11 @@ export class ProtectedRoomsSet {
      * @param policyList The `PolicyList` which we will check for changes and apply them to all protected rooms.
      * @returns When all of the protected rooms have been updated.
      */
-    private async syncWithUpdatedPolicyList(policyList: PolicyList, changes: ListRuleChange[], revision: Revision): Promise<void> {
+    private async syncWithUpdatedPolicyList(
+        policyList: PolicyList,
+        changes: ListRuleChange[],
+        revision: Revision,
+    ): Promise<void> {
         // avoid resyncing the rooms if we have already done so for the latest revision of this list.
         const previousRevision = this.listRevisions.get(policyList);
         if (previousRevision === undefined || revision.supersedes(previousRevision)) {
@@ -303,9 +316,7 @@ export class ProtectedRoomsSet {
         // we need to provide mutual exclusion so that we do not have requests updating the m.room.server_acl event
         // finish out of order and therefore leave the room out of sync with the policy lists.
         return new Promise((resolve, reject) => {
-            this.aclChain = this.aclChain
-                .then(() => this._applyServerAcls(lists, roomIds))
-                .then(resolve, reject);
+            this.aclChain = this.aclChain.then(() => this._applyServerAcls(lists, roomIds)).then(resolve, reject);
         });
     }
 
@@ -318,18 +329,31 @@ export class ProtectedRoomsSet {
 
         if (this.config.verboseLogging) {
             // We specifically use sendNotice to avoid having to escape HTML
-            await this.client.sendNotice(this.managementRoomId, `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`);
+            await this.client.sendNotice(
+                this.managementRoomId,
+                `Constructed server ACL:\n${JSON.stringify(finalAcl, null, 2)}`,
+            );
         }
 
         const errors: RoomUpdateError[] = [];
         for (const roomId of roomIds) {
             try {
-                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Checking ACLs for ${roomId}`, roomId);
+                await this.managementRoomOutput.logMessage(
+                    LogLevel.DEBUG,
+                    "ApplyAcl",
+                    `Checking ACLs for ${roomId}`,
+                    roomId,
+                );
 
                 try {
                     const currentAcl = await this.client.getRoomStateEvent(roomId, "m.room.server_acl", "");
                     if (acl.matches(currentAcl)) {
-                        await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Skipping ACLs for ${roomId} because they are already the right ones`, roomId);
+                        await this.managementRoomOutput.logMessage(
+                            LogLevel.DEBUG,
+                            "ApplyAcl",
+                            `Skipping ACLs for ${roomId} because they are already the right ones`,
+                            roomId,
+                        );
                         continue;
                     }
                 } catch (e) {
@@ -337,16 +361,29 @@ export class ProtectedRoomsSet {
                 }
 
                 // We specifically use sendNotice to avoid having to escape HTML
-                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyAcl", `Applying ACL in ${roomId}`, roomId);
+                await this.managementRoomOutput.logMessage(
+                    LogLevel.DEBUG,
+                    "ApplyAcl",
+                    `Applying ACL in ${roomId}`,
+                    roomId,
+                );
 
                 if (!this.config.noop) {
                     await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
                 } else {
-                    await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyAcl", `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                    await this.managementRoomOutput.logMessage(
+                        LogLevel.WARN,
+                        "ApplyAcl",
+                        `Tried to apply ACL in ${roomId} but Mjolnir is running in no-op mode`,
+                        roomId,
+                    );
                 }
             } catch (e) {
-                const message = e.message || (e.body ? e.body.error : '<no message>');
-                const kind = message && message.includes("You don't have permission to post that to the room") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL;
+                const message = e.message || (e.body ? e.body.error : "<no message>");
+                const kind =
+                    message && message.includes("You don't have permission to post that to the room")
+                        ? ERROR_KIND_PERMISSION
+                        : ERROR_KIND_FATAL;
                 errors.push({ roomId, errorMessage: message, errorKind: kind });
             }
         }
@@ -354,7 +391,7 @@ export class ProtectedRoomsSet {
     }
 
     /**
-    * Applies the member bans represented by the ban lists to the provided rooms, returning the
+     * Applies the member bans represented by the ban lists to the provided rooms, returning the
      * room IDs that could not be updated and their error.
      * @param {string[]} roomIds The room IDs to apply the bans in.
      * @param {Mjolnir} mjolnir The Mjolnir client to apply the bans with.
@@ -365,50 +402,73 @@ export class ProtectedRoomsSet {
         for (const roomId of roomIds) {
             try {
                 // We specifically use sendNotice to avoid having to escape HTML
-                await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "ApplyBan", `Updating member bans in ${roomId}`, roomId);
+                await this.managementRoomOutput.logMessage(
+                    LogLevel.DEBUG,
+                    "ApplyBan",
+                    `Updating member bans in ${roomId}`,
+                    roomId,
+                );
 
-                let members: { userId: string, membership: string }[];
+                let members: { userId: string; membership: string }[];
 
                 if (this.config.fasterMembershipChecks) {
                     const memberIds = await this.client.getJoinedRoomMembers(roomId);
-                    members = memberIds.map(u => {
+                    members = memberIds.map((u) => {
                         return { userId: u, membership: "join" };
                     });
                 } else {
                     const state = await this.client.getRoomState(roomId);
-                    members = state.filter(s => s['type'] === 'm.room.member' && !!s['state_key']).map(s => {
-                        return { userId: s['state_key'], membership: s['content'] ? s['content']['membership'] : 'leave' };
-                    });
+                    members = state
+                        .filter((s) => s["type"] === "m.room.member" && !!s["state_key"])
+                        .map((s) => {
+                            return {
+                                userId: s["state_key"],
+                                membership: s["content"] ? s["content"]["membership"] : "leave",
+                            };
+                        });
                 }
 
                 for (const member of members) {
-                    if (member.membership === 'ban') {
+                    if (member.membership === "ban") {
                         continue; // user already banned
                     }
 
                     // We don't want to ban people based on server ACL as this would flood the room with bans.
                     const memberAccess = this.accessControlUnit.getAccessForUser(member.userId, "IGNORE_SERVER");
                     if (memberAccess.outcome === Access.Banned) {
-                        const reason = memberAccess.rule ? memberAccess.rule.reason : '<no reason supplied>';
+                        const reason = memberAccess.rule ? memberAccess.rule.reason : "<no reason supplied>";
                         // We specifically use sendNotice to avoid having to escape HTML
-                        await this.managementRoomOutput.logMessage(LogLevel.INFO, "ApplyBan", `Banning ${member.userId} in ${roomId} for: ${reason}`, roomId);
+                        await this.managementRoomOutput.logMessage(
+                            LogLevel.INFO,
+                            "ApplyBan",
+                            `Banning ${member.userId} in ${roomId} for: ${reason}`,
+                            roomId,
+                        );
 
                         if (!this.config.noop) {
                             await this.client.banUser(member.userId, roomId, memberAccess.rule!.reason);
-                            if (this.automaticRedactGlobs.find(g => g.test(reason.toLowerCase()))) {
+                            if (this.automaticRedactGlobs.find((g) => g.test(reason.toLowerCase()))) {
                                 this.redactUser(member.userId, roomId);
                             }
                         } else {
-                            await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyBan", `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`, roomId);
+                            await this.managementRoomOutput.logMessage(
+                                LogLevel.WARN,
+                                "ApplyBan",
+                                `Tried to ban ${member.userId} in ${roomId} but Mjolnir is running in no-op mode`,
+                                roomId,
+                            );
                         }
                     }
                 }
             } catch (e) {
-                const message = e.message || (e.body ? e.body.error : '<no message>');
+                const message = e.message || (e.body ? e.body.error : "<no message>");
                 errors.push({
                     roomId,
                     errorMessage: message,
-                    errorKind: message && message.includes("You don't have permission to ban") ? ERROR_KIND_PERMISSION : ERROR_KIND_FATAL,
+                    errorKind:
+                        message && message.includes("You don't have permission to ban")
+                            ? ERROR_KIND_PERMISSION
+                            : ERROR_KIND_FATAL,
                 });
             }
         }
@@ -427,8 +487,8 @@ export class ProtectedRoomsSet {
         let html = "";
         let text = "";
 
-        const changesInfo = `updated with ${changes.length} ` + (changes.length === 1 ? 'change:' : 'changes:');
-        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : '';
+        const changesInfo = `updated with ${changes.length} ` + (changes.length === 1 ? "change:" : "changes:");
+        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : "";
 
         html += `<a href="${htmlEscape(list.roomRef)}">${htmlEscape(list.roomId)}</a>${shortcodeInfo} ${changesInfo}<br/><ul>`;
         text += `${list.roomRef}${shortcodeInfo} ${changesInfo}:\n`;
@@ -437,11 +497,11 @@ export class ProtectedRoomsSet {
             const rule = change.rule;
             let ruleKind: string = rule.kind;
             if (ruleKind === RULE_USER) {
-                ruleKind = 'user';
+                ruleKind = "user";
             } else if (ruleKind === RULE_SERVER) {
-                ruleKind = 'server';
+                ruleKind = "server";
             } else if (ruleKind === RULE_ROOM) {
-                ruleKind = 'room';
+                ruleKind = "room";
             }
             html += `<li>${change.changeType} ${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation ?? "")}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
             text += `* ${change.changeType} ${ruleKind} (${rule.recommendation}): ${rule.entity} (${rule.reason})\n`;
@@ -461,9 +521,12 @@ export class ProtectedRoomsSet {
         if (errors.length <= 0) return false;
 
         if (!logAnyways) {
-            errors = errors.filter(e => this.errorCache.triggerError(e.roomId, e.errorKind));
+            errors = errors.filter((e) => this.errorCache.triggerError(e.roomId, e.errorKind));
             if (errors.length <= 0) {
-                LogService.warn("Mjolnir", "Multiple errors are happening, however they are muted. Please check the management room.");
+                LogService.warn(
+                    "Mjolnir",
+                    "Multiple errors are happening, however they are muted. Please check the management room.",
+                );
                 return true;
             }
         }
@@ -471,12 +534,12 @@ export class ProtectedRoomsSet {
         let html = "";
         let text = "";
 
-        const htmlTitle = title ? `${title}<br />` : '';
-        const textTitle = title ? `${title}\n` : '';
+        const htmlTitle = title ? `${title}<br />` : "";
+        const textTitle = title ? `${title}\n` : "";
 
         html += `<font color="#ff0000"><b>${htmlTitle}${errors.length} errors updating protected rooms!</b></font><br /><ul>`;
         text += `${textTitle}${errors.length} errors updating protected rooms!\n`;
-        const viaServers = [(new UserID(await this.client.getUserId())).domain];
+        const viaServers = [new UserID(await this.client.getUserId()).domain];
         for (const error of errors) {
             const alias = (await this.client.getPublishedAlias(error.roomId)) || error.roomId;
             const url = Permalinks.forRoom(alias, viaServers);
@@ -496,7 +559,7 @@ export class ProtectedRoomsSet {
     }
 
     public requiredProtectionPermissions() {
-        throw new TypeError("Unimplemented, need to put protections into here too.")
+        throw new TypeError("Unimplemented, need to put protections into here too.");
     }
 
     public async verifyPermissions(verbose = true, printRegardless = false) {
@@ -505,7 +568,11 @@ export class ProtectedRoomsSet {
             errors.push(...(await this.protectionManager.verifyPermissionsIn(roomId)));
         }
 
-        const hadErrors = await this.printActionResult(errors, "Permission errors in protected rooms:", printRegardless);
+        const hadErrors = await this.printActionResult(
+            errors,
+            "Permission errors in protected rooms:",
+            printRegardless,
+        );
         if (!hadErrors && verbose) {
             const html = `<font color="#00cc00">All permissions look OK.</font>`;
             const text = "All permissions look OK.";

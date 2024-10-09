@@ -3,10 +3,10 @@ import { MatrixEmitter } from "./MatrixEmitter";
 enum Action {
     Join,
     Leave,
-    Other
+    Other,
 }
 
-const LEAVE_OR_BAN = ['leave', 'ban'];
+const LEAVE_OR_BAN = ["leave", "ban"];
 
 /**
  * Storing a join event.
@@ -18,8 +18,8 @@ const LEAVE_OR_BAN = ['leave', 'ban'];
 export class Join {
     constructor(
         public readonly userId: string,
-        public readonly timestamp: number
-    ) { }
+        public readonly timestamp: number,
+    ) {}
 }
 
 /**
@@ -78,7 +78,7 @@ class RoomMembers {
             // Nothing to do.
             return;
         }
-        this._joinsByTimestamp = this._joinsByTimestamp.filter(join => this.isStillValid(join));
+        this._joinsByTimestamp = this._joinsByTimestamp.filter((join) => this.isStillValid(join));
         this._leaves = new Map();
     }
 
@@ -201,7 +201,7 @@ export class RoomMemberManager {
      * `null` otherwise. The latter may happen either if the user has joined
      * the room before Mjölnir or if the user is not currently in the room.
      */
-    public getUserJoin(user: { roomId: string, userId: string }): Date | null {
+    public getUserJoin(user: { roomId: string; userId: string }): Date | null {
         const { roomId, userId } = user;
         const ts = this.perRoom.get(roomId)?.get(userId) || null;
         if (!ts) {
@@ -227,7 +227,7 @@ export class RoomMemberManager {
      * Record join/leave events.
      */
     public async handleEvent(roomId: string, event: any, now?: Date) {
-        if (event['type'] !== 'm.room.member') {
+        if (event["type"] !== "m.room.member") {
             // Not a join/leave event.
             return;
         }
@@ -237,18 +237,18 @@ export class RoomMemberManager {
             // Not a room we are watching.
             return;
         }
-        const userId = event['state_key'];
+        const userId = event["state_key"];
         if (!userId) {
             // Ill-formed event.
             return;
         }
 
-        const userState = event['content']['membership'];
-        const prevMembership = event['unsigned']?.['prev_content']?.['membership'] || "leave";
+        const userState = event["content"]["membership"];
+        const prevMembership = event["unsigned"]?.["prev_content"]?.["membership"] || "leave";
 
         // We look at the previous membership to filter out profile changes
         let action;
-        if (userState === 'join' && prevMembership !== "join") {
+        if (userState === "join" && prevMembership !== "join") {
             action = Action.Join;
         } else if (LEAVE_OR_BAN.includes(userState) && !LEAVE_OR_BAN.includes(prevMembership)) {
             action = Action.Leave;

@@ -27,7 +27,7 @@ export async function execWatchCommand(roomId: string, event: any, mjolnir: Mjol
         mjolnir.client.sendMessage(roomId, reply);
         return;
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
 // !mjolnir unwatch <room alias or ID>
@@ -40,5 +40,5 @@ export async function execUnwatchCommand(roomId: string, event: any, mjolnir: Mj
         mjolnir.client.sendMessage(roomId, reply);
         return;
     }
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
