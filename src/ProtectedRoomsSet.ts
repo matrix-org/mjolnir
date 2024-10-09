@@ -108,7 +108,7 @@ export class ProtectedRoomsSet {
         private readonly managementRoomOutput: ManagementRoomOutput,
         private readonly protectionManager: ProtectionManager,
         private readonly config: IConfig,
-        private readonly moderators: string[]
+        private readonly moderators: string[],
     ) {
         for (const reason of this.config.automaticallyRedactForReasons) {
             this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
@@ -443,8 +443,12 @@ export class ProtectedRoomsSet {
 
                         if (!this.config.noop) {
                             if (this.moderators.includes(member.userId)) {
-                                await this.managementRoomOutput.logMessage(LogLevel.WARN, "ApplyBan", `Attempted
-                                to ban ${member.userId} but this is a member of the management room, skipping.`);
+                                await this.managementRoomOutput.logMessage(
+                                    LogLevel.WARN,
+                                    "ApplyBan",
+                                    `Attempted
+                                to ban ${member.userId} but this is a member of the management room, skipping.`,
+                                );
                                 continue;
                             }
                             await this.client.banUser(member.userId, roomId, memberAccess.rule!.reason);

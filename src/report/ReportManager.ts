@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { PowerLevelAction } from "@vector-im/matrix-bot-sdk/lib/models/PowerLevelAction";
-import {LogLevel, LogService, UserID} from "@vector-im/matrix-bot-sdk";
+import { LogLevel, LogService, UserID } from "@vector-im/matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
 import { htmlEscape } from "../utils";
 import { JSDOM } from "jsdom";
@@ -771,7 +771,11 @@ class BanAccused implements IUIAction {
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
         if (manager.mjolnir.moderators.includes(report.accused_id)) {
-            await manager.mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "ReportManager", `Attempting to ban ${report.accused_id} but this is a member of management room, aborting.`);
+            await manager.mjolnir.managementRoomOutput.logMessage(
+                LogLevel.WARN,
+                "ReportManager",
+                `Attempting to ban ${report.accused_id} but this is a member of management room, aborting.`,
+            );
             return;
         }
         await manager.mjolnir.client.banUser(report.accused_id, report.room_id);

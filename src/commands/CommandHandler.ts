@@ -48,9 +48,9 @@ import { execMakeRoomAdminCommand } from "./MakeRoomAdminCommand";
 import { parse as tokenize } from "shell-quote";
 import { execSinceCommand } from "./SinceCommand";
 import { execSetupProtectedRoom } from "./SetupDecentralizedReportingCommand";
-import {execSuspendCommand} from "./SuspendCommand";
-import {execUnsuspendCommand} from "./UnsuspendCommand";
-import {execIgnoreCommand, execListIgnoredCommand} from "./IgnoreCommand";
+import { execSuspendCommand } from "./SuspendCommand";
+import { execUnsuspendCommand } from "./UnsuspendCommand";
+import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -140,12 +140,12 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execMakeRoomAdminCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "suspend" && parts.length > 2) {
             return await execSuspendCommand(roomId, event, mjolnir, parts);
-        } else if (parts[1] === 'unsuspend' && parts.length > 2) {
-            return await execUnsuspendCommand(roomId, event, mjolnir, parts)
-        } else if (parts[1] === 'ignore') {
-            return await execIgnoreCommand(roomId, event, mjolnir, parts)
-        } else if (parts[1] === 'ignored') {
-            return await execListIgnoredCommand(roomId, event, mjolnir, parts)
+        } else if (parts[1] === "unsuspend" && parts.length > 2) {
+            return await execUnsuspendCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "ignore") {
+            return await execIgnoreCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "ignored") {
+            return await execListIgnoredCommand(roomId, event, mjolnir, parts);
         } else {
             // Help menu
             const menu =
@@ -193,7 +193,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir unsuspend <user ID>                                        - Unsuspend the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                               - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
                 "mjolnir ignored                                                     - List currently ignored entities.\n" +
-                "!mjolnir help                                                       - This menu\n"
+                "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;
             const reply = RichReply.createFor(roomId, event, text, html);

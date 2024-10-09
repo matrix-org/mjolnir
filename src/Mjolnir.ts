@@ -84,7 +84,7 @@ export class Mjolnir {
     /**
      * Members of the moderator room and others who should not be banned, ACL'd etc.
      */
-    public moderators: string[]
+    public moderators: string[];
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -186,16 +186,21 @@ export class Mjolnir {
         );
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
 
-        const memberEvents = await mjolnir.client.getRoomMembers(managementRoomId, undefined, ["join"], ["ban", "leave"])
-        let moderators: string[] = []
-        memberEvents.forEach(event => {
-            moderators.push(event.stateKey)
-            const server = event.stateKey.split(":")[1]
+        const memberEvents = await mjolnir.client.getRoomMembers(
+            managementRoomId,
+            undefined,
+            ["join"],
+            ["ban", "leave"],
+        );
+        let moderators: string[] = [];
+        memberEvents.forEach((event) => {
+            moderators.push(event.stateKey);
+            const server = event.stateKey.split(":")[1];
             if (!moderators.includes(server)) {
-                moderators.push(server)
+                moderators.push(server);
             }
-        })
-        mjolnir.moderators = moderators
+        });
+        mjolnir.moderators = moderators;
 
         return mjolnir;
     }
@@ -296,7 +301,8 @@ export class Mjolnir {
             this.managementRoomOutput,
             this.protectionManager,
             config,
-            this.moderators);
+            this.moderators,
+        );
     }
 
     public get state(): string {

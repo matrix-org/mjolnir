@@ -14,21 +14,24 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {Mjolnir} from "../Mjolnir";
-import {LogLevel, RichReply} from "@vector-im/matrix-bot-sdk";
+import { Mjolnir } from "../Mjolnir";
+import { LogLevel, RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir ignore <user|server>
 export async function execIgnoreCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];
 
-    await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "IgnoreCommand", `Adding ${target} to internal moderator list.`);
-    mjolnir.moderators.push(target)
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.managementRoomOutput.logMessage(
+        LogLevel.INFO,
+        "IgnoreCommand",
+        `Adding ${target} to internal moderator list.`,
+    );
+    mjolnir.moderators.push(target);
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
 // !mjolnir ignored
 export async function execListIgnoredCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-
     let html = "Ignored users:<ul>";
     let text = "Ignored users:\n";
 
@@ -42,5 +45,5 @@ export async function execListIgnoredCommand(roomId: string, event: any, mjolnir
     const reply = RichReply.createFor(roomId, event, text, html);
     reply["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, reply);
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
