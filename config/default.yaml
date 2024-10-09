@@ -173,11 +173,6 @@ protections:
     # A list of case-insensitive keywords that the WordList protection will watch for from new users.
     #
     # WordList will ban users who use these words when first joining a room, so take caution when selecting them.
-    #
-    # For advanced usage, regex can also be used, see the following links for more information;
-    #  - https://www.digitalocean.com/community/tutorials/an-introduction-to-regular-expressions
-    #  - https://regexr.com/
-    #  - https://regexone.com/
     words:
       - "LoReM"
       - "IpSuM"
