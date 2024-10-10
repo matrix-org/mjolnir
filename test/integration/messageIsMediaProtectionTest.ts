@@ -18,6 +18,12 @@ describe("Test: Message is media", function () {
     });
     this.afterEach(async function () {
         await client.stop();
+        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
+            return await client.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir disable MessageIsMediaProtection`,
+            });
+        });
     });
 
     function delay(ms: number) {
