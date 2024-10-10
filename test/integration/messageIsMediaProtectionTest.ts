@@ -14,7 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-
 import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { newTestUser } from "./clientHelper";
 import { getFirstReaction } from "./commands/commandUtils";
