@@ -14,16 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixGlob, getRequestFn, setRequestFn } from "@vector-im/matrix-bot-sdk";
+import {
+    LogLevel,
+    LogService,
+    MatrixGlob,
+    getRequestFn,
+    setRequestFn,
+    extractRequestError,
+} from "@vector-im/matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import { default as parseDuration } from "parse-duration";
 import * as Sentry from "@sentry/node";
 import * as _ from "@sentry/tracing"; // Performing the import activates tracing.
 import { collectDefaultMetrics, Counter, Histogram, register } from "prom-client";
 
-import ManagementRoomOutput from "./ManagementRoomOutput";
 import { IHealthConfig } from "./config";
 import { MatrixSendClient } from "./MatrixEmitter";
+import ManagementRoomOutput from "./ManagementRoomOutput";
 
 // Define a few aliases to simplify parsing durations.
 
@@ -67,27 +74,33 @@ export function isTrueJoinEvent(event: any): boolean {
     return membership === "join" && prevMembership !== "join";
 }
 
-/**
- * Redact a user's messages in a set of rooms.
- * See `getMessagesByUserIn`.
- *
- * @param client Client to redact the messages with.
- * @param managementRoom Management room to log messages back to.
- * @param userIdOrGlob A mxid or a glob which is applied to the whole sender field of events in the room, which will be redacted if they match.
- * See `MatrixGlob` in matrix-bot-sdk.
- * @param targetRoomIds Rooms to redact the messages from.
- * @param limit The number of messages to redact from most recent first. If the limit is reached then no further messages will be redacted.
- * @param noop Whether to operate in noop mode.
- */
-export async function redactUserMessagesIn(
+async function adminRedactUserMessagesIn(
+    client: MatrixSendClient,
+    managementRoom: ManagementRoomOutput,
+    userId: string,
+    targetRooms: string[],
+    limit = 1000,
+) {
+    const body = { limit: limit, rooms: targetRooms };
+    const redactEndpoint = `/_synapse/admin/v1/user/${userId}/redact`;
+    const response = await client.doRequest("GET", redactEndpoint, null, body);
+    const redactID = response["redact_id"];
+    await managementRoom.logMessage(
+        LogLevel.INFO,
+        "utils#redactUserMessagesIn",
+        `Successfully requested redaction, ID for task is ${redactID}`,
+    );
+}
+
+async function botRedactUserMessagesIn(
     client: MatrixSendClient,
     managementRoom: ManagementRoomOutput,
     userIdOrGlob: string,
-    targetRoomIds: string[],
+    targetRooms: string[],
     limit = 1000,
     noop = false,
 ) {
-    for (const targetRoomId of targetRoomIds) {
+    for (const targetRoomId of targetRooms) {
         await managementRoom.logMessage(
             LogLevel.DEBUG,
             "utils#redactUserMessagesIn",
@@ -124,6 +137,52 @@ export async function redactUserMessagesIn(
                 targetRoomId,
             );
         }
+    }
+}
+
+/**
+ * Redact a user's messages in a set of rooms.
+ * See `getMessagesByUserIn`.
+ *
+ * @param client Client to redact the messages with.
+ * @param managementRoom Management room to log messages back to.
+ * @param userIdOrGlob A mxid or a glob which is applied to the whole sender field of events in the room, which will be redacted if they match.
+ * See `MatrixGlob` in matrix-bot-sdk.
+ * @param targetRoomIds Rooms to redact the messages from.
+ * @param isAdmin whether the bot is server admin
+ * @param limit The number of messages to redact from most recent first. If the limit is reached then no further messages will be redacted.
+ * @param noop Whether to operate in noop mode.
+ */
+
+export async function redactUserMessagesIn(
+    client: MatrixSendClient,
+    managementRoom: ManagementRoomOutput,
+    userIdOrGlob: string,
+    targetRoomIds: string[],
+    isAdmin: boolean,
+    limit = 1000,
+    noop = false,
+) {
+    const usingGlob = userIdOrGlob.includes("*");
+    // if admin use the Admin API, but admin endpoint does not support globs
+    if (isAdmin && !usingGlob) {
+        try {
+            await adminRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit);
+        } catch (e) {
+            LogService.error(
+                "utils#redactUserMessagesIn",
+                `Error using admin API to redact messages: ${extractRequestError(e)}`,
+            );
+            await managementRoom.logMessage(
+                LogLevel.ERROR,
+                "utils#redactUserMessagesIn",
+                `Error using admin API to redact messages for user ${userIdOrGlob}, please check logs for more info - falling
+            back to non-admin redaction process.`,
+            );
+            await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit, noop);
+        }
+    } else {
+        await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit, noop);
     }
 }
 

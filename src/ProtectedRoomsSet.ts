@@ -101,6 +101,11 @@ export class ProtectedRoomsSet {
         /** The last revision we used to sync protected rooms. */ Revision
     >();
 
+    /**
+     * whether the mjolnir instance is server admin
+     */
+    public isAdmin = false;
+
     constructor(
         private readonly client: MatrixSendClient,
         private readonly clientUserId: string,
@@ -126,7 +131,7 @@ export class ProtectedRoomsSet {
      * @param roomId The room we want to redact them in.
      */
     public redactUser(userId: string, roomId: string) {
-        this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId));
+        this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId, this.isAdmin));
     }
 
     /**

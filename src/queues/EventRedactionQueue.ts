@@ -42,10 +42,12 @@ export interface QueuedRedaction {
 export class RedactUserInRoom implements QueuedRedaction {
     userId: string;
     roomId: string;
+    isAdmin: boolean;
 
-    constructor(userId: string, roomId: string) {
+    constructor(userId: string, roomId: string, isAdmin: boolean) {
         this.userId = userId;
         this.roomId = roomId;
+        this.isAdmin = isAdmin;
     }
 
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
@@ -54,7 +56,7 @@ export class RedactUserInRoom implements QueuedRedaction {
             "Mjolnir",
             `Redacting events from ${this.userId} in room ${this.roomId}.`,
         );
-        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId]);
+        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], this.isAdmin);
     }
 
     public redactionEqual(redaction: QueuedRedaction): boolean {
