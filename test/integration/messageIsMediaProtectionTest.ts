@@ -17,13 +17,13 @@ describe("Test: Message is media", function () {
         await client.setUserPowerLevel(mjolnirId, testRoom, 100);
     });
     this.afterEach(async function () {
-        await client.stop();
         await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
             return await client.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir disable MessageIsMediaProtection`,
             });
         });
+        await client.stop();
     });
 
     function delay(ms: number) {
