@@ -82,6 +82,11 @@ export class Mjolnir {
     public readonly policyListManager: PolicyListManager;
 
     /**
+     * Members of the moderator room and others who should not be banned, ACL'd etc.
+     */
+    public moderators: string[];
+
+    /**
      * Adds a listener to the client that will automatically accept invitations.
      * @param {MatrixSendClient} client
      * @param options By default accepts invites from anyone.
@@ -180,6 +185,23 @@ export class Mjolnir {
             "Mjolnir is starting up. Use !mjolnir to query status.",
         );
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
+
+        const memberEvents = await mjolnir.client.getRoomMembers(
+            managementRoomId,
+            undefined,
+            ["join"],
+            ["ban", "leave"],
+        );
+        let moderators: string[] = [];
+        memberEvents.forEach((event) => {
+            moderators.push(event.stateKey);
+            const server = event.stateKey.split(":")[1];
+            if (!moderators.includes(server)) {
+                moderators.push(server);
+            }
+        });
+        mjolnir.moderators = moderators;
+
         return mjolnir;
     }
 
@@ -279,6 +301,7 @@ export class Mjolnir {
             this.managementRoomOutput,
             this.protectionManager,
             config,
+            this.moderators,
         );
     }
 
