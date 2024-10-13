@@ -120,7 +120,7 @@ export interface IConfig {
     };
     protections: {
         wordlist: {
-            enableRegexps: boolean;
+            enableRegExps: boolean;
             words: string[];
             minutesBeforeTrusting: number;
         };
@@ -229,7 +229,7 @@ const defaultConfig: IConfig = {
     },
     protections: {
         wordlist: {
-            enableRegexps: false,
+            enableRegExps: false,
             words: [],
             minutesBeforeTrusting: 20,
         },
