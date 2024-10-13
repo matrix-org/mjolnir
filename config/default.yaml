@@ -170,6 +170,14 @@ protections:
   # Configuration for the wordlist plugin, which can ban users based if they say certain
   # blocked words shortly after joining.
   wordlist:
+    # For advanced usage, regex can also be enabled. If left disabled Mjolnir will interpret words literally.
+    #
+    # See the following links for more information;
+    #  - https://www.digitalocean.com/community/tutorials/an-introduction-to-regular-expressions
+    #  - https://regexr.com/
+    #  - https://regexone.com/
+    enableRegExps: false
+
     # A list of case-insensitive keywords that the WordList protection will watch for from new users.
     #
     # WordList will ban users who use these words when first joining a room, so take caution when selecting them.
