@@ -88,15 +88,9 @@ export class WordList extends Protection {
                 }
             }
             if (!this.badWords) {
-                // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
-                const escapeRegExp = (string: string) => {
-                    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-                };
+                const enableRegexps = mjolnir.config.protections.wordlist.enableRegexps || false;
+                const words = mjolnir.config.protections.wordlist.words.filter((word) => word.length !== 0);
 
-                // Create a mega-regex from all the tiny words.
-                const words = mjolnir.config.protections.wordlist.words
-                    .filter((word) => word.length !== 0)
-                    .map(escapeRegExp);
                 if (words.length === 0) {
                     mjolnir.managementRoomOutput.logMessage(
                         LogLevel.ERROR,
@@ -106,7 +100,19 @@ export class WordList extends Protection {
                     this.enabled = false;
                     return;
                 }
-                this.badWords = new RegExp(words.join("|"), "i");
+
+                if (enableRegexps) {
+                    this.badWords = new RegExp(words.join("|"), "i");
+                } else {
+                    // See https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+                    const escapeRegExp = (string: string) => {
+                        return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                    };
+
+                    // Create a mega-regex from all the tiny words.
+                    const escapedWords = words.map(escapeRegExp);
+                    this.badWords = new RegExp(escapedWords.join("|"), "i");
+                }
             }
 
             const match = this.badWords!.exec(message);
