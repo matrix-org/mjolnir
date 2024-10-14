@@ -392,6 +392,7 @@ export class Mjolnir {
         this.webapis.stop();
         this.reportPoller?.stop();
         this.openMetrics.stop();
+        this.moderators.stop();
     }
 
     /**

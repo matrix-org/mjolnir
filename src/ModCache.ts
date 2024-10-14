@@ -24,6 +24,7 @@ export class ModCache {
     private managementRoomId: string;
     private ttl: number = 1000 * 60 * 60; // 60 minutes
     private lastInvalidation = 0;
+    private interval: any;
 
     constructor(client: MatrixSendClient, emitter: MatrixEmitter, managementRoomId: string) {
         this.client = client;
@@ -38,7 +39,7 @@ export class ModCache {
      */
     async init() {
         await this.populateCache();
-        setInterval(
+        this.interval = setInterval(
             () => {
                 if (Date.now() - this.lastInvalidation > this.ttl) {
                     this.populateCache();
@@ -102,5 +103,12 @@ export class ModCache {
      */
     public listAll() {
         return this.ignoreList.concat(this.modRoomMembers);
+    }
+
+    /**
+     * Clear the interval which refreshes cache
+     */
+    public stop() {
+        clearInterval(this.interval);
     }
 }
