@@ -83,7 +83,7 @@ export class TrustedReporters extends Protection {
             await mjolnir.client.redactEvent(roomId, event.id, "abuse detected");
         }
         if (reporters.size === this.settings.banThreshold.value) {
-            if (mjolnir.moderators.includes(event.userId)) {
+            if (mjolnir.moderators.checkMembership(event.userId)) {
                 await mjolnir.managementRoomOutput.logMessage(
                     LogLevel.WARN,
                     "TrustedReporters",

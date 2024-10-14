@@ -266,7 +266,7 @@ async function execSinceCommandAux(
                 case Action.Ban: {
                     for (let join of recentJoins) {
                         try {
-                            if (mjolnir.moderators.includes(join.userId)) {
+                            if (mjolnir.moderators.checkMembership(join.userId)) {
                                 await mjolnir.managementRoomOutput.logMessage(
                                     LogLevel.WARN,
                                     "SinceCommand",

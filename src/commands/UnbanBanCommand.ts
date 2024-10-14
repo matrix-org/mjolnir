@@ -126,7 +126,8 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     if (!bits) return; // error already handled
 
     const matcher = new MatrixGlob(bits.entity);
-    mjolnir.moderators.forEach(async (name) => {
+    const moderators = mjolnir.moderators.listAll();
+    moderators.forEach(async (name) => {
         if (matcher.test(name)) {
             await mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,

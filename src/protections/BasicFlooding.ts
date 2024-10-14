@@ -75,7 +75,7 @@ export class BasicFlooding extends Protection {
                 roomId,
             );
             if (!mjolnir.config.noop) {
-                if (mjolnir.moderators.includes(event["sender"])) {
+                if (mjolnir.moderators.checkMembership(event["sender"])) {
                     mjolnir.managementRoomOutput.logMessage(
                         LogLevel.WARN,
                         "BasicFlooding",

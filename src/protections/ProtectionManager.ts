@@ -286,7 +286,7 @@ export class ProtectionManager {
                 if (consequence.name === "alert") {
                     /* take no additional action, just print the below message to management room */
                 } else if (consequence.name === "ban") {
-                    if (this.mjolnir.moderators.includes(sender)) {
+                    if (this.mjolnir.moderators.checkMembership(sender)) {
                         await this.mjolnir.managementRoomOutput.logMessage(
                             LogLevel.WARN,
                             "ProtectionManager",

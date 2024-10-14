@@ -770,7 +770,7 @@ class BanAccused implements IUIAction {
         return `Ban ${htmlEscape(report.accused_id)} from room ${htmlEscape(report.room_alias_or_id)}`;
     }
     public async execute(manager: ReportManager, report: IReport): Promise<string | undefined> {
-        if (manager.mjolnir.moderators.includes(report.accused_id)) {
+        if (manager.mjolnir.moderators.checkMembership(report.accused_id)) {
             await manager.mjolnir.managementRoomOutput.logMessage(
                 LogLevel.WARN,
                 "ReportManager",

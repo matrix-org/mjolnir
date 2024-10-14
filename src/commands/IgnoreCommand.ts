@@ -26,7 +26,7 @@ export async function execIgnoreCommand(roomId: string, event: any, mjolnir: Mjo
         "IgnoreCommand",
         `Adding ${target} to internal moderator list.`,
     );
-    mjolnir.moderators.push(target);
+    mjolnir.moderators.addToIgnore(target);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
 
@@ -35,7 +35,7 @@ export async function execListIgnoredCommand(roomId: string, event: any, mjolnir
     let html = "Ignored users:<ul>";
     let text = "Ignored users:\n";
 
-    for (const name of mjolnir.moderators) {
+    for (const name of mjolnir.moderators.listIgnored()) {
         html += `<li>${name}</li>`;
         text += `* ${name}\n`;
     }
