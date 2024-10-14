@@ -192,7 +192,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir suspend <user ID>                                          - Suspend the specified user\n" +
                 "!mjolnir unsuspend <user ID>                                        - Unsuspend the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                               - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
-                "mjolnir ignored                                                     - List currently ignored entities.\n" +
+                "!mjolnir ignored                                                     - List currently ignored entities.\n" +
                 "!mjolnir help                                                       - This menu\n";
             const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
             const text = `Mjolnir help:\n${menu}`;

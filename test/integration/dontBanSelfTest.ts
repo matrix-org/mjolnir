@@ -14,24 +14,23 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {MatrixClient} from "@vector-im/matrix-bot-sdk";
-import {newTestUser} from "./clientHelper";
+import { MatrixClient } from "@vector-im/matrix-bot-sdk";
+import { newTestUser } from "./clientHelper";
 import { strict as assert } from "assert";
-import {getFirstReaction} from "./commands/commandUtils";
-
+import { getFirstReaction } from "./commands/commandUtils";
 
 describe("Test: Bot doesn't ban moderation room members or ignored entities.", function () {
     let client: MatrixClient;
     let room: string;
     let badClient: MatrixClient;
     this.beforeEach(async function () {
-        client = await newTestUser(this.config.homeserverUrl, {name: {contains: "mod-room-test"}});
+        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test" } });
         await client.start();
         const mjolnirId = await this.mjolnir.client.getUserId();
-        badClient = await newTestUser(this.config.homeserverUrl, {name: {contains: "mod-room-test-to-be-banned"}})
-        const badId = await badClient.getUserId()
-        room = await client.createRoom({invite: [mjolnirId, badId]});
-        await badClient.joinRoom(room)
+        badClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test-to-be-banned" } });
+        const badId = await badClient.getUserId();
+        room = await client.createRoom({ invite: [mjolnirId, badId] });
+        await badClient.joinRoom(room);
         await client.joinRoom(this.config.managementRoom);
         await client.setUserPowerLevel(mjolnirId, room, 100);
     });
@@ -43,7 +42,7 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
         this.timeout(20000);
 
         function delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+            return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
         await delay(4000);
@@ -54,7 +53,7 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
                 assert.fail("Expected mod not found.");
             }
         });
-        const newMod = await newTestUser(this.config.homeserverUrl, {name: {contains: "mod-room-test"}});
+        const newMod = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test" } });
         await newMod.joinRoom(this.config.managementRoom);
         await delay(1000);
         let updatedMods = this.mjolnir.moderators.listAll();
@@ -63,14 +62,14 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
         }
     });
 
-    it("Ignore command adds entities to ignore list.", async function (){
+    it("Ignore command adds entities to ignore list.", async function () {
         this.timeout(20000);
 
         function delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+            return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        const helpfulBot = await newTestUser(this.config.homeserverUrl, {name: {contains: "mod-room-test-bot"}});
+        const helpfulBot = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test-bot" } });
         const botId = await helpfulBot.getUserId();
 
         await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
@@ -80,7 +79,7 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
             });
         });
         await delay(1000);
-        const mods = this.mjolnir.moderators.listAll()
+        const mods = this.mjolnir.moderators.listAll();
         if (!mods.includes(botId)) {
             assert.fail("Bot not added to moderator list.");
         }
@@ -89,7 +88,7 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
     it("Moderators and ignored entities are not banned by automatic procedures.", async function () {
         this.timeout(20000);
         function delay(ms: number) {
-        return new Promise((resolve) => setTimeout(resolve, ms));
+            return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
         await client.sendMessage(this.mjolnir.managementRoomId, {
@@ -104,18 +103,18 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
         });
 
         for (let i = 0; i < 12; i++) {
-            await badClient.sendMessage(room, {msgtype: "m.text", body: "ban me"});
+            await badClient.sendMessage(room, { msgtype: "m.text", body: "ban me" });
         }
 
         await delay(3000);
         const badId = await badClient.getUserId();
-        const badMemberEvent = await this.mjolnir.client.getRoomStateEvent(room, "m.room.member", badId)
+        const badMemberEvent = await this.mjolnir.client.getRoomStateEvent(room, "m.room.member", badId);
         if (badMemberEvent["membership"] !== "ban") {
             assert.fail("Basic flooding protection is not working, this user should have been banned.");
         }
 
         for (let i = 0; i < 12; i++) {
-            await this.mjolnir.client.sendMessage(room, {msgtype: "m.text", body: "doing mod things"});
+            await this.mjolnir.client.sendMessage(room, { msgtype: "m.text", body: "doing mod things" });
         }
         const mjolnirId = await this.mjolnir.client.getUserId();
         const mjolnirMemberEvent = await this.mjolnir.client.getRoomStateEvent(room, "m.room.member", mjolnirId);
@@ -124,7 +123,7 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
             assert.fail("Bot has banned itself.");
         }
 
-        const helpfulBot = await newTestUser(this.config.homeserverUrl, {name: {contains: "mod-room-test-bot"}});
+        const helpfulBot = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test-bot" } });
         const botId = await helpfulBot.getUserId();
 
         await this.mjolnir.client.inviteUser(botId, room);
@@ -138,12 +137,12 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
         });
 
         for (let i = 0; i < 12; i++) {
-            await helpfulBot.sendMessage(room, {msgtype: "m.text", body: "doing helpful bot things"});
+            await helpfulBot.sendMessage(room, { msgtype: "m.text", body: "doing helpful bot things" });
         }
-        const botMemberEvent = await this.mjolnir.client.getRoomStateEvent(room, "m.room.member", botId)
+        const botMemberEvent = await this.mjolnir.client.getRoomStateEvent(room, "m.room.member", botId);
 
         if (botMemberEvent["membership"] === "ban") {
             assert.fail("Bot has banned a member of ignore list.");
         }
     });
-})
+});
