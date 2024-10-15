@@ -31,7 +31,7 @@ import { htmlEscape } from "../utils";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { LocalAbuseReports } from "./LocalAbuseReports";
-import {NsfwProtection} from "./NsfwProtection";
+import { NsfwProtection } from "./NsfwProtection";
 import { MentionSpam } from "./MentionSpam";
 
 const PROTECTIONS: Protection[] = [
@@ -45,7 +45,7 @@ const PROTECTIONS: Protection[] = [
     new JoinWaveShortCircuit(),
     new LocalAbuseReports(),
     new NsfwProtection(),
-    new MentionSpam()
+    new MentionSpam(),
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
@@ -60,9 +60,7 @@ export class ProtectionManager {
         return this._protections;
     }
 
-
-    constructor(private readonly mjolnir: Mjolnir) {
-    }
+    constructor(private readonly mjolnir: Mjolnir) {}
 
     /*
      * Take all the builtin protections, register them to set their enabled (or not) state and
@@ -75,7 +73,11 @@ export class ProtectionManager {
             try {
                 await this.registerProtection(protection);
             } catch (e) {
-                this.mjolnir.managementRoomOutput.logMessage(LogLevel.WARN, "ProtectionManager", extractRequestError(e));
+                this.mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.WARN,
+                    "ProtectionManager",
+                    extractRequestError(e),
+                );
             }
         }
     }
@@ -87,7 +89,7 @@ export class ProtectionManager {
      * @param protection The protection object we want to register
      */
     public async registerProtection(protection: Protection) {
-        this._protections.set(protection.name, protection)
+        this._protections.set(protection.name, protection);
 
         let enabledProtections: { enabled: string[] } | null = null;
         try {
@@ -139,7 +141,10 @@ export class ProtectionManager {
      * @param protectionName Which protection these settings belong to
      * @param changedSettings The settings to change and their values
      */
-    public async setProtectionSettings(protectionName: string, changedSettings: { [setting: string]: any }): Promise<any> {
+    public async setProtectionSettings(
+        protectionName: string,
+        changedSettings: { [setting: string]: any },
+    ): Promise<any> {
         const protection = this._protections.get(protectionName);
         if (protection === undefined) {
             return;
@@ -151,8 +156,10 @@ export class ProtectionManager {
             if (!(key in protection.settings)) {
                 throw new ProtectionSettingValidationError(`Failed to find protection setting by name: ${key}`);
             }
-            if (typeof (protection.settings[key].value) !== typeof (value)) {
-                throw new ProtectionSettingValidationError(`Invalid type for protection setting: ${key} (${typeof (value)})`);
+            if (typeof protection.settings[key].value !== typeof value) {
+                throw new ProtectionSettingValidationError(
+                    `Invalid type for protection setting: ${key} (${typeof value})`,
+                );
             }
             if (!protection.settings[key].validate(value)) {
                 throw new ProtectionSettingValidationError(`Invalid value for protection setting: ${key} (${value})`);
@@ -161,7 +168,10 @@ export class ProtectionManager {
         }
 
         await this.mjolnir.client.sendStateEvent(
-            this.mjolnir.managementRoomId, 'org.matrix.mjolnir.setting', protectionName, validatedSettings
+            this.mjolnir.managementRoomId,
+            "org.matrix.mjolnir.setting",
+            protectionName,
+            validatedSettings,
         );
     }
 
@@ -169,7 +179,7 @@ export class ProtectionManager {
      * Make a list of the names of enabled protections and save them in a state event
      */
     private async saveEnabledProtections() {
-        const protections = this.enabledProtections.map(p => p.name);
+        const protections = this.enabledProtections.map((p) => p.name);
         await this.mjolnir.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
     }
     /*
@@ -190,7 +200,7 @@ export class ProtectionManager {
     }
 
     public get enabledProtections(): Protection[] {
-        return [...this._protections.values()].filter(p => p.enabled);
+        return [...this._protections.values()].filter((p) => p.enabled);
     }
 
     /**
@@ -202,7 +212,6 @@ export class ProtectionManager {
     public getProtection(protectionName: string): Protection | null {
         return this._protections.get(protectionName) ?? null;
     }
-
 
     /*
      * Disable a protection by name and remove it from the persistent list of enabled protections
@@ -230,10 +239,12 @@ export class ProtectionManager {
      * @returns Every saved setting for this protectionName that has a valid value
      */
     public async getProtectionSettings(protectionName: string): Promise<{ [setting: string]: any }> {
-        let savedSettings: { [setting: string]: any } = {}
+        let savedSettings: { [setting: string]: any } = {};
         try {
             savedSettings = await this.mjolnir.client.getRoomStateEvent(
-                this.mjolnir.managementRoomId, 'org.matrix.mjolnir.setting', protectionName
+                this.mjolnir.managementRoomId,
+                "org.matrix.mjolnir.setting",
+                protectionName,
             );
         } catch {
             // setting does not exist, return empty object
@@ -241,29 +252,35 @@ export class ProtectionManager {
         }
 
         const settingDefinitions = this._protections.get(protectionName)?.settings ?? {};
-        const validatedSettings: { [setting: string]: any } = {}
+        const validatedSettings: { [setting: string]: any } = {};
         for (let [key, value] of Object.entries(savedSettings)) {
             if (
                 // is this a setting name with a known parser?
-                key in settingDefinitions
+                key in settingDefinitions &&
                 // is the datatype of this setting's value what we expect?
-                && typeof (settingDefinitions[key].value) === typeof (value)
+                typeof settingDefinitions[key].value === typeof value &&
                 // is this setting's value valid for the setting?
-                && settingDefinitions[key].validate(value)
+                settingDefinitions[key].validate(value)
             ) {
                 validatedSettings[key] = value;
             } else {
                 await this.mjolnir.managementRoomOutput.logMessage(
                     LogLevel.WARN,
                     "getProtectionSetting",
-                    `Tried to read ${protectionName}.${key} and got invalid value ${value}`
+                    `Tried to read ${protectionName}.${key} and got invalid value ${value}`,
                 );
             }
         }
         return validatedSettings;
     }
 
-    private async handleConsequences(protection: Protection, roomId: string, eventId: string, sender: string, consequences: Consequence[]) {
+    private async handleConsequences(
+        protection: Protection,
+        roomId: string,
+        eventId: string,
+        sender: string,
+        consequences: Consequence[],
+    ) {
         for (const consequence of consequences) {
             try {
                 if (consequence.name === "alert") {
@@ -276,11 +293,12 @@ export class ProtectionManager {
                     throw new Error(`unknown consequence ${consequence.name}`);
                 }
 
-                let message = `protection ${protection.name} enacting`
-                    + ` ${consequence.name}`
-                    + ` against ${htmlEscape(sender)}`
-                    + ` in ${htmlEscape(roomId)}`
-                    + ` (reason: ${htmlEscape(consequence.reason)})`;
+                let message =
+                    `protection ${protection.name} enacting` +
+                    ` ${consequence.name}` +
+                    ` against ${htmlEscape(sender)}` +
+                    ` in ${htmlEscape(roomId)}` +
+                    ` (reason: ${htmlEscape(consequence.reason)})`;
                 await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, {
                     msgtype: "m.notice",
                     body: message,
@@ -288,17 +306,21 @@ export class ProtectionManager {
                         who: sender,
                         room: roomId,
                         types: [consequence.name],
-                    }
+                    },
                 });
             } catch (e) {
-                await this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "handleConsequences", `Failed to enact ${consequence.name} consequence: ${e}`);
+                await this.mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "handleConsequences",
+                    `Failed to enact ${consequence.name} consequence: ${e}`,
+                );
             }
         }
     }
 
     private async handleEvent(roomId: string, event: any) {
         if (this.mjolnir.protectedRoomsTracker.getProtectedRooms().includes(roomId)) {
-            if (event['sender'] === await this.mjolnir.client.getUserId()) return; // Ignore ourselves
+            if (event["sender"] === (await this.mjolnir.client.getUserId())) return; // Ignore ourselves
 
             // Iterate all the enabled protections
             for (const protection of this.enabledProtections) {
@@ -306,11 +328,14 @@ export class ProtectionManager {
                 try {
                     consequences = await protection.handleEvent(this.mjolnir, roomId, event);
                 } catch (e) {
-                    const eventPermalink = Permalinks.forEvent(roomId, event['event_id']);
+                    const eventPermalink = Permalinks.forEvent(roomId, event["event_id"]);
                     LogService.error("ProtectionManager", "Error handling protection: " + protection.name);
                     LogService.error("ProtectionManager", "Failed event: " + eventPermalink);
                     LogService.error("ProtectionManager", extractRequestError(e));
-                    await this.mjolnir.client.sendNotice(this.mjolnir.managementRoomId, `There was an error processing an event through a protection (${protection.name}) - see log for details. Event: ${eventPermalink}`);
+                    await this.mjolnir.client.sendNotice(
+                        this.mjolnir.managementRoomId,
+                        `There was an error processing an event through a protection (${protection.name}) - see log for details. Event: ${eventPermalink}`,
+                    );
                     continue;
                 }
 
@@ -325,9 +350,8 @@ export class ProtectionManager {
         }
     }
 
-
     private requiredProtectionPermissions(): Set<string> {
-        return new Set(this.enabledProtections.map((p) => p.requiredStatePermissions).flat())
+        return new Set(this.enabledProtections.map((p) => p.requiredStatePermissions).flat());
     }
 
     public async verifyPermissionsIn(roomId: string): Promise<RoomUpdateError[]> {
@@ -348,13 +372,13 @@ export class ProtectionManager {
                 return val;
             }
 
-            const users = powerLevels['users'] || {};
-            const events = powerLevels['events'] || {};
-            const usersDefault = plDefault(powerLevels['users_default'], 0);
-            const stateDefault = plDefault(powerLevels['state_default'], 50);
-            const ban = plDefault(powerLevels['ban'], 50);
-            const kick = plDefault(powerLevels['kick'], 50);
-            const redact = plDefault(powerLevels['redact'], 50);
+            const users = powerLevels["users"] || {};
+            const events = powerLevels["events"] || {};
+            const usersDefault = plDefault(powerLevels["users_default"], 0);
+            const stateDefault = plDefault(powerLevels["state_default"], 50);
+            const ban = plDefault(powerLevels["ban"], 50);
+            const kick = plDefault(powerLevels["kick"], 50);
+            const redact = plDefault(powerLevels["redact"], 50);
 
             const userLevel = plDefault(users[ownUserId], usersDefault);
             const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
@@ -409,7 +433,7 @@ export class ProtectionManager {
             LogService.error("Mjolnir", extractRequestError(e));
             errors.push({
                 roomId,
-                errorMessage: e.message || (e.body ? e.body.error : '<no message>'),
+                errorMessage: e.message || (e.body ? e.body.error : "<no message>"),
                 errorKind: ERROR_KIND_FATAL,
             });
         }
@@ -417,7 +441,17 @@ export class ProtectionManager {
         return errors;
     }
 
-    private async handleReport({ roomId, reporterId, event, reason }: { roomId: string, reporterId: string, event: any, reason?: string }) {
+    private async handleReport({
+        roomId,
+        reporterId,
+        event,
+        reason,
+    }: {
+        roomId: string;
+        reporterId: string;
+        event: any;
+        reason?: string;
+    }) {
         for (const protection of this.enabledProtections) {
             await protection.handleReport(this.mjolnir, roomId, reporterId, event, reason);
         }

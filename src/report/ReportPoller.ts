@@ -15,10 +15,10 @@ limitations under the License.
 */
 
 import { Mjolnir, REPORT_POLL_EVENT_TYPE } from "../Mjolnir";
-import { ReportManager } from './ReportManager';
+import { ReportManager } from "./ReportManager";
 import { LogLevel } from "@vector-im/matrix-bot-sdk";
 
-class InvalidStateError extends Error { }
+class InvalidStateError extends Error {}
 
 /**
  * A class to poll synapse's report endpoint, so we can act on new reports
@@ -40,7 +40,7 @@ export class ReportPoller {
     constructor(
         private mjolnir: Mjolnir,
         private manager: ReportManager,
-    ) { }
+    ) {}
 
     private schedulePoll() {
         if (this.timeout === null) {
@@ -52,7 +52,7 @@ export class ReportPoller {
              */
             this.timeout = setTimeout(
                 this.tryGetAbuseReports.bind(this),
-                30_000 // a minute in milliseconds
+                30_000, // a minute in milliseconds
             );
         } else {
             throw new InvalidStateError("poll already scheduled");
@@ -60,22 +60,24 @@ export class ReportPoller {
     }
 
     private async getAbuseReports() {
-        let response_: {
-            event_reports: { room_id: string, event_id: string, sender: string, reason: string }[],
-            next_token: number | undefined
-        } | undefined;
+        let response_:
+            | {
+                  event_reports: { room_id: string; event_id: string; sender: string; reason: string }[];
+                  next_token: number | undefined;
+              }
+            | undefined;
         try {
-            response_ = await this.mjolnir.client.doRequest(
-                "GET",
-                "/_synapse/admin/v1/event_reports",
-                {
-                    // short for direction: forward; i.e. show newest last
-                    dir: "f",
-                    from: this.from.toString()
-                }
-            );
+            response_ = await this.mjolnir.client.doRequest("GET", "/_synapse/admin/v1/event_reports", {
+                // short for direction: forward; i.e. show newest last
+                dir: "f",
+                from: this.from.toString(),
+            });
         } catch (ex) {
-            await this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to poll events: ${ex}`);
+            await this.mjolnir.managementRoomOutput.logMessage(
+                LogLevel.ERROR,
+                "getAbuseReports",
+                `failed to poll events: ${ex}`,
+            );
             return;
         }
 
@@ -87,12 +89,18 @@ export class ReportPoller {
 
             let event: any; // `any` because `handleServerAbuseReport` uses `any`
             try {
-                event = (await this.mjolnir.client.doRequest(
-                    "GET",
-                    `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`
-                )).event;
+                event = (
+                    await this.mjolnir.client.doRequest(
+                        "GET",
+                        `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`,
+                    )
+                ).event;
             } catch (ex) {
-                this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to get context: ${ex}`);
+                this.mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "getAbuseReports",
+                    `failed to get context: ${ex}`,
+                );
                 continue;
             }
 
@@ -114,7 +122,11 @@ export class ReportPoller {
             try {
                 await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
             } catch (ex) {
-                await this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "getAbuseReports", `failed to update progress: ${ex}`);
+                await this.mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "getAbuseReports",
+                    `failed to update progress: ${ex}`,
+                );
             }
         }
     }
@@ -123,9 +135,13 @@ export class ReportPoller {
         this.timeout = null;
 
         try {
-            await this.getAbuseReports()
+            await this.getAbuseReports();
         } catch (ex) {
-            await this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "tryGetAbuseReports", `failed to get abuse reports: ${ex}`);
+            await this.mjolnir.managementRoomOutput.logMessage(
+                LogLevel.ERROR,
+                "tryGetAbuseReports",
+                `failed to get abuse reports: ${ex}`,
+            );
         }
 
         this.schedulePoll();

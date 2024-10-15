@@ -27,11 +27,11 @@ const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
 export async function execStatusCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     switch (parts[0]) {
         case undefined:
-        case 'mjolnir':
+        case "mjolnir":
             return showMjolnirStatus(roomId, event, mjolnir);
-        case 'joins':
+        case "joins":
             return showJoinsStatus(roomId, event, mjolnir, parts.slice(/* ["joins"] */ 1));
-        case 'protection':
+        case "protection":
             return showProtectionStatus(roomId, event, mjolnir, parts.slice(/* ["protection"] */ 1));
         default:
             throw new Error(`Invalid status command: ${htmlEscape(parts[0])}`);
@@ -85,10 +85,14 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
             text += "* None\n";
         }
         html += "</ul>";
-    }
-    const subscribedLists = mjolnir.policyListManager.lists.filter(list => !mjolnir.explicitlyProtectedRooms.includes(list.roomId));
+    };
+    const subscribedLists = mjolnir.policyListManager.lists.filter(
+        (list) => !mjolnir.explicitlyProtectedRooms.includes(list.roomId),
+    );
     renderPolicyLists("Subscribed policy lists", subscribedLists);
-    const subscribedAndProtectedLists = mjolnir.policyListManager.lists.filter(list => mjolnir.explicitlyProtectedRooms.includes(list.roomId));
+    const subscribedAndProtectedLists = mjolnir.policyListManager.lists.filter((list) =>
+        mjolnir.explicitlyProtectedRooms.includes(list.roomId),
+    );
     renderPolicyLists("Subscribed and protected policy lists", subscribedAndProtectedLists);
 
     const reply = RichReply.createFor(roomId, event, text, html);
@@ -124,12 +128,12 @@ async function showProtectionStatus(roomId: string, event: any, mjolnir: Mjolnir
 async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: Mjolnir, args: string[]) {
     const targetRoomAliasOrId = args[0];
     const maxAgeArg = args[1] || "1 day";
-    const maxEntriesArg = args[2] = "200";
+    const maxEntriesArg = (args[2] = "200");
     const { html, text } = await (async () => {
         if (!targetRoomAliasOrId) {
             return {
                 html: "Missing arg: <code>room id</code>",
-                text: "Missing arg: `room id`"
+                text: "Missing arg: `room id`",
             };
         }
         const maxAgeMS = parseDuration(maxAgeArg);
@@ -137,14 +141,14 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
             return {
                 html: "Invalid duration. Example: <code>1.5 days</code> or <code>10 minutes</code>",
                 text: "Invalid duration. Example: `1.5 days` or `10 minutes`",
-            }
+            };
         }
         const maxEntries = Number.parseInt(maxEntriesArg, 10);
         if (!maxEntries) {
             return {
                 html: "Invalid number of entries. Example: <code>200</code>",
                 text: "Invalid number of entries. Example: `200`",
-            }
+            };
         }
         const minDate = new Date(Date.now() - maxAgeMS);
         const HUMANIZER_OPTIONS = {
@@ -160,8 +164,8 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
         } catch (ex) {
             return {
                 html: `Cannot resolve room ${htmlEscape(targetRoomAliasOrId)}.`,
-                text: `Cannot resolve room \`${targetRoomAliasOrId}\`.`
-            }
+                text: `Cannot resolve room \`${targetRoomAliasOrId}\`.`,
+            };
         }
         const joins = mjolnir.roomJoins.getUsersInRoom(targetRoomId, minDate, maxEntries);
         const htmlFragments = [];
@@ -173,11 +177,10 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
         }
         return {
             html: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries): <ul> ${htmlFragments.join()} </ul>`,
-            text: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries):\n${textFragments.join("\n")}`
-        }
+            text: `${joins.length} recent joins (cut at ${maxAgeHumanReadable} ago / ${maxEntries} entries):\n${textFragments.join("\n")}`,
+        };
     })();
     const reply = RichReply.createFor(destinationRoomId, event, text, html);
     reply["msgtype"] = "m.notice";
     return mjolnir.client.sendMessage(destinationRoomId, reply);
 }
-

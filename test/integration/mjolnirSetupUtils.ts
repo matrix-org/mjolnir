@@ -18,11 +18,11 @@ import {
     MemoryStorageProvider,
     LogService,
     LogLevel,
-    RichConsoleLogger
+    RichConsoleLogger,
 } from "@vector-im/matrix-bot-sdk";
 
-import { Mjolnir}  from '../../src/Mjolnir';
-import {getTempCryptoStore, overrideRatelimitForUser, registerUser} from "./clientHelper";
+import { Mjolnir } from "../../src/Mjolnir";
+import { getTempCryptoStore, overrideRatelimitForUser, registerUser } from "./clientHelper";
 import { initializeGlobalPerformanceMetrics, initializeSentry, patchMatrixClient } from "../../src/utils";
 import { IConfig } from "../../src/config";
 
@@ -36,13 +36,13 @@ export async function ensureAliasedRoomExists(client: MatrixClient, alias: strin
     try {
         return await client.resolveRoom(alias);
     } catch (e) {
-        if (e?.body?.errcode === 'M_NOT_FOUND') {
-            console.info(`${alias} hasn't been created yet, so we're making it now.`)
+        if (e?.body?.errcode === "M_NOT_FOUND") {
+            console.info(`${alias} hasn't been created yet, so we're making it now.`);
             let roomId = await client.createRoom({
                 visibility: "public",
             });
             await client.createRoomAlias(alias, roomId);
-            return roomId
+            return roomId;
         }
         throw e;
     }
@@ -53,9 +53,15 @@ async function configureMjolnir(config: IConfig) {
     initializeSentry(config);
     initializeGlobalPerformanceMetrics(config);
 
-    let accessToken = await registerUser(config.homeserverUrl, config.encryption.username, config.encryption.username, config.encryption.password, true)
+    let accessToken = await registerUser(
+        config.homeserverUrl,
+        config.encryption.username,
+        config.encryption.username,
+        config.encryption.password,
+        true,
+    );
 
-    return accessToken
+    return accessToken;
 }
 
 export function mjolnir(): Mjolnir | null {
@@ -64,7 +70,7 @@ export function mjolnir(): Mjolnir | null {
 export function matrixClient(): MatrixClient | null {
     return globalClient;
 }
-let globalClient: MatrixClient | null
+let globalClient: MatrixClient | null;
 let globalMjolnir: Mjolnir | null;
 
 /**
@@ -72,12 +78,12 @@ let globalMjolnir: Mjolnir | null;
  */
 export async function makeMjolnir(config: IConfig): Promise<Mjolnir> {
     let accessToken = await configureMjolnir(config);
-    let cryptoStore = await getTempCryptoStore()
+    let cryptoStore = await getTempCryptoStore();
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
     let client = new MatrixClient(config.homeserverUrl, accessToken, new MemoryStorageProvider(), cryptoStore);
-    await client.crypto.prepare()
+    await client.crypto.prepare();
 
     await overrideRatelimitForUser(config.homeserverUrl, await client.getUserId());
     patchMatrixClient();

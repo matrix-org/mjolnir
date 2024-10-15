@@ -16,9 +16,9 @@ limitations under the License.
 import { Client } from "pg";
 
 export interface MjolnirRecord {
-    local_part: string,
-    owner: string,
-    management_room: string,
+    local_part: string;
+    owner: string;
+    management_room: string;
 }
 
 /**
@@ -68,11 +68,13 @@ export class PgDataStore implements DataStore {
     }
 
     public async close(): Promise<void> {
-        await this.pgClient.end()
+        await this.pgClient.end();
     }
 
     public async list(): Promise<MjolnirRecord[]> {
-        const result = await this.pgClient.query<MjolnirRecord>("SELECT local_part, owner, management_room FROM mjolnir");
+        const result = await this.pgClient.query<MjolnirRecord>(
+            "SELECT local_part, owner, management_room FROM mjolnir",
+        );
 
         if (!result.rowCount) {
             return [];
@@ -82,10 +84,11 @@ export class PgDataStore implements DataStore {
     }
 
     public async store(mjolnirRecord: MjolnirRecord): Promise<void> {
-        await this.pgClient.query(
-            "INSERT INTO mjolnir (local_part, owner, management_room) VALUES ($1, $2, $3)",
-            [mjolnirRecord.local_part, mjolnirRecord.owner, mjolnirRecord.management_room],
-        );
+        await this.pgClient.query("INSERT INTO mjolnir (local_part, owner, management_room) VALUES ($1, $2, $3)", [
+            mjolnirRecord.local_part,
+            mjolnirRecord.owner,
+            mjolnirRecord.management_room,
+        ]);
     }
 
     public async lookupByOwner(owner: string): Promise<MjolnirRecord[]> {

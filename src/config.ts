@@ -54,8 +54,8 @@ export interface IHealthConfig {
              * If unspecified, use 0.0.0.0 (accessible by any host).
              */
             address: string;
-        }
-    }
+        };
+    };
 }
 
 /**
@@ -70,11 +70,11 @@ export interface IConfig {
     homeserverUrl: string;
     rawHomeserverUrl: string;
     accessToken: string;
-        encryption: {
+    encryption: {
         use: boolean;
         username: string;
         password: string;
-    }
+    };
     pantalaimon: {
         use: boolean;
         username: string;
@@ -112,7 +112,7 @@ export interface IConfig {
     displayReports: boolean;
     admin?: {
         enableMakeRoomAdminCommand?: boolean;
-    }
+    };
     commands: {
         allowNoPrefix: boolean;
         additionalPrefixes: string[];
@@ -166,7 +166,7 @@ export interface IConfig {
              * If unspecified, use 0.0.0.0 (accessible by any host).
              */
             address: string;
-        }
+        };
     };
     web: {
         enabled: boolean;
@@ -174,12 +174,12 @@ export interface IConfig {
         address: string;
         abuseReporting: {
             enabled: boolean;
-        }
+        };
         ruleServer?: {
             enabled: boolean;
-        }
-    }
-    nsfwSensitivity: number
+        };
+    };
+    nsfwSensitivity: number;
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
@@ -194,8 +194,8 @@ const defaultConfig: IConfig = {
     homeserverUrl: "http://localhost:8008",
     rawHomeserverUrl: "http://localhost:8008",
     accessToken: "NONE_PROVIDED",
-        encryption: {
-        use: true,
+    encryption: {
+        use: false,
         username: "name",
         password: "pass",
     },
@@ -205,7 +205,7 @@ const defaultConfig: IConfig = {
         password: "",
     },
     dataPath: "/data/storage",
-    acceptInvitesFromSpace: '!noop:example.org',
+    acceptInvitesFromSpace: "!noop:example.org",
     autojoinOnlyIfManager: true,
     recordIgnoredInvites: false,
     managementRoom: "!noop:example.org",
@@ -229,8 +229,8 @@ const defaultConfig: IConfig = {
     protections: {
         wordlist: {
             words: [],
-            minutesBeforeTrusting: 20
-        }
+            minutesBeforeTrusting: 20,
+        },
     },
     health: {
         healthz: {
@@ -246,7 +246,7 @@ const defaultConfig: IConfig = {
             port: 9090,
             address: "0.0.0.0",
             endpoint: "/metrics",
-        }
+        },
     },
     web: {
         enabled: false,
@@ -259,10 +259,9 @@ const defaultConfig: IConfig = {
             enabled: false,
         },
     },
-    nsfwSensitivity: .6,
+    nsfwSensitivity: 0.6,
     // Needed to make the interface happy.
-    RUNTIME: {
-    },
+    RUNTIME: {},
 };
 
 export function getDefaultConfig(): IConfig {
@@ -274,8 +273,8 @@ export function getDefaultConfig(): IConfig {
  * @param argv An arguments vector sourced from `process.argv`.
  * @returns The path if one was provided or undefined.
  */
-function configPathFromArguments(argv: string[]): undefined|string {
-    const configOptionIndex = argv.findIndex(arg => arg === "--mjolnir-config");
+function configPathFromArguments(argv: string[]): undefined | string {
+    const configOptionIndex = argv.findIndex((arg) => arg === "--mjolnir-config");
     if (configOptionIndex > 0) {
         const configOptionPath = argv.at(configOptionIndex + 1);
         if (!configOptionPath) {
@@ -320,15 +319,19 @@ export function getProvisionedMjolnirConfig(managementRoomId: string): IConfig {
         "backgroundDelayMS",
     ];
     const configTemplate = read(); // we use the standard bot config as a template for every provisioned mjolnir.
-    const unusedKeys = Object.keys(configTemplate).filter(key => !allowedKeys.includes(key));
+    const unusedKeys = Object.keys(configTemplate).filter((key) => !allowedKeys.includes(key));
     if (unusedKeys.length > 0) {
-        LogService.warn("config", "The config provided for provisioned mjolnirs contains keys which are not used by the appservice.", unusedKeys);
+        LogService.warn(
+            "config",
+            "The config provided for provisioned mjolnirs contains keys which are not used by the appservice.",
+            unusedKeys,
+        );
     }
     const config = Config.util.extendDeep(
         getDefaultConfig(),
         allowedKeys.reduce((existingConfig: any, key: string) => {
-            return { ...existingConfig, [key]: configTemplate[key as keyof IConfig] }
-        }, {})
+            return { ...existingConfig, [key]: configTemplate[key as keyof IConfig] };
+        }, {}),
     );
 
     config.managementRoom = managementRoomId;

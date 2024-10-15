@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { LogLevel, MatrixClient } from "@vector-im/matrix-bot-sdk"
+import { LogLevel, MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
@@ -28,12 +28,12 @@ export interface QueuedRedaction {
      * Called by the EventRedactionQueue.
      * @param client A MatrixClient to use to carry out the redaction.
      */
-    redact(client: MatrixSendClient, managementRoom: ManagementRoomOutput): Promise<void>
+    redact(client: MatrixSendClient, managementRoom: ManagementRoomOutput): Promise<void>;
     /**
      * Used to test whether the redaction is the equivalent to another redaction.
      * @param redaction Another QueuedRedaction to test if this redaction is an equivalent to.
      */
-    redactionEqual(redaction: QueuedRedaction): boolean
+    redactionEqual(redaction: QueuedRedaction): boolean;
 }
 
 /**
@@ -42,15 +42,21 @@ export interface QueuedRedaction {
 export class RedactUserInRoom implements QueuedRedaction {
     userId: string;
     roomId: string;
+    isAdmin: boolean;
 
-    constructor(userId: string, roomId: string) {
+    constructor(userId: string, roomId: string, isAdmin: boolean) {
         this.userId = userId;
         this.roomId = roomId;
+        this.isAdmin = isAdmin;
     }
 
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
-        await managementRoom.logMessage(LogLevel.DEBUG, "Mjolnir", `Redacting events from ${this.userId} in room ${this.roomId}.`);
-        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId]);
+        await managementRoom.logMessage(
+            LogLevel.DEBUG,
+            "Mjolnir",
+            `Redacting events from ${this.userId} in room ${this.roomId}.`,
+        );
+        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], this.isAdmin);
     }
 
     public redactionEqual(redaction: QueuedRedaction): boolean {
@@ -76,7 +82,7 @@ export class EventRedactionQueue {
      * @returns True if the queue already has the redaction, false otherwise.
      */
     public has(redaction: QueuedRedaction): boolean {
-        return !!this.toRedact.get(redaction.roomId)?.find(r => r.redactionEqual(redaction));
+        return !!this.toRedact.get(redaction.roomId)?.find((r) => r.redactionEqual(redaction));
     }
 
     /**
@@ -108,7 +114,11 @@ export class EventRedactionQueue {
      * @param limitToRoomId If the roomId is provided, only redactions for that room will be processed.
      * @returns A description of any errors encountered by each QueuedRedaction that was processed.
      */
-    public async process(client: MatrixSendClient, managementRoom: ManagementRoomOutput, limitToRoomId?: string): Promise<RoomUpdateError[]> {
+    public async process(
+        client: MatrixSendClient,
+        managementRoom: ManagementRoomOutput,
+        limitToRoomId?: string,
+    ): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
         const redact = async (currentBatch: QueuedRedaction[]) => {
             for (const redaction of currentBatch) {
@@ -119,7 +129,7 @@ export class EventRedactionQueue {
                     if (e.roomId && e.errorMessage && e.errorKind) {
                         roomError = e;
                     } else {
-                        const message = e.message || (e.body ? e.body.error : '<no message>');
+                        const message = e.message || (e.body ? e.body.error : "<no message>");
                         roomError = {
                             roomId: redaction.roomId,
                             errorMessage: message,
@@ -129,7 +139,7 @@ export class EventRedactionQueue {
                     errors.push(roomError);
                 }
             }
-        }
+        };
         if (limitToRoomId) {
             // There might not actually be any queued redactions for this room.
             let queuedRedactions = this.toRedact.get(limitToRoomId);

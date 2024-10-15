@@ -21,10 +21,11 @@ import { Permalinks } from "@vector-im/matrix-bot-sdk";
 // !mjolnir redact <user ID> [room alias] [limit]
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const userId = parts[2];
-    let roomAlias: string|null = null;
+
+    let targetRoom: string | null = null;
     let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later
     if (parts.length > 3 && isNaN(limit)) {
-        roomAlias = await mjolnir.client.resolveRoom(parts[3]);
+        targetRoom = await mjolnir.client.resolveRoom(parts[3]);
         if (parts.length > 4) {
             limit = Number.parseInt(parts[4], 10);
         }
@@ -33,21 +34,26 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     // Make sure we always have a limit set
     if (isNaN(limit)) limit = 1000;
 
-    const processingReactionId = await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], 'In Progress');
+    const processingReactionId = await mjolnir.client.unstableApis.addReactionToEvent(
+        roomId,
+        event["event_id"],
+        "In Progress",
+    );
 
-    if (userId[0] !== '@') {
+    if (userId[0] !== "@") {
         // Assume it's a permalink
         const parsed = Permalinks.parseUrl(parts[2]);
         const targetRoomId = await mjolnir.client.resolveRoom(parsed.roomIdOrAlias);
         await mjolnir.client.redactEvent(targetRoomId, parsed.eventId);
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
-        await mjolnir.client.redactEvent(roomId, processingReactionId, 'done processing command');
+        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
+        await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing command");
         return;
     }
 
-    const targetRoomIds = roomAlias ? [roomAlias] : mjolnir.protectedRoomsTracker.getProtectedRooms();
-    await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, limit);
+    const targetRoomIds = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
+    const isAdmin = await mjolnir.isSynapseAdmin();
+    await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, isAdmin, limit);
 
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event['event_id'], '✅');
-    await mjolnir.client.redactEvent(roomId, processingReactionId, 'done processing');
+    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
+    await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing");
 }

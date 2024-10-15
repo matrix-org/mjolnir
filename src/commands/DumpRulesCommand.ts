@@ -33,14 +33,14 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
     let html = "";
     let text = "";
     for (const list of mjolnir.policyListManager.lists) {
-        const matches = list.rulesMatchingEntity(entity)
+        const matches = list.rulesMatchingEntity(entity);
 
         if (matches.length === 0) {
             continue;
         }
 
-        const matchesInfo = `Found ${matches.length} ` + (matches.length === 1 ? 'match:' : 'matches:');
-        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : '';
+        const matchesInfo = `Found ${matches.length} ` + (matches.length === 1 ? "match:" : "matches:");
+        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${htmlEscape(list.listShortcode)})` : "";
 
         html += `<a href="${htmlEscape(list.roomRef)}">${htmlEscape(list.roomId)}</a>${shortcodeInfo} ${matchesInfo}<br/><ul>`;
         text += `${list.roomRef}${shortcodeInfo} ${matchesInfo}:\n`;
@@ -50,13 +50,13 @@ export async function execRulesMatchingCommand(roomId: string, event: any, mjoln
             let ruleKind: string = rule.kind;
             switch (ruleKind) {
                 case EntityType.RULE_USER:
-                    ruleKind = 'user';
+                    ruleKind = "user";
                     break;
                 case EntityType.RULE_SERVER:
-                    ruleKind = 'server';
+                    ruleKind = "server";
                     break;
                 case EntityType.RULE_ROOM:
-                    ruleKind = 'room';
+                    ruleKind = "room";
                     break;
             }
             html += `<li>${htmlEscape(ruleKind)} (<code>${htmlEscape(rule.recommendation ?? "")}</code>): <code>${htmlEscape(rule.entity)}</code> (${htmlEscape(rule.reason)})</li>`;
@@ -85,7 +85,7 @@ export async function execDumpRulesCommand(roomId: string, event: any, mjolnir: 
         hasLists = true;
         let hasRules = false;
 
-        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${list.listShortcode})` : '';
+        const shortcodeInfo = list.listShortcode ? ` (shortcode: ${list.listShortcode})` : "";
 
         html += `<a href="${list.roomRef}">${list.roomId}</a>${shortcodeInfo}:<br/><ul>`;
         text += `${list.roomRef}${shortcodeInfo}:\n`;
