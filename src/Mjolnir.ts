@@ -176,47 +176,46 @@ export class Mjolnir {
         matrixEmitter.on("room.event", this.handleEvent.bind(this));
 
         matrixEmitter.on("room.message", async (roomId, event) => {
+            const eventContent = event.content;
             if (roomId !== this.managementRoomId) return;
-            if (!event['content']) return;
+            if (typeof eventContent !== "object") return;
 
-            const content = event['content'];
-            if (content['msgtype'] === "m.text" && content['body']) {
-                const prefixes = [
-                    COMMAND_PREFIX,
-                    this.localpart + ":",
-                    this.displayName + ":",
-                    await client.getUserId() + ":",
-                    this.localpart + " ",
-                    this.displayName + " ",
-                    await client.getUserId() + " ",
-                    ...config.commands.additionalPrefixes.map(p => `!${p}`),
-                    ...config.commands.additionalPrefixes.map(p => `${p}:`),
-                    ...config.commands.additionalPrefixes.map(p => `${p} `),
-                    ...config.commands.additionalPrefixes,
-                ];
-                if (config.commands.allowNoPrefix) prefixes.push("!");
-
-                const prefixUsed = prefixes.find(p => content['body'].toLowerCase().startsWith(p.toLowerCase()));
-                if (!prefixUsed) return;
-
-                // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
-                let restOfBody = content['body'].substring(prefixUsed.length);
-                if (!restOfBody.startsWith(" ")) restOfBody = ` ${restOfBody}`;
-                event['content']['body'] = COMMAND_PREFIX + restOfBody;
-                LogService.info("Mjolnir", `Command being run by ${event['sender']}: ${event['content']['body']}`);
-
-                client.sendReadReceipt(roomId, event['event_id']).catch((e: any) => {
-                    LogService.warn("Mjolnir", "Error sending read receipt: ", e);
-                });
-                return handleCommand(roomId, event, this);
+            const {msgtype, body: originalBody, sender, event_id} = eventContent;
+            if (msgtype !== "m.text" || typeof originalBody !== "string") {
+                return;
             }
+
+            const prefixes = [
+                COMMAND_PREFIX,
+                this.localpart + ":",
+                this.displayName + ":",
+                await client.getUserId() + ":",
+                this.localpart + " ",
+                this.displayName + " ",
+                await client.getUserId() + " ",
+                ...config.commands.additionalPrefixes.map(p => `!${p}`),
+                ...config.commands.additionalPrefixes.map(p => `${p}:`),
+                ...config.commands.additionalPrefixes.map(p => `${p} `),
+                ...config.commands.additionalPrefixes,
+            ];
+            if (config.commands.allowNoPrefix) prefixes.push("!");
+
             const sanitizedBody = originalBody.toLowerCase().trim();
 
             const prefixUsed = prefixes.find(p => sanitizedBody.startsWith(p.toLowerCase()));
             if (!prefixUsed) return;
+
             // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
             let restOfBody = originalBody.trim().substring(prefixUsed.length);
             if (!restOfBody.startsWith(" ")) restOfBody = ` ${restOfBody}`;
+
+            eventContent.body = COMMAND_PREFIX + restOfBody;
+            LogService.info("Mjolnir", `Command being run by ${sender}: ${eventContent.body}`);
+
+            client.sendReadReceipt(roomId, event_id).catch((e: any) => {
+                LogService.warn("Mjolnir", "Error sending read receipt: ", e);
+            });
+            return handleCommand(roomId, event, this);
         });
 
         matrixEmitter.on("room.join", (roomId: string, event: any) => {
