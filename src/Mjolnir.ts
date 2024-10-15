@@ -210,6 +210,13 @@ export class Mjolnir {
                 });
                 return handleCommand(roomId, event, this);
             }
+            const sanitizedBody = originalBody.toLowerCase().trim();
+
+            const prefixUsed = prefixes.find(p => sanitizedBody.startsWith(p.toLowerCase()));
+            if (!prefixUsed) return;
+            // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
+            let restOfBody = originalBody.trim().substring(prefixUsed.length);
+            if (!restOfBody.startsWith(" ")) restOfBody = ` ${restOfBody}`;
         });
 
         matrixEmitter.on("room.join", (roomId: string, event: any) => {
