@@ -30,4 +30,22 @@ describe("Test: !help command", function () {
         await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: "m.text", body: "!mjolnir help" });
         await reply;
     });
+    it("Mjolnir responded to !mjolnir help with extra spaces", async function () {
+        this.timeout(30000);
+        // send a messgage
+        await client.joinRoom(this.config.managementRoom);
+        // listener for getting the event reply
+        let reply = new Promise((resolve, reject) => {
+            client.on(
+                "room.message",
+                noticeListener(this.mjolnir.managementRoomId, (event) => {
+                    if (event.content.body.includes("Print status information")) {
+                        resolve(event);
+                    }
+                }),
+            );
+        });
+        await client.sendMessage(this.mjolnir.managementRoomId, { msgtype: "m.text", body: "   !mjolnir    help   " });
+        await reply;
+    });
 });
