@@ -125,6 +125,19 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
     const bits = await parseArguments(roomId, event, mjolnir, parts);
     if (!bits) return; // error already handled
 
+    const matcher = new MatrixGlob(bits.entity);
+    const moderators = mjolnir.moderators.listAll();
+    moderators.forEach(async (name) => {
+        if (matcher.test(name)) {
+            await mjolnir.managementRoomOutput.logMessage(
+                LogLevel.ERROR,
+                "UnbanBanCommand",
+                `The ban command ${bits.entity} matches user in moderation room ${name}, aborting command.`,
+            );
+            return;
+        }
+    });
+
     await bits.list!.banEntity(bits.ruleType!, bits.entity, bits.reason);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }

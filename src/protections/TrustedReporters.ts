@@ -17,6 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { MXIDListProtectionSetting, NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
+import { LogLevel } from "@vector-im/matrix-bot-sdk";
 
 const MAX_REPORTED_EVENT_BACKLOG = 20;
 
@@ -82,6 +83,15 @@ export class TrustedReporters extends Protection {
             await mjolnir.client.redactEvent(roomId, event.id, "abuse detected");
         }
         if (reporters.size === this.settings.banThreshold.value) {
+            if (mjolnir.moderators.checkMembership(event.userId)) {
+                await mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.WARN,
+                    "TrustedReporters",
+                    `Attempting to ban
+                ${event.userId} but this is a member of the management room, aborting.`,
+                );
+                return;
+            }
             met.push("ban");
             await mjolnir.client.banUser(event.userId, roomId, "abuse detected");
         }

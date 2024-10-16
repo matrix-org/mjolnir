@@ -27,6 +27,7 @@ import { ProtectionManager } from "./protections/ProtectionManager";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { htmlEscape } from "./utils";
+import { ModCache } from "./ModCache";
 
 /**
  * This class aims to synchronize `m.ban` rules in a set of policy lists with
@@ -113,6 +114,7 @@ export class ProtectedRoomsSet {
         private readonly managementRoomOutput: ManagementRoomOutput,
         private readonly protectionManager: ProtectionManager,
         private readonly config: IConfig,
+        private readonly moderators: ModCache,
     ) {
         for (const reason of this.config.automaticallyRedactForReasons) {
             this.automaticRedactionReasons.push(new MatrixGlob(reason.toLowerCase()));
@@ -446,6 +448,15 @@ export class ProtectedRoomsSet {
                         );
 
                         if (!this.config.noop) {
+                            if (this.moderators.checkMembership(member.userId)) {
+                                await this.managementRoomOutput.logMessage(
+                                    LogLevel.WARN,
+                                    "ApplyBan",
+                                    `Attempted
+                                to ban ${member.userId} but this is a member of the management room, skipping.`,
+                                );
+                                continue;
+                            }
                             await this.client.banUser(member.userId, roomId, memberAccess.rule!.reason);
                             if (this.automaticRedactGlobs.find((g) => g.test(reason.toLowerCase()))) {
                                 this.redactUser(member.userId, roomId);
