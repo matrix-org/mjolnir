@@ -65,7 +65,7 @@ Essentially, this is a more restricted variant of the Admin APIs available on
 homeservers.
 
 However, if you are uncomfortable with this, please do not activate this feature.
-Also, you should probably setup your `production.yaml` to ensure that the web
+Also, you should probably set up your `production.yaml` to ensure that the web
 server can only receive requests from your reverse proxy (e.g. `localhost`).
 
 ## Development
