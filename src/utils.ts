@@ -147,8 +147,8 @@ async function botRedactUserMessagesIn(
  * @param isGlob - whether the targetID is a glob
  */
 function matchUserId(userId: string, targetId: string, isGlob: boolean): boolean {
-    const matcher = new MatrixGlob(targetId);
     if (isGlob) {
+        const matcher = new MatrixGlob(targetId);
         return matcher.test(userId);
     } else {
         return userId === targetId;
