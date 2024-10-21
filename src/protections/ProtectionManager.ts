@@ -286,6 +286,14 @@ export class ProtectionManager {
                 if (consequence.name === "alert") {
                     /* take no additional action, just print the below message to management room */
                 } else if (consequence.name === "ban") {
+                    if (this.mjolnir.moderators.checkMembership(sender)) {
+                        await this.mjolnir.managementRoomOutput.logMessage(
+                            LogLevel.WARN,
+                            "ProtectionManager",
+                            `Attempting to ban ${sender} but this is a member of management room, skipping.`,
+                        );
+                        continue;
+                    }
                     await this.mjolnir.client.banUser(sender, roomId, "abuse detected");
                 } else if (consequence.name === "redact") {
                     await this.mjolnir.client.redactEvent(roomId, eventId, "abuse detected");

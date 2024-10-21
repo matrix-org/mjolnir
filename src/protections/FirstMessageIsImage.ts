@@ -64,6 +64,14 @@ export class FirstMessageIsImage extends Protection {
                     `Banning ${event["sender"]} for posting an image as the first thing after joining in ${roomId}.`,
                 );
                 if (!mjolnir.config.noop) {
+                    if (mjolnir.moderators.checkMembership(event["sender"])) {
+                        await mjolnir.managementRoomOutput.logMessage(
+                            LogLevel.WARN,
+                            "FirstMessageIsImage",
+                            `Attempting to ban ${event["sender"]} but they are member of moderation room, aborting.`,
+                        );
+                        return;
+                    }
                     await mjolnir.client.banUser(event["sender"], roomId, "spam");
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(

@@ -164,6 +164,15 @@ export class MjolnirManager {
     }
 
     /**
+     * Stop all the managed mjolnirs
+     */
+    public closeAll() {
+        for (const mjolnir of this.perMjolnirId.values()) {
+            mjolnir.stop();
+        }
+    }
+
+    /**
      * Utility that creates a matrix client for a virtual user on our homeserver with the specified loclapart.
      * @param localPart The localpart of the virtual user we need a client for.
      * @returns A bridge intent with the complete mxid of the virtual user and a MatrixClient.
@@ -244,6 +253,13 @@ export class ManagedMjolnir {
      */
     public async start(): Promise<void> {
         await this.mjolnir.start();
+    }
+
+    /**
+     * Stop Mjolnir from syncing and processing commands.
+     */
+    public stop() {
+        this.mjolnir.stop();
     }
 
     public async getUserId(): Promise<string> {

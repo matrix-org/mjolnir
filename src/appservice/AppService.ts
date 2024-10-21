@@ -208,6 +208,7 @@ export class MjolnirAppService {
         await this.dataStore.close();
         await this.api.close();
         this.openMetrics.stop();
+        this.mjolnirManager.closeAll();
     }
 
     /**
