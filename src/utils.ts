@@ -141,6 +141,46 @@ async function botRedactUserMessagesIn(
 }
 
 /**
+ * Match a user ID or glob against a target ID
+ * @param userId - user ID or glob to test
+ * @param targetId - user ID to test against
+ * @param isGlob - whether the targetID is a glob
+ */
+function matchUserId(userId: string, targetId: string, isGlob: boolean): boolean {
+    if (isGlob) {
+        const matcher = new MatrixGlob(targetId);
+        return matcher.test(userId);
+    } else {
+        return userId === targetId;
+    }
+}
+
+/**
+ * Filter out any rooms the user to redact was never in
+ * @param targetRooms - list of rooms to check membership in
+ * @param user - user ID or glob to check the membership of
+ * @param isGlob - whether the user ID is a glob
+ * @param client - Matrix client
+ */
+export async function filterRooms(
+    targetRooms: string[],
+    user: string,
+    isGlob: boolean,
+    client: MatrixSendClient,
+): Promise<string[]> {
+    let filteredRooms: string[] = [];
+    for (const room of targetRooms) {
+        const chunk = await client.getRoomMembers(room);
+        for (const event of chunk) {
+            if (matchUserId(event["stateKey"], user, isGlob)) {
+                filteredRooms.push(room);
+            }
+        }
+    }
+    return filteredRooms;
+}
+
+/**
  * Redact a user's messages in a set of rooms.
  * See `getMessagesByUserIn`.
  *
@@ -164,10 +204,12 @@ export async function redactUserMessagesIn(
     noop = false,
 ) {
     const usingGlob = userIdOrGlob.includes("*");
+    const filteredRooms = await filterRooms(targetRoomIds, userIdOrGlob, usingGlob, client);
+
     // if admin use the Admin API, but admin endpoint does not support globs
     if (isAdmin && !usingGlob) {
         try {
-            await adminRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit);
+            await adminRedactUserMessagesIn(client, managementRoom, userIdOrGlob, filteredRooms, limit);
         } catch (e) {
             LogService.error(
                 "utils#redactUserMessagesIn",
@@ -179,10 +221,10 @@ export async function redactUserMessagesIn(
                 `Error using admin API to redact messages for user ${userIdOrGlob}, please check logs for more info - falling
             back to non-admin redaction process.`,
             );
-            await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit, noop);
+            await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, filteredRooms, limit, noop);
         }
     } else {
-        await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, targetRoomIds, limit, noop);
+        await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, filteredRooms, limit, noop);
     }
 }
 
@@ -214,16 +256,6 @@ export async function getMessagesByUserIn(
         rooms: [roomId],
         ...(isGlob ? {} : { senders: [sender] }),
     };
-
-    const matcher = new MatrixGlob(sender);
-
-    function testUser(userId: string): boolean {
-        if (isGlob) {
-            return matcher.test(userId);
-        } else {
-            return userId === sender;
-        }
-    }
 
     /**
      * The response returned from `backfill`
@@ -267,7 +299,7 @@ export async function getMessagesByUserIn(
             if (processed >= limit) return messages; // we have provided enough events.
             processed++;
 
-            if (testUser(event["sender"])) messages.push(event);
+            if (matchUserId(event["sender"], sender, isGlob)) messages.push(event);
         }
         return messages;
     }
