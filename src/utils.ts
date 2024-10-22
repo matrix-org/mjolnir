@@ -162,7 +162,7 @@ function matchUserId(userId: string, targetId: string, isGlob: boolean): boolean
  * @param isGlob - whether the user ID is a glob
  * @param client - Matrix client
  */
-async function filterRooms(
+export async function filterRooms(
     targetRooms: string[],
     user: string,
     isGlob: boolean,

@@ -1,7 +1,7 @@
 import { strict as assert } from "assert";
 
 import { newTestUser } from "../clientHelper";
-import { getMessagesByUserIn } from "../../../src/utils";
+import { getMessagesByUserIn, filterRooms } from "../../../src/utils";
 import { LogService } from "@vector-im/matrix-bot-sdk";
 import { getFirstReaction } from "./commandUtils";
 import { SynapseAdminApis } from "@vector-im/matrix-bot-sdk";
@@ -412,5 +412,34 @@ describe("Test: The redaction command - if not admin", function () {
         if (!returnedAdmin) {
             throw new Error(`Error restoring mjolnir to admin.`);
         }
+    });
+
+    it("Correctly tracks room membership of redactee", async function () {
+        this.timeout(60000);
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" } });
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
+        this.moderator = moderator;
+        const mjolnir = this.config.RUNTIME.client!;
+        let mjolnirUserId = await mjolnir.getUserId();
+        const badUserId = await badUser.getUserId();
+
+        await moderator.joinRoom(this.config.managementRoom);
+        let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId] });
+        await badUser.joinRoom(targetRoom);
+        await badUser.createRoom();
+
+        // send a message, leave, then get banned
+        badUser.sendMessage(targetRoom, {
+            msgtype: "m.text.",
+            body: `a bad message`,
+        });
+        badUser.leaveRoom(targetRoom);
+        await moderator.banUser(badUserId, targetRoom, "spam");
+
+        // check that filterRooms tracks that badUser was in target room, and doesn't pick up other room badUser
+        // is in
+        const rooms = await filterRooms([targetRoom], badUserId, false, moderator);
+        assert.equal(rooms.length, 1);
+        assert.equal(rooms[0], targetRoom);
     });
 });
