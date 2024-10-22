@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir shutdown room <room> [<message>]
 export async function execShutdownRoomCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -28,6 +28,21 @@ export async function execShutdownRoomCommand(roomId: string, event: any, mjolni
         const reply = RichReply.createFor(roomId, event, message, message);
         reply["msgtype"] = "m.notice";
         mjolnir.client.sendMessage(roomId, reply);
+        return;
+    }
+
+    let protectedRooms;
+    if (mjolnir.config.protectAllJoinedRooms) {
+        protectedRooms = await mjolnir.client.getJoinedRooms();
+    } else {
+        protectedRooms = mjolnir.protectedRoomsConfig.getExplicitlyProtectedRooms();
+    }
+    if (protectedRooms.includes(target)) {
+        await mjolnir.managementRoomOutput.logMessage(
+            LogLevel.INFO,
+            "ShutdownRoomCommand",
+            "You are attempting to shutdown a room that mjolnir currently protects, aborting.",
+        );
         return;
     }
 
