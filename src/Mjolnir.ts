@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogLevel, LogService, MembershipEvent } from "@vector-im/matrix-bot-sdk";
+import {
+    extractRequestError,
+    LogLevel,
+    LogService,
+    MembershipEvent,
+    Permalinks,
+    UserID,
+} from "@vector-im/matrix-bot-sdk";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -34,6 +41,7 @@ import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 import { OpenMetrics } from "./webapis/OpenMetrics";
+import { LRUCache } from "lru-cache";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -80,6 +88,11 @@ export class Mjolnir {
     public readonly reportManager: ReportManager;
 
     public readonly policyListManager: PolicyListManager;
+
+    public readonly lastBotMentionForRoomId = new LRUCache<string, true>({
+        ttl: 1000 * 60 * 8, // 8 minutes
+        ttlAutopurge: true,
+    });
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -201,8 +214,28 @@ export class Mjolnir {
 
         matrixEmitter.on("room.message", async (roomId, event) => {
             const eventContent = event.content;
-            if (roomId !== this.managementRoomId) return;
             if (typeof eventContent !== "object") return;
+
+            if (this.config.forwardMentionsToManagementRoom && this.protectedRoomsTracker.isProtectedRoom(roomId)) {
+                if (eventContent?.["m.mentions"]?.user_ids?.includes(this.clientUserId)) {
+                    LogService.info("Mjolnir", `Bot mentioned ${roomId} by ${event.sender}`);
+                    // Bot mentioned in a public room.
+                    if (this.lastBotMentionForRoomId.has(roomId)) {
+                        // Mentioned too recently, ignore.
+                        return;
+                    }
+                    this.lastBotMentionForRoomId.set(roomId, true);
+                    const permalink = Permalinks.forEvent(roomId, event.event_id, [
+                        new UserID(this.clientUserId).domain,
+                    ]);
+                    await this.managementRoomOutput.logMessage(
+                        LogLevel.INFO,
+                        "Mjolnir",
+                        `Bot mentioned ${roomId} by ${event.sender} in ${permalink}`,
+                        roomId,
+                    );
+                }
+            }
 
             const { msgtype, body: originalBody, sender, event_id } = eventContent;
             if (msgtype !== "m.text" || typeof originalBody !== "string") {
