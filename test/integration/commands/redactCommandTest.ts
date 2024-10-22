@@ -426,7 +426,7 @@ describe("Test: The redaction command - if not admin", function () {
         await moderator.joinRoom(this.config.managementRoom);
         let targetRoom = await moderator.createRoom({ invite: [await badUser.getUserId(), mjolnirUserId] });
         await badUser.joinRoom(targetRoom);
-        await badUser.createRoom();
+        await badUser.createRoom(); // create a room that Mjolnir won't have any interest in
 
         // send a message, leave, then get banned
         badUser.sendMessage(targetRoom, {
