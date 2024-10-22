@@ -62,7 +62,7 @@ describe("Test: standard consequences", function () {
         this.timeout(20000);
 
         let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await badUser.getUserId()] });
-        await badUser.joinRoom(this.mjolnir.managementRoomId);
+        await goodUser.joinRoom(this.mjolnir.managementRoomId);
         await badUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
@@ -93,7 +93,7 @@ describe("Test: standard consequences", function () {
                     ban = event;
                 }
             });
-            badUser.on("room.event", (roomId, event) => {
+            goodUser.on("room.event", (roomId, event) => {
                 if (
                     roomId === this.mjolnir.managementRoomId &&
                     event?.type === "m.room.message" &&

@@ -42,6 +42,7 @@ import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
+import { ModCache } from "./ModCache";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -93,6 +94,11 @@ export class Mjolnir {
         ttl: 1000 * 60 * 8, // 8 minutes
         ttlAutopurge: true,
     });
+
+    /**
+     * Members of the moderator room and others who should not be banned, ACL'd etc.
+     */
+    public moderators: ModCache;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -193,6 +199,9 @@ export class Mjolnir {
             "Mjolnir is starting up. Use !mjolnir to query status.",
         );
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
+
+        mjolnir.moderators = new ModCache(mjolnir.client, mjolnir.matrixEmitter, mjolnir.managementRoomId);
+
         return mjolnir;
     }
 
@@ -318,6 +327,7 @@ export class Mjolnir {
             this.managementRoomOutput,
             this.protectionManager,
             config,
+            this.moderators,
         );
     }
 
@@ -424,6 +434,7 @@ export class Mjolnir {
         this.webapis.stop();
         this.reportPoller?.stop();
         this.openMetrics.stop();
+        this.moderators.stop();
     }
 
     /**
