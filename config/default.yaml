@@ -65,6 +65,10 @@ recordIgnoredInvites: false
 # (see verboseLogging to adjust this a bit.)
 managementRoom: "#moderators:example.org"
 
+# Forward any messages mentioning the bot user to the mangement room. Repeated mentions within
+# a 10 minute period are ignored.
+forwardMentionsToManagementRoom: false
+
 # Whether Mjolnir should log a lot more messages in the room,
 # mainly involves "all-OK" messages, and debugging messages for when mjolnir checks bans in a room.
 verboseLogging: true

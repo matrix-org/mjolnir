@@ -4,10 +4,9 @@ import { MatrixSendClient } from "../../src/MatrixEmitter";
 import { Mjolnir } from "../../src/Mjolnir";
 import PolicyList from "../../src/models/PolicyList";
 import { newTestUser } from "./clientHelper";
-import { createBanList, getFirstReaction } from "./commands/commandUtils";
+import { createBanList } from "./commands/commandUtils";
 
 async function createPolicyList(client: MatrixClient): Promise<PolicyList> {
-    const serverName = new UserID(await client.getUserId()).domain;
     const policyListId = await client.createRoom({ preset: "public_chat" });
     return new PolicyList(policyListId, Permalinks.forRoom(policyListId), client);
 }
