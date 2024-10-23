@@ -18,14 +18,20 @@ import { strict as assert } from "assert";
 import { newTestUser } from "../clientHelper";
 
 describe("Test: power levels", function () {
-    it("Does not allow the bot to demote itself in a protected room.", async function () {
+    it("Does not allow the bot to demote itself or members of management room in a protected room.", async function () {
         this.timeout(60000);
         const mod = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
+        const mod2 = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator2" } });
         await mod.joinRoom(this.config.managementRoom);
+        await mod2.joinRoom(this.config.managementRoom);
+
         const targetRoom = await mod.createRoom({ preset: "public_chat" });
         await this.mjolnir.client.joinRoom(targetRoom);
+        await mod2.joinRoom(targetRoom);
         const botId = await this.mjolnir.client.getUserId();
         await mod.setUserPowerLevel(botId, targetRoom, 100);
+        const mod2Id = await mod2.getUserId();
+        await mod.setUserPowerLevel(mod2Id, targetRoom, 100);
 
         await mod.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text.",
@@ -42,7 +48,7 @@ describe("Test: power levels", function () {
             mod.on("room.message", (roomId: string, event: any) => {
                 if (
                     roomId === this.mjolnir.managementRoomId &&
-                    event.content?.body.includes("You are attempting to lower the bot's power level")
+                    event.content?.body.includes("You are attempting to lower the bot/a moderator's power level")
                 ) {
                     resolve(event);
                 }
@@ -50,9 +56,30 @@ describe("Test: power levels", function () {
         });
         await reply;
 
-        const currentLevels = await mod.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+        let currentLevels = await mod.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
         const botLevel = currentLevels["users"][botId];
         assert.equal(botLevel, 100);
+
+        await mod.sendMessage(this.mjolnir.managementRoomId, {
+            msgtype: "m.text",
+            body: `!mjolnir powerlevel ${mod2Id} 50 ${targetRoom}`,
+        });
+
+        let reply2 = new Promise((resolve, reject) => {
+            mod.on("room.message", (roomId: string, event: any) => {
+                if (
+                    roomId === this.mjolnir.managementRoomId &&
+                    event.content?.body.includes("You are attempting to lower the bot/a moderator's power level")
+                ) {
+                    resolve(event);
+                }
+            });
+        });
+        await reply2;
+
+        currentLevels = await mod.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+        const mod2Level = currentLevels["users"][mod2Id];
+        assert.equal(mod2Level, 100);
 
         mod.stop();
     });

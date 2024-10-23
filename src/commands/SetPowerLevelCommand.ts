@@ -31,15 +31,15 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
 
     for (const targetRoomId of targetRooms) {
         try {
-            if (target === mjolnirId) {
+            if (target === mjolnirId || mjolnir.moderators.checkMembership(target)) {
                 // don't let the bot demote itself
                 const currentLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "");
-                const botLevel = currentLevels["users"][mjolnirId];
-                if (level < botLevel) {
+                const targetLevel = currentLevels["users"][mjolnirId];
+                if (level < targetLevel) {
                     await mjolnir.managementRoomOutput.logMessage(
                         LogLevel.INFO,
                         "PowerLevelCommand",
-                        `You are attempting to lower the bot's power level: current level ${botLevel}, requested level ${level}, aborting.`,
+                        `You are attempting to lower the bot/a moderator's power level: current level ${targetLevel}, requested level ${level}, aborting.`,
                     );
                     return;
                 }
