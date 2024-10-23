@@ -58,7 +58,7 @@ export class Mjolnir {
      */
     private unlistedUserRedactionQueue = new UnlistedUserRedactionQueue();
 
-    public protectedRoomsConfig: ProtectedRoomsConfig;
+    public readonly protectedRoomsConfig: ProtectedRoomsConfig;
     public readonly protectedRoomsTracker: ProtectedRoomsSet;
     private webapis: WebAPIs;
     private openMetrics: OpenMetrics;
