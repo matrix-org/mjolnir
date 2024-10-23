@@ -23,12 +23,27 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
     const level = Math.round(Number(parts[3]));
     const inRoom = parts[4];
 
+    const mjolnirId = await mjolnir.client.getUserId();
+
     let targetRooms = inRoom
         ? [await mjolnir.client.resolveRoom(inRoom)]
         : mjolnir.protectedRoomsTracker.getProtectedRooms();
 
     for (const targetRoomId of targetRooms) {
         try {
+            if (target === mjolnirId) {
+                // don't let the bot demote itself
+                const currentLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "");
+                const botLevel = currentLevels["users"][mjolnirId];
+                if (level < botLevel) {
+                    await mjolnir.managementRoomOutput.logMessage(
+                        LogLevel.INFO,
+                        "PowerLevelCommand",
+                        `You are attempting to lower the bot's power level: current level ${botLevel}, requested level ${level}, aborting.`,
+                    );
+                    return;
+                }
+            }
             await mjolnir.client.setUserPowerLevel(target, targetRoomId, level);
         } catch (e) {
             const message = e.message || (e.body ? e.body.error : "<no message>");
