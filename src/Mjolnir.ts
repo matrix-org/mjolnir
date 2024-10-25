@@ -1,5 +1,5 @@
 /*
-Copyright 2019-2021 The Matrix.org Foundation C.I.C.
+Copyright 2019-2024 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,7 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { extractRequestError, LogLevel, LogService, MembershipEvent } from "@vector-im/matrix-bot-sdk";
+import {
+    extractRequestError,
+    LogLevel,
+    LogService,
+    MembershipEvent,
+    Permalinks,
+    UserID,
+} from "@vector-im/matrix-bot-sdk";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -34,6 +41,7 @@ import { RoomMemberManager } from "./RoomMembers";
 import ProtectedRoomsConfig from "./ProtectedRoomsConfig";
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 import { OpenMetrics } from "./webapis/OpenMetrics";
+import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
 
 export const STATE_NOT_STARTED = "not_started";
@@ -81,6 +89,11 @@ export class Mjolnir {
     public readonly reportManager: ReportManager;
 
     public readonly policyListManager: PolicyListManager;
+
+    public readonly lastBotMentionForRoomId = new LRUCache<string, true>({
+        ttl: 1000 * 60 * 8, // 8 minutes
+        ttlAutopurge: true,
+    });
 
     /**
      * Members of the moderator room and others who should not be banned, ACL'd etc.
@@ -207,12 +220,36 @@ export class Mjolnir {
 
         matrixEmitter.on("room.message", async (roomId, event) => {
             const eventContent = event.content;
-            if (roomId !== this.managementRoomId) return;
             if (typeof eventContent !== "object") return;
 
-            const { msgtype, body: originalBody, sender } = eventContent;
-            const eventId = event.event_id;
+            const { msgtype, body: originalBody, sender, event_id } = eventContent;
+
             if (msgtype !== "m.text" || typeof originalBody !== "string") {
+                return;
+            }
+            if (this.config.forwardMentionsToManagementRoom && this.protectedRoomsTracker.isProtectedRoom(roomId)) {
+                if (eventContent?.["m.mentions"]?.user_ids?.includes(this.clientUserId)) {
+                    LogService.info("Mjolnir", `Bot mentioned ${roomId} by ${event.sender}`);
+                    // Bot mentioned in a public room.
+                    if (this.lastBotMentionForRoomId.has(roomId)) {
+                        // Mentioned too recently, ignore.
+                        return;
+                    }
+                    this.lastBotMentionForRoomId.set(roomId, true);
+                    const permalink = Permalinks.forEvent(roomId, event_id, [
+                        new UserID(this.clientUserId).domain,
+                    ]);
+                    await this.managementRoomOutput.logMessage(
+                        LogLevel.INFO,
+                        "Mjolnir",
+                        `Bot mentioned ${roomId} by ${event.sender} in ${permalink}`,
+                        roomId,
+                    );
+                }
+            }
+
+            // Important: Beyond this point we're treating a message as a powerful command.
+            if (roomId !== this.managementRoomId) {
                 return;
             }
 
@@ -243,7 +280,7 @@ export class Mjolnir {
             eventContent.body = COMMAND_PREFIX + restOfBody;
             LogService.info("Mjolnir", `Command being run by ${sender}: ${eventContent.body}`);
 
-            client.sendReadReceipt(roomId, eventId).catch((e: any) => {
+            client.sendReadReceipt(roomId, event_id).catch((e: any) => {
                 LogService.warn("Mjolnir", "Error sending read receipt: ", e);
             });
             return handleCommand(roomId, event, this);
