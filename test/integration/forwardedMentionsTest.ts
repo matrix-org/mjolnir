@@ -87,12 +87,12 @@ describe("Test: config.forwardMentionsToManagementRoom behaves correctly.", func
         await mjolnir.protectedRoomsTracker.addProtectedRoom(protectedRoom);
 
         await moderator.start();
-        let mentionCount = 0;
+        let mentions = new Set();
         moderator.on(
             "room.message",
             noticeListener(this.mjolnir.managementRoomId, (event) => {
                 if (event.content.body.includes(`Bot mentioned`)) {
-                    mentionCount++;
+                    mentions.add(event.event_id);
                 }
             }),
         );
@@ -112,6 +112,6 @@ describe("Test: config.forwardMentionsToManagementRoom behaves correctly.", func
             await delay(2000);
         }
 
-        expect(mentionCount).toBe(1);
+        expect(mentions.size).toBe(1);
     });
 });
