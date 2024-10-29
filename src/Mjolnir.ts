@@ -199,9 +199,6 @@ export class Mjolnir {
             "Mjolnir is starting up. Use !mjolnir to query status.",
         );
         Mjolnir.addJoinOnInviteListener(mjolnir, client, config);
-
-        mjolnir.moderators = new ModCache(mjolnir.client, mjolnir.matrixEmitter, mjolnir.managementRoomId);
-
         return mjolnir;
     }
 
@@ -246,7 +243,8 @@ export class Mjolnir {
                 }
             }
 
-            const { msgtype, body: originalBody, sender, event_id } = eventContent;
+            const { msgtype, body: originalBody, sender } = eventContent;
+            const eventId = event.event_id;
             if (msgtype !== "m.text" || typeof originalBody !== "string") {
                 return;
             }
@@ -278,7 +276,7 @@ export class Mjolnir {
             eventContent.body = COMMAND_PREFIX + restOfBody;
             LogService.info("Mjolnir", `Command being run by ${sender}: ${eventContent.body}`);
 
-            client.sendReadReceipt(roomId, event_id).catch((e: any) => {
+            client.sendReadReceipt(roomId, eventId).catch((e: any) => {
                 LogService.warn("Mjolnir", "Error sending read receipt: ", e);
             });
             return handleCommand(roomId, event, this);
@@ -320,6 +318,8 @@ export class Mjolnir {
         this.protectionManager = new ProtectionManager(this);
 
         this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, client, config);
+
+        this.moderators = new ModCache(client, matrixEmitter, managementRoomId);
         this.protectedRoomsTracker = new ProtectedRoomsSet(
             client,
             clientUserId,
