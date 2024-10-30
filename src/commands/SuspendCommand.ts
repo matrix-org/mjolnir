@@ -31,7 +31,8 @@ export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mj
 
     await mjolnir.suspendSynapseUser(target);
     const msg = `User ${target} has been suspended.`;
-    const confirmation = RichReply.createFor(roomId, event, msg, msg);
+    const htmlMsg = `User <span data-mx-spoiler>${target}</span> has been suspended.`;
+    const confirmation = RichReply.createFor(roomId, event, msg, htmlMsg);
     confirmation["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, confirmation);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");

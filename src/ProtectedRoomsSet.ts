@@ -362,13 +362,12 @@ export class ProtectedRoomsSet {
                     // ignore - assume no ACL
                 }
 
-                // We specifically use sendNotice to avoid having to escape HTML
-                await this.managementRoomOutput.logMessage(
-                    LogLevel.DEBUG,
-                    "ApplyAcl",
-                    `Applying ACL in ${roomId}`,
-                    roomId,
-                );
+                await this.client.sendMessage(this.managementRoomId, {
+                    msgtype: "m.text",
+                    body: `Applying ACL in ${roomId}.`,
+                    format: "org.matrix.custom.html",
+                    formatted_body: `Applying ACL in <span data-mx-spoiler>${roomId}</span>.`,
+                });
 
                 if (!this.config.noop) {
                     await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
@@ -439,13 +438,13 @@ export class ProtectedRoomsSet {
                     const memberAccess = this.accessControlUnit.getAccessForUser(member.userId, "IGNORE_SERVER");
                     if (memberAccess.outcome === Access.Banned) {
                         const reason = memberAccess.rule ? memberAccess.rule.reason : "<no reason supplied>";
-                        // We specifically use sendNotice to avoid having to escape HTML
-                        await this.managementRoomOutput.logMessage(
-                            LogLevel.INFO,
-                            "ApplyBan",
-                            `Banning ${member.userId} in ${roomId} for: ${reason}`,
-                            roomId,
-                        );
+
+                        await this.client.sendMessage(this.managementRoomId, {
+                            msgtype: "m.text",
+                            body: `Banning ${member.userId} in ${roomId} for: ${reason}.`,
+                            format: "org.matrix.custom.html",
+                            formatted_body: `Banning <span data-mx-spoiler>${member.userId}</span> in ${roomId} for: ${reason}.`,
+                        });
 
                         if (!this.config.noop) {
                             if (this.moderators.checkMembership(member.userId)) {
