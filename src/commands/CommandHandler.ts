@@ -146,35 +146,49 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execIgnoreCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "ignored") {
             return await execListIgnoredCommand(roomId, event, mjolnir, parts);
-        } else {
+        } else if (parts[1] === "help") {
             // Help menu
-            const menu =
+            const protectionMenu =
                 "" +
-                "!mjolnir                                                            - Print status information\n" +
-                "!mjolnir status                                                     - Print status information\n" +
                 "!mjolnir status protection <protection> [subcommand]                - Print status information for a protection\n" +
-                "!mjolnir ban <list shortcode> <user|room|server> <glob> [reason]    - Adds an entity to the ban list\n" +
-                "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]   - Removes an entity from the ban list. If apply is 'true', the users matching the glob will actually be unbanned\n" +
-                "!mjolnir redact <user ID> [room alias/ID] [limit]                   - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
-                "!mjolnir redact <event permalink>                                   - Redacts a message by permalink\n" +
-                "!mjolnir kick <glob> [room alias/ID] [reason]                       - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
-                "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
-                "!mjolnir rules matching <user|room|server>                          - Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user\n" +
-                "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
-                "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
-                "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
-                "!mjolnir watch <room alias/ID>                                      - Watches a ban list\n" +
-                "!mjolnir unwatch <room alias/ID>                                    - Unwatches a ban list\n" +
-                "!mjolnir import <room alias/ID> <list shortcode>                    - Imports bans and ACLs into the given list\n" +
-                "!mjolnir default <shortcode>                                        - Sets the default list for commands\n" +
-                "!mjolnir deactivate <user ID>                                       - Deactivates a user ID\n" +
                 "!mjolnir protections                                                - List all available protections\n" +
                 "!mjolnir enable <protection>                                        - Enables a particular protection\n" +
                 "!mjolnir disable <protection>                                       - Disables a particular protection\n" +
                 "!mjolnir config set <protection>.<setting> [value]                  - Change a protection setting\n" +
                 "!mjolnir config add <protection>.<setting> [value]                  - Add a value to a list protection setting\n" +
                 "!mjolnir config remove <protection>.<setting> [value]               - Remove a value from a list protection setting\n" +
-                "!mjolnir config get [protection]                                    - List protection settings\n" +
+                "!mjolnir config get [protection]                                    - List protection settings\n";
+
+            const actionMenu =
+                "" +
+                "!mjolnir ban <list shortcode> <user|room|server> <glob> [reason]      - Adds an entity to the ban list\n" +
+                "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]     - Removes an entity from the ban list. If apply is 'true', the users matching the glob will be manually unbanned in each protected room.\n" +
+                "!mjolnir redact <user ID> [room alias/ID] [limit]                     - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
+                "!mjolnir redact <event permalink>                                     - Redacts a message by permalink\n" +
+                "!mjolnir kick <glob> [room alias/ID] [reason]                         - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
+                "!mjolnir deactivate <user ID>                                         - Deactivates a user ID\n" +
+                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
+                "!mjolnir powerlevel <user ID> <power level> [room alias/ID]           - Sets the power level of the user in the specified room (or all protected rooms)\n" +
+                "!mjolnir make admin <room alias> [user alias/ID]                      - Make the specified user or the bot itself admin of the room\n" +
+                "!mjolnir suspend <user ID>                                            - Suspend the specified user\n" +
+                "!mjolnir unsuspend <user ID>                                          - Unsuspend the specified user\n" +
+                "!mjolnir ignore <user ID/server name>                                 - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
+                "!mjolnir ignored                                                      - List currently ignored entities.\n" +
+                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
+
+            const policyListMenu =
+                "" +
+                "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
+                "!mjolnir watch <room alias/ID>                                      - Watches a ban list\n" +
+                "!mjolnir unwatch <room alias/ID>                                    - Unwatches a ban list\n" +
+                "!mjolnir import <room alias/ID> <list shortcode>                    - Imports bans and ACLs into the given list\n" +
+                "!mjolnir default <shortcode>                                        - Sets the default list for commands\n" +
+                "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
+                "!mjolnir rules matching <user|room|server>                          - Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user\n" +
+                "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n";
+
+            const roomsMenu =
+                "" +
                 "!mjolnir rooms                                                      - Lists all the protected rooms\n" +
                 "!mjolnir rooms add <room alias/ID>                                  - Adds a protected room (may cause high server load)\n" +
                 "!mjolnir rooms remove <room alias/ID>                               - Removes a protected room\n" +
@@ -185,20 +199,30 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
-                "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
-                "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
-                "!mjolnir powerlevel <user ID> <power level> [room alias/ID]         - Sets the power level of the user in the specified room (or all protected rooms)\n" +
-                "!mjolnir make admin <room alias> [user alias/ID]                    - Make the specified user or the bot itself admin of the room\n" +
-                "!mjolnir suspend <user ID>                                          - Suspend the specified user\n" +
-                "!mjolnir unsuspend <user ID>                                        - Unsuspend the specified user\n" +
-                "!mjolnir ignore <user ID/server name>                               - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
-                "!mjolnir ignored                                                     - List currently ignored entities.\n" +
+                "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
+
+            const botMenu =
+                "" +
+                "!mjolnir                                                            - Print status information\n" +
+                "!mjolnir status                                                     - Print status information\n" +
+                "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir help                                                       - This menu\n";
-            const html = `<b>Mjolnir help:</b><br><pre><code>${htmlEscape(menu)}</code></pre>`;
-            const text = `Mjolnir help:\n${menu}`;
+
+            const html = `<h3>Mjolnir help menu:</h3><br />
+            <b>Protection Actions/Options:</b><pre><code>${htmlEscape(protectionMenu)}</code></pre><br />
+            <b>Moderation Actions:</b><pre><code>${htmlEscape(actionMenu)}</code></pre><br />
+            <b>Policy List Options/Actions:</b><pre><code>${htmlEscape(policyListMenu)}</code></pre><br />
+            <b>Room Managment:</b><pre><code>${htmlEscape(roomsMenu)}</code></pre><br />
+            <b>Bot Status and Management:</b><pre><code>${htmlEscape(botMenu)}</code></pre>`;
+            const text = `Mjolnir help menu:\n Protection Actions/Options:\n ${protectionMenu} \n Moderation Actions: ${actionMenu}\n Policy List Options/Actions: \n ${policyListMenu} \n Room Management: ${roomsMenu} \n Bot Status and Management: \n ${botMenu} `;
             const reply = RichReply.createFor(roomId, event, text, html);
             reply["msgtype"] = "m.notice";
             return await mjolnir.client.sendMessage(roomId, reply);
+        } else {
+            return await mjolnir.client.sendMessage(roomId, {
+                msgtype: "m.text",
+                body: "Unknown command - use `!mjolnir help` to display the help menu.",
+            });
         }
     } catch (e) {
         LogService.error("CommandHandler", extractRequestError(e));
