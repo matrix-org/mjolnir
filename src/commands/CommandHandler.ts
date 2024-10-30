@@ -208,7 +208,12 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir verify                                                     - Ensures Mjolnir can moderate all your rooms\n" +
                 "!mjolnir help                                                       - This menu\n";
 
-            const html = `<h3>Mjolnir help menu:</h3><br><b>Protection Actions/Options:</b><pre><code>${htmlEscape(protectionMenu)}</code></pre><br><b>Moderation Actions:</b><pre><code>${htmlEscape(actionMenu)}</code></pre><br><b>Policy List Options/Actions:</b><pre><code>${htmlEscape(policyListMenu)}</code></pre><br><b>Room Managment:</b><pre><code>${htmlEscape(roomsMenu)}</code></pre><br><b>Bot Status and Management:</b><pre><code>${htmlEscape(botMenu)}</code></pre>`;
+            const html = `<h3>Mjolnir help menu:</h3><br />
+            <b>Protection Actions/Options:</b><pre><code>${htmlEscape(protectionMenu)}</code></pre><br />
+            <b>Moderation Actions:</b><pre><code>${htmlEscape(actionMenu)}</code></pre><br />
+            <b>Policy List Options/Actions:</b><pre><code>${htmlEscape(policyListMenu)}</code></pre><br />
+            <b>Room Managment:</b><pre><code>${htmlEscape(roomsMenu)}</code></pre><br />
+            <b>Bot Status and Management:</b><pre><code>${htmlEscape(botMenu)}</code></pre>`;
             const text = `Mjolnir help menu:\n Protection Actions/Options:\n ${protectionMenu} \n Moderation Actions: ${actionMenu}\n Policy List Options/Actions: \n ${policyListMenu} \n Room Management: ${roomsMenu} \n Bot Status and Management: \n ${botMenu} `;
             const reply = RichReply.createFor(roomId, event, text, html);
             reply["msgtype"] = "m.notice";
