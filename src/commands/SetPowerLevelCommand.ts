@@ -37,11 +37,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
 
     for (const targetRoomId of targetRooms) {
         try {
-            const currentLevels = await mjolnir.client.getRoomStateEvent(
-                        targetRoomId,
-                        "m.room.power_levels",
-                        "",
-                    );
+            const currentLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "");
             const currentLevel = currentLevels["users"][mjolnirId];
             if (!force) {
                 if (mjolnir.moderators.checkMembership(target)) {
@@ -58,10 +54,10 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
             }
             if (target === mjolnirId && level < currentLevel) {
                 await mjolnir.managementRoomOutput.logMessage(
-                            LogLevel.INFO,
-                            "PowerLevelCommand",
-                            `You are attempting to lower the bot power level: current level ${currentLevel}, requested level ${level}, aborting.`,
-                        );
+                    LogLevel.INFO,
+                    "PowerLevelCommand",
+                    `You are attempting to lower the bot power level: current level ${currentLevel}, requested level ${level}, aborting.`,
+                );
                 return;
             }
             await mjolnir.client.setUserPowerLevel(target, targetRoomId, level);
