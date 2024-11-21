@@ -168,7 +168,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir kick <glob> [room alias/ID] [reason]                         - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
                 "!mjolnir deactivate <user ID>                                         - Deactivates a user ID\n" +
                 "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
-                "!mjolnir powerlevel <user ID> <power level> [room alias/ID]           - Sets the power level of the user in the specified room (or all protected rooms)\n" +
+                "!mjolnir powerlevel <user ID> <power level> [room alias/ID]           - Sets the power level of the user in the specified room (or all protected rooms) - mjolnir will resist lowering the power level of the bot/users in the moderation room unless a --force argument is added\n" +
                 "!mjolnir make admin <room alias> [user alias/ID]                      - Make the specified user or the bot itself admin of the room\n" +
                 "!mjolnir suspend <user ID>                                            - Suspend the specified user\n" +
                 "!mjolnir unsuspend <user ID>                                          - Unsuspend the specified user\n" +
