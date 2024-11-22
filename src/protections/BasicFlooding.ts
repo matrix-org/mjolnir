@@ -18,6 +18,7 @@ import { Protection } from "./IProtection";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
+import {htmlEscape} from "../utils";
 
 // if this is exceeded, we'll ban the user for spam and redact their messages
 export const DEFAULT_MAX_PER_MINUTE = 10;
@@ -72,7 +73,7 @@ export class BasicFlooding extends Protection {
                 msgtype: "m.text",
                 body: `Banning ${event["sender"]} in ${roomId} for flooding (${messageCount} messages in the last minute)`,
                 format: "org.matrix.custom.html",
-                formatted_body: `Banning <span data-mx-spoiler>${event["sender"]}</span> in ${roomId} for flooding (${messageCount} messages in the last minute).`,
+                formatted_body: `Banning <span data-mx-spoiler>${htmlEscape(event["sender"])}</span> in ${roomId} for flooding (${messageCount} messages in the last minute).`,
             });
             if (!mjolnir.config.noop) {
                 if (mjolnir.moderators.checkMembership(event["sender"])) {

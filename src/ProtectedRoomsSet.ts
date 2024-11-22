@@ -366,7 +366,7 @@ export class ProtectedRoomsSet {
                     msgtype: "m.text",
                     body: `Applying ACL in ${roomId}.`,
                     format: "org.matrix.custom.html",
-                    formatted_body: `Applying ACL in <span data-mx-spoiler>${roomId}</span>.`,
+                    formatted_body: `Applying ACL in <span data-mx-spoiler>${htmlEscape(roomId)}</span>.`,
                 });
 
                 if (!this.config.noop) {
@@ -443,7 +443,7 @@ export class ProtectedRoomsSet {
                             msgtype: "m.text",
                             body: `Banning ${member.userId} in ${roomId} for: ${reason}.`,
                             format: "org.matrix.custom.html",
-                            formatted_body: `Banning <span data-mx-spoiler>${member.userId}</span> in ${roomId} for: ${reason}.`,
+                            formatted_body: `Banning <span data-mx-spoiler>${htmlEscape(member.userId)}</span> in ${roomId} for: ${reason}.`,
                         });
 
                         if (!this.config.noop) {

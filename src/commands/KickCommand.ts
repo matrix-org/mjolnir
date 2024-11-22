@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, MatrixGlob, RichReply } from "@vector-im/matrix-bot-sdk";
+import {htmlEscape} from "../utils";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -61,7 +62,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                     msgtype: "m.text",
                     body: `Removing ${target} in ${protectedRoomId}.`,
                     format: "org.matrix.custom.html",
-                    formatted_body: `Removing <span data-mx-spoiler>${target}</span> in ${protectedRoomId}.`,
+                    formatted_body: `Removing <span data-mx-spoiler>${htmlEscape(target)}</span> in ${protectedRoomId}.`,
                 });
 
                 if (!mjolnir.config.noop) {
@@ -74,7 +75,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                             msgtype: "m.text",
                             body: `An error happened while trying to kick ${target}: ${e}`,
                             format: "org.matrix.custom.html",
-                            formatted_body: `An error happened while trying to kick <span data-mx-spoiler>${target}</span>: ${e}.`,
+                            formatted_body: `An error happened while trying to kick <span data-mx-spoiler>${htmlEscape(target)}</span>: ${e}.`,
                         });
                     }
                 } else {

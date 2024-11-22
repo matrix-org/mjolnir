@@ -134,7 +134,7 @@ async function botRedactUserMessagesIn(
                 msgtype: "m.text",
                 body: `Caught an error while trying to redact messages for ${userIdOrGlob} in ${targetRoomId}: ${error}`,
                 format: "org.matrix.custom.html",
-                formatted_body: `Caught an error while trying to redact messages for <span data-mx-spoiler>${userIdOrGlob}</span> in ${targetRoomId}: ${error}`,
+                formatted_body: `Caught an error while trying to redact messages for <span data-mx-spoiler>${htmlEscape(userIdOrGlob)}</span> in ${targetRoomId}: ${error}`,
             });
         }
     }
@@ -219,7 +219,7 @@ export async function redactUserMessagesIn(
                 msgtype: "m.text",
                 body: `Error using admin API to redact messages for user ${userIdOrGlob}, please check logs for more info - falling back to non-admin redaction process.`,
                 format: "org.matrix.custom.html",
-                formatted_body: `Error using admin API to redact messages for user <span data-mx-spoiler>${userIdOrGlob}</span>, please check logs for more info - falling
+                formatted_body: `Error using admin API to redact messages for user <span data-mx-spoiler>${htmlEscape(userIdOrGlob)}</span>, please check logs for more info - falling
                 back to non-admin redaction process.`,
             });
             await botRedactUserMessagesIn(client, managementRoom, userIdOrGlob, filteredRooms, limit, noop);

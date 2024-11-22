@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "@vector-im/matrix-bot-sdk";
+import {htmlEscape} from "../utils";
 
 export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];
@@ -31,7 +32,7 @@ export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mj
 
     await mjolnir.suspendSynapseUser(target);
     const msg = `User ${target} has been suspended.`;
-    const htmlMsg = `User <span data-mx-spoiler>${target}</span> has been suspended.`;
+    const htmlMsg = `User <span data-mx-spoiler>${htmlEscape(target)}</span> has been suspended.`;
     const confirmation = RichReply.createFor(roomId, event, msg, htmlMsg);
     confirmation["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, confirmation);
