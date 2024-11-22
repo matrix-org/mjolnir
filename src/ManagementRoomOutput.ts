@@ -40,7 +40,7 @@ const levelToFn = {
  */
 export default class ManagementRoomOutput {
     constructor(
-        private readonly managementRoomId: string,
+        public readonly managementRoomId: string,
         private readonly client: MatrixSendClient,
         private readonly config: IConfig,
     ) {}

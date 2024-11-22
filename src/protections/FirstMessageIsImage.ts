@@ -17,7 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
-import { isTrueJoinEvent } from "../utils";
+import { htmlEscape, isTrueJoinEvent } from "../utils";
 
 export class FirstMessageIsImage extends Protection {
     private justJoined: { [roomId: string]: string[] } = {};
@@ -58,11 +58,12 @@ export class FirstMessageIsImage extends Protection {
             const isMedia =
                 msgtype === "m.image" || msgtype === "m.video" || formattedBody.toLowerCase().includes("<img");
             if (isMedia && this.justJoined[roomId].includes(event["sender"])) {
-                await mjolnir.managementRoomOutput.logMessage(
-                    LogLevel.WARN,
-                    "FirstMessageIsImage",
-                    `Banning ${event["sender"]} for posting an image as the first thing after joining in ${roomId}.`,
-                );
+                await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
+                    msgtype: "m.text",
+                    body: `Banning ${event["sender"]} for posting an image as the first thing after joining in ${roomId}.`,
+                    format: "org.matrix.custom.html",
+                    formatted_body: `Banning <span data-mx-spoiler>${htmlEscape(event["sender"])}</span> for posting an image as the first thing after joining in ${roomId}.`,
+                });
                 if (!mjolnir.config.noop) {
                     if (mjolnir.moderators.checkMembership(event["sender"])) {
                         await mjolnir.managementRoomOutput.logMessage(

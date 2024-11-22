@@ -16,6 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, MatrixGlob, RichReply } from "@vector-im/matrix-bot-sdk";
+import { htmlEscape } from "../utils";
 
 // !mjolnir kick <user|filter> [room] [reason]
 export async function execKickCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -57,12 +58,12 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
             const target = member.membershipFor;
 
             if (kickRule.test(target)) {
-                await mjolnir.managementRoomOutput.logMessage(
-                    LogLevel.DEBUG,
-                    "KickCommand",
-                    `Removing ${target} in ${protectedRoomId}`,
-                    protectedRoomId,
-                );
+                await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
+                    msgtype: "m.text",
+                    body: `Removing ${target} in ${protectedRoomId}.`,
+                    format: "org.matrix.custom.html",
+                    formatted_body: `Removing <span data-mx-spoiler>${htmlEscape(target)}</span> in ${protectedRoomId}.`,
+                });
 
                 if (!mjolnir.config.noop) {
                     try {
@@ -70,11 +71,12 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                             return mjolnir.client.kickUser(target, protectedRoomId, reason);
                         });
                     } catch (e) {
-                        await mjolnir.managementRoomOutput.logMessage(
-                            LogLevel.WARN,
-                            "KickCommand",
-                            `An error happened while trying to kick ${target}: ${e}`,
-                        );
+                        await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
+                            msgtype: "m.text",
+                            body: `An error happened while trying to kick ${target}: ${e}`,
+                            format: "org.matrix.custom.html",
+                            formatted_body: `An error happened while trying to kick <span data-mx-spoiler>${htmlEscape(target)}</span>: ${e}.`,
+                        });
                     }
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(
