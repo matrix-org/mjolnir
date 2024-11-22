@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "@vector-im/matrix-bot-sdk";
-import {htmlEscape} from "../utils";
+import { htmlEscape } from "../utils";
 
 export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];

@@ -18,7 +18,7 @@ import { Protection } from "./IProtection";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
-import {htmlEscape} from "../utils";
+import { htmlEscape } from "../utils";
 
 // if this is exceeded, we'll ban the user for spam and redact their messages
 export const DEFAULT_MAX_PER_MINUTE = 10;

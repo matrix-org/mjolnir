@@ -17,7 +17,7 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
-import {htmlEscape, isTrueJoinEvent} from "../utils";
+import { htmlEscape, isTrueJoinEvent } from "../utils";
 
 export class FirstMessageIsImage extends Protection {
     private justJoined: { [roomId: string]: string[] } = {};
