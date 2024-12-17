@@ -1,6 +1,9 @@
+import { strict as assert } from "assert";
+
 import { Mjolnir } from "../../src/Mjolnir";
 import { Protection } from "../../src/protections/IProtection";
-import { newTestUser } from "./clientHelper";
+import { newTestUser, noticeListener } from "./clientHelper";
+import { matrixClient, mjolnir } from "./mjolnirSetupUtils";
 import { ConsequenceBan, ConsequenceRedact } from "../../src/protections/consequence";
 
 describe("Test: standard consequences", function () {

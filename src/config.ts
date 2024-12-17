@@ -90,7 +90,6 @@ export interface IConfig {
     acceptInvitesFromSpace: string;
     recordIgnoredInvites: boolean;
     managementRoom: string;
-    forwardMentionsToManagementRoom: boolean;
     verboseLogging: boolean;
     logLevel: "DEBUG" | "INFO" | "WARN" | "ERROR";
     syncOnStartup: boolean;
@@ -210,7 +209,6 @@ const defaultConfig: IConfig = {
     autojoinOnlyIfManager: true,
     recordIgnoredInvites: false,
     managementRoom: "!noop:example.org",
-    forwardMentionsToManagementRoom: false,
     verboseLogging: false,
     logLevel: "INFO",
     syncOnStartup: true,
