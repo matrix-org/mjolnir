@@ -17,24 +17,30 @@ describe("Test: General command handling test", function () {
             visibility: "public",
         });
         await this.moderator.sendText(this.mjolnir.managementRoomId, `!mjolnir rooms add ${publicRoomId}`);
-        const joinPromise = new Promise<void>((resolve) => this.userA.on("room.event", (roomId, evt) => {
-            if (roomId === publicRoomId && evt.type === "m.room.member" && evt.state_key === mjolnirUserId && evt.content.membership === "join") {
-                resolve();
-            }
-        }));
+        const joinPromise = new Promise<void>((resolve) =>
+            this.userA.on("room.event", (roomId, evt) => {
+                if (
+                    roomId === publicRoomId &&
+                    evt.type === "m.room.member" &&
+                    evt.state_key === mjolnirUserId &&
+                    evt.content.membership === "join"
+                ) {
+                    resolve();
+                }
+            }),
+        );
         await this.userA.inviteUser(mjolnirUserId, publicRoomId);
         await joinPromise;
         await this.userA.sendText(publicRoomId, "!mjolnir enable MentionSpam");
 
-        const reply = new Promise<null|unknown>(
-            (resolve, reject) => {
-                // Mjolnir should ignore our message entirely.
-                setTimeout(() => resolve(null), 10000);
-                getFirstReply(this.userA, publicRoomId, () => this.userA.sendText(publicRoomId, "!mjolnir status")).then(resolve).catch(reject);
-            }
-        );
-        
+        const reply = new Promise<null | unknown>((resolve, reject) => {
+            // Mjolnir should ignore our message entirely.
+            setTimeout(() => resolve(null), 10000);
+            getFirstReply(this.userA, publicRoomId, () => this.userA.sendText(publicRoomId, "!mjolnir status"))
+                .then(resolve)
+                .catch(reject);
+        });
+
         expect(await reply).toBeNull();
     });
-
 });

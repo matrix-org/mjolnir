@@ -220,9 +220,11 @@ export class Mjolnir {
 
         matrixEmitter.on("room.message", async (roomId, event) => {
             const eventContent = event.content;
+            const eventId = event.event_id;
+            const sender = event.sender;
             if (typeof eventContent !== "object") return;
 
-            const { msgtype, body: originalBody, sender, event_id } = eventContent;
+            const { msgtype, body: originalBody } = eventContent;
 
             if (msgtype !== "m.text" || typeof originalBody !== "string") {
                 return;
@@ -236,9 +238,7 @@ export class Mjolnir {
                         return;
                     }
                     this.lastBotMentionForRoomId.set(roomId, true);
-                    const permalink = Permalinks.forEvent(roomId, event_id, [
-                        new UserID(this.clientUserId).domain,
-                    ]);
+                    const permalink = Permalinks.forEvent(roomId, eventId, [new UserID(this.clientUserId).domain]);
                     await this.managementRoomOutput.logMessage(
                         LogLevel.INFO,
                         "Mjolnir",
@@ -280,7 +280,7 @@ export class Mjolnir {
             eventContent.body = COMMAND_PREFIX + restOfBody;
             LogService.info("Mjolnir", `Command being run by ${sender}: ${eventContent.body}`);
 
-            client.sendReadReceipt(roomId, event_id).catch((e: any) => {
+            client.sendReadReceipt(roomId, eventId).catch((e: any) => {
                 LogService.warn("Mjolnir", "Error sending read receipt: ", e);
             });
             return handleCommand(roomId, event, this);
