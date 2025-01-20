@@ -220,10 +220,9 @@ export class Mjolnir {
 
         matrixEmitter.on("room.message", async (roomId, event) => {
             const eventContent = event.content;
-            const eventId = event.event_id;
-            const sender = event.sender;
             if (typeof eventContent !== "object") return;
 
+            const { event_id: eventId, sender } = event;
             const { msgtype, body: originalBody } = eventContent;
 
             if (msgtype !== "m.text" || typeof originalBody !== "string") {
