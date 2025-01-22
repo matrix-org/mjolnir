@@ -67,6 +67,10 @@ describe("Test: The redaction command - if admin", function () {
             moderator.stop();
         }
 
+        function delay(ms: number) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+        await delay(700);
         await getMessagesByUserIn(moderator, badUserId, targetRoom, 1000, function (events) {
             events.map((e) => {
                 if (e.type === "m.room.member") {
@@ -75,7 +79,7 @@ describe("Test: The redaction command - if admin", function () {
                         1,
                         "Only membership should be left on the membership even when it has been redacted.",
                     );
-                } else if (Object.keys(e.content).length !== 0) {
+                } else if (Object.keys(e.content).length !== 0 && e.type != "m.room.redaction") {
                     throw new Error(`This event should have been redacted: ${JSON.stringify(e, null, 2)}`);
                 }
             });
