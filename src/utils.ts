@@ -83,7 +83,7 @@ async function adminRedactUserMessagesIn(
 ) {
     const body = { limit: limit, rooms: targetRooms };
     const redactEndpoint = `/_synapse/admin/v1/user/${userId}/redact`;
-    const response = await client.doRequest("GET", redactEndpoint, null, body);
+    const response = await client.doRequest("POST", redactEndpoint, null, body);
     const redactID = response["redact_id"];
     await managementRoom.logMessage(
         LogLevel.INFO,
