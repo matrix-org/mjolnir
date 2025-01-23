@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
-import { LogLevel, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, LogService, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { NumberProtectionSetting } from "./ProtectionSettings";
 import { LRUCache } from "lru-cache";
 
@@ -106,6 +106,12 @@ export class MentionSpam extends Protection {
             if (!hitLimit) {
                 const displaynames = await this.getRoomDisplaynames(mjolnir, roomId);
                 hitLimit = this.checkDisplaynameMentions(content.body, content.formatted_body, displaynames);
+                if (hitLimit) {
+                    LogService.info(
+                        "MentionSpam",
+                        `Hitlimit reached via display name mention check for event content ${JSON.stringify(content)}`,
+                    );
+                }
             }
 
             if (hitLimit) {
@@ -117,6 +123,10 @@ export class MentionSpam extends Protection {
                 // Redact the event
                 if (!mjolnir.config.noop) {
                     await mjolnir.client.redactEvent(roomId, event["event_id"], "Message was detected as spam.");
+                    LogService.info(
+                        "MentionSpam",
+                        `Redacting event content ${JSON.stringify(content)} for spamming mentions.`,
+                    );
                     mjolnir.unlistedUserRedactionHandler.addUser(event["sender"]);
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(
