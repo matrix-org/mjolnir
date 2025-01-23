@@ -45,7 +45,7 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        await delay(4000);
+        await delay(5000);
         const currentMods = this.mjolnir.moderators.listAll();
         let expectedCurrentMods = [await client.getUserId(), await this.mjolnir.client.getUserId()];
         expectedCurrentMods.forEach((mod) => {
