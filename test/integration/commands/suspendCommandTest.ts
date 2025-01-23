@@ -65,7 +65,7 @@ describe("Test: suspend/unsuspend command", function () {
             await badUser.sendMessage(room, { msgtype: "m.text", body: `testing` });
             assert.fail("Bad user successfully sent message.");
         } catch (error) {
-            assert.match(error.message, /ORG.MATRIX.MSC3823.USER_ACCOUNT_SUSPENDED/i);
+            assert.match(error.message, /M_USER_SUSPENDED/i);
         }
 
         let reply2 = new Promise(async (resolve, reject) => {
