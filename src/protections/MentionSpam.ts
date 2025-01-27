@@ -18,15 +18,10 @@ import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { NumberProtectionSetting } from "./ProtectionSettings";
-import { LRUCache } from "lru-cache";
 
 export const DEFAULT_MAX_MENTIONS = 10;
 
 export class MentionSpam extends Protection {
-    private roomDisplaynameCache = new LRUCache<string, string[]>({
-        ttl: 1000 * 60 * 24, // 24 minutes
-        ttlAutopurge: true,
-    });
 
     settings = {
         maxMentions: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS, 1),
@@ -43,29 +38,7 @@ export class MentionSpam extends Protection {
         return "If a user posts many mentions, that message is redacted. No bans are issued.";
     }
 
-    private async getRoomDisplaynames(mjolnir: Mjolnir, roomId: string): Promise<string[]> {
-        const existing = this.roomDisplaynameCache.get(roomId);
-        if (existing) {
-            return existing;
-        }
-        const profiles = await mjolnir.client.getJoinedRoomMembersWithProfiles(roomId);
-        const displaynames = (
-            Object.values(profiles)
-                .map((v) => v.display_name?.toLowerCase())
-                .filter((v) => typeof v === "string") as string[]
-        )
-            // Limit to displaynames with more than a few characters.
-            .filter((displayname) => displayname.length > 2);
-
-        this.roomDisplaynameCache.set(roomId, displaynames);
-        return displaynames;
-    }
-
-    public checkMentions(
-        body: unknown | undefined,
-        htmlBody: unknown | undefined,
-        mentionArray: unknown | undefined,
-    ): boolean {
+    public checkMentions(body: unknown|undefined, htmlBody: unknown|undefined, mentionArray: unknown|undefined): boolean {
         const max = this.settings.maxMentions.value;
         if (Array.isArray(mentionArray) && mentionArray.length > max) {
             return true;
@@ -79,41 +52,11 @@ export class MentionSpam extends Protection {
         return false;
     }
 
-    public checkDisplaynameMentions(
-        body: unknown | undefined,
-        htmlBody: unknown | undefined,
-        displaynames: string[],
-    ): boolean {
-        const max = this.settings.maxMentions.value;
-        const bodyWords = ((typeof body === "string" && body) || "").toLowerCase();
-        if (displaynames.filter((s) => bodyWords.includes(s.toLowerCase())).length > max) {
-            return true;
-        }
-        const htmlBodyWords = decodeURIComponent((typeof htmlBody === "string" && htmlBody) || "").toLowerCase();
-        if (displaynames.filter((s) => htmlBodyWords.includes(s)).length > max) {
-            return true;
-        }
-        return false;
-    }
-
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
         if (event["type"] === "m.room.message") {
             let content = event["content"] || {};
             const explicitMentions = content["m.mentions"]?.user_ids;
-            let hitLimit = this.checkMentions(content.body, content.formatted_body, explicitMentions);
-
-            // Slightly more costly to hit displaynames, so only do it if we don't hit on mxid matches.
-            if (!hitLimit) {
-                const displaynames = await this.getRoomDisplaynames(mjolnir, roomId);
-                hitLimit = this.checkDisplaynameMentions(content.body, content.formatted_body, displaynames);
-                if (hitLimit) {
-                    LogService.info(
-                        "MentionSpam",
-                        `Hitlimit reached via display name mention check for event content ${JSON.stringify(content)}`,
-                    );
-                }
-            }
-
+            const hitLimit = this.checkMentions(content.body, content.formatted_body, explicitMentions);
             if (hitLimit) {
                 await mjolnir.managementRoomOutput.logMessage(
                     LogLevel.WARN,
