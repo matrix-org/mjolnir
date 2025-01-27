@@ -22,7 +22,6 @@ import { NumberProtectionSetting } from "./ProtectionSettings";
 export const DEFAULT_MAX_MENTIONS = 10;
 
 export class MentionSpam extends Protection {
-
     settings = {
         maxMentions: new NumberProtectionSetting(DEFAULT_MAX_MENTIONS, 1),
     };
@@ -38,7 +37,11 @@ export class MentionSpam extends Protection {
         return "If a user posts many mentions, that message is redacted. No bans are issued.";
     }
 
-    public checkMentions(body: unknown|undefined, htmlBody: unknown|undefined, mentionArray: unknown|undefined): boolean {
+    public checkMentions(
+        body: unknown | undefined,
+        htmlBody: unknown | undefined,
+        mentionArray: unknown | undefined,
+    ): boolean {
         const max = this.settings.maxMentions.value;
         if (Array.isArray(mentionArray) && mentionArray.length > max) {
             return true;

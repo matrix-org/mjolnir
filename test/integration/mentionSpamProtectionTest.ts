@@ -94,10 +94,12 @@ describe("Test: Mention spam protection", function () {
             });
         });
         // Also covers HTML mentions
-        const mentionUsers = Array.from({length: DEFAULT_MAX_MENTIONS+1}, (_, i) => `@user${i}:example.org`);
-        const messageWithTextMentions = await client.sendText(room, mentionUsers.join(' '));
-        const messageWithHTMLMentions = await client.sendHtmlText(room, 
-            mentionUsers.map(u => `<a href=\"https://matrix.to/#/${encodeURIComponent(u)}\">${u}</a>`).join(' '));
+        const mentionUsers = Array.from({ length: DEFAULT_MAX_MENTIONS + 1 }, (_, i) => `@user${i}:example.org`);
+        const messageWithTextMentions = await client.sendText(room, mentionUsers.join(" "));
+        const messageWithHTMLMentions = await client.sendHtmlText(
+            room,
+            mentionUsers.map((u) => `<a href=\"https://matrix.to/#/${encodeURIComponent(u)}\">${u}</a>`).join(" "),
+        );
         const messageWithMMentions = await client.sendMessage(room, {
             msgtype: "m.text",
             body: "Hello world",
