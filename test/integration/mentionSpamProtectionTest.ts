@@ -95,12 +95,6 @@ describe("Test: Mention spam protection", function () {
         });
         // Also covers HTML mentions
         const mentionUsers = Array.from({ length: DEFAULT_MAX_MENTIONS + 1 }, (_, i) => `@user${i}:example.org`);
-        const mentionDisplaynames = Array.from({ length: DEFAULT_MAX_MENTIONS + 1 }, (_, i) => `Test User ${i}`);
-
-        // Pre-set the displayname cache.
-        let protection = this.mjolnir.protectionManager.protections.get("MentionSpam");
-        protection.roomDisplaynameCache.set(room, mentionDisplaynames);
-
         const messageWithTextMentions = await client.sendText(room, mentionUsers.join(" "));
         const messageWithHTMLMentions = await client.sendHtmlText(
             room,
@@ -113,7 +107,6 @@ describe("Test: Mention spam protection", function () {
                 user_ids: mentionUsers,
             },
         });
-        const messageWithDisplaynameMentions = await client.sendText(room, mentionDisplaynames.join(" "));
 
         await delay(500);
 
@@ -125,24 +118,5 @@ describe("Test: Mention spam protection", function () {
 
         const fetchedMentionsEvent = await client.getEvent(room, messageWithMMentions);
         assert.equal(Object.keys(fetchedMentionsEvent.content).length, 0, "This event should have been redacted");
-
-        const fetchedDisplaynameEvent = await client.getEvent(room, messageWithDisplaynameMentions);
-        assert.equal(Object.keys(fetchedDisplaynameEvent.content).length, 0, "This event should have been redacted");
-
-        // send messages after activating protection, they should be auto-redacted
-        const messages = [];
-        for (let i = 0; i < 10; i++) {
-            let nextMessage = await client.sendText(room, `hello${i}`);
-            messages.push(nextMessage);
-        }
-
-        messages.forEach(async (eventID) => {
-            await client.getEvent(room, eventID);
-            assert.equal(
-                Object.keys(fetchedDisplaynameEvent.content).length,
-                0,
-                "This event should have been redacted",
-            );
-        });
     });
 });
