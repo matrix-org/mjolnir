@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { RichReply } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir deactivate <user ID>
 export async function execDeactivateCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -30,6 +30,20 @@ export async function execDeactivateCommand(roomId: string, event: any, mjolnir:
         return;
     }
 
-    await mjolnir.deactivateSynapseUser(target);
+    if (mjolnir.usingMas) {
+        try {
+            await mjolnir.masClient.deactivateMasUser(target);
+        } catch (err) {
+            mjolnir.managementRoomOutput.logMessage(
+                LogLevel.ERROR,
+                "Deactivate Command",
+                `There was an error deactivating ${target}, please check the logs for more information.`,
+            );
+            await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "❌");
+            return;
+        }
+    } else {
+        await mjolnir.deactivateSynapseUser(target);
+    }
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }
