@@ -115,6 +115,25 @@ export class MASclient {
         }
     }
 
+    public async unlockMasUser(userId: string): Promise<void> {
+        const masId = await this.getMASUserId(userId);
+        const accessToken = await this.getAccessToken();
+        try {
+            await axios({
+                method: "post",
+                url: this.config.mas.url + `/api/admin/v1/users/${masId}/unlock`,
+                headers: {
+                    "User-Agent": "Mjolnir",
+                    "Content-Type": "application/json; charset=UTF-8",
+                    "Authorization": `Bearer ${accessToken.token.access_token}`,
+                },
+            });
+        } catch (error) {
+            LogService.error("Mas client", `Error unlocking user ${userId} via MAS:`, error.message);
+            throw error;
+        }
+    }
+
     public async masUserIsAdmin(userId: string): Promise<boolean> {
         const index = userId.indexOf(":");
         const localpart = userId.substring(1, index);

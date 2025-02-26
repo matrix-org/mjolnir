@@ -610,6 +610,18 @@ export class Mjolnir {
         return await this.client.doRequest("PUT", endpoint, null, body);
     }
 
+    public async lockSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v2/users/${userId}`;
+        const body = { locked: true };
+        return await this.client.doRequest("PUT", endpoint, null, body);
+    }
+
+    public async unlockSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v2/users/${userId}`;
+        const body = { locked: false };
+        return await this.client.doRequest("PUT", endpoint, null, body);
+    }
+
     public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
         return await this.client.doRequest("DELETE", endpoint, null, {
