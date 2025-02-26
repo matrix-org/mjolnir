@@ -51,8 +51,8 @@ import { execSetupProtectedRoom } from "./SetupDecentralizedReportingCommand";
 import { execSuspendCommand } from "./SuspendCommand";
 import { execUnsuspendCommand } from "./UnsuspendCommand";
 import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
-import {execLockCommand} from "./LockCommand";
-import {execUnlockCommand} from "./UnlockCommand";
+import { execLockCommand } from "./LockCommand";
+import { execUnlockCommand } from "./UnlockCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 

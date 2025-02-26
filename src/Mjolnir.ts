@@ -578,18 +578,18 @@ export class Mjolnir {
     }
 
     public async isSynapseAdmin(): Promise<boolean> {
-            try {
-                if (this.usingMas) {
-                    return await this.masClient.masUserIsAdmin(this.clientUserId);
-                } else {
-                    const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
-                    const response = await this.client.doRequest("GET", endpoint);
-                    return response["admin"];
-                    }
-            } catch (e) {
-                LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
-                LogService.error("Mjolnir", extractRequestError(e));
-                return false; // assume not
+        try {
+            if (this.usingMas) {
+                return await this.masClient.masUserIsAdmin(this.clientUserId);
+            } else {
+                const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
+                const response = await this.client.doRequest("GET", endpoint);
+                return response["admin"];
+            }
+        } catch (e) {
+            LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
+            LogService.error("Mjolnir", extractRequestError(e));
+            return false; // assume not
         }
     }
 
