@@ -34,6 +34,7 @@
     "@types/pg": "^8.6.5",
     "@types/request": "^2.48.8",
     "@types/shell-quote": "1.7.1",
+    "@types/simple-oauth2": "^5.0.7",
     "crypto-js": "^4.2.0",
     "eslint": "^7.32",
     "expect": "^27.0.6",
@@ -64,6 +65,7 @@
     "pg": "^8.8.0",
     "prom-client": "^14.1.0",
     "shell-quote": "^1.7.3",
+    "simple-oauth2": "^5.1.0",
     "ulidx": "^0.3.0",
     "yaml": "^2.2.2"
   },
