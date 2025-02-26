@@ -138,7 +138,7 @@ export class MASclient {
         const localpart = userId.substring(1, index);
         const accessToken = await this.getAccessToken();
 
-        var resp;
+        let resp;
         try {
             resp = await axios({
                 method: "get",
