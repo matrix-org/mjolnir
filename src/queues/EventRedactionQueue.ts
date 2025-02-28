@@ -56,7 +56,7 @@ export class RedactUserInRoom implements QueuedRedaction {
             "Mjolnir",
             `Redacting events from ${this.userId} in room ${this.roomId}.`,
         );
-        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], this.isAdmin);
+        await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], false);
     }
 
     public redactionEqual(redaction: QueuedRedaction): boolean {
