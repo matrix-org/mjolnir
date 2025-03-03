@@ -43,7 +43,7 @@ import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
-import { MASclient } from "./MASclient";
+import { MASClient } from "./MASClient";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -104,12 +104,12 @@ export class Mjolnir {
     /**
      * Whether the Synapse Mjolnir is protecting uses the Matrix Authentication Service
      */
-    public readonly usingMas: boolean;
+    public readonly usingMAS: boolean;
 
     /**
      * Client for making calls to MAS (if using)
      */
-    public masClient: MASclient;
+    public MASClient: MASClient;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -225,9 +225,9 @@ export class Mjolnir {
         this.protectedRoomsConfig = new ProtectedRoomsConfig(client);
         this.policyListManager = new PolicyListManager(this);
 
-        if (config.mas.use) {
-            this.usingMas = true;
-            this.masClient = new MASclient(config);
+        if (config.MAS.use) {
+            this.usingMAS = true;
+            this.MASClient = new MASClient(config);
         }
 
         // Setup bot.
@@ -579,8 +579,8 @@ export class Mjolnir {
 
     public async isSynapseAdmin(): Promise<boolean> {
         try {
-            if (this.usingMas) {
-                return await this.masClient.masUserIsAdmin(this.clientUserId);
+            if (this.usingMAS) {
+                return await this.MASClient.UserIsMASAdmin(this.clientUserId);
             } else {
                 const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
                 const response = await this.client.doRequest("GET", endpoint);

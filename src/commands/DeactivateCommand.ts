@@ -30,9 +30,9 @@ export async function execDeactivateCommand(roomId: string, event: any, mjolnir:
         return;
     }
 
-    if (mjolnir.usingMas) {
+    if (mjolnir.usingMAS) {
         try {
-            await mjolnir.masClient.deactivateMasUser(target);
+            await mjolnir.MASClient.deactivateMASUser(target);
         } catch (err) {
             mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,

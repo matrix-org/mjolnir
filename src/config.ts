@@ -75,7 +75,7 @@ export interface IConfig {
         username: string;
         password: string;
     };
-    mas: {
+    MAS: {
         use: boolean;
         url: string;
         clientId: string;
@@ -206,7 +206,7 @@ const defaultConfig: IConfig = {
         username: "name",
         password: "pass",
     },
-    mas: {
+    MAS: {
         use: false,
         url: "",
         clientId: "",
