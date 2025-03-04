@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Matrix.org Foundation C.I.C.
+Copyright 2025 The Matrix.org Foundation C.I.C.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@ limitations under the License.
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, RichReply } from "@vector-im/matrix-bot-sdk";
 
-// !mjolnir deactivate <user ID>
-export async function execDeactivateCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+// !mjolnir unlock <user ID>
+export async function execUnlockCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];
 
     const isAdmin = await mjolnir.isSynapseAdmin();
@@ -32,18 +32,18 @@ export async function execDeactivateCommand(roomId: string, event: any, mjolnir:
 
     if (mjolnir.usingMAS) {
         try {
-            await mjolnir.MASClient.deactivateMASUser(target);
+            await mjolnir.MASClient.unlockMASUser(target);
         } catch (err) {
             mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
-                "Deactivate Command",
-                `There was an error deactivating ${target}, please check the logs for more information.`,
+                "Unlock Command",
+                `There was an error unlocking ${target}, please check the logs for more information.`,
             );
             await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "❌");
             return;
         }
     } else {
-        await mjolnir.deactivateSynapseUser(target);
+        await mjolnir.unlockSynapseUser(target);
     }
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
 }

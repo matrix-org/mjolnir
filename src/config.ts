@@ -75,6 +75,12 @@ export interface IConfig {
         username: string;
         password: string;
     };
+    MAS: {
+        use: boolean;
+        url: string;
+        clientId: string;
+        clientSecret: string;
+    };
     pantalaimon: {
         use: boolean;
         username: string;
@@ -199,6 +205,12 @@ const defaultConfig: IConfig = {
         use: false,
         username: "name",
         password: "pass",
+    },
+    MAS: {
+        use: false,
+        url: "",
+        clientId: "",
+        clientSecret: "",
     },
     pantalaimon: {
         use: false,

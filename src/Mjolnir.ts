@@ -43,6 +43,7 @@ import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
 import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
+import { MASClient } from "./MASClient";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -99,6 +100,16 @@ export class Mjolnir {
      * Members of the moderator room and others who should not be banned, ACL'd etc.
      */
     public moderators: ModCache;
+
+    /**
+     * Whether the Synapse Mjolnir is protecting uses the Matrix Authentication Service
+     */
+    public readonly usingMAS: boolean;
+
+    /**
+     * Client for making calls to MAS (if using)
+     */
+    public MASClient: MASClient;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -213,6 +224,11 @@ export class Mjolnir {
     ) {
         this.protectedRoomsConfig = new ProtectedRoomsConfig(client);
         this.policyListManager = new PolicyListManager(this);
+
+        if (config.MAS.use) {
+            this.usingMAS = true;
+            this.MASClient = new MASClient(config);
+        }
 
         // Setup bot.
 
@@ -563,9 +579,13 @@ export class Mjolnir {
 
     public async isSynapseAdmin(): Promise<boolean> {
         try {
-            const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
-            const response = await this.client.doRequest("GET", endpoint);
-            return response["admin"];
+            if (this.usingMAS) {
+                return await this.MASClient.UserIsMASAdmin(this.clientUserId);
+            } else {
+                const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
+                const response = await this.client.doRequest("GET", endpoint);
+                return response["admin"];
+            }
         } catch (e) {
             LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
             LogService.error("Mjolnir", extractRequestError(e));
@@ -587,6 +607,18 @@ export class Mjolnir {
     public async unsuspendSynapseUser(userId: string): Promise<any> {
         const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
         const body = { suspend: false };
+        return await this.client.doRequest("PUT", endpoint, null, body);
+    }
+
+    public async lockSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v2/users/${userId}`;
+        const body = { locked: true };
+        return await this.client.doRequest("PUT", endpoint, null, body);
+    }
+
+    public async unlockSynapseUser(userId: string): Promise<any> {
+        const endpoint = `/_synapse/admin/v2/users/${userId}`;
+        const body = { locked: false };
         return await this.client.doRequest("PUT", endpoint, null, body);
     }
 

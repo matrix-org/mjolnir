@@ -276,3 +276,13 @@ displayReports: true
 # with a lower number indicating greater sensitivity, possibly resulting in images being more aggressively flagged
 # and redacted as NSFW
 nsfwSensitivity: .6
+
+# Set this to true if the synapse this mjolnir is protecting is using Matrix Authentication Service for auth
+# If so, provide the base url and clientId + clientSecret needed to obtain a token from MAS - see
+# https://element-hq.github.io/matrix-authentication-service/index.html for more information about
+# configuring MAS clients/authorization grants
+MAS:
+  use: true
+  url: "https://auth.your-auth.com"
+  clientId: 'SOMEID'
+  clientSecret: 'SoMEseCreT'
