@@ -281,8 +281,8 @@ nsfwSensitivity: .6
 # If so, provide the base url and clientId + clientSecret needed to obtain a token from MAS - see
 # https://element-hq.github.io/matrix-authentication-service/index.html for more information about
 # configuring MAS clients/authorization grants
-MAS:
-  use: true
-  url: "https://auth.your-auth.com"
-  clientId: 'SOMEID'
-  clientSecret: 'SoMEseCreT'
+#MAS:
+#  use: true
+#  url: "https://auth.your-auth.com"
+#  clientId: 'SOMEID'
+#  clientSecret: 'SoMEseCreT'
