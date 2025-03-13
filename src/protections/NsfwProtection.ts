@@ -65,6 +65,13 @@ export class NsfwProtection extends Protection {
                 return;
             }
 
+            // Skip classification is sensitivity is 0, as it's a waste of resources
+            // We are using 0.0001 as a threshold to avoid floating point errors
+            if(mjolnir.config.nsfwSensitivity <= 0.0001) {
+                await redactEvent(mjolnir, roomId, event, room);
+                return;
+            }
+
             // @ts-ignore - see null check immediately above
             for (const mxc of mxcs) {
                 const image = await mjolnir.client.downloadContent(mxc);
@@ -82,7 +89,7 @@ export class NsfwProtection extends Protection {
                 for (const prediction of predictions) {
                     if (["Hentai", "Porn"].includes(prediction["className"])) {
                         if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
-                            await this.redactEvent(mjolnir, roomId, mxc, event, room);
+                            await this.redactEvent(mjolnir, roomId, event, room);
                             break;
                         }
                     }
@@ -92,7 +99,7 @@ export class NsfwProtection extends Protection {
         }
     }
 
-    private async redactEvent(mjolnir: Mjolnir, roomId, string, event: any, room: string): Promise<any> {
+    private async redactEvent(mjolnir: Mjolnir, roomId: string, event: any, room: string): Promise<any> {
         try {
             await mjolnir.client.redactEvent(roomId, event["event_id"]);
         } catch (err) {
