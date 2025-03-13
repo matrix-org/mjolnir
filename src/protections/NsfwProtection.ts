@@ -74,33 +74,37 @@ export class NsfwProtection extends Protection {
             for (const prediction of predictions) {
                 if (["Hentai", "Porn"].includes(prediction["className"])) {
                     if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
-                        try {
-                            await mjolnir.client.redactEvent(roomId, event["event_id"]);
-                        } catch (err) {
-                            await mjolnir.managementRoomOutput.logMessage(
-                                LogLevel.ERROR,
-                                "NSFWProtection",
-                                `There was an error redacting ${event["event_id"]} in ${room}: ${err}`,
-                            );
-                        }
-                        let eventId = event["event_id"];
-                        let body = `Redacted an image in ${room} ${eventId}`;
-                        let formatted_body = `<details>
-                                                <summary>Redacted an image in ${room}</summary>
-                                                <pre>${eventId}</pre>  <pre>${room}</pre>
-                                                </details>`;
-                        const msg = {
-                            msgtype: "m.notice",
-                            body: body,
-                            format: "org.matrix.custom.html",
-                            formatted_body: formatted_body,
-                        };
-                        await mjolnir.client.sendMessage(mjolnir.managementRoomId, msg);
+                        await this.redactEvent(mjolnir, roomId, mxc, event, room);
                         break;
                     }
                 }
             }
             decodedImage.dispose();
         }
+    }
+
+    private async redactEvent(mjolnir: Mjolnir, roomId, string, event: any, room: string): Promise<any> {
+        try {
+            await mjolnir.client.redactEvent(roomId, event["event_id"]);
+        } catch (err) {
+            await mjolnir.managementRoomOutput.logMessage(
+                LogLevel.ERROR,
+                "NSFWProtection",
+                `There was an error redacting ${event["event_id"]} in ${room}: ${err}`,
+            );
+        }
+        let eventId = event["event_id"];
+        let body = `Redacted an image in ${room} ${eventId}`;
+        let formatted_body = `<details>
+                              <summary>Redacted an image in ${room}</summary>
+                              <pre>${eventId}</pre>  <pre>${room}</pre>
+                              </details>`;
+        const msg = {
+            msgtype: "m.notice",
+            body: body,
+            format: "org.matrix.custom.html",
+            formatted_body: formatted_body,
+        };
+        await mjolnir.client.sendMessage(mjolnir.managementRoomId, msg);
     }
 }
