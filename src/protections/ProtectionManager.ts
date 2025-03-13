@@ -33,6 +33,7 @@ import { RoomUpdateError } from "../models/RoomUpdateError";
 import { LocalAbuseReports } from "./LocalAbuseReports";
 import { NsfwProtection } from "./NsfwProtection";
 import { MentionSpam } from "./MentionSpam";
+import { MessageIsVideo } from "./MessageIsVideo";
 
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -46,6 +47,7 @@ const PROTECTIONS: Protection[] = [
     new LocalAbuseReports(),
     new NsfwProtection(),
     new MentionSpam(),
+    new MessageIsVideo(),
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
