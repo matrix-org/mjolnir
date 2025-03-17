@@ -45,7 +45,7 @@ export class NsfwProtection extends Protection {
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-        if (event.type !== "m.room.message" || event.type !== "m.sticker") {
+        if (event.type !== "m.room.message" && event.type !== "m.sticker") {
             return;
         }
 
