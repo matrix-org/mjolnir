@@ -45,7 +45,9 @@ export class NsfwProtection extends Protection {
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
-        if (event["type"] === "m.room.message") {
+        if (event.type !== "m.room.message" || event.type !== "m.sticker") {
+            return;
+        }
 
         const content = JSON.stringify(event.content);
         const mxcs = content.match(/(mxc:\/\/[^\s'"]+)/gim);
