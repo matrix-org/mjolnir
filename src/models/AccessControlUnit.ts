@@ -170,7 +170,7 @@ class ListRuleCache {
      * @param change The change made to a rule that was present in the policy list.
      */
     private updateCacheForChange(change: ListRuleChange): void {
-        LogService.debug("ACU: updateCacheForChange", change.event)
+        LogService.debug("ACU: updateCacheForChange", change.event);
         if (change.rule.kind !== this.entityType || change.rule.recommendation !== this.recommendation) {
             return;
         }
