@@ -40,6 +40,7 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
 
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
+    LogService.muteModule("MatrixClientLite");
 
     LogService.info("index", "Starting bot...");
 
