@@ -82,6 +82,7 @@ export async function makeMjolnir(config: IConfig): Promise<Mjolnir> {
     LogService.setLogger(new RichConsoleLogger());
     LogService.setLevel(LogLevel.fromString(config.logLevel, LogLevel.DEBUG));
     LogService.info("test/mjolnirSetupUtils", "Starting bot...");
+    LogService.muteModule("MatrixClientLite");
     let client = new MatrixClient(config.homeserverUrl, accessToken, new MemoryStorageProvider(), cryptoStore);
     await client.crypto.prepare();
 
