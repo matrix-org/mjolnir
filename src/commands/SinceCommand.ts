@@ -16,10 +16,11 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { LogLevel, LogService, RichReply } from "@vector-im/matrix-bot-sdk";
-import { htmlEscape, parseDuration } from "../utils";
+import { htmlEscape } from "../utils";
 import { ParseEntry } from "shell-quote";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
 import { Join } from "../RoomMembers";
+import parse from "parse-duration";
 
 const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
 const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
@@ -143,14 +144,14 @@ async function execSinceCommandAux(
     const minDateResult = parseToken("<date>/<duration>", dateOrDurationToken, (source) => {
         // Attempt to parse `<date>/<duration>` as a date.
         let maybeMinDate = new Date(source);
-        let maybeMaxAgeMS = (Date.now() - maybeMinDate.getTime()) as number;
+        let maybeMaxAgeMS: number | null = (Date.now() - maybeMinDate.getTime()) as number;
         if (!Number.isNaN(maybeMaxAgeMS)) {
             return { ok: { minDate: maybeMinDate, maxAgeMS: maybeMaxAgeMS } };
         }
 
         //...or as a duration
-        maybeMaxAgeMS = parseDuration(source);
-        if (maybeMaxAgeMS && !Number.isNaN(maybeMaxAgeMS)) {
+        maybeMaxAgeMS = parse(source);
+        if (maybeMaxAgeMS) {
             maybeMaxAgeMS = Math.abs(maybeMaxAgeMS);
             return { ok: { minDate: new Date(Date.now() - maybeMaxAgeMS), maxAgeMS: maybeMaxAgeMS } };
         }
