@@ -23,7 +23,6 @@ import {
     extractRequestError,
 } from "@vector-im/matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
-import { default as parseDuration } from "parse-duration";
 import * as Sentry from "@sentry/node";
 import * as _ from "@sentry/tracing"; // Performing the import activates tracing.
 import { collectDefaultMetrics, Counter, Histogram, register } from "prom-client";
@@ -31,16 +30,6 @@ import { collectDefaultMetrics, Counter, Histogram, register } from "prom-client
 import { IHealthConfig } from "./config";
 import { MatrixSendClient } from "./MatrixEmitter";
 import ManagementRoomOutput from "./ManagementRoomOutput";
-
-// Define a few aliases to simplify parsing durations.
-
-parseDuration["days"] = parseDuration["day"];
-parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
-parseDuration["months"] = parseDuration["month"];
-parseDuration["years"] = parseDuration["year"];
-
-// ... and reexport it
-export { parseDuration };
 
 export function htmlEscape(input: string): string {
     return input.replace(
