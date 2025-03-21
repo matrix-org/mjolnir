@@ -50,7 +50,7 @@
     "@tensorflow/tfjs-node": "^4.21.0",
     "@vector-im/matrix-bot-sdk": "^0.7.1-element.6",
     "await-lock": "^2.2.2",
-    "axios": "^1.7.6",
+    "axios": "^1.8.2",
     "body-parser": "^1.20.1",
     "config": "^3.3.8",
     "express": "^4.20",
