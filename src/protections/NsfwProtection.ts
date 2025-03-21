@@ -19,11 +19,62 @@ import { Mjolnir } from "../Mjolnir";
 import * as nsfw from "nsfwjs";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { node } from "@tensorflow/tfjs-node";
+import { spawn } from "node:child_process";
+
+const TENSOR_SUPPORTED_TYPES = [
+    "image/png",
+    "image/apng",
+    "image/bmp",
+    "image/x-bmp",
+    "image/gif",
+    "image/jpeg",
+    "image/jp2",
+    "image/jpx",
+    "image/jpm",
+    // Catch-all
+    "application/octet-stream",
+];
+
+const FFMPEG_SUPPORTED_TYPES = [
+    "video/",
+    "image/",
+];
+
+
 
 export class NsfwProtection extends Protection {
     settings = {};
     // @ts-ignore
     private model: any;
+
+    /**
+     * 
+     * @param buffer 
+     * @returns 
+     */
+    static extractFrame(mjolnir: Mjolnir, buffer: Buffer): Promise<Buffer> {        
+        return new Promise((resolve, reject) => {
+            const errData: Buffer[] = [];
+            const imageData: Buffer[] = [];
+            const cmd = spawn(mjolnir.config.ffmpegPath, ["-i", "-", "-update", "true", "-frames:v","1", "-f", "image2", "-"]);
+            cmd.on("exit", (code) => {
+                if (code !== 0) {
+                    reject(new Error(`FFMPEG failed to run: ${code}, ${Buffer.concat(errData).toString()}`));
+                } else {
+                    resolve(Buffer.concat(imageData));
+                }
+            });
+            cmd.stderr.on("data", (b) => {
+                errData.push(b);
+            });
+            cmd.stdout.on("data", (b) => {
+                imageData.push(b);
+            });
+            cmd.stdin.write(buffer);
+            cmd.stdin.end();
+        })
+
+    }
 
     constructor() {
         super();
@@ -66,8 +117,31 @@ export class NsfwProtection extends Protection {
         }
 
         for (const mxc of mxcs) {
-            const image = await mjolnir.client.downloadContent(mxc);
+            let image = await mjolnir.client.downloadContent(mxc);
+            if (!TENSOR_SUPPORTED_TYPES.includes(image.contentType)) {
+                // Why do we do this?
+                // - We don't want to trust client thumbnails, which might not match the content. Or they might
+                //   not exist at all (which forces clients to generate their own)
+                // - We also don't want to make our homeserver generate thumbnails of potentially
+                //   harmful images, so this locally generates a thumbnail of a range of types in memory.
+                if (FFMPEG_SUPPORTED_TYPES.some(mt => image.contentType.startsWith(mt))) {
+                    try {
+                        LogService.debug("NsfwProtection", `Image type ${image.contentType} is unsupported, attempting to generate thumbnail`);
+                        image = {
+                            data: await NsfwProtection.extractFrame(mjolnir, image.data),
+                            contentType: "image/jpeg"
+                        };
+                    } catch (ex) {
+                        LogService.warn("NsfwProtection", "Could not extract thumbnail from image", ex);
+                        continue;
+                    }
+                } else {
+                    LogService.debug("NsfwProtection", `Unsupported file type`);
+                    continue;
+                }
+            }
 
+            // If the mimetype is not found, then try to decode it anyway.
             let decodedImage;
             try {
                 decodedImage = await node.decodeImage(image.data, 3);
