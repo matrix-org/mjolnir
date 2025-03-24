@@ -19,6 +19,7 @@ import { Mjolnir } from "../Mjolnir";
 import * as nsfw from "nsfwjs";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { node } from "@tensorflow/tfjs-node";
+import { getMXCsInMessage } from "../utils";
 
 export class NsfwProtection extends Protection {
     settings = {};
@@ -49,11 +50,7 @@ export class NsfwProtection extends Protection {
             return;
         }
 
-        const content = JSON.stringify(event.content);
-        const mxcs = content.match(/(mxc:\/\/[^\s'"]+)/gim);
-        if (!mxcs) {
-            return;
-        }
+        const mxcs = getMXCsInMessage(event.content);
         // try and grab a human-readable alias for more helpful management room output
         const maybeAlias = await mjolnir.client.getPublishedAlias(roomId);
         const room = maybeAlias ? maybeAlias : roomId;
@@ -92,6 +89,7 @@ export class NsfwProtection extends Protection {
 
     private async redactEvent(mjolnir: Mjolnir, roomId: string, event: any, room: string): Promise<any> {
         try {
+            mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event);
             await mjolnir.client.redactEvent(roomId, event["event_id"]);
         } catch (err) {
             await mjolnir.managementRoomOutput.logMessage(

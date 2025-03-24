@@ -44,6 +44,7 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         // Assume it's a permalink
         const parsed = Permalinks.parseUrl(parts[2]);
         const targetRoomId = await mjolnir.client.resolveRoom(parsed.roomIdOrAlias);
+        mjolnir.protectedRoomsTracker.quarantineMediaForEventId(targetRoomId, parsed.eventId);
         await mjolnir.client.redactEvent(targetRoomId, parsed.eventId);
         await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
         await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing command");
@@ -52,6 +53,7 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
 
     const targetRoomIds = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
     await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, false, limit);
+    mjolnir.protectedRoomsTracker.quarantineMediaForUserId(userId, targetRoomIds);
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
     await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing");
