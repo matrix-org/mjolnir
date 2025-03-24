@@ -26,8 +26,10 @@ import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
-import { htmlEscape } from "./utils";
+import { getMXCsInMessage, htmlEscape } from "./utils";
 import { ModCache } from "./ModCache";
+
+const KEEP_MEDIA_EVENTS_FOR_MS = 4 * 24 * 60 * 60 * 1000;
 
 /**
  * This class aims to synchronize `m.ban` rules in a set of policy lists with
@@ -106,6 +108,8 @@ export class ProtectedRoomsSet {
      * whether the mjolnir instance is server admin
      */
     public isAdmin = false;
+
+    public readonly mediaEventsInRoom = new Map<string, Array<{eventId: string, sender: string, mediaIds: string[], ts: number}>>();
 
     constructor(
         private readonly client: MatrixSendClient,
@@ -221,6 +225,17 @@ export class ProtectedRoomsSet {
             const redactionErrors = await this.processRedactionQueue(roomId);
             await this.printActionResult(banErrors);
             await this.printActionResult(redactionErrors);
+        } else if (event.type === "m.room.message" || event.type === "m.sticker") {
+            const mxcs = getMXCsInMessage(event.content);
+            if (mxcs.length) {
+                const events = this.mediaEventsInRoom.get(roomId) ?? [];
+                events.push({ ts: Date.now(), eventId: event.event_id, mediaIds: mxcs, sender: event.sender });
+                this.mediaEventsInRoom.set(
+                    roomId,
+                    events.filter(({ts}) => Date.now() - ts < KEEP_MEDIA_EVENTS_FOR_MS)
+                );
+
+            }
         }
     }
 
@@ -275,12 +290,14 @@ export class ProtectedRoomsSet {
         this.protectedRooms.add(roomId);
         this.protectedRoomActivityTracker.addProtectedRoom(roomId);
         this.protectionManager.addProtectedRoom(roomId);
+        this.mediaEventsInRoom.set(roomId, []);
     }
 
     public removeProtectedRoom(roomId: string): void {
         this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
         this.protectedRooms.delete(roomId);
         this.protectionManager.removeProtectedRoom(roomId);
+        this.mediaEventsInRoom.delete(roomId);
     }
 
     /**
@@ -592,6 +609,29 @@ export class ProtectedRoomsSet {
                 format: "org.matrix.custom.html",
                 formatted_body: html,
             });
+        }
+    }
+
+    public async quarantineMediaForEventId(room_id: string, event_id: string) {
+        const media = this.mediaEventsInRoom.get(room_id)?.find(e => e.eventId);
+        if (!media) {
+            return;
+        }
+        for (const mxc of media.mediaIds) {
+            const [serverName, mediaId] = mxc.slice("mxc://".length)[1].split("/", 2);
+            await this.client.doRequest("POST", `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`);
+        }
+        
+    }
+    public async quarantineMediaForUserId(user_id: string, room_id: string|null) {
+        const media = room_id ? this.mediaEventsInRoom.get(room_id)?.filter(e => e.sender === user_id) :
+            [...this.mediaEventsInRoom.values()].flatMap(v => v.filter(e => e.sender === user_id));
+        if (!media) {
+            return;
+        }
+        for (const mxc of media.flatMap(e => e.mediaIds)) {
+            const [serverName, mediaId] = mxc.slice("mxc://".length)[1].split("/", 2);
+            await this.client.doRequest("POST", `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`);
         }
     }
 }

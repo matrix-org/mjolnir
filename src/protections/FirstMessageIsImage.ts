@@ -89,6 +89,7 @@ export class FirstMessageIsImage extends Protection {
 
                 // Redact the event
                 if (!mjolnir.config.noop) {
+                    mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event["event_id"]);
                     await mjolnir.client.redactEvent(roomId, event["event_id"], "spam");
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(

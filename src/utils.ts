@@ -601,3 +601,13 @@ export function initializeSentry(config: IHealthConfig) {
 // Set to `true` once we have initialized `Sentry` to ensure
 // that we do not attempt to initialize it more than once.
 let sentryInitialized = false;
+
+/**
+ * Get all mxc URIs in a message.
+ * @param content Any object.
+ * @returns A list of MXC urls.
+ */
+export function getMXCsInMessage(content: unknown): string[] {
+    const contentStr = JSON.stringify(content);
+    return contentStr.match(/(mxc:\/\/[^\s'"]+)/gim)?.slice(1) ?? [];
+}
