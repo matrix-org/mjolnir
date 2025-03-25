@@ -21,11 +21,11 @@ import { JoinRulesEventContent, LogLevel, LogService } from "@vector-im/matrix-b
 export const LOCKDOWN_EVENT_TYPE = "org.matrix.mjolnir.lockdown";
 
 // !mjolnir lockdown [roomId]
-export async function execLockdownCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+export async function execLockdownCommand(managementRoomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const lockOrUnlock = parts[2]?.toLocaleLowerCase();
     const target = parts[3];
 
-    if (!["lock","unlock"].includes(lockOrUnlock)) {
+    if (!["lock", "unlock"].includes(lockOrUnlock)) {
         throw Error("Command must be lock or unlock");
     }
 
@@ -33,19 +33,14 @@ export async function execLockdownCommand(roomId: string, event: any, mjolnir: M
     if (target) {
         const targetRoomId = await mjolnir.client.resolveRoom(target);
         targetRooms = [targetRoomId];
-    }
-    else if (mjolnir.config.protectAllJoinedRooms) {
+    } else if (mjolnir.config.protectAllJoinedRooms) {
         targetRooms = await mjolnir.client.getJoinedRooms();
     } else {
         targetRooms = mjolnir.protectedRoomsConfig.getExplicitlyProtectedRooms();
     }
-    
+
     if (!targetRooms.length) {
-        await mjolnir.managementRoomOutput.logMessage(
-            LogLevel.INFO,
-            "LockdownCommand",
-            "No protected rooms found",
-        );
+        await mjolnir.managementRoomOutput.logMessage(LogLevel.INFO, "LockdownCommand", "No protected rooms found");
         return;
     }
     await mjolnir.managementRoomOutput.logMessage(
@@ -53,7 +48,7 @@ export async function execLockdownCommand(roomId: string, event: any, mjolnir: M
         "LockdownCommand",
         target ? `Locking down room` : "Locking down ALL protected rooms",
     );
-    await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "⏳");
+    await mjolnir.client.unstableApis.addReactionToEvent(managementRoomId, event["event_id"], "⏳");
     let didError = false;
     for (const roomId of targetRooms) {
         try {
@@ -62,7 +57,7 @@ export async function execLockdownCommand(roomId: string, event: any, mjolnir: M
             mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "Lock Command",
-                `There was an error locking ${target}, please check the logs for more information.`
+                `There was an error locking ${target}, please check the logs for more information.`,
             );
             LogService.error("LockdownCommand", `Error changing lockdown state of ${roomId}:`, ex);
             didError = true;
@@ -71,13 +66,15 @@ export async function execLockdownCommand(roomId: string, event: any, mjolnir: M
     }
 
     if (!didError) {
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
+        await mjolnir.client.unstableApis.addReactionToEvent(managementRoomId, event["event_id"], "✅");
     }
 }
 
 async function ensureLockdownState(client: MatrixSendClient, roomId: string, lockdown: boolean) {
-    const currentState = await client.getSafeRoomAccountData<{locked: false}|{locked: true, previousState: JoinRulesEventContent}>(LOCKDOWN_EVENT_TYPE, roomId, { locked: false });
-    const currentJoinRule = await client.getRoomStateEvent(roomId, "m.room.join_rules", "") as JoinRulesEventContent;
+    const currentState = await client.getSafeRoomAccountData<
+        { locked: false } | { locked: true; previousState: JoinRulesEventContent }
+    >(LOCKDOWN_EVENT_TYPE, roomId, { locked: false });
+    const currentJoinRule = (await client.getRoomStateEvent(roomId, "m.room.join_rules", "")) as JoinRulesEventContent;
     if (!currentState.locked && lockdown) {
         const newState = {
             locked: true,
