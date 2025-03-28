@@ -59,18 +59,15 @@ export class ModCache {
      * Populate the cache by fetching moderation room membership events
      */
     public async populateCache() {
-        const memberEvents = await this.client.getRoomMembers(
-            this.managementRoomId,
-            undefined,
-            ["join", "invite"],
-            ["ban", "leave"],
+        const members = await this.client.getJoinedRoomMembers(
+            this.managementRoomId
         );
         this.modRoomMembers = [];
-        memberEvents.forEach((event) => {
-            if (!this.modRoomMembers.includes(event.stateKey)) {
-                this.modRoomMembers.push(event.stateKey);
+        members.forEach((member) => {
+            if (!this.modRoomMembers.includes(member)) {
+                this.modRoomMembers.push(member);
             }
-            const server = event.stateKey.split(":")[1];
+            const server = member.split(":")[1];
             if (!this.modRoomMembers.includes(server)) {
                 this.modRoomMembers.push(server);
             }
