@@ -623,7 +623,9 @@ export class Mjolnir {
     }
 
     public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
-        message = message ?? "A room you were invited to or participating in is not permitted on this server and has been removed. This room is a notification of that change - you may safely leave this room.";
+        message =
+            message ??
+            "A room you were invited to or participating in is not permitted on this server and has been removed. This room is a notification of that change - you may safely leave this room.";
         const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
         return await this.client.doRequest("DELETE", endpoint, null, {
             new_room_user_id: await this.client.getUserId(),
