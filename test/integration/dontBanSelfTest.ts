@@ -145,4 +145,31 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
             assert.fail("Bot has banned a member of ignore list.");
         }
     });
+
+    it("Does not include historical members in mod cache", async function () {
+        this.timeout(20000);
+
+        function delay(ms: number) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        const leaverClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test-leaver" } });
+        await leaverClient.joinRoom(this.config.managementRoom);
+
+        await delay(5000);
+        const currentMods = this.mjolnir.moderators.listAll();
+        let expectedCurrentMods = [await client.getUserId(), await this.mjolnir.client.getUserId(), await leaverClient.getUserId()];
+        expectedCurrentMods.forEach((mod) => {
+            if (!currentMods.includes(mod)) {
+                assert.fail("Expected mod not found.");
+            }
+        });
+        const roomID = await leaverClient.resolveRoom(this.config.managementRoom);
+        await leaverClient.leaveRoom(roomID);
+        await delay(1000);
+        let updatedMods = this.mjolnir.moderators.listAll();
+        if (updatedMods.includes(await leaverClient.getUserId())) {
+            assert.fail("Leaver should not be in moderator list.");
+        }
+    })
 });
