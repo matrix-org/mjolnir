@@ -56,7 +56,7 @@ export class ModCache {
     }
 
     /**
-     * Populate the cache by fetching moderation room membership events
+     * Populate the cache by fetching moderation room members
      */
     public async populateCache() {
         const members = await this.client.getJoinedRoomMembers(this.managementRoomId);
