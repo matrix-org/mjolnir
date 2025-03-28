@@ -153,12 +153,18 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
 
-        const leaverClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "mod-room-test-leaver" } });
+        const leaverClient = await newTestUser(this.config.homeserverUrl, {
+            name: { contains: "mod-room-test-leaver" },
+        });
         await leaverClient.joinRoom(this.config.managementRoom);
 
         await delay(5000);
         const currentMods = this.mjolnir.moderators.listAll();
-        let expectedCurrentMods = [await client.getUserId(), await this.mjolnir.client.getUserId(), await leaverClient.getUserId()];
+        let expectedCurrentMods = [
+            await client.getUserId(),
+            await this.mjolnir.client.getUserId(),
+            await leaverClient.getUserId(),
+        ];
         expectedCurrentMods.forEach((mod) => {
             if (!currentMods.includes(mod)) {
                 assert.fail("Expected mod not found.");
@@ -171,5 +177,5 @@ describe("Test: Bot doesn't ban moderation room members or ignored entities.", f
         if (updatedMods.includes(await leaverClient.getUserId())) {
             assert.fail("Leaver should not be in moderator list.");
         }
-    })
+    });
 });
