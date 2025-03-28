@@ -362,12 +362,12 @@ export class ProtectedRoomsSet {
                     // ignore - assume no ACL
                 }
 
-                await this.client.sendMessage(this.managementRoomId, {
-                    msgtype: "m.text",
-                    body: `Applying ACL in ${roomId}.`,
-                    format: "org.matrix.custom.html",
-                    formatted_body: `Applying ACL in <span data-mx-spoiler>${htmlEscape(roomId)}</span>.`,
-                });
+                await this.managementRoomOutput.logMessage(
+                    LogLevel.DEBUG,
+                    "ApplyAcl",
+                    `Applying ACL in ${roomId}`,
+                    roomId,
+                );
 
                 if (!this.config.noop) {
                     await this.client.sendStateEvent(roomId, "m.room.server_acl", "", finalAcl);
