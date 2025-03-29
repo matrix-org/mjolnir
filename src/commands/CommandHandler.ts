@@ -53,6 +53,7 @@ import { execUnsuspendCommand } from "./UnsuspendCommand";
 import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
+import { execLockdownCommand } from "./LockdownCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -152,6 +153,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execLockCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "unlock") {
             return await execUnlockCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "lockdown") {
+            return await execLockdownCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "help") {
             // Help menu
             const protectionMenu =
@@ -182,6 +185,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir unlock <user ID>                                             - Unlock the account of the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                                 - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
                 "!mjolnir ignored                                                      - List currently ignored entities.\n" +
+                "!mjolnir lockdown (lock|unlock) [room alias/ID]                                - Locks a room to invite-only. If not specified, this applies to all protected rooms.\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
 
             const policyListMenu =
