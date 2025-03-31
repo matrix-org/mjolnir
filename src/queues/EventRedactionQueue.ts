@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { LogLevel, MatrixClient } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, MatrixClient, MXCUrl } from "@vector-im/matrix-bot-sdk";
 import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
@@ -44,7 +44,7 @@ export class RedactUserInRoom implements QueuedRedaction {
         public readonly userId: string,
         public readonly roomId: string,
         public readonly isAdmin: boolean,
-        public readonly mediaIds: Iterable<string>,
+        public readonly mediaIds: Iterable<MXCUrl>,
     ) {}
 
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
@@ -54,11 +54,10 @@ export class RedactUserInRoom implements QueuedRedaction {
             `Redacting events from ${this.userId} in room ${this.roomId}.`,
         );
         await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], false);
-        for (const mediaMxc of this.mediaIds) {
-            const [serverName, mediaId] = mediaMxc.slice("mxc://".length)[1].split("/", 2);
+        for (const { domain, mediaId } of this.mediaIds) {
             await client.doRequest(
                 "POST",
-                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`,
+                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(domain)}/${encodeURIComponent(mediaId)}`,
             );
         }
     }

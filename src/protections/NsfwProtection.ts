@@ -63,7 +63,7 @@ export class NsfwProtection extends Protection {
         }
 
         for (const mxc of mxcs) {
-            const image = await mjolnir.client.downloadContent(mxc);
+            const image = await mjolnir.client.downloadContent(`mxc://${mxc.domain}/${mxc.mediaId}`);
 
             let decodedImage;
             try {

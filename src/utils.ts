@@ -21,6 +21,7 @@ import {
     getRequestFn,
     setRequestFn,
     extractRequestError,
+    MXCUrl,
 } from "@vector-im/matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import * as Sentry from "@sentry/node";
@@ -607,7 +608,8 @@ let sentryInitialized = false;
  * @param content Any object.
  * @returns A list of MXC urls.
  */
-export function getMXCsInMessage(content: unknown): string[] {
+export function getMXCsInMessage(content: unknown): MXCUrl[] {
     const contentStr = JSON.stringify(content);
-    return contentStr.match(/(mxc:\/\/[^\s'"]+)/gim)?.slice(1) ?? [];
+    const matches = contentStr.match(/(mxc:\/\/[^\s'"]+)/gim);
+    return matches?.map((v) => MXCUrl.parse(v)) ?? [];
 }

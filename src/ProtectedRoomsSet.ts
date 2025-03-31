@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixGlob, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, LogService, MatrixGlob, MXCUrl, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoomOutput";
@@ -114,7 +114,7 @@ export class ProtectedRoomsSet {
      */
     public readonly mediaEventsInRoom = new Map<
         string,
-        Array<{ eventId: string; sender: string; mediaIds: string[]; ts: number }>
+        Array<{ eventId: string; sender: string; mediaIds: MXCUrl[]; ts: number }>
     >();
 
     constructor(
@@ -631,11 +631,10 @@ export class ProtectedRoomsSet {
         if (!media) {
             return;
         }
-        for (const mxc of media.mediaIds) {
-            const [serverName, mediaId] = mxc.slice("mxc://".length)[1].split("/", 2);
+        for (const { domain, mediaId } of media.mediaIds) {
             await this.client.doRequest(
                 "POST",
-                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`,
+                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(domain)}/${encodeURIComponent(mediaId)}`,
             );
         }
     }
@@ -646,7 +645,7 @@ export class ProtectedRoomsSet {
      * @param roomIds Filter to these specific rooms.
      * @returns An iterable set of mxcs.
      */
-    public getMediaIdsForUserIdInRooms(userId: string, roomIds: string[]): Iterable<string> {
+    public getMediaIdsForUserIdInRooms(userId: string, roomIds: string[]): Iterable<MXCUrl> {
         return new Set(
             [...this.mediaEventsInRoom]
                 .filter((r) => roomIds.includes(r[0]))
