@@ -109,7 +109,10 @@ export class ProtectedRoomsSet {
      */
     public isAdmin = false;
 
-    public readonly mediaEventsInRoom = new Map<string, Array<{eventId: string, sender: string, mediaIds: string[], ts: number}>>();
+    public readonly mediaEventsInRoom = new Map<
+        string,
+        Array<{ eventId: string; sender: string; mediaIds: string[]; ts: number }>
+    >();
 
     constructor(
         private readonly client: MatrixSendClient,
@@ -137,7 +140,9 @@ export class ProtectedRoomsSet {
      * @param roomId The room we want to redact them in.
      */
     public redactUser(userId: string, roomId: string) {
-        this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId, this.isAdmin));
+        this.eventRedactionQueue.add(
+            new RedactUserInRoom(userId, roomId, this.isAdmin, this.getMediaIdsForUserIdInRooms(userId, [roomId])),
+        );
     }
 
     /**
@@ -232,9 +237,8 @@ export class ProtectedRoomsSet {
                 events.push({ ts: Date.now(), eventId: event.event_id, mediaIds: mxcs, sender: event.sender });
                 this.mediaEventsInRoom.set(
                     roomId,
-                    events.filter(({ts}) => Date.now() - ts < KEEP_MEDIA_EVENTS_FOR_MS)
+                    events.filter(({ ts }) => Date.now() - ts < KEEP_MEDIA_EVENTS_FOR_MS),
                 );
-
             }
         }
     }
@@ -612,26 +616,27 @@ export class ProtectedRoomsSet {
         }
     }
 
-    public async quarantineMediaForEventId(room_id: string, event_id: string) {
-        const media = this.mediaEventsInRoom.get(room_id)?.find(e => e.eventId);
+    public async quarantineMediaForEventId(roomId: string, eventId: string): Promise<void> {
+        const media = this.mediaEventsInRoom.get(roomId)?.find((e) => e.eventId === eventId);
         if (!media) {
             return;
         }
         for (const mxc of media.mediaIds) {
             const [serverName, mediaId] = mxc.slice("mxc://".length)[1].split("/", 2);
-            await this.client.doRequest("POST", `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`);
+            await this.client.doRequest(
+                "POST",
+                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`,
+            );
         }
-        
     }
-    public async quarantineMediaForUserId(user_id: string, room_id: string|null) {
-        const media = room_id ? this.mediaEventsInRoom.get(room_id)?.filter(e => e.sender === user_id) :
-            [...this.mediaEventsInRoom.values()].flatMap(v => v.filter(e => e.sender === user_id));
-        if (!media) {
-            return;
-        }
-        for (const mxc of media.flatMap(e => e.mediaIds)) {
-            const [serverName, mediaId] = mxc.slice("mxc://".length)[1].split("/", 2);
-            await this.client.doRequest("POST", `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`);
-        }
+
+    public getMediaIdsForUserIdInRooms(userId: string, roomIds: string[]): Iterable<string> {
+        return new Set(
+            [...this.mediaEventsInRoom]
+                .filter((r) => roomIds.includes(r[0]))
+                .flatMap((r) => r[1])
+                .filter((r) => r.sender === userId)
+                .flatMap((r) => r.mediaIds),
+        );
     }
 }

@@ -21,7 +21,6 @@ import { htmlEscape } from "../utils";
 import { JSDOM } from "jsdom";
 import { EventEmitter } from "events";
 import { Mjolnir } from "../Mjolnir";
-import { mjolnir } from "../../test/integration/mjolnirSetupUtils";
 
 /// Regexp, used to extract the action label from an action reaction
 /// such as `⚽ Kick user @foobar:localhost from room [kick-user]`.
@@ -680,7 +679,7 @@ class RedactMessage implements IUIAction {
         report: IReport,
         _moderationRoomId: string,
     ): Promise<string | undefined> {
-        manager.mjolnir.protectedRoomsTracker.quarantineMediaForEventId(report.room_id, report.event_id);
+        await manager.mjolnir.protectedRoomsTracker.quarantineMediaForEventId(report.room_id, report.event_id);
         await manager.mjolnir.client.redactEvent(report.room_id, report.event_id);
         return;
     }

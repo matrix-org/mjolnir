@@ -54,7 +54,7 @@ export class MessageIsMedia extends Protection {
                 );
                 // Redact the event
                 if (!mjolnir.config.noop) {
-                    mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event["event_id"]);
+                    await mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event["event_id"]);
                     await mjolnir.client.redactEvent(roomId, event["event_id"], "Images/videos are not permitted here");
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(

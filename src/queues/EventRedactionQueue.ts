@@ -40,15 +40,12 @@ export interface QueuedRedaction {
  * Redacts all of the messages a user has sent to one room.
  */
 export class RedactUserInRoom implements QueuedRedaction {
-    userId: string;
-    roomId: string;
-    isAdmin: boolean;
-
-    constructor(userId: string, roomId: string, isAdmin: boolean) {
-        this.userId = userId;
-        this.roomId = roomId;
-        this.isAdmin = isAdmin;
-    }
+    constructor(
+        public readonly userId: string,
+        public readonly roomId: string,
+        public readonly isAdmin: boolean,
+        public readonly mediaIds: Iterable<string>,
+    ) {}
 
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
         await managementRoom.logMessage(
@@ -57,6 +54,13 @@ export class RedactUserInRoom implements QueuedRedaction {
             `Redacting events from ${this.userId} in room ${this.roomId}.`,
         );
         await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], false);
+        for (const mediaMxc of this.mediaIds) {
+            const [serverName, mediaId] = mediaMxc.slice("mxc://".length)[1].split("/", 2);
+            await client.doRequest(
+                "POST",
+                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(serverName)}/${encodeURIComponent(mediaId)}`,
+            );
+        }
     }
 
     public redactionEqual(redaction: QueuedRedaction): boolean {

@@ -89,7 +89,7 @@ export class NsfwProtection extends Protection {
 
     private async redactEvent(mjolnir: Mjolnir, roomId: string, event: any, room: string): Promise<any> {
         try {
-            mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event);
+            await mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event);
             await mjolnir.client.redactEvent(roomId, event["event_id"]);
         } catch (err) {
             await mjolnir.managementRoomOutput.logMessage(

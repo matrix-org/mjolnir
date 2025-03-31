@@ -49,7 +49,7 @@ export class UnlistedUserRedactionQueue {
                     `Redacting event because the user is listed as bad: ${permalink}`,
                 );
                 if (!mjolnir.config.noop) {
-                    mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event["event_id"]);
+                    await mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event["event_id"]);
                     await mjolnir.client.redactEvent(roomId, event["event_id"]);
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(
