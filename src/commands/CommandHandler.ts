@@ -179,7 +179,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir suspend <user ID>                                            - Suspend the specified user\n" +
                 "!mjolnir unsuspend <user ID>                                          - Unsuspend the specified user\n" +
                 "!mjolnir lock <user ID>                                               - Lock the account of the specified user\n" +
-                "!mjolnir unlock <user ID>                                              - Unlock the account of the specified user\n" +
+                "!mjolnir unlock <user ID>                                             - Unlock the account of the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                                 - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
                 "!mjolnir ignored                                                      - List currently ignored entities.\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
