@@ -109,6 +109,9 @@ export class ProtectedRoomsSet {
      */
     public isAdmin = false;
 
+    /**
+     * A map of room IDs to events containing media.
+     */
     public readonly mediaEventsInRoom = new Map<
         string,
         Array<{ eventId: string; sender: string; mediaIds: string[]; ts: number }>
@@ -235,6 +238,7 @@ export class ProtectedRoomsSet {
             if (mxcs.length) {
                 const events = this.mediaEventsInRoom.get(roomId) ?? [];
                 events.push({ ts: Date.now(), eventId: event.event_id, mediaIds: mxcs, sender: event.sender });
+                // Remove any old events from the cache after while.
                 this.mediaEventsInRoom.set(
                     roomId,
                     events.filter(({ ts }) => Date.now() - ts < KEEP_MEDIA_EVENTS_FOR_MS),
@@ -616,6 +620,12 @@ export class ProtectedRoomsSet {
         }
     }
 
+    /**
+     * Quarantine all media within an event ID. This assumes we have recently seen the event.
+     * @param roomId The room ID for the event.
+     * @param eventId The event ID.
+     * @returns Resolves on completion, or immediately if there was no media.
+     */
     public async quarantineMediaForEventId(roomId: string, eventId: string): Promise<void> {
         const media = this.mediaEventsInRoom.get(roomId)?.find((e) => e.eventId === eventId);
         if (!media) {
@@ -630,6 +640,12 @@ export class ProtectedRoomsSet {
         }
     }
 
+    /**
+     * Get all MXCs for a user within a set of rooms.
+     * @param userId The user ID to target.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
     public getMediaIdsForUserIdInRooms(userId: string, roomIds: string[]): Iterable<string> {
         return new Set(
             [...this.mediaEventsInRoom]
