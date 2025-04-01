@@ -484,7 +484,7 @@ describe("Test: The redaction command - if not admin", function () {
             await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
                 return await moderator.sendMessage(this.mjolnir.managementRoomId, {
                     msgtype: "m.text",
-                    body: `!mjolnir redact ${badUserId}`,
+                    body: `!mjolnir redact ${badUserId} --quarantine`,
                 });
             });
         } finally {
