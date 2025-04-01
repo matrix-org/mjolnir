@@ -285,8 +285,6 @@ nsfwModel: MobileNetV2
 # set to `false` to forbid processing media with ffmpeg. 
 ffmpegPath: /usr/bin/ffmpeg
 
-
-
 # Set this to true if the synapse this mjolnir is protecting is using Matrix Authentication Service for auth
 # If so, provide the base url and clientId + clientSecret needed to obtain a token from MAS - see
 # https://element-hq.github.io/matrix-authentication-service/index.html for more information about
