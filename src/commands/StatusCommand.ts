@@ -16,9 +16,10 @@ limitations under the License.
 
 import { Mjolnir, STATE_CHECKING_PERMISSIONS, STATE_NOT_STARTED, STATE_RUNNING, STATE_SYNCING } from "../Mjolnir";
 import { RichReply } from "@vector-im/matrix-bot-sdk";
-import { htmlEscape, parseDuration } from "../utils";
+import { htmlEscape } from "../utils";
 import { HumanizeDurationLanguage, HumanizeDuration } from "humanize-duration-ts";
 import PolicyList from "../models/PolicyList";
+import parse from "parse-duration";
 
 const HUMANIZE_LAG_SERVICE: HumanizeDurationLanguage = new HumanizeDurationLanguage();
 const HUMANIZER: HumanizeDuration = new HumanizeDuration(HUMANIZE_LAG_SERVICE);
@@ -136,7 +137,7 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
                 text: "Missing arg: `room id`",
             };
         }
-        const maxAgeMS = parseDuration(maxAgeArg);
+        const maxAgeMS = parse(maxAgeArg);
         if (!maxAgeMS) {
             return {
                 html: "Invalid duration. Example: <code>1.5 days</code> or <code>10 minutes</code>",

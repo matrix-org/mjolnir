@@ -127,7 +127,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
 
     const matcher = new MatrixGlob(bits.entity);
     const moderators = mjolnir.moderators.listAll();
-    moderators.forEach(async (name) => {
+    for (const name of moderators) {
         if (matcher.test(name)) {
             await mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
@@ -136,7 +136,7 @@ export async function execBanCommand(roomId: string, event: any, mjolnir: Mjolni
             );
             return;
         }
-    });
+    }
 
     await bits.list!.banEntity(bits.ruleType!, bits.entity, bits.reason);
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");

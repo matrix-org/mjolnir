@@ -15,15 +15,7 @@ limitations under the License.
 */
 
 import { EventEmitter } from "events";
-import { default as parseDuration } from "parse-duration";
-
-// Define a few aliases to simplify parsing durations.
-
-parseDuration["milliseconds"] = parseDuration["millis"] = parseDuration["ms"];
-parseDuration["days"] = parseDuration["day"];
-parseDuration["weeks"] = parseDuration["week"] = parseDuration["wk"];
-parseDuration["months"] = parseDuration["month"];
-parseDuration["years"] = parseDuration["year"];
+import parse from "parse-duration";
 
 export class ProtectionSettingValidationError extends Error {}
 
@@ -170,8 +162,8 @@ export class DurationMSProtectionSetting extends AbstractProtectionSetting<numbe
     }
 
     fromString(data: string) {
-        let number = parseDuration(data);
-        return isNaN(number) ? undefined : number;
+        let number = parse(data);
+        return number !== null ? number : undefined;
     }
     validate(data: number) {
         return (
