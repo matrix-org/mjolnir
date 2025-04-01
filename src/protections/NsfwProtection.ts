@@ -214,6 +214,7 @@ export class NsfwProtection extends Protection {
             if (this.classificationCache.has(mxc)) {
                 if (this.classificationCache.get(mxc)) {
                     await this.redactEvent(mjolnir, roomId, event, room);
+                    break;
                 }
                 continue;
             }
