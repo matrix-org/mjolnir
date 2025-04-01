@@ -17,9 +17,10 @@ limitations under the License.
 import { Protection } from "./IProtection";
 import { Mjolnir } from "../Mjolnir";
 import * as nsfw from "nsfwjs";
-import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
-import { node } from "@tensorflow/tfjs-node";
+import { LogLevel, LogService, MXCUrl } from "@vector-im/matrix-bot-sdk";
+import { node, Tensor3D } from "@tensorflow/tfjs-node";
 import { spawn } from "node:child_process";
+import { ReadableStream } from "node:stream/web";
 
 const TENSOR_SUPPORTED_TYPES = [
     "image/png",
@@ -31,32 +32,51 @@ const TENSOR_SUPPORTED_TYPES = [
     "image/jp2",
     "image/jpx",
     "image/jpm",
-    // Catch-all
-    "application/octet-stream",
 ];
 
-const FFMPEG_SUPPORTED_TYPES = [
-    "video/",
-    "image/",
-];
+const FFMPEG_SUPPORTED_TYPES = ["video/", "image/"];
 
-
+const FFMPEG_EXTRA_ARGS: Record<string, string[]> = {
+    // Extra params needed to extract svg thumbnails.
+    "image/svg+xml": ["-f", "svg_pipe", "-frame_size", "10000", "-video_size", "512x512"],
+};
 
 export class NsfwProtection extends Protection {
     settings = {};
     // @ts-ignore
-    private model: any;
+    private model: nsfw.NSFWJS;
+
+    private classificationCache = new Map<string, boolean>();
 
     /**
-     * 
-     * @param buffer 
-     * @returns 
+     * Extract the first frame from a video or image source.
+     * @param ffmpegPath The path to the `ffmpeg` binary.
+     * @param stream The stream containing the source.
+     * @param mimetype The mimetype provided by the source.
+     *
+     * @returns A byte array containing the thumbnail in JPEG format.
      */
-    static extractFrame(mjolnir: Mjolnir, buffer: Buffer): Promise<Buffer> {        
-        return new Promise((resolve, reject) => {
-            const errData: Buffer[] = [];
-            const imageData: Buffer[] = [];
-            const cmd = spawn(mjolnir.config.ffmpegPath, ["-i", "-", "-update", "true", "-frames:v","1", "-f", "image2", "-"]);
+    static async extractFrame(
+        ffmpegPath: string,
+        stream: ReadableStream<Uint8Array>,
+        mimetype: string,
+    ): Promise<Uint8Array> {
+        const errData: Buffer[] = [];
+        const imageData: Buffer[] = [];
+        const extraArgs = FFMPEG_EXTRA_ARGS[mimetype] ?? [];
+        const cmd = spawn(ffmpegPath, [
+            ...extraArgs,
+            "-i",
+            "-",
+            "-update",
+            "true",
+            "-frames:v",
+            "1",
+            "-f",
+            "image2",
+            "-",
+        ]);
+        const p = new Promise<Uint8Array>((resolve, reject) => {
             cmd.on("exit", (code) => {
                 if (code !== 0) {
                     reject(new Error(`FFMPEG failed to run: ${code}, ${Buffer.concat(errData).toString()}`));
@@ -70,10 +90,21 @@ export class NsfwProtection extends Protection {
             cmd.stdout.on("data", (b) => {
                 imageData.push(b);
             });
-            cmd.stdin.write(buffer);
-            cmd.stdin.end();
-        })
-
+            cmd.stdin.on("error", (e: { code: string }) => {
+                // EPIPE is "normal" for ffmpeg to emit after it's finished processing an input.
+                if (e.code !== "EPIPE") {
+                    LogService.debug("NsfwProtection", "Unexpected error from ffmpeg", e);
+                }
+            });
+        });
+        // Write to the stream.
+        for await (const element of stream) {
+            if (cmd.stdin.write(element) === false) {
+                // Wait for drain.
+                await new Promise((r) => cmd.stdin.on("drain", r));
+            }
+        }
+        return p;
     }
 
     constructor() {
@@ -93,6 +124,56 @@ export class NsfwProtection extends Protection {
             "Scans all images sent into a protected room to determine if the image is " +
             "NSFW. If it is, the image will automatically be redacted."
         );
+    }
+
+    /**
+     * Given a MXC URL, attempt to extract a image supported by our NSFW model.
+     * @param mjolnir The mjolnir instance.
+     * @param mxc The MXC url.
+     * @returns Bytes of an image processable by the model.
+     */
+    private async determineImageFromMedia(mjolnir: Mjolnir, mxc: MXCUrl): Promise<Uint8Array | null> {
+        const res = await fetch(
+            `${mjolnir.client.homeserverUrl}/_matrix/client/v1/media/download/${encodeURIComponent(mxc.domain)}/${encodeURIComponent(mxc.mediaId)}`,
+            {
+                headers: {
+                    Authorization: `Bearer ${mjolnir.client.accessToken}`,
+                },
+            },
+        );
+        if (!res.body || res.status !== 200) {
+            LogService.error("NsfwProtection", `Could not fetch mxc ${mxc}: ${res.status}`);
+            return null;
+        }
+        const contentType = res.headers.get("content-type");
+        if (!contentType) {
+            LogService.warn("NsfwProtection", `No content type header specified`);
+            return null;
+        }
+        if (TENSOR_SUPPORTED_TYPES.includes(contentType)) {
+            return new Uint8Array(await res.arrayBuffer());
+        }
+        const stream = res.body as ReadableStream<Uint8Array>;
+        // Why do we do this?
+        // - We don't want to trust client thumbnails, which might not match the content. Or they might
+        //   not exist at all (which forces clients to generate their own)
+        // - We also don't want to make our homeserver generate thumbnails of potentially
+        //   harmful images, so this locally generates a thumbnail of a range of types in memory.
+        if (FFMPEG_SUPPORTED_TYPES.some((mt) => contentType.startsWith(mt))) {
+            try {
+                LogService.debug(
+                    "NsfwProtection",
+                    `Image type ${contentType} is unsupported by model, attempting to generate thumbnail`,
+                );
+                return await NsfwProtection.extractFrame(mjolnir.config.ffmpegPath, stream, contentType);
+            } catch (ex) {
+                LogService.warn("NsfwProtection", "Could not extract thumbnail from image", ex);
+                return null;
+            }
+        }
+
+        LogService.debug("NsfwProtection", `Unsupported file type ${contentType}`);
+        return null;
     }
 
     public async handleEvent(mjolnir: Mjolnir, roomId: string, event: any): Promise<any> {
@@ -117,50 +198,41 @@ export class NsfwProtection extends Protection {
         }
 
         for (const mxc of mxcs) {
-            let image = await mjolnir.client.downloadContent(mxc);
-            if (!TENSOR_SUPPORTED_TYPES.includes(image.contentType)) {
-                // Why do we do this?
-                // - We don't want to trust client thumbnails, which might not match the content. Or they might
-                //   not exist at all (which forces clients to generate their own)
-                // - We also don't want to make our homeserver generate thumbnails of potentially
-                //   harmful images, so this locally generates a thumbnail of a range of types in memory.
-                if (FFMPEG_SUPPORTED_TYPES.some(mt => image.contentType.startsWith(mt))) {
-                    try {
-                        LogService.debug("NsfwProtection", `Image type ${image.contentType} is unsupported, attempting to generate thumbnail`);
-                        image = {
-                            data: await NsfwProtection.extractFrame(mjolnir, image.data),
-                            contentType: "image/jpeg"
-                        };
-                    } catch (ex) {
-                        LogService.warn("NsfwProtection", "Could not extract thumbnail from image", ex);
-                        continue;
-                    }
-                } else {
-                    LogService.debug("NsfwProtection", `Unsupported file type`);
-                    continue;
+            // If we've already scanned this media, return early.
+            if (this.classificationCache.has(mxc)) {
+                if (this.classificationCache.get(mxc)) {
+                    await this.redactEvent(mjolnir, roomId, event, room);
                 }
-            }
-
-            // If the mimetype is not found, then try to decode it anyway.
-            let decodedImage;
-            try {
-                decodedImage = await node.decodeImage(image.data, 3);
-            } catch (e) {
-                LogService.error("NsfwProtection", `There was an error processing an image: ${e}`);
                 continue;
             }
 
-            const predictions = await this.model.classify(decodedImage);
-
-            for (const prediction of predictions) {
-                if (["Hentai", "Porn"].includes(prediction["className"])) {
-                    if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
-                        await this.redactEvent(mjolnir, roomId, event, room);
-                        break;
-                    }
+            const data = await this.determineImageFromMedia(mjolnir, MXCUrl.parse(mxc));
+            if (!data) {
+                // Couldn't extract an image, skip.
+                return;
+            }
+            let decodedImage: Tensor3D | undefined;
+            try {
+                decodedImage = (await node.decodeImage(data, 3)) as Tensor3D;
+                const predictions = await this.model.classify(decodedImage);
+                LogService.debug("NsfwProtection", `Classified ${mxc} as`, predictions);
+                const isNsfw = predictions.some(
+                    (prediction) =>
+                        ["Hentai", "Porn"].includes(prediction.className) &&
+                        prediction.probability > mjolnir.config.nsfwSensitivity,
+                );
+                this.classificationCache.set(mxc, isNsfw);
+                if (isNsfw) {
+                    await this.redactEvent(mjolnir, roomId, event, room);
+                }
+            } catch (e) {
+                LogService.error("NsfwProtection", `There was an error processing an image: ${e}`);
+                continue;
+            } finally {
+                if (decodedImage) {
+                    decodedImage.dispose();
                 }
             }
-            decodedImage.dispose();
         }
     }
 
