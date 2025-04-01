@@ -54,11 +54,8 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     const targetRoomIds = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
     const medias = mjolnir.protectedRoomsTracker.getMediaIdsForUserIdInRooms(userId, targetRoomIds);
     await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, false, limit);
-    for (const { domain, mediaId } of medias) {
-        await mjolnir.client.doRequest(
-            "POST",
-            `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(domain)}/${encodeURIComponent(mediaId)}`,
-        );
+    for (const mxc of medias) {
+        await Mjolnir.quarantineMedia(mjolnir.client, mxc);
     }
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");

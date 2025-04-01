@@ -28,6 +28,7 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { getMXCsInMessage, htmlEscape } from "./utils";
 import { ModCache } from "./ModCache";
+import { Mjolnir } from "./Mjolnir";
 
 const KEEP_MEDIA_EVENTS_FOR_MS = 4 * 24 * 60 * 60 * 1000;
 
@@ -631,11 +632,8 @@ export class ProtectedRoomsSet {
         if (!media) {
             return;
         }
-        for (const { domain, mediaId } of media.mediaIds) {
-            await this.client.doRequest(
-                "POST",
-                `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(domain)}/${encodeURIComponent(mediaId)}`,
-            );
+        for (const m of media.mediaIds) {
+            await Mjolnir.quarantineMedia(this.client, m);
         }
     }
 

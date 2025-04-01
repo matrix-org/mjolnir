@@ -19,6 +19,7 @@ import {
     LogLevel,
     LogService,
     MembershipEvent,
+    MXCUrl,
     Permalinks,
     UserID,
 } from "@vector-im/matrix-bot-sdk";
@@ -649,6 +650,21 @@ export class Mjolnir {
             });
         } catch (e) {
             return extractRequestError(e);
+        }
+    }
+
+    /**
+     * Mark a piece of media as quarantined.
+     * @param client The client handling the request.
+     * @param mxc The MXC to quarantine.
+     */
+    public static async quarantineMedia(client: MatrixSendClient, mxc: MXCUrl) {
+        try {
+            const endpoint = `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(mxc.domain)}/${encodeURIComponent(mxc.mediaId)}`;
+            return await client.doRequest("POST", endpoint, null, {});
+        } catch (e) {
+            LogService.error("Mjolnir", "Could not quarantine media", mxc);
+            LogService.error("Mjolnir", extractRequestError(e));
         }
     }
 }
