@@ -187,7 +187,8 @@ export interface IConfig {
         };
     };
     nsfwSensitivity: number;
-    ffmpegPath: string;
+    nsfwModelName: string;
+    ffmpegPath: string | false;
 
     /**
      * Config options only set at runtime. Try to avoid using the objects
@@ -275,6 +276,7 @@ const defaultConfig: IConfig = {
         },
     },
     nsfwSensitivity: 0.6,
+    nsfwModelName: "MobileNetV2",
     ffmpegPath: "/usr/bin/ffmpeg",
     // Needed to make the interface happy.
     RUNTIME: {},

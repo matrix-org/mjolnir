@@ -76,8 +76,9 @@ export class NsfwProtection extends Protection {
             "image2",
             "-",
         ]);
+        let stdinErrorFinished!: Promise<void>;
         const p = new Promise<Uint8Array>((resolve, reject) => {
-            cmd.on("exit", (code) => {
+            cmd.once("exit", (code) => {
                 if (code !== 0) {
                     reject(new Error(`FFMPEG failed to run: ${code}, ${Buffer.concat(errData).toString()}`));
                 } else {
@@ -90,29 +91,39 @@ export class NsfwProtection extends Protection {
             cmd.stdout.on("data", (b) => {
                 imageData.push(b);
             });
-            cmd.stdin.on("error", (e: { code: string }) => {
-                // EPIPE is "normal" for ffmpeg to emit after it's finished processing an input.
-                if (e.code !== "EPIPE") {
-                    LogService.debug("NsfwProtection", "Unexpected error from ffmpeg", e);
-                }
+            // EPIPE is "normal" for ffmpeg to emit after it's finished processing an input.
+            stdinErrorFinished = new Promise((res, rej) => {
+                cmd.stdin.once("error", (e: { code: string }) => {
+                    if (e.code !== "EPIPE") {
+                        LogService.debug("NsfwProtection", "Unexpected error from ffmpeg", e);
+                        rej(e);
+                    }
+                    res();
+                });
             });
         });
-        // Write to the stream.
         for await (const element of stream) {
             if (cmd.stdin.write(element) === false) {
-                // Wait for drain.
-                await new Promise((r) => cmd.stdin.on("drain", r));
+                // Wait for either a drain, or the whole stream to complete
+                await Promise.race([stdinErrorFinished, new Promise((r) => cmd.stdin.once("drain", r))]);
             }
         }
-        return p;
+        if (!cmd.stdin.writableEnded) {
+            cmd.stdin.end();
+        }
+        try {
+            return await p;
+        } finally {
+            LogService.debug("NsfwProtection", `Generated thumbnail`);
+        }
     }
 
     constructor() {
         super();
     }
 
-    async initialize() {
-        this.model = await nsfw.load();
+    async initialize(modelName: nsfw.ModelName) {
+        this.model = await nsfw.load(modelName);
     }
 
     public get name(): string {
@@ -145,21 +156,22 @@ export class NsfwProtection extends Protection {
             LogService.error("NsfwProtection", `Could not fetch mxc ${mxc}: ${res.status}`);
             return null;
         }
-        const contentType = res.headers.get("content-type");
+        const contentType = res.headers.get("content-type")?.split(";")[0];
         if (!contentType) {
             LogService.warn("NsfwProtection", `No content type header specified`);
             return null;
         }
+        console.log(contentType);
         if (TENSOR_SUPPORTED_TYPES.includes(contentType)) {
             return new Uint8Array(await res.arrayBuffer());
         }
-        const stream = res.body as ReadableStream<Uint8Array>;
         // Why do we do this?
         // - We don't want to trust client thumbnails, which might not match the content. Or they might
         //   not exist at all (which forces clients to generate their own)
         // - We also don't want to make our homeserver generate thumbnails of potentially
         //   harmful images, so this locally generates a thumbnail of a range of types in memory.
-        if (FFMPEG_SUPPORTED_TYPES.some((mt) => contentType.startsWith(mt))) {
+        if (mjolnir.config.ffmpegPath && FFMPEG_SUPPORTED_TYPES.some((mt) => contentType.startsWith(mt))) {
+            const stream = res.body as ReadableStream<Uint8Array>;
             try {
                 LogService.debug(
                     "NsfwProtection",
@@ -209,7 +221,9 @@ export class NsfwProtection extends Protection {
             const data = await this.determineImageFromMedia(mjolnir, MXCUrl.parse(mxc));
             if (!data) {
                 // Couldn't extract an image, skip.
-                return;
+                continue;
+            } else {
+                LogService.debug("NsfwProtection", `Thumbnail generated for ${mxc}`);
             }
             let decodedImage: Tensor3D | undefined;
             try {
@@ -224,6 +238,8 @@ export class NsfwProtection extends Protection {
                 this.classificationCache.set(mxc, isNsfw);
                 if (isNsfw) {
                     await this.redactEvent(mjolnir, roomId, event, room);
+                    // Stop scanning media once we've redacted.
+                    break;
                 }
             } catch (e) {
                 LogService.error("NsfwProtection", `There was an error processing an image: ${e}`);
