@@ -447,7 +447,7 @@ describe("Test: The redaction command - if not admin", function () {
         assert.equal(rooms[0], targetRoom);
     });
 
-    it.only("Correctly quarantines media after being redacted", async function () {
+    it("Correctly quarantines media after being redacted", async function () {
         this.timeout(60000);
         let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" } });
         let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
