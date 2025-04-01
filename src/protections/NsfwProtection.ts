@@ -122,7 +122,7 @@ export class NsfwProtection extends Protection {
         super();
     }
 
-    async initialize(modelName: nsfw.ModelName) {
+    async initialize(modelName: string) {
         this.model = await nsfw.load(modelName);
     }
 
