@@ -19,7 +19,6 @@ import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
 import ManagementRoomOutput from "../ManagementRoomOutput";
 import { MatrixSendClient } from "../MatrixEmitter";
-import { Mjolnir } from "../Mjolnir";
 
 export interface QueuedRedaction {
     /** The room which the redaction will take place in. */
@@ -55,9 +54,6 @@ export class RedactUserInRoom implements QueuedRedaction {
             `Redacting events from ${this.userId} in room ${this.roomId}.`,
         );
         await redactUserMessagesIn(client, managementRoom, this.userId, [this.roomId], false);
-        for (const media of this.mediaIds) {
-            await Mjolnir.quarantineMedia(client, media);
-        }
     }
 
     public redactionEqual(redaction: QueuedRedaction): boolean {

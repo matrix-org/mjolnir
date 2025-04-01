@@ -18,6 +18,7 @@ import { Mjolnir } from "../Mjolnir";
 import { RichReply } from "@vector-im/matrix-bot-sdk";
 import { htmlEscape } from "../utils";
 
+// !mjolnir suspend <user ID> --quarantine
 export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];
 
@@ -29,10 +30,17 @@ export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mj
         await mjolnir.client.sendMessage(roomId, reply);
         return;
     }
+    const quarantine = parts[parts.length - 1].toLocaleLowerCase() === "--quarantine";
 
     await mjolnir.suspendSynapseUser(target);
-    const msg = `User ${target} has been suspended.`;
-    const htmlMsg = `User <span data-mx-spoiler>${htmlEscape(target)}</span> has been suspended.`;
+    let mediaCount = "";
+    if (quarantine) {
+        const count = await mjolnir.quarantineMediaForUser(roomId);
+        mediaCount = ` ${count} media items were quarantined.`;
+    }
+
+    const msg = `User ${target} has been suspended.${mediaCount}`;
+    const htmlMsg = `User <span data-mx-spoiler>${htmlEscape(target)}</span> has been suspended.${mediaCount}`;
     const confirmation = RichReply.createFor(roomId, event, msg, htmlMsg);
     confirmation["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, confirmation);

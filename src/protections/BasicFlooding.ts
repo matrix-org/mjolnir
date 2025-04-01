@@ -101,7 +101,6 @@ export class BasicFlooding extends Protection {
             // Redact all the things the user said too
             if (!mjolnir.config.noop) {
                 for (const eventId of forUser.map((e) => e.eventId)) {
-                    await mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, eventId);
                     await mjolnir.client.redactEvent(roomId, eventId, "spam");
                 }
             } else {

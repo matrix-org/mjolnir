@@ -80,7 +80,6 @@ export class TrustedReporters extends Protection {
         }
         if (reporters.size === this.settings.redactThreshold.value) {
             met.push("redact");
-            await mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event.id);
             await mjolnir.client.redactEvent(roomId, event.id, "abuse detected");
         }
         if (reporters.size === this.settings.banThreshold.value) {

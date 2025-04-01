@@ -655,16 +655,31 @@ export class Mjolnir {
 
     /**
      * Mark a piece of media as quarantined.
-     * @param client The client handling the request.
      * @param mxc The MXC to quarantine.
      */
-    public static async quarantineMedia(client: MatrixSendClient, mxc: MXCUrl) {
+    public async quarantineMedia(mxc: MXCUrl) {
         try {
             const endpoint = `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(mxc.domain)}/${encodeURIComponent(mxc.mediaId)}`;
-            return await client.doRequest("POST", endpoint, null, {});
+            return await this.client.doRequest("POST", endpoint, null, {});
         } catch (e) {
             LogService.error("Mjolnir", "Could not quarantine media", mxc);
             LogService.error("Mjolnir", extractRequestError(e));
+        }
+    }
+
+    /**
+     * Mark a piece of media as quarantined.
+     * @param client The client handling the request.
+     * @param mxc The MXC to quarantine.
+     */
+    public async quarantineMediaForUser(userId: string): Promise<number> {
+        try {
+            const endpoint = `/_synapse/admin/v1/user/${encodeURIComponent(userId)}/media/quarantine`;
+            const data = await this.client.doRequest("POST", endpoint, null, {});
+            return data.num_quarantined;
+        } catch (e) {
+            LogService.error("Mjolnir", "Could not quarantine media for user", userId);
+            throw extractRequestError(e);
         }
     }
 }

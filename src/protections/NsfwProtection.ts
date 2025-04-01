@@ -20,9 +20,12 @@ import * as nsfw from "nsfwjs";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { node } from "@tensorflow/tfjs-node";
 import { getMXCsInMessage } from "../utils";
+import { BooleanProtectionSetting } from "./ProtectionSettings";
 
 export class NsfwProtection extends Protection {
-    settings = {};
+    settings = {
+        automaticQuarantine: new BooleanProtectionSetting(),
+    };
     // @ts-ignore
     private model: any;
 
@@ -62,6 +65,8 @@ export class NsfwProtection extends Protection {
             return;
         }
 
+        let shouldQuarantine = false;
+
         for (const mxc of mxcs) {
             const image = await mjolnir.client.downloadContent(`mxc://${mxc.domain}/${mxc.mediaId}`);
 
@@ -79,17 +84,22 @@ export class NsfwProtection extends Protection {
                 if (["Hentai", "Porn"].includes(prediction["className"])) {
                     if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                         await this.redactEvent(mjolnir, roomId, event, room);
+                        shouldQuarantine = this.settings.automaticQuarantine.value;
                         break;
                     }
                 }
             }
             decodedImage.dispose();
         }
+        if (shouldQuarantine) {
+            for (const mxc of mxcs) {
+                await mjolnir.quarantineMedia(mxc);
+            }
+        }
     }
 
     private async redactEvent(mjolnir: Mjolnir, roomId: string, event: any, room: string): Promise<any> {
         try {
-            await mjolnir.protectedRoomsTracker.quarantineMediaForEventId(roomId, event);
             await mjolnir.client.redactEvent(roomId, event["event_id"]);
         } catch (err) {
             await mjolnir.managementRoomOutput.logMessage(

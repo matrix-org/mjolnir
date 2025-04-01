@@ -28,7 +28,6 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { getMXCsInMessage, htmlEscape } from "./utils";
 import { ModCache } from "./ModCache";
-import { Mjolnir } from "./Mjolnir";
 
 const KEEP_MEDIA_EVENTS_FOR_MS = 4 * 24 * 60 * 60 * 1000;
 
@@ -115,7 +114,7 @@ export class ProtectedRoomsSet {
      */
     public readonly mediaEventsInRoom = new Map<
         string,
-        Array<{ eventId: string; sender: string; mediaIds: MXCUrl[]; ts: number }>
+        Array<{ eventId: string; sender: UserID; mediaIds: MXCUrl[]; ts: number }>
     >();
 
     constructor(
@@ -238,7 +237,12 @@ export class ProtectedRoomsSet {
             const mxcs = getMXCsInMessage(event.content);
             if (mxcs.length) {
                 const events = this.mediaEventsInRoom.get(roomId) ?? [];
-                events.push({ ts: Date.now(), eventId: event.event_id, mediaIds: mxcs, sender: event.sender });
+                events.push({
+                    ts: Date.now(),
+                    eventId: event.event_id,
+                    mediaIds: mxcs,
+                    sender: new UserID(event.sender),
+                });
                 // Remove any old events from the cache after while.
                 this.mediaEventsInRoom.set(
                     roomId,
@@ -622,22 +626,6 @@ export class ProtectedRoomsSet {
     }
 
     /**
-     * Quarantine all media within an event ID. This assumes we have recently seen the event.
-     * @param roomId The room ID for the event.
-     * @param eventId The event ID.
-     * @returns Resolves on completion, or immediately if there was no media.
-     */
-    public async quarantineMediaForEventId(roomId: string, eventId: string): Promise<void> {
-        const media = this.mediaEventsInRoom.get(roomId)?.find((e) => e.eventId === eventId);
-        if (!media) {
-            return;
-        }
-        for (const m of media.mediaIds) {
-            await Mjolnir.quarantineMedia(this.client, m);
-        }
-    }
-
-    /**
      * Get all MXCs for a user within a set of rooms.
      * @param userId The user ID to target.
      * @param roomIds Filter to these specific rooms.
@@ -648,8 +636,42 @@ export class ProtectedRoomsSet {
             [...this.mediaEventsInRoom]
                 .filter((r) => roomIds.includes(r[0]))
                 .flatMap((r) => r[1])
-                .filter((r) => r.sender === userId)
+                .filter((r) => r.sender.toString() === userId)
                 .flatMap((r) => r.mediaIds),
         );
+    }
+
+    /**
+     * Get all MXCs for a server within a set of rooms.
+     * @param userId The user ID to target.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForServerInRooms(domain: string, roomIds: string[]): Iterable<MXCUrl> {
+        return new Set(
+            [...this.mediaEventsInRoom]
+                .filter((r) => roomIds.includes(r[0]))
+                .flatMap((r) => r[1])
+                .filter((r) => r.sender.domain === domain)
+                .flatMap((r) => r.mediaIds),
+        );
+    }
+
+    /**
+     * Get all MXCs within a set of rooms.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForRoomId(roomId: string): Iterable<MXCUrl> {
+        return this.mediaEventsInRoom.get(roomId)?.flatMap((r) => r.mediaIds) ?? [];
+    }
+
+    /**
+     * Get all MXCs within a set of rooms.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForEventId(roomId: string, eventId: string): Iterable<MXCUrl> {
+        return this.mediaEventsInRoom.get(roomId)?.find((r) => r.eventId === eventId)?.mediaIds ?? [];
     }
 }

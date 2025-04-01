@@ -679,7 +679,6 @@ class RedactMessage implements IUIAction {
         report: IReport,
         _moderationRoomId: string,
     ): Promise<string | undefined> {
-        await manager.mjolnir.protectedRoomsTracker.quarantineMediaForEventId(report.room_id, report.event_id);
         await manager.mjolnir.client.redactEvent(report.room_id, report.event_id);
         return;
     }

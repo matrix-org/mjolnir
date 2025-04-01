@@ -14,13 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import { MXCUrl } from "@vector-im/matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
-import { redactUserMessagesIn } from "../utils";
-import { Permalinks } from "@vector-im/matrix-bot-sdk";
 
-// !mjolnir redact <user ID> [room alias] [limit] --quarantine
+// !mjolnir quarantine-media <user ID> [room alias] [limit]
+// !mjolnir quarantine-media <server> [room alias] [limit]
+// !mjolnir quarantine-media <room ID> [limit]
+// !mjolnir quarantine-media <mxc-url>
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const userId = parts[2];
+    const target = parts[2];
 
     let targetRoom: string | null = null;
     let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later
@@ -31,8 +33,6 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         }
     }
 
-    const quarantine = parts[parts.length - 1].toLocaleLowerCase() === "--quarantine";
-
     // Make sure we always have a limit set
     if (isNaN(limit)) limit = 1000;
 
@@ -42,30 +42,27 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         "In Progress",
     );
 
-    if (userId[0] !== "@") {
-        // Assume it's a permalink
-        const parsed = Permalinks.parseUrl(parts[2]);
-        const targetRoomId = await mjolnir.client.resolveRoom(parsed.roomIdOrAlias);
-        await mjolnir.client.redactEvent(targetRoomId, parsed.eventId);
-        if (quarantine) {
-            const mxcs = mjolnir.protectedRoomsTracker.getMediaIdsForEventId(targetRoomId, parsed.eventId);
-            for (const mxc of mxcs) {
-                await mjolnir.quarantineMedia(mxc);
-            }
-        }
-        await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
-        await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing command");
-        return;
+    let mxcs: Iterable<MXCUrl>;
+    const targetRooms = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
+
+    if (target.startsWith("@")) {
+        // User ID
+        mxcs = mjolnir.protectedRoomsTracker.getMediaIdsForUserIdInRooms(target, targetRooms);
+    } else if (target.startsWith("!") || target.startsWith("#")) {
+        // Room ID
+        mxcs = mjolnir.protectedRoomsTracker.getMediaIdsForRoomId(await mjolnir.client.resolveRoom(target));
+    } else if (target.startsWith("mxc://")) {
+        // MXC
+        mxcs = [MXCUrl.parse(target)];
+    } else {
+        // Server
+        mxcs = mjolnir.protectedRoomsTracker.getMediaIdsForServerInRooms(target, targetRooms);
     }
 
-    const targetRoomIds = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
-    await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, false, limit);
-    if (quarantine) {
-        const mxcs = await mjolnir.protectedRoomsTracker.getMediaIdsForUserIdInRooms(userId, targetRoomIds);
-        for (const mxc of mxcs) {
-            await mjolnir.quarantineMedia(mxc);
-        }
+    for (const mxc of mxcs) {
+        await mjolnir.quarantineMedia(mxc);
     }
+
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
     await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing");
 }
