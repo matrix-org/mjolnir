@@ -182,8 +182,10 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir unlock <user ID>                                             - Unlock the account of the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                                 - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
                 "!mjolnir ignored                                                      - List currently ignored entities.\n" +
-                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
-
+                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
+                "!mjolnir quarantine-media <user ID|server> [room alias] [limit]\n     - Quarantine recent media for a user or server, optionally limited to a specific room." +
+                "!mjolnir quarantine-media <room ID> [limit]\n                         - Quarantine recent media for a room." +
+                "!mjolnir quarantine-media <mxc-url>\n                                 - Quarantine a single media item.";
             const policyListMenu =
                 "" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +

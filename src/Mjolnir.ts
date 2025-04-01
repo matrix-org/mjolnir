@@ -668,9 +668,9 @@ export class Mjolnir {
     }
 
     /**
-     * Mark a piece of media as quarantined.
-     * @param client The client handling the request.
-     * @param mxc The MXC to quarantine.
+     * Quarantine all media uploaded by a given user.
+     * @param userId
+     * @returns The number of media items quarantined.
      */
     public async quarantineMediaForUser(userId: string): Promise<number> {
         try {

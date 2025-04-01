@@ -59,8 +59,13 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         mxcs = mjolnir.protectedRoomsTracker.getMediaIdsForServerInRooms(target, targetRooms);
     }
 
+    let mediaItemsCompleted = 0;
     for (const mxc of mxcs) {
         await mjolnir.quarantineMedia(mxc);
+        mediaItemsCompleted++;
+        if (mediaItemsCompleted === limit) {
+            break;
+        }
     }
 
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
