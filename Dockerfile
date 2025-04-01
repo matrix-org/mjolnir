@@ -1,5 +1,8 @@
 # We can't use alpine anymore because crypto has rust deps.
 FROM node:20-slim
+
+COPY --from=mwader/static-ffmpeg:7.1.1 /ffmpeg /usr/local/bin/
+
 COPY . /tmp/src
 RUN cd /tmp/src \
     && yarn install \

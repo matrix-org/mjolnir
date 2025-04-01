@@ -108,8 +108,8 @@ export class ProtectionManager {
             protection.settings[key].setValue(value);
         }
         if (protection.enabled) {
-            if (protection.name === "NsfwProtection") {
-                (protection as NsfwProtection).initialize();
+            if (protection instanceof NsfwProtection) {
+                await protection.initialize(this.mjolnir.config.nsfwModelName);
             }
             for (let roomId of this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
                 await protection.startProtectingRoom(this.mjolnir, roomId);
