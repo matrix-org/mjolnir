@@ -54,14 +54,14 @@ export class FirstMessageIsLink extends Protection {
         if (event["type"] === "m.room.message") {
             const content = event["content"] || {};
             const msgtype = content["msgtype"] || "m.text";
-            let bodyHasLink = false
-            let formattedBodyHasLink = false
-            if (msgtype === "m.text"){
-                bodyHasLink = findLink(event.content.body)
-                formattedBodyHasLink = findLink(event.content.formattedBody)
+            let bodyHasLink = false;
+            let formattedBodyHasLink = false;
+            if (msgtype === "m.text") {
+                bodyHasLink = findLink(event.content.body);
+                formattedBodyHasLink = findLink(event.content.formattedBody);
             }
 
-            const isLink = bodyHasLink || formattedBodyHasLink
+            const isLink = bodyHasLink || formattedBodyHasLink;
             if (isLink && this.justJoined[roomId].includes(event["sender"])) {
                 await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
                     msgtype: "m.text",
@@ -113,5 +113,3 @@ export class FirstMessageIsLink extends Protection {
         }
     }
 }
-
-

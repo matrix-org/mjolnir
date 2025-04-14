@@ -604,21 +604,24 @@ let sentryInitialized = false;
 
 // check a string to see if it has the characteristics of a link, return true if so
 export function findLink(str: string): boolean {
-      if (!str) return false;
-        // ripped from the internet
-        const urlRegex = new RegExp('^(https?:\\/\\/)?'+ // validate protocol
-        '((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|'+ // validate domain name
-        '((\\d{1,3}\\.){3}\\d{1,3}))'+ // validate OR ip (v4) address
-        '(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*'+ // validate port and path
-        '(\\?[;&a-z\\d%_.~+=-]*)?'+ // validate query string
-        '(\\#[-a-z\\d_]*)?$','i'); // validate fragment locator
-      let isLink = false
-      const words = str.split(" ")
-      for (const word of words) {
-          isLink = urlRegex.test(word);
-          if (isLink) {
-              return isLink;
-          }
-      }
-      return isLink;
+    if (!str) return false;
+    // ripped from the internet
+    const urlRegex = new RegExp(
+        "^(https?:\\/\\/)?" + // validate protocol
+            "((([a-z\\d]([a-z\\d-]*[a-z\\d])*)\\.)+[a-z]{2,}|" + // validate domain name
+            "((\\d{1,3}\\.){3}\\d{1,3}))" + // validate OR ip (v4) address
+            "(\\:\\d+)?(\\/[-a-z\\d%_.~+]*)*" + // validate port and path
+            "(\\?[;&a-z\\d%_.~+=-]*)?" + // validate query string
+            "(\\#[-a-z\\d_]*)?$",
+        "i",
+    ); // validate fragment locator
+    let isLink = false;
+    const words = str.split(" ");
+    for (const word of words) {
+        isLink = urlRegex.test(word);
+        if (isLink) {
+            return isLink;
+        }
     }
+    return isLink;
+}

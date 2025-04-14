@@ -27,15 +27,21 @@ describe("Test: First message is link", function () {
     let fineClient: MatrixClient;
     let testRoom: string;
     this.beforeEach(async function () {
-        modClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "first-message-is-link-test-moderator" } });
+        modClient = await newTestUser(this.config.homeserverUrl, {
+            name: { contains: "first-message-is-link-test-moderator" },
+        });
         await modClient.start();
         const mjolnirId = await this.mjolnir.client.getUserId();
 
-        badClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "first-message-is-link-test-bad-actor" } });
+        badClient = await newTestUser(this.config.homeserverUrl, {
+            name: { contains: "first-message-is-link-test-bad-actor" },
+        });
         await badClient.start();
         badClientId = await badClient.getUserId();
 
-        fineClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "first-message-is-link-test-safe" } });
+        fineClient = await newTestUser(this.config.homeserverUrl, {
+            name: { contains: "first-message-is-link-test-safe" },
+        });
         await fineClient.start();
         const fineClientId = await fineClient.getUserId();
 
@@ -45,7 +51,6 @@ describe("Test: First message is link", function () {
         await modClient.setUserPowerLevel(mjolnirId, testRoom, 100);
         await badClient.joinRoom(testRoom);
         await fineClient.joinRoom(testRoom);
-
     });
     this.afterEach(async function () {
         await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
@@ -80,11 +85,11 @@ describe("Test: First message is link", function () {
         let linkMessage = await badClient.sendMessage(testRoom, linkContent);
 
         await delay(3000);
-        const badId = await badClient.getUserId()
-        const banEvents = await modClient.getRoomMembersByMembership(testRoom, "ban")
+        const badId = await badClient.getUserId();
+        const banEvents = await modClient.getRoomMembersByMembership(testRoom, "ban");
         assert.equal(banEvents.length, 1, "Bad user should be only ban in room.");
         const banEvent = banEvents[0];
-        assert.equal(banEvent.stateKey, badId, "Bad user should have been banned.")
+        assert.equal(banEvent.stateKey, badId, "Bad user should have been banned.");
 
         // bad user banned for spam so their events should be redacted
         let processedLink = await modClient.getEvent(testRoom, linkMessage);
@@ -108,28 +113,28 @@ describe("Test: First message is link", function () {
         await fineClient.sendMessage(testRoom, fineContent);
 
         await delay(3000);
-        const banEvents = await modClient.getRoomMembersByMembership(testRoom, "ban")
+        const banEvents = await modClient.getRoomMembersByMembership(testRoom, "ban");
         assert.equal(banEvents.length, 0, "There should be no ban in the room.");
 
         let goodContent = {
             msgtype: "m.text",
-            body: "still talking"
-        }
+            body: "still talking",
+        };
         try {
-            await fineClient.sendMessage(testRoom, goodContent)
+            await fineClient.sendMessage(testRoom, goodContent);
         } catch (error) {
-            assert.fail("User should have been able to send more messages.")
+            assert.fail("User should have been able to send more messages.");
         }
     });
     it("picks up links but not acceptable messages", async function () {
-        assert.equal(findLink("https://www.example.com"), true)
+        assert.equal(findLink("https://www.example.com"), true);
         assert.equal(findLink("http://subdomain.example.co.uk/path?query=value#hash"), true);
         assert.equal(findLink("www.example.com"), true);
-        assert.equal(findLink("domain.com/spamspam"), true)
+        assert.equal(findLink("domain.com/spamspam"), true);
 
         assert.equal(findLink("not a link"), false);
         assert.equal(findLink("invalid url: example"), false);
         assert.equal(findLink(" "), false);
-        assert.equal(findLink("@something:matrix"), false)
-    })
+        assert.equal(findLink("@something:matrix"), false);
+    });
 });
