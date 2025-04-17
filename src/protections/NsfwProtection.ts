@@ -24,7 +24,7 @@ import { BooleanProtectionSetting } from "./ProtectionSettings";
 
 export class NsfwProtection extends Protection {
     settings = {
-        automaticQuarantine: new BooleanProtectionSetting(),
+        quarantine: new BooleanProtectionSetting(),
     };
     // @ts-ignore
     private model: any;
@@ -44,7 +44,9 @@ export class NsfwProtection extends Protection {
     public get description(): string {
         return (
             "Scans all images sent into a protected room to determine if the image is " +
-            "NSFW. If it is, the image will automatically be redacted."
+            "NSFW. If it is, the image will automatically be redacted." +
+            " This protection may optionally also automatically quarantine media, see the" +
+            "`quarantine` protection setting."
         );
     }
 
@@ -84,7 +86,7 @@ export class NsfwProtection extends Protection {
                 if (["Hentai", "Porn"].includes(prediction["className"])) {
                     if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                         await this.redactEvent(mjolnir, roomId, event, room);
-                        shouldQuarantine = this.settings.automaticQuarantine.value;
+                        shouldQuarantine = this.settings.quarantine.value;
                         break;
                     }
                 }
@@ -92,6 +94,7 @@ export class NsfwProtection extends Protection {
             decodedImage.dispose();
         }
         if (shouldQuarantine) {
+            console.log("Attempting to quarantine", mxcs);
             for (const mxc of mxcs) {
                 await mjolnir.quarantineMedia(mxc);
             }
