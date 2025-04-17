@@ -197,7 +197,7 @@ describe("Test: The redaction command - if admin", function () {
         let mjolnirUserId = await mjolnir.getUserId();
         const badUserId = await badUser.getUserId();
         const someFakeMedia = await badUser.uploadContent(Buffer.from("bibble bobble", "utf-8"), "text/plain");
-        const mediaId = MXCUrl.parse(someFakeMedia);
+        const { mediaId } = MXCUrl.parse(someFakeMedia);
 
         await moderator.joinRoom(this.config.managementRoom);
         let targetRoom = await moderator.createRoom({
