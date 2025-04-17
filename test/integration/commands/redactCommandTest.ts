@@ -218,8 +218,6 @@ describe("Test: The redaction command - if admin", function () {
         });
 
         await badUser.joinRoom(targetRoom);
-
-        // send a message containing a plausible mxc, leave, then get banned
         await badUser.sendMessage(targetRoom, {
             msgtype: "m.text",
             body: someFakeMedia,

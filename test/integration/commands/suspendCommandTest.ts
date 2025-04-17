@@ -16,8 +16,10 @@ limitations under the License.
 
 import { newTestUser } from "../clientHelper";
 import { strict as assert } from "assert";
-import { MatrixClient, RoomCreateOptions } from "@vector-im/matrix-bot-sdk";
+import { MatrixClient, MXCUrl, RoomCreateOptions } from "@vector-im/matrix-bot-sdk";
 import { read as configRead } from "../../../src/config";
+import { getFirstReaction } from "./commandUtils";
+import { randomUUID } from "crypto";
 
 describe("Test: suspend/unsuspend command", function () {
     let admin: MatrixClient;
@@ -91,5 +93,62 @@ describe("Test: suspend/unsuspend command", function () {
         } catch (error) {
             assert.fail("Unable to send message, account not successfully unsuspended.");
         }
+    });
+
+    it("Correctly quarantines media after suspending user", async function () {
+        this.timeout(30000);
+        const badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" } });
+        const mjolnir: MatrixClient = this.config.RUNTIME.client!;
+        let mjolnirUserId = await mjolnir.getUserId();
+        const badUserId = await badUser.getUserId();
+        const someFakeMedia = await badUser.uploadContent(Buffer.from(randomUUID(), "utf-8"), "text/plain");
+        const { mediaId } = MXCUrl.parse(someFakeMedia);
+
+        await admin.joinRoom(this.config.managementRoom);
+        let targetRoom = await admin.createRoom({
+            invite: [await badUser.getUserId(), mjolnirUserId],
+            power_level_content_override: {
+                users: {
+                    [mjolnirUserId]: 100,
+                    [await admin.getUserId()]: 100,
+                },
+            },
+        });
+
+        await getFirstReaction(admin, this.mjolnir.managementRoomId, "✅", async () => {
+            return await admin.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir rooms add ${targetRoom}`,
+            });
+        });
+
+        await badUser.joinRoom(targetRoom);
+        await badUser.sendMessage(targetRoom, {
+            msgtype: "m.text",
+            body: someFakeMedia,
+        });
+
+        await new Promise(async (resolve) => {
+            await admin.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir suspend ${badUserId}`,
+            });
+            admin.on("room.event", (roomId, event) => {
+                if (
+                    roomId === this.mjolnir.managementRoomId &&
+                    event?.type === "m.room.message" &&
+                    event.sender === this.mjolnir.client.userId &&
+                    event.content?.body.endsWith(`User ${badUserId} has been suspended.`)
+                ) {
+                    resolve(event);
+                }
+            });
+        });
+
+        const { media } = await mjolnir.doRequest(
+            "GET",
+            `/_synapse/admin/v1/users/${encodeURIComponent(badUserId)}/media`,
+        );
+        assert.equal(media[0].media_id, mediaId);
     });
 });
