@@ -53,6 +53,7 @@ import { execUnsuspendCommand } from "./UnsuspendCommand";
 import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
+import { execQuarantineMediaCommand } from "./QuarantineMediaCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -90,6 +91,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execUnwatchCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "redact" && parts.length > 1) {
             return await execRedactCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "quarantine-media") {
+            return await execQuarantineMediaCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "import" && parts.length > 2) {
             return await execImportCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "default" && parts.length > 2) {

@@ -92,7 +92,7 @@ describe("Test: NSFW protection", function () {
         assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
     });
 
-    it.only("Nsfw protection redacts and quarantines nsfw images", async function () {
+    it("Nsfw protection redacts and quarantines nsfw images", async function () {
         this.timeout(20000);
         // dial the sensitivity on the protection way up so that all images are flagged as NSFW
         this.mjolnir.config.nsfwSensitivity = 0.0;

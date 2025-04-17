@@ -21,7 +21,7 @@ import { Mjolnir } from "../Mjolnir";
 // !mjolnir quarantine-media <server> [room alias] [limit]
 // !mjolnir quarantine-media <room ID> [limit]
 // !mjolnir quarantine-media <mxc-url>
-export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+export async function execQuarantineMediaCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const target = parts[2];
 
     let targetRoom: string | null = null;
