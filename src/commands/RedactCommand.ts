@@ -30,15 +30,12 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         quarantine = true;
     }
 
-    if (quarantine && !await mjolnir.isSynapseAdmin()) {
-        const isAdmin = await mjolnir.isSynapseAdmin();
-        if (!isAdmin) {
-            const message = "Quarantine flag specified but I am not a Synapse administrator, or the endpoint is blocked. Redaction did not run.";
-            const reply = RichReply.createFor(roomId, event, message, message);
-            reply["msgtype"] = "m.notice";
-            await mjolnir.client.sendMessage(roomId, reply);
-            return;
-        }
+    if (quarantine && !(await mjolnir.isSynapseAdmin())) {
+        const message =
+            "Quarantine flag specified but I am not a Synapse administrator, or the endpoint is blocked. Redaction did not run.";
+        const reply = RichReply.createFor(roomId, event, message, message);
+        reply["msgtype"] = "m.notice";
+        await mjolnir.client.sendMessage(roomId, reply);
         return;
     }
 

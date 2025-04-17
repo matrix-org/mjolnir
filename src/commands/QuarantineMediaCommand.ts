@@ -22,15 +22,14 @@ import { Mjolnir } from "../Mjolnir";
 // !mjolnir quarantine-media <room ID> [limit]
 // !mjolnir quarantine-media <mxc-url>
 export async function execQuarantineMediaCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
-    const isAdmin = await mjolnir.isSynapseAdmin();
-    if (!isAdmin) {
+    if (!(await mjolnir.isSynapseAdmin())) {
         const message = "I am not a Synapse administrator, or the endpoint is blocked";
         const reply = RichReply.createFor(roomId, event, message, message);
         reply["msgtype"] = "m.notice";
         await mjolnir.client.sendMessage(roomId, reply);
         return;
     }
-    
+
     const target = parts[2];
 
     let targetRoom: string | null = null;
