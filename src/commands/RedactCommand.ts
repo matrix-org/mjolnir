@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { redactUserMessagesIn } from "../utils";
-import { Permalinks } from "@vector-im/matrix-bot-sdk";
+import { Permalinks, RichReply } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir redact <user ID> [room alias] [limit] --quarantine
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -28,6 +28,18 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     if (parts.includes("--quarantine")) {
         parts = parts.filter((p) => p !== "--quarantine");
         quarantine = true;
+    }
+
+    if (quarantine && !await mjolnir.isSynapseAdmin()) {
+        const isAdmin = await mjolnir.isSynapseAdmin();
+        if (!isAdmin) {
+            const message = "Quarantine flag specified but I am not a Synapse administrator, or the endpoint is blocked. Redaction did not run.";
+            const reply = RichReply.createFor(roomId, event, message, message);
+            reply["msgtype"] = "m.notice";
+            await mjolnir.client.sendMessage(roomId, reply);
+            return;
+        }
+        return;
     }
 
     let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later

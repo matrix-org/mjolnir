@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { MXCUrl } from "@vector-im/matrix-bot-sdk";
+import { MXCUrl, RichReply } from "@vector-im/matrix-bot-sdk";
 import { Mjolnir } from "../Mjolnir";
 
 // !mjolnir quarantine-media <user ID> [room alias] [limit]
@@ -22,6 +22,15 @@ import { Mjolnir } from "../Mjolnir";
 // !mjolnir quarantine-media <room ID> [limit]
 // !mjolnir quarantine-media <mxc-url>
 export async function execQuarantineMediaCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
+    const isAdmin = await mjolnir.isSynapseAdmin();
+    if (!isAdmin) {
+        const message = "I am not a Synapse administrator, or the endpoint is blocked";
+        const reply = RichReply.createFor(roomId, event, message, message);
+        reply["msgtype"] = "m.notice";
+        await mjolnir.client.sendMessage(roomId, reply);
+        return;
+    }
+    
     const target = parts[2];
 
     let targetRoom: string | null = null;
