@@ -62,9 +62,9 @@ describe("Test: First message is link", function () {
         await modClient.stop();
         await badClient.stop();
         await fineClient.stop();
-        const protections = this.mjolnir.protectionManager.protections
-        const linkPro = protections.get("FirstMessageIsLinkProtection")
-        linkPro.stopCache()
+        const protections = this.mjolnir.protectionManager.protections;
+        const linkPro = protections.get("FirstMessageIsLinkProtection");
+        linkPro.stopCache();
     });
 
     function delay(ms: number) {
