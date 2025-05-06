@@ -26,6 +26,7 @@ const DEFAULT_JOIN_CACHE_EXPIRY_HOURS = 24;
 export class FirstMessageIsLink extends Protection {
     private justJoined: { [roomId: string]: { ts: number; stateKey: string }[] } = {};
     private recentlyBanned: string[] = [];
+    private cacheIntervalTimer: NodeJS.Timeout
 
     settings = {
         joinCacheExpiryHours: new NumberProtectionSetting(DEFAULT_JOIN_CACHE_EXPIRY_HOURS),
@@ -73,7 +74,7 @@ export class FirstMessageIsLink extends Protection {
             }
 
             const isLink = bodyHasLink || formattedBodyHasLink;
-            if (isLink && this.justJoined[roomId].includes(event["sender"])) {
+            if (isLink && this.justJoined[roomId].find(t => t.stateKey === event["sender"])) {
                 await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
                     msgtype: "m.text",
                     body: `Banning ${event["sender"]} for posting an link as the first thing after joining in ${roomId}.`,
@@ -132,6 +133,10 @@ export class FirstMessageIsLink extends Protection {
         }
     }
     private checkCache() {
-        setInterval(() => this.emptyCache(), 1000 * 60 * 30); // check cache for expired joins every 30 mins
+        this.cacheIntervalTimer = setInterval(() => this.emptyCache(), 1000 * 60 * 30); // check cache for expired joins every 30 mins
+    }
+
+    public stopCache() {
+        clearInterval(this.cacheIntervalTimer);
     }
 }
