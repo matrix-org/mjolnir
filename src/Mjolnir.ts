@@ -457,10 +457,8 @@ export class Mjolnir {
         const protections = this.protectionManager.protections;
         const linkPro = protections.get("FirstMessageIsLinkProtection");
         if (linkPro) {
-            linkPro.stop()
+            linkPro.stop();
         }
-
-
     }
 
     /**
