@@ -74,4 +74,8 @@ export abstract class Protection {
         // By default, protections don't have any status to show.
         return null;
     }
+
+    public stop(): void {
+        // by default do nothing
+    }
 }

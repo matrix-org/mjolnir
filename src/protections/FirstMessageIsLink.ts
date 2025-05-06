@@ -136,7 +136,7 @@ export class FirstMessageIsLink extends Protection {
         this.cacheIntervalTimer = setInterval(() => this.emptyCache(), 1000 * 60 * 30); // check cache for expired joins every 30 mins
     }
 
-    public stopCache() {
+    public stop() {
         clearInterval(this.cacheIntervalTimer);
     }
 }

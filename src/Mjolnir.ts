@@ -454,6 +454,13 @@ export class Mjolnir {
         this.reportPoller?.stop();
         this.openMetrics.stop();
         this.moderators.stop();
+        const protections = this.protectionManager.protections;
+        const linkPro = protections.get("FirstMessageIsLinkProtection");
+        if (linkPro) {
+            linkPro.stop()
+        }
+
+
     }
 
     /**
