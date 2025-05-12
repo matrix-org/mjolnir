@@ -70,7 +70,7 @@ describe("Test: The redaction command - if admin", function () {
         function delay(ms: number) {
             return new Promise((resolve) => setTimeout(resolve, ms));
         }
-        await delay(700);
+        await delay(1000);
         await getMessagesByUserIn(moderator, badUserId, targetRoom, 1000, function (events) {
             events.map((e) => {
                 if (e.type === "m.room.member") {

@@ -43,8 +43,8 @@ describe("Test: The quarantineMedia command", function () {
         await badUser.joinRoom(targetRoom);
     });
     // If a test has a timeout while awaitng on a promise then we never get given control back.
-    afterEach(function () {
-        this.moderator?.stop();
+    this.afterEach(async function () {
+        await moderator.stop();
     });
 
     it("Correctly quarantines media by user", async function () {
