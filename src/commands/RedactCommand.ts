@@ -16,13 +16,29 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import { redactUserMessagesIn } from "../utils";
-import { Permalinks } from "@vector-im/matrix-bot-sdk";
+import { Permalinks, RichReply } from "@vector-im/matrix-bot-sdk";
 
-// !mjolnir redact <user ID> [room alias] [limit]
+// !mjolnir redact <user ID> [room alias] [limit] --quarantine
 export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const userId = parts[2];
 
     let targetRoom: string | null = null;
+
+    let quarantine = false;
+    if (parts.includes("--quarantine")) {
+        parts = parts.filter((p) => p !== "--quarantine");
+        quarantine = true;
+    }
+
+    if (quarantine && !(await mjolnir.isSynapseAdmin())) {
+        const message =
+            "Quarantine flag specified but I am not a Synapse administrator, or the endpoint is blocked. Redaction did not run.";
+        const reply = RichReply.createFor(roomId, event, message, message);
+        reply["msgtype"] = "m.notice";
+        await mjolnir.client.sendMessage(roomId, reply);
+        return;
+    }
+
     let limit = Number.parseInt(parts.length > 3 ? parts[3] : "", 10); // default to NaN for later
     if (parts.length > 3 && isNaN(limit)) {
         targetRoom = await mjolnir.client.resolveRoom(parts[3]);
@@ -45,6 +61,12 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
         const parsed = Permalinks.parseUrl(parts[2]);
         const targetRoomId = await mjolnir.client.resolveRoom(parsed.roomIdOrAlias);
         await mjolnir.client.redactEvent(targetRoomId, parsed.eventId);
+        if (quarantine) {
+            const mxcs = mjolnir.protectedRoomsTracker.getMediaIdsForEventId(targetRoomId, parsed.eventId);
+            for (const mxc of mxcs) {
+                await mjolnir.quarantineMedia(mxc);
+            }
+        }
         await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
         await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing command");
         return;
@@ -52,7 +74,12 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
 
     const targetRoomIds = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
     await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, false, limit);
-
+    if (quarantine) {
+        const mxcs = await mjolnir.protectedRoomsTracker.getMediaIdsForUserIdInRooms(userId, targetRoomIds);
+        for (const mxc of mxcs) {
+            await mjolnir.quarantineMedia(mxc);
+        }
+    }
     await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
     await mjolnir.client.redactEvent(roomId, processingReactionId, "done processing");
 }

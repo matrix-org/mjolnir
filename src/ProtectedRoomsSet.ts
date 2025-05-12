@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { LogLevel, LogService, MatrixGlob, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, LogService, MatrixGlob, MXCUrl, Permalinks, UserID } from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "./config";
 import ErrorCache, { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "./ErrorCache";
 import ManagementRoomOutput from "./ManagementRoomOutput";
@@ -26,8 +26,10 @@ import { RoomUpdateError } from "./models/RoomUpdateError";
 import { ProtectionManager } from "./protections/ProtectionManager";
 import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQueue";
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
-import { htmlEscape } from "./utils";
+import { getMXCsInMessage, htmlEscape } from "./utils";
 import { ModCache } from "./ModCache";
+
+const KEEP_MEDIA_EVENTS_FOR_MS = 4 * 24 * 60 * 60 * 1000;
 
 /**
  * This class aims to synchronize `m.ban` rules in a set of policy lists with
@@ -107,6 +109,14 @@ export class ProtectedRoomsSet {
      */
     public isAdmin = false;
 
+    /**
+     * A map of room IDs to events containing media.
+     */
+    public readonly mediaEventsInRoom = new Map<
+        string,
+        Array<{ eventId: string; sender: UserID; mediaIds: MXCUrl[]; ts: number }>
+    >();
+
     constructor(
         private readonly client: MatrixSendClient,
         private readonly clientUserId: string,
@@ -133,7 +143,9 @@ export class ProtectedRoomsSet {
      * @param roomId The room we want to redact them in.
      */
     public redactUser(userId: string, roomId: string) {
-        this.eventRedactionQueue.add(new RedactUserInRoom(userId, roomId, this.isAdmin));
+        this.eventRedactionQueue.add(
+            new RedactUserInRoom(userId, roomId, this.isAdmin, this.getMediaIdsForUserIdInRooms(userId, [roomId])),
+        );
     }
 
     /**
@@ -221,6 +233,22 @@ export class ProtectedRoomsSet {
             const redactionErrors = await this.processRedactionQueue(roomId);
             await this.printActionResult(banErrors);
             await this.printActionResult(redactionErrors);
+        } else if (event.type === "m.room.message" || event.type === "m.sticker") {
+            const mxcs = getMXCsInMessage(event.content);
+            if (mxcs.length) {
+                const events = this.mediaEventsInRoom.get(roomId) ?? [];
+                events.push({
+                    ts: Date.now(),
+                    eventId: event.event_id,
+                    mediaIds: mxcs,
+                    sender: new UserID(event.sender),
+                });
+                // Remove any old events from the cache after while.
+                this.mediaEventsInRoom.set(
+                    roomId,
+                    events.filter(({ ts }) => Date.now() - ts < KEEP_MEDIA_EVENTS_FOR_MS),
+                );
+            }
         }
     }
 
@@ -275,12 +303,14 @@ export class ProtectedRoomsSet {
         this.protectedRooms.add(roomId);
         this.protectedRoomActivityTracker.addProtectedRoom(roomId);
         this.protectionManager.addProtectedRoom(roomId);
+        this.mediaEventsInRoom.set(roomId, []);
     }
 
     public removeProtectedRoom(roomId: string): void {
         this.protectedRoomActivityTracker.removeProtectedRoom(roomId);
         this.protectedRooms.delete(roomId);
         this.protectionManager.removeProtectedRoom(roomId);
+        this.mediaEventsInRoom.delete(roomId);
     }
 
     /**
@@ -593,5 +623,55 @@ export class ProtectedRoomsSet {
                 formatted_body: html,
             });
         }
+    }
+
+    /**
+     * Get all MXCs for a user within a set of rooms.
+     * @param userId The user ID to target.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForUserIdInRooms(userId: string, roomIds: string[]): Iterable<MXCUrl> {
+        return new Set(
+            [...this.mediaEventsInRoom]
+                .filter((r) => roomIds.includes(r[0]))
+                .flatMap((r) => r[1])
+                .filter((r) => r.sender.toString() === userId)
+                .flatMap((r) => r.mediaIds),
+        );
+    }
+
+    /**
+     * Get all MXCs for a server within a set of rooms.
+     * @param userId The user ID to target.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForServerInRooms(domain: string, roomIds: string[]): Iterable<MXCUrl> {
+        return new Set(
+            [...this.mediaEventsInRoom]
+                .filter((r) => roomIds.includes(r[0]))
+                .flatMap((r) => r[1])
+                .filter((r) => r.sender.domain === domain)
+                .flatMap((r) => r.mediaIds),
+        );
+    }
+
+    /**
+     * Get all MXCs within a set of rooms.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForRoomId(roomId: string): Iterable<MXCUrl> {
+        return this.mediaEventsInRoom.get(roomId)?.flatMap((r) => r.mediaIds) ?? [];
+    }
+
+    /**
+     * Get all MXCs within a set of rooms.
+     * @param roomIds Filter to these specific rooms.
+     * @returns An iterable set of mxcs.
+     */
+    public getMediaIdsForEventId(roomId: string, eventId: string): Iterable<MXCUrl> {
+        return this.mediaEventsInRoom.get(roomId)?.find((r) => r.eventId === eventId)?.mediaIds ?? [];
     }
 }

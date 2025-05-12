@@ -21,6 +21,7 @@ import {
     getRequestFn,
     setRequestFn,
     extractRequestError,
+    MXCUrl,
 } from "@vector-im/matrix-bot-sdk";
 import { ClientRequest, IncomingMessage } from "http";
 import * as Sentry from "@sentry/node";
@@ -601,3 +602,14 @@ export function initializeSentry(config: IHealthConfig) {
 // Set to `true` once we have initialized `Sentry` to ensure
 // that we do not attempt to initialize it more than once.
 let sentryInitialized = false;
+
+/**
+ * Get all mxc URIs in a message.
+ * @param content Any object.
+ * @returns A list of MXC urls.
+ */
+export function getMXCsInMessage(content: unknown): MXCUrl[] {
+    const contentStr = JSON.stringify(content);
+    const matches = contentStr.match(/(mxc:\/\/[^\s'"]+)/gim);
+    return matches?.map((v) => MXCUrl.parse(v)) ?? [];
+}

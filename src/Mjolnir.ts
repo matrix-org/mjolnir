@@ -19,6 +19,7 @@ import {
     LogLevel,
     LogService,
     MembershipEvent,
+    MXCUrl,
     Permalinks,
     UserID,
 } from "@vector-im/matrix-bot-sdk";
@@ -649,6 +650,36 @@ export class Mjolnir {
             });
         } catch (e) {
             return extractRequestError(e);
+        }
+    }
+
+    /**
+     * Mark a piece of media as quarantined.
+     * @param mxc The MXC to quarantine.
+     */
+    public async quarantineMedia(mxc: MXCUrl) {
+        try {
+            const endpoint = `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(mxc.domain)}/${encodeURIComponent(mxc.mediaId)}`;
+            return await this.client.doRequest("POST", endpoint, null, {});
+        } catch (e) {
+            LogService.error("Mjolnir", "Could not quarantine media", mxc);
+            LogService.error("Mjolnir", extractRequestError(e));
+        }
+    }
+
+    /**
+     * Quarantine all media uploaded by a given user.
+     * @param userId
+     * @returns The number of media items quarantined.
+     */
+    public async quarantineMediaForUser(userId: string): Promise<number> {
+        try {
+            const endpoint = `/_synapse/admin/v1/user/${encodeURIComponent(userId)}/media/quarantine`;
+            const data = await this.client.doRequest("POST", endpoint, null, {});
+            return data.num_quarantined;
+        } catch (e) {
+            LogService.error("Mjolnir", "Could not quarantine media for user", userId);
+            throw extractRequestError(e);
         }
     }
 }

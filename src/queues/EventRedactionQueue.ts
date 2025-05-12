@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-import { LogLevel, MatrixClient } from "@vector-im/matrix-bot-sdk";
+import { LogLevel, MatrixClient, MXCUrl } from "@vector-im/matrix-bot-sdk";
 import { ERROR_KIND_FATAL } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { redactUserMessagesIn } from "../utils";
@@ -40,15 +40,12 @@ export interface QueuedRedaction {
  * Redacts all of the messages a user has sent to one room.
  */
 export class RedactUserInRoom implements QueuedRedaction {
-    userId: string;
-    roomId: string;
-    isAdmin: boolean;
-
-    constructor(userId: string, roomId: string, isAdmin: boolean) {
-        this.userId = userId;
-        this.roomId = roomId;
-        this.isAdmin = isAdmin;
-    }
+    constructor(
+        public readonly userId: string,
+        public readonly roomId: string,
+        public readonly isAdmin: boolean,
+        public readonly mediaIds: Iterable<MXCUrl>,
+    ) {}
 
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
         await managementRoom.logMessage(

@@ -53,6 +53,7 @@ import { execUnsuspendCommand } from "./UnsuspendCommand";
 import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
+import { execQuarantineMediaCommand } from "./QuarantineMediaCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -90,6 +91,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execUnwatchCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "redact" && parts.length > 1) {
             return await execRedactCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "quarantine-media") {
+            return await execQuarantineMediaCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "import" && parts.length > 2) {
             return await execImportCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "default" && parts.length > 2) {
@@ -169,21 +172,23 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "" +
                 "!mjolnir ban <list shortcode> <user|room|server> <glob> [reason]      - Adds an entity to the ban list\n" +
                 "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]     - Removes an entity from the ban list. If apply is 'true', the users matching the glob will be manually unbanned in each protected room.\n" +
-                "!mjolnir redact <user ID> [room alias/ID] [limit]                     - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
-                "!mjolnir redact <event permalink>                                     - Redacts a message by permalink\n" +
+                "!mjolnir redact <user ID> [room alias/ID] [limit] --quarantine        - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
+                "!mjolnir redact <event permalink> --quarantine                        - Redacts a message by permalink\n" +
                 "!mjolnir kick <glob> [room alias/ID] [reason]                         - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
                 "!mjolnir deactivate <user ID>                                         - Deactivates a user ID\n" +
                 "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]           - Sets the power level of the user in the specified room (or all protected rooms) - mjolnir will resist lowering the power level of the bot/users in the moderation room unless a --force argument is added\n" +
                 "!mjolnir make admin <room alias> [user alias/ID]                      - Make the specified user or the bot itself admin of the room\n" +
-                "!mjolnir suspend <user ID>                                            - Suspend the specified user\n" +
+                "!mjolnir suspend <user ID> --quarantine                               - Suspend the specified user\n" +
                 "!mjolnir unsuspend <user ID>                                          - Unsuspend the specified user\n" +
                 "!mjolnir lock <user ID>                                               - Lock the account of the specified user\n" +
                 "!mjolnir unlock <user ID>                                             - Unlock the account of the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                                 - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
                 "!mjolnir ignored                                                      - List currently ignored entities.\n" +
-                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
-
+                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
+                "!mjolnir quarantine-media <user ID|server> [room alias] [limit]\n     - Quarantine recent media for a user or server, optionally limited to a specific room." +
+                "!mjolnir quarantine-media <room ID> [limit]\n                         - Quarantine recent media for a room." +
+                "!mjolnir quarantine-media <mxc-url>\n                                 - Quarantine a single media item.";
             const policyListMenu =
                 "" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
