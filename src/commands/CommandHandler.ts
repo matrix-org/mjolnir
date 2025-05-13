@@ -54,6 +54,7 @@ import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
 import { execQuarantineMediaCommand } from "./QuarantineMediaCommand";
+import { execMSC4284SetCommand } from "./MSC4284PolicyServerCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -155,6 +156,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execLockCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "unlock") {
             return await execUnlockCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "msc4284_set" && parts.length > 2) {
+            return await execMSC4284SetCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "help") {
             // Help menu
             const protectionMenu =
@@ -214,6 +217,19 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
 
+            const labsHtmlPreamble =
+                "<br />" +
+                "⚠️ Note: These commands are experimental and subject to change. Check <code>!mjolnir help</code> for the latest version of these commands.<br />" +
+                "⚠️ Note: <a href='https://github.com/matrix-org/matrix-spec-proposals/pull/4284'>MSC4284</a> commands may require additional configuration before the policy server will operate. Consult the policy server provider's documentation for more information.<br />" +
+                ""; // empty segment to reduce diff noise
+            const labsMenu =
+                "" +
+                "!mjolnir msc4284_set <room alias/ID> <policy server name>           - Set the policy server in a specific room. Mjolnir doesn't need to be protecting the room, but needs permission to send state events.\n" +
+                "!mjolnir msc4284_set <room alias/ID> unset                          - Unset/disable the policy server in a specific room. Same constraints as the room ID/alias set command.\n" +
+                "!mjolnir msc4284_set * <policy server name>                         - Set the policy server for all Mjolnir-protected rooms.\n" +
+                "!mjolnir msc4284_set * unset                                        - Unset/disable the policy server for all Mjolnir-protected rooms\n" +
+                ""; // empty segment to reduce diff noise
+
             const botMenu =
                 "" +
                 "!mjolnir                                                            - Print status information\n" +
@@ -226,6 +242,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             <b>Moderation Actions:</b><pre><code>${htmlEscape(actionMenu)}</code></pre><br />
             <b>Policy List Options/Actions:</b><pre><code>${htmlEscape(policyListMenu)}</code></pre><br />
             <b>Room Managment:</b><pre><code>${htmlEscape(roomsMenu)}</code></pre><br />
+            <b>Labs/Development:</b>${labsHtmlPreamble}<pre><code>${htmlEscape(labsMenu)}</code></pre><br />
             <b>Bot Status and Management:</b><pre><code>${htmlEscape(botMenu)}</code></pre>`;
             const text = `Mjolnir help menu:\n Protection Actions/Options:\n ${protectionMenu} \n Moderation Actions: ${actionMenu}\n Policy List Options/Actions: \n ${policyListMenu} \n Room Management: ${roomsMenu} \n Bot Status and Management: \n ${botMenu} `;
             const reply = RichReply.createFor(roomId, event, text, html);
