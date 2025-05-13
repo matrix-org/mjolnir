@@ -124,7 +124,7 @@ describe("Test: The msc4284_set command", function () {
             const { via: via1 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
             assert.equal(via1, undefined); // verify we didn't touch the room
         } catch (e) {
-            if (e.errcode !== "M_NOT_FOUND") {
+            if (e.statusCode !== 404) {
                 throw e;
             }
             // else it's fine, the event doesn't exist
@@ -144,7 +144,7 @@ describe("Test: The msc4284_set command", function () {
             const { via: via3 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
             assert.equal(via3, undefined); // shouldn't have changed
         } catch (e) {
-            if (e.errcode !== "M_NOT_FOUND") {
+            if (e.statusCode !== 404) {
                 throw e;
             }
             // else it's fine, the event doesn't exist
