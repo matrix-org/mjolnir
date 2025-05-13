@@ -1,7 +1,7 @@
 import { strict as assert } from "assert";
 
 import { newTestUser } from "../clientHelper";
-import { MatrixClient } from "@vector-im/matrix-bot-sdk";
+import { MatrixClient, UserID } from "@vector-im/matrix-bot-sdk";
 import { getFirstReaction } from "./commandUtils";
 import { randomUUID } from "crypto";
 
@@ -37,6 +37,9 @@ describe("Test: The msc4284_set command", function () {
                 },
             },
         });
+
+        // Actually set the alias after creating the room, otherwise we'll end up using the localpart in tests (which doesn't work)
+        unprotectedRoomAlias = `#${unprotectedRoomAlias}:${new UserID(await moderator.getUserId()).domain}`;
 
         await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
             return await moderator.sendMessage(this.mjolnir.managementRoomId, {
@@ -117,8 +120,15 @@ describe("Test: The msc4284_set command", function () {
             });
         });
 
-        const { via: via1 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
-        assert.equal(via1, undefined); // verify we didn't touch the room
+        try {
+            const { via: via1 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
+            assert.equal(via1, undefined); // verify we didn't touch the room
+        } catch (e) {
+            if (e.errcode !== "M_NOT_FOUND") {
+                throw e;
+            }
+            // else it's fine, the event doesn't exist
+        }
         const { via: via2 } = await mjolnir.getRoomStateEvent(protectedRoomId, "org.matrix.msc4284.policy", "");
         assert.equal(via2, "3.example.org");
 
@@ -130,8 +140,15 @@ describe("Test: The msc4284_set command", function () {
             });
         });
 
-        const { via: via3 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
-        assert.equal(via3, undefined); // shouldn't have changed
+        try {
+            const { via: via3 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
+            assert.equal(via3, undefined); // shouldn't have changed
+        } catch (e) {
+            if (e.errcode !== "M_NOT_FOUND") {
+                throw e;
+            }
+            // else it's fine, the event doesn't exist
+        }
         const { via: via4 } = await mjolnir.getRoomStateEvent(protectedRoomId, "org.matrix.msc4284.policy", "");
         assert.equal(via4, undefined);
     });
