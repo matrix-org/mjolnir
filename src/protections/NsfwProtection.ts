@@ -56,6 +56,10 @@ export class NsfwProtection extends Protection {
         }
 
         const mxcs = getMXCsInMessage(event.content);
+        if (mxcs.length <= 0) {
+            return; // nothing to do
+        }
+
         // try and grab a human-readable alias for more helpful management room output
         const maybeAlias = await mjolnir.client.getPublishedAlias(roomId);
         const room = maybeAlias ? maybeAlias : roomId;

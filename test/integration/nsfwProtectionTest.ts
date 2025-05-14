@@ -4,6 +4,7 @@ import { MatrixClient, MXCUrl } from "@vector-im/matrix-bot-sdk";
 import { getFirstReaction } from "./commands/commandUtils";
 import { strict as assert } from "assert";
 import { readFileSync } from "fs";
+import { ProtectionManager } from "../../src/protections/ProtectionManager";
 
 describe("Test: NSFW protection", function () {
     let client: MatrixClient;
@@ -141,5 +142,44 @@ describe("Test: NSFW protection", function () {
         );
 
         assert.equal(media[0].media_id, mediaId);
+    });
+
+    it("Nsfw protection does not react messages without any MXCs", async function () {
+        this.timeout(20000);
+
+        const protectionManager = this.mjolnir.protectionManager as ProtectionManager;
+
+        // Hack our way into the protection manager to determine if it has processed an event.
+        let sentEventId: string;
+        const handledEventPromise = new Promise<void>((resolve) => {
+            const handleEvent = protectionManager["handleEvent"].bind(protectionManager);
+            protectionManager["handleEvent"] = async (roomId, event) => {
+                try {
+                    return handleEvent(roomId, event);
+                } finally {
+                    if (sentEventId === event.event_id) {
+                        resolve();
+                    }
+                }
+            };
+        });
+
+        await client.sendMessage(this.mjolnir.managementRoomId, {
+            msgtype: "m.text",
+            body: `!mjolnir rooms add ${room}`,
+        });
+
+        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
+            return await client.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir enable NsfwProtection`,
+            });
+        });
+
+        let content = { body: "This is just some text", msgtype: "m.text" };
+        sentEventId = await client.sendMessage(room, content);
+        await handledEventPromise;
+        let processedEvent = await client.getEvent(room, sentEventId);
+        assert.equal(Object.keys(processedEvent.content).length, 2, "This event should not have been redacted");
     });
 });
