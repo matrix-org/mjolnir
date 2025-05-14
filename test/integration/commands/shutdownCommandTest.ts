@@ -52,7 +52,7 @@ describe("Test: shutdown command", function () {
         await reply1;
         await reply2;
 
-        await assert.rejects(client.joinRoom(badRoom), (e) => {
+        await assert.rejects(client.joinRoom(badRoom), (e: Error) => {
             return e.message.endsWith('{"errcode":"M_UNKNOWN","error":"This room has been blocked on this server"}');
         });
     });

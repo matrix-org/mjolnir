@@ -34,6 +34,7 @@ import { LocalAbuseReports } from "./LocalAbuseReports";
 import { NsfwProtection } from "./NsfwProtection";
 import { MentionSpam } from "./MentionSpam";
 import { MessageIsVideo } from "./MessageIsVideo";
+import { FirstMessageIsLink } from "./FirstMessageIsLink";
 
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -48,6 +49,7 @@ const PROTECTIONS: Protection[] = [
     new NsfwProtection(),
     new MentionSpam(),
     new MessageIsVideo(),
+    new FirstMessageIsLink(),
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
