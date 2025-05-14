@@ -77,7 +77,7 @@ export class FirstMessageIsLink extends Protection {
             if (isLink && this.justJoined[roomId].find((t) => t.stateKey === event["sender"])) {
                 await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
                     msgtype: "m.text",
-                    body: `Banning ${event["sender"]} for posting an link as the first thing after joining in ${roomId}.`,
+                    body: `Banning ${event["sender"]} for posting a link as the first thing after joining in ${roomId}.`,
                     format: "org.matrix.custom.html",
                     formatted_body: `Banning <span data-mx-spoiler>${htmlEscape(event["sender"])}</span> for posting a link as the first thing after joining in ${roomId}.`,
                 });
