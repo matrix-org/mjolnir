@@ -62,7 +62,7 @@ export class NsfwProtection extends Protection {
 
         // Skip classification if sensitivity is 0, as it's a waste of resources
         // We are using 0.0001 as a threshold to avoid floating point errors
-        if (mjolnir.config.nsfwSensitivity <= 0.0001) {
+        if (mjolnir.config.nsfwSensitivity <= 0.0001 && mxcs.length > 0) {
             await this.redactEvent(mjolnir, roomId, event, room);
             return;
         }
