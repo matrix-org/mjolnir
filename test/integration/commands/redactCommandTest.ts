@@ -2,7 +2,7 @@ import { strict as assert } from "assert";
 
 import { newTestUser } from "../clientHelper";
 import { getMessagesByUserIn, filterRooms } from "../../../src/utils";
-import { LogService } from "@vector-im/matrix-bot-sdk";
+import { LogService, MatrixClient, MXCUrl } from "@vector-im/matrix-bot-sdk";
 import { getFirstReaction } from "./commandUtils";
 import { SynapseAdminApis } from "@vector-im/matrix-bot-sdk";
 
@@ -185,6 +185,61 @@ describe("Test: The redaction command - if admin", function () {
 
         let redactedEvent = await moderator.getEvent(targetRoom, eventToRedact);
         assert.equal(Object.keys(redactedEvent.content).length, 0, "This event should have been redacted");
+    });
+
+    it("Correctly quarantines media after being redacted", async function () {
+        this.timeout(30000);
+        let badUser = await newTestUser(this.config.homeserverUrl, { name: { contains: "spammer" } });
+        let moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "moderator" } });
+        this.moderator = moderator;
+        const mjolnir: MatrixClient = this.config.RUNTIME.client!;
+        await moderator.start();
+        let mjolnirUserId = await mjolnir.getUserId();
+        const badUserId = await badUser.getUserId();
+        const someFakeMedia = await badUser.uploadContent(Buffer.from("bibble bobble", "utf-8"), "text/plain");
+        const { mediaId } = MXCUrl.parse(someFakeMedia);
+
+        await moderator.joinRoom(this.config.managementRoom);
+        let targetRoom = await moderator.createRoom({
+            invite: [await badUser.getUserId(), mjolnirUserId],
+            power_level_content_override: {
+                users: {
+                    [mjolnirUserId]: 100,
+                    [await moderator.getUserId()]: 100,
+                },
+            },
+        });
+
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir rooms add ${targetRoom}`,
+            });
+        });
+
+        await badUser.joinRoom(targetRoom);
+        await badUser.sendMessage(targetRoom, {
+            msgtype: "m.text",
+            body: someFakeMedia,
+        });
+
+        try {
+            await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
+                return await moderator.sendMessage(this.mjolnir.managementRoomId, {
+                    msgtype: "m.text",
+                    body: `!mjolnir redact ${badUserId} --quarantine`,
+                });
+            });
+        } finally {
+            moderator.stop();
+        }
+
+        const { media } = await mjolnir.doRequest(
+            "GET",
+            `/_synapse/admin/v1/users/${encodeURIComponent(badUserId)}/media`,
+        );
+        assert.equal(media[0].media_id, mediaId);
+        assert.equal(media[0].quarantined_by, mjolnirUserId);
     });
 });
 

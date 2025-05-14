@@ -53,6 +53,8 @@ import { execUnsuspendCommand } from "./UnsuspendCommand";
 import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
+import { execQuarantineMediaCommand } from "./QuarantineMediaCommand";
+import { execMSC4284SetCommand } from "./MSC4284PolicyServerCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -90,6 +92,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execUnwatchCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "redact" && parts.length > 1) {
             return await execRedactCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "quarantine-media") {
+            return await execQuarantineMediaCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "import" && parts.length > 2) {
             return await execImportCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "default" && parts.length > 2) {
@@ -152,6 +156,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execLockCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "unlock") {
             return await execUnlockCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "msc4284_set" && parts.length > 2) {
+            return await execMSC4284SetCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "help") {
             // Help menu
             const protectionMenu =
@@ -169,21 +175,23 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "" +
                 "!mjolnir ban <list shortcode> <user|room|server> <glob> [reason]      - Adds an entity to the ban list\n" +
                 "!mjolnir unban <list shortcode> <user|room|server> <glob> [apply]     - Removes an entity from the ban list. If apply is 'true', the users matching the glob will be manually unbanned in each protected room.\n" +
-                "!mjolnir redact <user ID> [room alias/ID] [limit]                     - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
-                "!mjolnir redact <event permalink>                                     - Redacts a message by permalink\n" +
+                "!mjolnir redact <user ID> [room alias/ID] [limit] --quarantine        - Redacts messages by the sender in the target room (or all rooms), up to a maximum number of events in the backlog (default 1000)\n" +
+                "!mjolnir redact <event permalink> --quarantine                        - Redacts a message by permalink\n" +
                 "!mjolnir kick <glob> [room alias/ID] [reason]                         - Kicks a user or all of those matching a glob in a particular room or all protected rooms\n" +
                 "!mjolnir deactivate <user ID>                                         - Deactivates a user ID\n" +
                 "!mjolnir since <date>/<duration> <action> <limit> [rooms...] [reason] - Apply an action ('kick', 'ban', 'mute', 'unmute' or 'show') to all users who joined a room since <date>/<duration> (up to <limit> users)\n" +
                 "!mjolnir powerlevel <user ID> <power level> [room alias/ID]           - Sets the power level of the user in the specified room (or all protected rooms) - mjolnir will resist lowering the power level of the bot/users in the moderation room unless a --force argument is added\n" +
                 "!mjolnir make admin <room alias> [user alias/ID]                      - Make the specified user or the bot itself admin of the room\n" +
-                "!mjolnir suspend <user ID>                                            - Suspend the specified user\n" +
+                "!mjolnir suspend <user ID> --quarantine                               - Suspend the specified user\n" +
                 "!mjolnir unsuspend <user ID>                                          - Unsuspend the specified user\n" +
                 "!mjolnir lock <user ID>                                               - Lock the account of the specified user\n" +
                 "!mjolnir unlock <user ID>                                             - Unlock the account of the specified user\n" +
                 "!mjolnir ignore <user ID/server name>                                 - Add user to list of users/servers that cannot be banned/ACL'd. Note that this does not survive restart.\n" +
                 "!mjolnir ignored                                                      - List currently ignored entities.\n" +
-                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
-
+                "!mjolnir shutdown room <room alias/ID> [message]                      - Uses the bot's account to shut down a room, preventing access to the room on this server\n" +
+                "!mjolnir quarantine-media <user ID|server> [room alias] [limit]\n     - Quarantine recent media for a user or server, optionally limited to a specific room." +
+                "!mjolnir quarantine-media <room ID> [limit]\n                         - Quarantine recent media for a room." +
+                "!mjolnir quarantine-media <mxc-url>\n                                 - Quarantine a single media item.";
             const policyListMenu =
                 "" +
                 "!mjolnir list create <shortcode> <alias localpart>                  - Creates a new ban list with the given shortcode and alias\n" +
@@ -209,6 +217,19 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
 
+            const labsHtmlPreamble =
+                "<br />" +
+                "⚠️ Note: These commands are experimental and subject to change. Check <code>!mjolnir help</code> for the latest version of these commands.<br />" +
+                "⚠️ Note: <a href='https://github.com/matrix-org/matrix-spec-proposals/pull/4284'>MSC4284</a> commands may require additional configuration before the policy server will operate. Consult the policy server provider's documentation for more information.<br />" +
+                ""; // empty segment to reduce diff noise
+            const labsMenu =
+                "" +
+                "!mjolnir msc4284_set <room alias/ID> <policy server name>           - Set the policy server in a specific room. Mjolnir doesn't need to be protecting the room, but needs permission to send state events.\n" +
+                "!mjolnir msc4284_set <room alias/ID> unset                          - Unset/disable the policy server in a specific room. Same constraints as the room ID/alias set command.\n" +
+                "!mjolnir msc4284_set * <policy server name>                         - Set the policy server for all Mjolnir-protected rooms.\n" +
+                "!mjolnir msc4284_set * unset                                        - Unset/disable the policy server for all Mjolnir-protected rooms\n" +
+                ""; // empty segment to reduce diff noise
+
             const botMenu =
                 "" +
                 "!mjolnir                                                            - Print status information\n" +
@@ -221,6 +242,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             <b>Moderation Actions:</b><pre><code>${htmlEscape(actionMenu)}</code></pre><br />
             <b>Policy List Options/Actions:</b><pre><code>${htmlEscape(policyListMenu)}</code></pre><br />
             <b>Room Managment:</b><pre><code>${htmlEscape(roomsMenu)}</code></pre><br />
+            <b>Labs/Development:</b>${labsHtmlPreamble}<pre><code>${htmlEscape(labsMenu)}</code></pre><br />
             <b>Bot Status and Management:</b><pre><code>${htmlEscape(botMenu)}</code></pre>`;
             const text = `Mjolnir help menu:\n Protection Actions/Options:\n ${protectionMenu} \n Moderation Actions: ${actionMenu}\n Policy List Options/Actions: \n ${policyListMenu} \n Room Management: ${roomsMenu} \n Bot Status and Management: \n ${botMenu} `;
             const reply = RichReply.createFor(roomId, event, text, html);

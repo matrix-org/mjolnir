@@ -19,9 +19,13 @@ import { Mjolnir } from "../Mjolnir";
 import * as nsfw from "nsfwjs";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { node } from "@tensorflow/tfjs-node";
+import { getMXCsInMessage } from "../utils";
+import { BooleanProtectionSetting } from "./ProtectionSettings";
 
 export class NsfwProtection extends Protection {
-    settings = {};
+    settings = {
+        quarantine: new BooleanProtectionSetting(),
+    };
     // @ts-ignore
     private model: any;
 
@@ -40,7 +44,9 @@ export class NsfwProtection extends Protection {
     public get description(): string {
         return (
             "Scans all images sent into a protected room to determine if the image is " +
-            "NSFW. If it is, the image will automatically be redacted."
+            "NSFW. If it is, the image will automatically be redacted." +
+            " This protection may optionally also automatically quarantine media, see the" +
+            "`quarantine` protection setting."
         );
     }
 
@@ -49,11 +55,11 @@ export class NsfwProtection extends Protection {
             return;
         }
 
-        const content = JSON.stringify(event.content);
-        const mxcs = content.match(/(mxc:\/\/[^\s'"]+)/gim);
-        if (!mxcs) {
-            return;
+        const mxcs = getMXCsInMessage(event.content);
+        if (mxcs.length <= 0) {
+            return; // nothing to do
         }
+
         // try and grab a human-readable alias for more helpful management room output
         const maybeAlias = await mjolnir.client.getPublishedAlias(roomId);
         const room = maybeAlias ? maybeAlias : roomId;
@@ -65,8 +71,10 @@ export class NsfwProtection extends Protection {
             return;
         }
 
+        let shouldQuarantine = false;
+
         for (const mxc of mxcs) {
-            const image = await mjolnir.client.downloadContent(mxc);
+            const image = await mjolnir.client.downloadContent(`mxc://${mxc.domain}/${mxc.mediaId}`);
 
             let decodedImage;
             try {
@@ -82,11 +90,18 @@ export class NsfwProtection extends Protection {
                 if (["Hentai", "Porn"].includes(prediction["className"])) {
                     if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                         await this.redactEvent(mjolnir, roomId, event, room);
+                        shouldQuarantine = this.settings.quarantine.value;
                         break;
                     }
                 }
             }
             decodedImage.dispose();
+        }
+        if (shouldQuarantine) {
+            console.log("Attempting to quarantine", mxcs);
+            for (const mxc of mxcs) {
+                await mjolnir.quarantineMedia(mxc);
+            }
         }
     }
 

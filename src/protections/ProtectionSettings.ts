@@ -86,6 +86,13 @@ export class StringProtectionSetting extends AbstractProtectionSetting<string, s
     fromString = (data: string): string => data;
     validate = (data: string): boolean => true;
 }
+
+export class BooleanProtectionSetting extends AbstractProtectionSetting<boolean, boolean> {
+    value = false;
+    fromString = (data: string): boolean => Boolean(data);
+    validate = (data: boolean): boolean => typeof data === "boolean";
+}
+
 export class StringListProtectionSetting extends AbstractProtectionListSetting<string, string[]> {
     value: string[] = [];
     fromString = (data: string): string => data;
