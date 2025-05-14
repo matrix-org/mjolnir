@@ -56,13 +56,17 @@ export class NsfwProtection extends Protection {
         }
 
         const mxcs = getMXCsInMessage(event.content);
+        if (mxcs.length <= 0) {
+            return; // nothing to do
+        }
+
         // try and grab a human-readable alias for more helpful management room output
         const maybeAlias = await mjolnir.client.getPublishedAlias(roomId);
         const room = maybeAlias ? maybeAlias : roomId;
 
         // Skip classification if sensitivity is 0, as it's a waste of resources
         // We are using 0.0001 as a threshold to avoid floating point errors
-        if (mjolnir.config.nsfwSensitivity <= 0.0001 && mxcs.length > 0) {
+        if (mjolnir.config.nsfwSensitivity <= 0.0001) {
             await this.redactEvent(mjolnir, roomId, event, room);
             return;
         }
