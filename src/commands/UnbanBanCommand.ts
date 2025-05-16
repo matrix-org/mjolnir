@@ -51,8 +51,13 @@ export async function parseArguments(
     let list: PolicyList | null = null;
     let force = false;
     while (argumentIndex < 7 && argumentIndex < parts.length) {
-        const arg = parts[argumentIndex++];
+        let arg = parts[argumentIndex++];
         if (!arg) break;
+        if (arg.startsWith("https://matrix.to/#/")) {
+            // it's a matrix.to link, parse it
+            const components = arg.split("https://matrix.to/#/");
+            arg = components[1];
+        }
         if (["user", "room", "server"].includes(arg.toLowerCase())) {
             if (arg.toLowerCase() === "user") ruleType = RULE_USER;
             if (arg.toLowerCase() === "room") ruleType = RULE_ROOM;

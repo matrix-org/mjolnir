@@ -307,6 +307,51 @@ describe("UnbanBanCommand", () => {
             expect(bits!.list!.listShortcode).toBe("test");
         });
 
+        it("should be able to parse matrix.to links", async () => {
+            const mjolnir = createTestMjolnir();
+            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
+                throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
+            };
+
+            const userCommand = "!mjolnir ban test https://matrix.to/#/@bad_user:test.org";
+            const userBits = await parseArguments("!a", createFakeEvent(userCommand), mjolnir, userCommand.split(" "));
+            expect(userBits!.ruleType).toBe(RULE_USER);
+            expect(userBits!.entity).toBe("@bad_user:test.org");
+            expect(userBits!.list).toBeDefined();
+            expect(userBits!.list!.listShortcode).toBe("test");
+            expect(userBits).toBeTruthy();
+            expect(userBits!.reason).toBeFalsy();
+
+            const roomCommand = "!mjolnir ban test https://matrix.to/#/!bummerRoom:test.org";
+            const commandBits = await parseArguments(
+                "!a",
+                createFakeEvent(roomCommand),
+                mjolnir,
+                roomCommand.split(" "),
+            );
+            expect(commandBits!.ruleType).toBe(RULE_ROOM);
+            expect(commandBits!.entity).toBe("!bummerRoom:test.org");
+            expect(commandBits!.list).toBeDefined();
+            expect(commandBits!.list!.listShortcode).toBe("test");
+            expect(commandBits).toBeTruthy();
+            expect(commandBits!.reason).toBeFalsy();
+
+            const aliasCommand = "!mjolnir ban test https://matrix.to/#/#bad-actors:test.org";
+            const aliasBits = await parseArguments(
+                "!a",
+                createFakeEvent(aliasCommand),
+                mjolnir,
+                aliasCommand.split(" "),
+            );
+            expect(aliasBits!.ruleType).toBe(RULE_ROOM);
+            expect(aliasBits!.entity).toBe("#bad-actors:test.org");
+            expect(aliasBits!.list).toBeDefined();
+            expect(aliasBits!.list!.listShortcode).toBe("test");
+            expect(aliasBits).toBeTruthy();
+            expect(aliasBits!.reason).toBeFalsy();
+        });
+
         it("should error if wildcards used without --force", async () => {
             const mjolnir = createTestMjolnir();
             (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
