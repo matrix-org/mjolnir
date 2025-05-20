@@ -16,7 +16,14 @@ limitations under the License.
 
 import { Mjolnir } from "../Mjolnir";
 import PolicyList from "../models/PolicyList";
-import { extractRequestError, LogLevel, LogService, MatrixGlob, RichReply } from "@vector-im/matrix-bot-sdk";
+import {
+    extractRequestError,
+    LogLevel,
+    LogService,
+    MatrixGlob,
+    RichReply,
+    Permalinks,
+} from "@vector-im/matrix-bot-sdk";
 import { RULE_ROOM, RULE_SERVER, RULE_USER, USER_RULE_TYPES } from "../models/ListRule";
 import { DEFAULT_LIST_EVENT_TYPE } from "./SetDefaultBanListCommand";
 
@@ -51,7 +58,7 @@ export async function parseArguments(
     let list: PolicyList | null = null;
     let force = false;
     while (argumentIndex < 7 && argumentIndex < parts.length) {
-        const arg = parts[argumentIndex++];
+        let arg = parts[argumentIndex++];
         if (!arg) break;
         if (["user", "room", "server"].includes(arg.toLowerCase())) {
             if (arg.toLowerCase() === "user") ruleType = RULE_USER;
@@ -69,6 +76,22 @@ export async function parseArguments(
             );
             if (foundList !== undefined) {
                 list = foundList;
+            }
+        }
+
+        if (arg.startsWith("https://matrix.to/#/")) {
+            // it should be a matrix.to link, parse it
+            try {
+                const permParts = Permalinks.parseUrl(arg);
+                if (permParts.userId) {
+                    entity = permParts.userId;
+                    ruleType = RULE_USER;
+                } else if (permParts.roomIdOrAlias) {
+                    entity = permParts.roomIdOrAlias;
+                    ruleType = RULE_ROOM;
+                }
+            } catch (e) {
+                // okay it's not a matrix.to link, run it through the rest of the parser
             }
         }
 
