@@ -481,14 +481,23 @@ export class ProtectedRoomsSet {
                                 await this.managementRoomOutput.logMessage(
                                     LogLevel.WARN,
                                     "ApplyBan",
-                                    `Attempted
-                                to ban ${member.userId} but this is a member of the management room, skipping.`,
+                                    `Attempted to ban ${member.userId} but this is a member of the management room, skipping.`,
                                 );
                                 continue;
                             }
-                            await this.client.banUser(member.userId, roomId, memberAccess.rule!.reason);
+
                             if (this.automaticRedactGlobs.find((g) => g.test(reason.toLowerCase()))) {
+                                // Use MSC4293 and still fall back later
+                                // See https://github.com/matrix-org/matrix-spec-proposals/pull/4293
+                                await this.client.sendStateEvent(roomId, "m.room.member", member.userId, {
+                                    membership: "ban",
+                                    "org.matrix.msc4293.redact_events": true,
+                                });
+
+                                // Fallback
                                 this.redactUser(member.userId, roomId);
+                            } else {
+                                await this.client.banUser(member.userId, roomId, memberAccess.rule!.reason);
                             }
                         } else {
                             await this.managementRoomOutput.logMessage(
