@@ -490,7 +490,7 @@ export class ProtectedRoomsSet {
                                 // Use MSC4293 and still fall back later
                                 // See https://github.com/matrix-org/matrix-spec-proposals/pull/4293
                                 await this.client.sendStateEvent(roomId, "m.room.member", member.userId, {
-                                    membership: "ban",
+                                    "membership": "ban",
                                     "org.matrix.msc4293.redact_events": true,
                                 });
 
