@@ -117,6 +117,10 @@ export class ProtectedRoomsSet {
         Array<{ eventId: string; sender: UserID; mediaIds: MXCUrl[]; ts: number }>
     >();
 
+    public get watchedLists(): PolicyList[] {
+        return this.policyLists;
+    }
+
     constructor(
         private readonly client: MatrixSendClient,
         private readonly clientUserId: string,

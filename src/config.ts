@@ -185,6 +185,10 @@ export interface IConfig {
         ruleServer?: {
             enabled: boolean;
         };
+        antispam?: {
+            enabled: boolean;
+            secret: string;
+        };
     };
     nsfwSensitivity: number;
 
