@@ -29,6 +29,6 @@ jobs:
           context: .
           file: ./Dockerfile
           platforms: ${{ env.PLATFORMS }}
-          push: ${{ env.PUSH }}
+          push: true
           tags: |
-            ${{ env.DOCKER_NAMESPACE }}/mjolnir:latest
+            ${{ env.DOCKER_NAMESPACE }}/mjolnir:donotuse-rc-1-11-0
