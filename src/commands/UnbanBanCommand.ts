@@ -124,7 +124,7 @@ export async function parseArguments(
     else if (!ruleType) replyMessage = "Please specify the type as either 'user', 'room', or 'server'";
     else if (!entity) replyMessage = "No entity found";
 
-    if (mjolnir.config.commands.confirmWildcardBan && /[*?]/.test(entity) && !force) {
+    if (mjolnir.config.confirmWildcardBan && /[*?]/.test(entity) && !force) {
         replyMessage = "Wildcard bans require an additional `--force` argument to confirm";
     }
 

@@ -37,7 +37,7 @@ const log = new Logger("AppService");
  */
 export class MjolnirAppService {
     private readonly api: Api;
-    private readonly openMetrics: OpenMetrics;
+    private readonly openMetrics?: OpenMetrics;
 
     /**
      * The constructor is private because we want to ensure intialization steps are followed,
@@ -51,7 +51,9 @@ export class MjolnirAppService {
         private readonly dataStore: DataStore,
     ) {
         this.api = new Api(config.homeserver.url, mjolnirManager);
-        this.openMetrics = new OpenMetrics(config);
+        if (config.health?.openMetrics?.enabled) {
+            this.openMetrics = new OpenMetrics(config.health);
+        }
     }
 
     /**
@@ -197,7 +199,9 @@ export class MjolnirAppService {
         await this.bridge.listen(port);
         log.info("MjolnirAppService started successfully");
 
-        await this.openMetrics.start();
+        if (this.openMetrics) {
+            await this.openMetrics.start();
+        }
     }
 
     /**
@@ -207,7 +211,7 @@ export class MjolnirAppService {
         await this.bridge.close();
         await this.dataStore.close();
         await this.api.close();
-        this.openMetrics.stop();
+        this.openMetrics?.stop();
         this.mjolnirManager.closeAll();
     }
 

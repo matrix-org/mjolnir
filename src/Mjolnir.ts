@@ -18,6 +18,7 @@ import {
     extractRequestError,
     LogLevel,
     LogService,
+    MatrixEvent,
     MembershipEvent,
     MXCUrl,
     Permalinks,
@@ -45,6 +46,36 @@ import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
 import { MASClient } from "./MASClient";
+import { PluginManager } from "./plugins/PluginManager";
+import "./commands/AddRemoveProtectedRoomsCommand";
+import "./commands/AddRemoveRoomFromDirectoryCommand";
+import "./commands/AliasCommands";
+import "./commands/CreateBanListCommand";
+import "./commands/DeactivateCommand";
+import "./commands/DumpRulesCommand";
+import "./commands/IgnoreCommand";
+import "./commands/ImportCommand";
+import "./commands/KickCommand";
+import "./commands/ListProtectedRoomsCommand";
+import "./commands/LockCommand";
+import "./commands/MakeRoomAdminCommand";
+import "./commands/MSC4284PolicyServerCommand";
+import "./commands/PermissionCheckCommand";
+import "./commands/ProtectionsCommands";
+import "./commands/QuarantineMediaCommand";
+import "./commands/RedactCommand";
+import "./commands/SetDefaultBanListCommand";
+import "./commands/SetPowerLevelCommand";
+import "./commands/SetupDecentralizedReportingCommand";
+import "./commands/ShutdownRoomCommand";
+import "./commands/SinceCommand";
+import "./commands/StatusCommand";
+import "./commands/SuspendCommand";
+import "./commands/SyncCommand";
+import "./commands/UnbanBanCommand";
+import "./commands/UnlockCommand";
+import "./commands/UnsuspendCommand";
+import "./commands/WatchUnwatchCommand";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -89,6 +120,10 @@ export class Mjolnir {
      * Handle user reports from the homeserver.
      */
     public readonly reportManager: ReportManager;
+    /**
+     * Manager for mjolnir plugins.
+     */
+    public readonly pluginManager: PluginManager;
 
     public readonly policyListManager: PolicyListManager;
 
@@ -223,15 +258,55 @@ export class Mjolnir {
         // Combines the rules from ban lists so they can be served to a homeserver module or another consumer.
         public readonly ruleServer: RuleServer | null,
     ) {
-        this.protectedRoomsConfig = new ProtectedRoomsConfig(client);
+        this.protectedRoomsConfig = new ProtectedRoomsConfig(this.client);
         this.policyListManager = new PolicyListManager(this);
+        this.pluginManager = new PluginManager(this);
+        if (this.config.protectAllJoinedRooms) {
+            LogService.warn(
+                "Mjolnir",
+                "Listening to all rooms, this can be very resource intensive and is not recommended.",
+            );
+        }
+        this.roomJoins = new RoomMemberManager(this.client);
+        this.protectedRoomsTracker = new ProtectedRoomsSet(
+            this.protectedRoomsConfig,
+            this.roomJoins,
+            this.managementRoomId,
+        );
 
-        if (config.MAS.use) {
+        // Setup the protections
+        this.protectionManager = new ProtectionManager(this);
+
+        this.managementRoomOutput = new ManagementRoomOutput(
+            this.managementRoomId,
+            this.client,
+            this.config,
+            this.protectedRoomsTracker,
+        );
+
+        this.taskQueue = new ThrottlingQueue(this.config.backgroundDelayMS);
+        this.moderators = new ModCache(this.client);
+
+        this.reportManager = new ReportManager(this);
+        if (this.config.pollReports) {
+            this.reportPoller = new ReportPoller(this, this.reportManager);
+        }
+
+        if (this.config.health.openMetrics.enabled) {
+            this.openMetrics = new OpenMetrics(this.config.health);
+        }
+
+        if (this.config.web.enabled) {
+            this.webapis = new WebAPIs(this.reportManager, this.config, this.ruleServer);
+        }
+
+        if (this.config.MAS.use) {
             this.usingMAS = true;
-            this.MASClient = new MASClient(config);
+            this.MASClient = new MASClient(this.config);
         }
 
         // Setup bot.
+        this.localpart = new UserID(this.clientUserId).localpart;
 
         matrixEmitter.on("room.event", this.handleEvent.bind(this));
 
@@ -248,312 +323,186 @@ export class Mjolnir {
             if (this.config.forwardMentionsToManagementRoom && this.protectedRoomsTracker.isProtectedRoom(roomId)) {
                 if (eventContent?.["m.mentions"]?.user_ids?.includes(this.clientUserId)) {
                     LogService.info("Mjolnir", `Bot mentioned ${roomId} by ${event.sender}`);
-                    // Bot mentioned in a public room.
-                    if (this.lastBotMentionForRoomId.has(roomId)) {
-                        // Mentioned too recently, ignore.
-                        return;
-                    }
+                    const permalink = Permalinks.forEvent(roomId, eventId, [new URL(this.config.homeserverUrl).hostname]);
                     this.lastBotMentionForRoomId.set(roomId, true);
-                    const permalink = Permalinks.forEvent(roomId, eventId, [new UserID(this.clientUserId).domain]);
                     await this.managementRoomOutput.logMessage(
                         LogLevel.INFO,
                         "Mjolnir",
-                        `Bot mentioned ${roomId} by ${event.sender} in ${permalink}`,
-                        roomId,
+                        `Received a mention from ${sender} in ${roomId}: ${originalBody} - ${permalink}`,
                     );
                 }
             }
-
-            // Important: Beyond this point we're treating a message as a powerful command.
-            if (roomId !== this.managementRoomId) {
-                return;
-            }
-
-            const prefixes = [
-                COMMAND_PREFIX,
-                this.localpart + ":",
-                this.displayName + ":",
-                (await client.getUserId()) + ":",
-                this.localpart + " ",
-                this.displayName + " ",
-                (await client.getUserId()) + " ",
-                ...config.commands.additionalPrefixes.map((p) => `!${p}`),
-                ...config.commands.additionalPrefixes.map((p) => `${p}:`),
-                ...config.commands.additionalPrefixes.map((p) => `${p} `),
-                ...config.commands.additionalPrefixes,
-            ];
-            if (config.commands.allowNoPrefix) prefixes.push("!");
-
-            const sanitizedBody = originalBody.toLowerCase().trim();
-
-            const prefixUsed = prefixes.find((p) => sanitizedBody.startsWith(p.toLowerCase()));
-            if (!prefixUsed) return;
-
-            // rewrite the event body to make the prefix uniform (in case the bot has spaces in its display name)
-            let restOfBody = originalBody.trim().substring(prefixUsed.length);
-            if (!restOfBody.startsWith(" ")) restOfBody = ` ${restOfBody}`;
-
-            eventContent.body = COMMAND_PREFIX + restOfBody;
-            LogService.info("Mjolnir", `Command being run by ${sender}: ${eventContent.body}`);
-
-            client.sendReadReceipt(roomId, eventId).catch((e: any) => {
-                LogService.warn("Mjolnir", "Error sending read receipt: ", e);
-            });
-            return handleCommand(roomId, event, this);
-        });
-
-        matrixEmitter.on("room.join", (roomId: string, event: any) => {
-            LogService.info("Mjolnir", `Joined ${roomId}`);
-            return this.resyncJoinedRooms();
-        });
-        matrixEmitter.on("room.leave", (roomId: string, event: any) => {
-            LogService.info("Mjolnir", `Left ${roomId}`);
-            return this.resyncJoinedRooms();
-        });
-
-        client
-            .getUserId()
-            .then((userId) => {
-                this.localpart = userId.split(":")[0].substring(1);
-                return client.getUserProfile(userId);
-            })
-            .then((profile) => {
-                if (profile["displayname"]) {
-                    this.displayName = profile["displayname"];
+            if (roomId === this.managementRoomId) {
+                const body = originalBody.trim();
+                if (body.startsWith(COMMAND_PREFIX)) {
+                    await handleCommand(roomId, new MatrixEvent(event), this);
                 }
-            });
-
-        // Setup Web APIs
-        console.log("Creating Web APIs");
-        this.reportManager = new ReportManager(this);
-        this.webapis = new WebAPIs(this.reportManager, this.config, this.ruleServer);
-        if (config.pollReports) {
-            this.reportPoller = new ReportPoller(this, this.reportManager);
-        }
-        this.openMetrics = new OpenMetrics(this.config);
-        // Setup join/leave listener
-        this.roomJoins = new RoomMemberManager(this.matrixEmitter);
-        this.taskQueue = new ThrottlingQueue(this, config.backgroundDelayMS);
-
-        this.protectionManager = new ProtectionManager(this);
-
-        this.managementRoomOutput = new ManagementRoomOutput(managementRoomId, client, config);
-
-        this.moderators = new ModCache(client, matrixEmitter, managementRoomId);
-        this.protectedRoomsTracker = new ProtectedRoomsSet(
-            client,
-            clientUserId,
-            managementRoomId,
-            this.managementRoomOutput,
-            this.protectionManager,
-            config,
-            this.moderators,
-        );
+            }
+        });
     }
 
     public get state(): string {
         return this.currentState;
     }
 
-    /**
-     * Returns the handler to flag a user for redaction, removing any future messages that they send.
-     * Typically this is used by the flooding or image protection on users that have not been banned from a list yet.
-     * It cannot used to redact any previous messages the user has sent, in that cas you should use the `EventRedactionQueue`.
-     */
     public get unlistedUserRedactionHandler(): UnlistedUserRedactionQueue {
         return this.unlistedUserRedactionQueue;
     }
 
-    /**
-     * Start Mjölnir.
-     */
     public async start() {
-        LogService.info("Mjolnir", "Starting Mjolnir instance");
+        this.currentState = STATE_CHECKING_PERMISSIONS;
+        await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir", "Starting up, please wait...");
+
+        // Ensure we can actually do things
+        const anEvent = (
+            await this.client.getRoomState(this.managementRoomId)
+        ).find(e => e['type'] === 'm.room.name');
+        const powerLevels = await this.client.getRoomStateEvent(this.managementRoomId, "m.room.power_levels", "");
+        if (powerLevels['kick'] > (powerLevels['users_default'] || 0)) {
+            LogService.warn("Mjolnir", `Cannot kick users in the management room. This may be because this Mjolnir is not an admin. Some commands may not work.`);
+        }
+        if (powerLevels['ban'] > (powerLevels['users_default'] || 0)) {
+            LogService.warn("Mjolnir", `Cannot ban users in the management room. This may be because this Mjolnir is not an admin. Some commands may not work.`);
+        }
         try {
-            // Start the web server.
-            console.log("Starting web server");
+            // Test permission by attempting to redact an event that doesn't exist.
+            await this.client.redactEvent(this.managementRoomId, anEvent['event_id'] + 'not-a-real-event-id');
+        } catch (e) {
+            if (e.body?.errcode === 'M_FORBIDDEN') {
+                LogService.warn("Mjolnir", `Cannot redact messages in the management room. This may be because this Mjolnir is not an admin. Some commands may not work.`);
+            } else {
+                LogService.warn("Mjolnir", "Error checking permissions within the management room", extractRequestError(e));
+            }
+        }
+
+        this.displayName = (await this.client.getProfileInfo(this.clientUserId)).displayname || this.localpart;
+
+        // Start the web server if enabled
+        if (this.config.web.enabled) {
             await this.webapis.start();
+        }
 
-            if (this.reportPoller) {
-                let reportPollSetting: { from: number } = { from: 0 };
-                try {
-                    reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
-                } catch (err) {
-                    if (err.body?.errcode !== "M_NOT_FOUND") {
-                        throw err;
-                    } else {
-                        this.managementRoomOutput.logMessage(
-                            LogLevel.INFO,
-                            "Mjolnir@startup",
-                            "report poll setting does not exist yet",
-                        );
-                    }
+        if (this.ruleServer) {
+            this.ruleServer.start(this.config.web.port, this.config.web.host, this.config.homeserverUrl);
+        }
+
+        if (this.config.health.openMetrics.enabled) {
+            this.openMetrics.start();
+        }
+
+        this.currentState = STATE_SYNCING;
+        // noinspection ES6MissingAwait - this is intentional.
+        this.matrixEmitter.start().then(
+            async () => {
+                // This is a little complicated because we need to sync each list and then sync the rooms.
+                // The protection manager depends on the policy list manager.
+                // The policy list manager depends on the protected rooms config.
+                await this.protectedRoomsConfig.load();
+                await this.moderators.start();
+                await this.policyListManager.start();
+                await this.protectionManager.start();
+                await this.pluginManager.start();
+                await this.resyncJoinedRooms(false);
+                this.reportManager.start();
+                if (this.reportPoller) {
+                    this.reportPoller.start();
                 }
-                this.reportPoller.start(reportPollSetting.from);
-            }
-            await this.openMetrics.start();
-            // Load the state.
-            this.currentState = STATE_CHECKING_PERMISSIONS;
 
-            await this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir@startup", "Loading protected rooms...");
-            await this.protectedRoomsConfig.loadProtectedRoomsFromConfig(this.config);
-            await this.protectedRoomsConfig.loadProtectedRoomsFromAccountData();
-            this.protectedRoomsConfig.getExplicitlyProtectedRooms().forEach(this.protectRoom, this);
-            // We have to build the policy lists before calling `resyncJoinedRooms` otherwise mjolnir will try to protect
-            // every policy list we are already joined to, as mjolnir will not be able to distinguish them from normal rooms.
-            await this.policyListManager.init();
-            await this.resyncJoinedRooms(false);
-            await this.protectionManager.start();
-
-            if (this.config.verifyPermissionsOnStartup) {
-                await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Checking permissions...");
-                await this.protectedRoomsTracker.verifyPermissions();
-            }
-
-            // Start the bot.
-            await this.matrixEmitter.start();
-
-            this.currentState = STATE_SYNCING;
-            if (this.config.syncOnStartup) {
-                await this.managementRoomOutput.logMessage(LogLevel.INFO, "Mjolnir@startup", "Syncing lists...");
-                await this.protectedRoomsTracker.syncLists();
-            }
-
-            this.currentState = STATE_RUNNING;
-
-            await this.managementRoomOutput.logMessage(
-                LogLevel.INFO,
-                "Mjolnir@startup",
-                "Startup complete. Now monitoring rooms.",
-            );
-            // update protected rooms set
-            this.protectedRoomsTracker.isAdmin = await this.isSynapseAdmin();
-        } catch (err) {
-            try {
-                LogService.error("Mjolnir", "Error during startup:");
-                LogService.error("Mjolnir", extractRequestError(err));
-                this.stop();
-                await this.managementRoomOutput.logMessage(
-                    LogLevel.ERROR,
-                    "Mjolnir@startup",
-                    "Startup failed due to error - see console",
-                );
-            } catch (e) {
-                LogService.error("Mjolnir", `Failed to report startup error to the management room: ${e}`);
-            }
-            throw err;
-        }
+                this.currentState = STATE_RUNNING;
+                await this.client.setDisplayName(this.displayName || this.localpart);
+                await this.client.setAvatarUrl(this.config.avatarUrl);
+                if (this.config.statusReportIntervalMinutes > 0) {
+                    const statusReporting = () => {
+                        this.managementRoomOutput.logMessage(LogLevel.DEBUG, "Mjolnir", "Status report:"
+                            + ` I am currently in ${this.roomJoins.allJoinedRooms.length} rooms.`
+                            + ` I am protecting ${this.protectedRoomsTracker.protectedRooms.length} rooms.`
+                            + ` There are ${this.policyListManager.lists.length} lists being watched.`
+                        );
+                    };
+                    setInterval(statusReporting, this.config.statusReportIntervalMinutes * 60 * 1000);
+                }
+            },
+            (err) => {
+                LogService.error("Mjolnir", "Error starting client. Exiting.", err);
+                process.exit(1);
+            },
+        );
     }
 
-    /**
-     * Stop Mjolnir from syncing and processing commands.
-     */
     public stop() {
-        LogService.info("Mjolnir", "Stopping Mjolnir...");
         this.matrixEmitter.stop();
-        this.webapis.stop();
-        this.reportPoller?.stop();
-        this.openMetrics.stop();
-        this.moderators.stop();
-        const protections = this.protectionManager.protections;
-        const linkPro = protections.get("FirstMessageIsLinkProtection");
-        if (linkPro) {
-            linkPro.stop();
+        if (this.config.web.enabled) {
+            this.webapis.stop();
         }
     }
 
-    /**
-     * Rooms that mjolnir is configured to explicitly protect.
-     * Do not use to access all of the rooms that mjolnir protects.
-     * FIXME: In future ProtectedRoomsSet on this mjolnir should not be public and should also be accessed via a delegator method.
-     */
     public get explicitlyProtectedRooms(): string[] {
-        return this.protectedRoomsConfig.getExplicitlyProtectedRooms();
+        // We need to use the raw config here, otherwise we're just reading back the things
+        // we've decided to protect.
+        return this.protectedRoomsConfig.getProtectedRooms();
     }
 
-    /**
-     * Explicitly protect this room, adding it to the account data.
-     * Should NOT be used to protect a room to implement e.g. `config.protectAllJoinedRooms`,
-     * use `protectRoom` instead.
-     * @param roomId The room to be explicitly protected by mjolnir and persisted in config.
-     */
     public async addProtectedRoom(roomId: string) {
         await this.protectedRoomsConfig.addProtectedRoom(roomId);
-        this.protectRoom(roomId);
     }
 
-    /**
-     * Protect the room, but do not persist it to the account data.
-     * @param roomId The room to protect.
-     */
     private protectRoom(roomId: string): void {
         this.protectedRoomsTracker.addProtectedRoom(roomId);
         this.roomJoins.addRoom(roomId);
+        this.protectionManager.addRoom(roomId);
     }
 
-    /**
-     * Remove a room from the explicitly protect set of rooms that is persisted to account data.
-     * Should NOT be used to remove a room that we have left, e.g. when implementing `config.protectAllJoinedRooms`,
-     * use `unprotectRoom` instead.
-     * @param roomId The room to remove from account data and stop protecting.
-     */
     public async removeProtectedRoom(roomId: string) {
         await this.protectedRoomsConfig.removeProtectedRoom(roomId);
-        this.unprotectRoom(roomId);
     }
 
-    /**
-     * Unprotect a room.
-     * @param roomId The room to stop protecting.
-     */
     private unprotectRoom(roomId: string): void {
-        this.roomJoins.removeRoom(roomId);
         this.protectedRoomsTracker.removeProtectedRoom(roomId);
+        this.protectionManager.removeRoom(roomId);
+        // We don't tell the roomJoins to leave because we might be in there for other reasons.
     }
 
-    /**
-     * Resynchronize the protected rooms with rooms that the mjolnir user is joined to.
-     * This is to implement `config.protectAllJoinedRooms` functionality.
-     * @param withSync Whether to synchronize all protected rooms with the watched policy lists afterwards.
-     */
     private async resyncJoinedRooms(withSync = true): Promise<void> {
-        if (!this.config.protectAllJoinedRooms) return;
-
-        // We filter out all policy rooms so that we only protect ones that are
-        // explicitly protected, so that we don't try to protect lists that we are just watching.
         const filterOutManagementAndPolicyRooms = (roomId: string) => {
-            const policyListIds = this.policyListManager.lists.map((list) => list.roomId);
-            return roomId !== this.managementRoomId && !policyListIds.includes(roomId);
+            return roomId !== this.managementRoomId && !this.policyListManager.lists.find(list => list.roomId === roomId);
         };
 
-        const joinedRoomIdsToProtect = new Set([
-            ...(await this.client.getJoinedRooms()).filter(filterOutManagementAndPolicyRooms),
-            // We do this specifically so policy lists that have been explicitly marked as protected
-            // will be protected.
-            ...this.protectedRoomsConfig.getExplicitlyProtectedRooms(),
-        ]);
-        const previousRoomIdsProtecting = new Set(this.protectedRoomsTracker.getProtectedRooms());
-        // find every room that we have left (since last time)
-        for (const roomId of previousRoomIdsProtecting.keys()) {
-            if (!joinedRoomIdsToProtect.has(roomId)) {
-                // Then we have left this room.
-                this.unprotectRoom(roomId);
-            }
+        if (withSync) {
+            await this.matrixEmitter.start();
         }
-        // find every room that we have joined (since last time).
-        for (const roomId of joinedRoomIdsToProtect.keys()) {
-            if (!previousRoomIdsProtecting.has(roomId)) {
-                // Then we have joined this room
-                this.protectRoom(roomId);
-            }
+        const joinedRooms = (await this.client.getJoinedRooms()).filter(filterOutManagementAndPolicyRooms);
+        for (const roomId of joinedRooms) {
+            this.roomJoins.addRoom(roomId);
         }
 
-        if (withSync) {
-            await this.protectedRoomsTracker.syncLists();
+        const protectedRooms = this.protectedRoomsConfig.getProtectedRooms();
+        for (const protectedRoomId of protectedRooms) {
+            this.protectRoom(protectedRoomId);
+        }
+
+        if (this.config.protectAllJoinedRooms) {
+            for (const roomId of joinedRooms) {
+                if (!protectedRooms.includes(roomId)) {
+                    this.protectRoom(roomId);
+                }
+            }
         }
     }
 
     private async handleEvent(roomId: string, event: any) {
+        // We have to handle this first, otherwise we cry.
+        if (roomId === this.managementRoomId) {
+            const isMention =
+                event.type === "m.room.message" &&
+                (
+                    (event.content?.formatted_body && event.content.formatted_body.includes(`https://matrix.to/#/${this.clientUserId}`))
+                    || (event.content?.body && (event.content.body.includes(this.localpart) || event.content.body.includes(this.displayName)))
+                )
+            if (isMention) {
+                this.lastBotMentionForRoomId.set(this.managementRoomId, true);
+            }
+        }
+
         // Check for UISI errors
         if (roomId === this.managementRoomId) {
             if (event["type"] === "m.room.message" && event["content"] && event["content"]["body"]) {
@@ -578,113 +527,113 @@ export class Mjolnir {
             }
         }
 
+        if (await this.pluginManager.handleEvent(roomId, event)) {
+            return;
+        }
+        if (await this.protectionManager.handleEvent(this, roomId, event)) {
+            return;
+        }
+
         if (event.sender !== this.clientUserId) {
             this.protectedRoomsTracker.handleEvent(roomId, event);
         }
     }
 
     public async isSynapseAdmin(): Promise<boolean> {
+        // We can do this by checking if we can request /_synapse/admin/v1/users
+        // using our access token. It's a bit of a hack, but it is what synapse-admin does.
+        if (!this.config.adminApi.host) {
+            throw new Error("Admin API host is not set");
+        }
         try {
-            if (this.usingMAS) {
-                return await this.MASClient.UserIsMASAdmin(this.clientUserId);
-            } else {
-                const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
-                const response = await this.client.doRequest("GET", endpoint);
-                return response["admin"];
-            }
+            await this.client.doRequest("GET", "/_synapse/admin/v1/users", {
+                limit: 1
+            });
+            return true;
         } catch (e) {
-            LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
-            LogService.error("Mjolnir", extractRequestError(e));
-            return false; // assume not
+            LogService.info("Mjolnir", "Error checking for synapse admin", extractRequestError(e));
+            if (e.body?.errcode === 'M_FORBIDDEN' || e.body?.errcode === 'M_UNKNOWN_TOKEN') {
+                return false;
+            } else if (e.body?.errcode === 'M_UNKNOWN') {
+                // This is what synapse returns when the endpoint doesn't exist.
+                return false;
+            } else {
+                throw e;
+            }
         }
     }
 
     public async deactivateSynapseUser(userId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v1/deactivate/${userId}`;
-        return await this.client.doRequest("POST", endpoint);
+        return this.client.doRequest("POST", `/_synapse/admin/v1/users/${userId}/deactivate`);
     }
 
     public async suspendSynapseUser(userId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
-        const body = { suspend: true };
-        return await this.client.doRequest("PUT", endpoint, null, body);
+        return this.client.doRequest("POST", `/_synapse/admin/v2/users/${userId}/suspend`);
     }
 
     public async unsuspendSynapseUser(userId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v1/suspend/${userId}`;
-        const body = { suspend: false };
-        return await this.client.doRequest("PUT", endpoint, null, body);
+        return this.client.doRequest("POST", `/_synapse/admin/v2/users/${userId}/unsuspend`);
     }
 
     public async lockSynapseUser(userId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v2/users/${userId}`;
-        const body = { locked: true };
-        return await this.client.doRequest("PUT", endpoint, null, body);
+        return this.client.doRequest(
+            "PUT",
+            `/_synapse/admin/v1/users/${userId}/login`,
+            undefined,
+            { "type": "m.login.password", "locked": true }
+        )
     }
 
     public async unlockSynapseUser(userId: string): Promise<any> {
-        const endpoint = `/_synapse/admin/v2/users/${userId}`;
-        const body = { locked: false };
-        return await this.client.doRequest("PUT", endpoint, null, body);
+        return this.client.doRequest(
+            "PUT",
+            `/_synapse/admin/v1/users/${userId}/login`,
+            undefined,
+            { "type": "m.login.password", "locked": false }
+        )
     }
 
     public async shutdownSynapseRoom(roomId: string, message?: string): Promise<any> {
-        message =
-            message ??
-            "A room you were invited to or participating in is not permitted on this server and has been removed. This room is a notification of that change - you may safely leave this room.";
-        const endpoint = `/_synapse/admin/v1/rooms/${roomId}`;
-        return await this.client.doRequest("DELETE", endpoint, null, {
-            new_room_user_id: await this.client.getUserId(),
+        return await this.client.doRequest("POST", `/_synapse/admin/v1/rooms/${roomId}/shutdown`, null, {
+            new_room_user_id: this.clientUserId,
             block: true,
-            message: message,
-            room_name: "Room removed",
+            message: message || "Room shut down by Mjolnir",
         });
     }
 
-    /**
-     * Make a user administrator via the Synapse Admin API
-     * @param roomId the room where the user (or the bot) shall be made administrator.
-     * @param userId optionally specify the user mxID to be made administrator, if not specified the bot mxID will be used.
-     * @returns The list of errors encountered, for reporting to the management room.
-     */
     public async makeUserRoomAdmin(roomId: string, userId?: string): Promise<any> {
-        try {
-            const endpoint = `/_synapse/admin/v1/rooms/${roomId}/make_room_admin`;
-            return await this.client.doRequest("POST", endpoint, null, {
-                user_id: userId || (await this.client.getUserId()) /* if not specified make the bot administrator */,
-            });
-        } catch (e) {
-            return extractRequestError(e);
+        const target = userId ?? this.clientUserId;
+        const powerLevels = await this.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
+        const currentPower = powerLevels.users?.[target] ?? powerLevels.users_default ?? 0;
+        const adminPower = powerLevels.events?.['m.room.power_levels'] ?? powerLevels.state_default ?? 50;
+
+        if (currentPower >= adminPower) {
+            return; // Already admin
         }
+
+        powerLevels.users[target] = adminPower;
+        await this.client.sendStateEvent(roomId, "m.room.power_levels", "", powerLevels);
     }
 
-    /**
-     * Mark a piece of media as quarantined.
-     * @param mxc The MXC to quarantine.
-     */
     public async quarantineMedia(mxc: MXCUrl) {
-        try {
-            const endpoint = `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(mxc.domain)}/${encodeURIComponent(mxc.mediaId)}`;
-            return await this.client.doRequest("POST", endpoint, null, {});
-        } catch (e) {
-            LogService.error("Mjolnir", "Could not quarantine media", mxc);
-            LogService.error("Mjolnir", extractRequestError(e));
-        }
+        const [serverName, mediaId] = mxc.parts;
+        return await this.client.doRequest("POST", `/_synapse/admin/v1/media/${serverName}/${mediaId}/quarantine`);
     }
 
-    /**
-     * Quarantine all media uploaded by a given user.
-     * @param userId
-     * @returns The number of media items quarantined.
-     */
     public async quarantineMediaForUser(userId: string): Promise<number> {
-        try {
-            const endpoint = `/_synapse/admin/v1/user/${encodeURIComponent(userId)}/media/quarantine`;
-            const data = await this.client.doRequest("POST", endpoint, null, {});
-            return data.num_quarantined;
-        } catch (e) {
-            LogService.error("Mjolnir", "Could not quarantine media for user", userId);
-            throw extractRequestError(e);
+        const beforeTs = new Date().getTime();
+        const data = await this.client.doRequest("GET", `/_synapse/admin/v1/users/${userId}/media`, { before_ts: beforeTs });
+
+        const mediaIds = (data.media || []).filter(m => !m.quarantined).map(m => m.media_id);
+        for (const mediaId of mediaIds) {
+            await this.quarantineMedia(new MXCUrl(`mxc://${data.media_origin}/${mediaId}`));
         }
+
+        return mediaIds.length;
+    }
+
+    public async findAssociatedRoom(alias: string): Promise<string> {
+        const response = await this.client.resolveRoom(alias);
+        return response.room_id;
     }
 }

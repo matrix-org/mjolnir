@@ -18,7 +18,7 @@ import expect from "expect";
 import { Mjolnir } from "../../src/Mjolnir";
 import { DEFAULT_LIST_EVENT_TYPE } from "../../src/commands/SetDefaultBanListCommand";
 import { parseArguments } from "../../src/commands/UnbanBanCommand";
-import { read as configRead } from "../../src/config";
+import { read as configRead } from "../../src/config/config";
 import { RULE_ROOM, RULE_SERVER, RULE_USER } from "../../src/models/ListRule";
 
 function createTestMjolnir(defaultShortcode: string | null = null): Mjolnir {
@@ -32,11 +32,11 @@ function createTestMjolnir(defaultShortcode: string | null = null): Mjolnir {
             throw new Error(`Unknown event type ${eventType}, expected ${DEFAULT_LIST_EVENT_TYPE}`);
         },
     };
-    return <Mjolnir>{
+    return {
         client,
         config,
         policyListManager: {},
-    };
+    } as Mjolnir;
 }
 
 function createFakeEvent(command: string): any {
@@ -54,7 +54,7 @@ describe("UnbanBanCommand", () => {
     describe("parseArguments", () => {
         it("should be able to detect servers", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -71,7 +71,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect servers with ban reasons", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -88,7 +88,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect servers with globs", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -105,7 +105,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect servers with the type specified", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -122,7 +122,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect room IDs", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -139,7 +139,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect room IDs with ban reasons", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -156,7 +156,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect room IDs with globs", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -173,7 +173,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect room aliases", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -190,7 +190,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect room aliases with ban reasons", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -207,7 +207,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect room aliases with globs", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -224,7 +224,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect rooms with the type specified", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -241,7 +241,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect user IDs", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -258,7 +258,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect user IDs with ban reasons", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -275,7 +275,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect user IDs with globs", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -292,7 +292,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to detect user IDs with the type specified", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -309,7 +309,7 @@ describe("UnbanBanCommand", () => {
 
         it("should be able to parse matrix.to links", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -354,7 +354,7 @@ describe("UnbanBanCommand", () => {
 
         it("should error if wildcards used without --force", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 expect(content).toBeDefined();
                 expect(content["body"]).toContain("Wildcard bans require an additional `--force` argument to confirm");
@@ -368,7 +368,7 @@ describe("UnbanBanCommand", () => {
 
         it("should have correct ban reason with --force after", async () => {
             const mjolnir = createTestMjolnir();
-            (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+            (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
             mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                 throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
             };
@@ -386,7 +386,7 @@ describe("UnbanBanCommand", () => {
         describe("[without default list]", () => {
             it("should error if no list (with type) is specified", async () => {
                 const mjolnir = createTestMjolnir();
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     expect(content).toBeDefined();
                     expect(content["body"]).toContain("No ban list matching that shortcode was found");
@@ -400,7 +400,7 @@ describe("UnbanBanCommand", () => {
 
             it("should error if no list (without type) is specified", async () => {
                 const mjolnir = createTestMjolnir();
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     expect(content).toBeDefined();
                     expect(content["body"]).toContain("No ban list matching that shortcode was found");
@@ -414,7 +414,7 @@ describe("UnbanBanCommand", () => {
 
             it("should not error if a list (with type) is specified", async () => {
                 const mjolnir = createTestMjolnir();
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -431,7 +431,7 @@ describe("UnbanBanCommand", () => {
 
             it("should not error if a list (without type) is specified", async () => {
                 const mjolnir = createTestMjolnir();
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -448,7 +448,7 @@ describe("UnbanBanCommand", () => {
 
             it("should not error if a list (with type reversed) is specified", async () => {
                 const mjolnir = createTestMjolnir();
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -467,7 +467,7 @@ describe("UnbanBanCommand", () => {
         describe("[with default list]", () => {
             it("should use the default list if no list (with type) is specified", async () => {
                 const mjolnir = createTestMjolnir("test");
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -484,7 +484,7 @@ describe("UnbanBanCommand", () => {
 
             it("should use the default list if no list (without type) is specified", async () => {
                 const mjolnir = createTestMjolnir("test");
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -501,7 +501,7 @@ describe("UnbanBanCommand", () => {
 
             it("should use the specified list if a list (with type) is specified", async () => {
                 const mjolnir = createTestMjolnir("test");
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -518,7 +518,7 @@ describe("UnbanBanCommand", () => {
 
             it("should use the specified list if a list (without type) is specified", async () => {
                 const mjolnir = createTestMjolnir("test");
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
@@ -535,7 +535,7 @@ describe("UnbanBanCommand", () => {
 
             it("should not error if a list (with type reversed) is specified", async () => {
                 const mjolnir = createTestMjolnir("test");
-                (<any>mjolnir).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
+                (mjolnir as any).policyListManager.lists = [{ listShortcode: "test" }, { listShortcode: "other" }];
                 mjolnir.client.sendMessage = (roomId: string, content: any): Promise<string> => {
                     throw new Error("sendMessage should not have been called: " + JSON.stringify(content));
                 };
