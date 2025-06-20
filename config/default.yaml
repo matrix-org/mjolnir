@@ -286,3 +286,15 @@ nsfwSensitivity: .6
 #  url: "https://auth.your-auth.com"
 #  clientId: 'SOMEID'
 #  clientSecret: 'SoMEseCreT'
+
+# HMA (Hash-Match-Action) service configuration for CSAM detection
+# This plugin hashes media content (images, videos, files, audio, stickers) and submits
+# MD5, SHA1, SHA256, and PDQ hashes to an external service for comparison against known CSAM databases
+hma:
+  # URL of the HMA service endpoint (leave empty to disable)
+  # Example: "https://hma-service.example.com/api/v1/check"
+  url: ""
+  
+  # Whether HMA scanning is enabled (default: false)
+  # Note: Even if enabled, scanning will not occur if url is empty
+  enabled: false
