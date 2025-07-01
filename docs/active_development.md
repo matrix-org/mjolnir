@@ -33,7 +33,7 @@ With the core integration blocked, the focus shifted to fixing the test environm
 
 With a stable environment and passing tests, development of the HMA plugin itself was swift and straightforward. The `HMAPlugin.ts` file was created, the media hashing logic was implemented using `crypto`, and the communication with the external HMA service was added using `axios`. The plugin is now complete and ready for real-world use.
 
-#### Phase 4: Critical Issue Resolution - Priority 1 Fixes (December 2024)
+#### Phase 4: Critical Issue Resolution - Priority 1 Fixes (H2 2025?)
 
 **Post-Implementation Evaluation Revealed Major Issues:**
 
