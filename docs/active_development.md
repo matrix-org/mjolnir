@@ -58,7 +58,7 @@ After comprehensive code review, several critical flaws were identified in the i
 3. **🔧 Media Type Coverage (SCOPE LIMITATION)**
    - **Problem:** Only processed `m.image` messages, missing videos, files, audio, stickers
    - **Solution:** Expanded to handle all media types: `["m.image", "m.video", "m.file", "m.audio", "m.sticker"]`
-   - **Impact:** Comprehensive CSAM protection across all media formats
+   - **Impact:** Comprehensive CSAM protection across all media formats. NOTE: HMA only supports images and videos.
 
 4. **🔧 Configuration Integration (DEPLOYMENT BLOCKER)**
    - **Problem:** HMA config existed in TypeScript but missing from YAML configuration files
