@@ -75,3 +75,4 @@ mjolnir.egg-info/
 
 # VS
 .vs
+.env

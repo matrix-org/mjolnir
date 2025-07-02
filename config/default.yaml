@@ -7,7 +7,7 @@ homeserverUrl: "https://matrix-client.matrix.org"
 rawHomeserverUrl: "https://matrix-client.matrix.org"
 
 # Matrix Access Token to use
-accessToken: "mat_AUyLaErvY4sdNVufNb8K5YjJpbandP_4qe202"
+accessToken: "${MATRIX_ACCESS_TOKEN}"
 
 # Options related to native encryption
 encryption:

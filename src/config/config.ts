@@ -19,6 +19,9 @@ import { load } from "js-yaml";
 import { MatrixClient, LogService } from "@vector-im/matrix-bot-sdk";
 import { IHealthConfig } from "./IHealthConfig";
 import { extend } from "lodash";
+import * as dotenv from "dotenv";
+dotenv.config();
+
 
 export interface IConfig {
     health: IHealthConfig,
@@ -175,6 +178,28 @@ export const defaultConfig: IConfig = {
 export function read(configPath = "config/production.yaml"): IConfig {
     const file = fs.readFileSync(configPath, "utf8");
     const loadedConfig = load(file) as any;
+
+    // Inject env overrides (optional and safe)
+    if (process.env.MATRIX_ACCESS_TOKEN) {
+        loadedConfig.accessToken = process.env.MATRIX_ACCESS_TOKEN;
+    }
+
+    if (process.env.HOMESERVER_URL) {
+        loadedConfig.homeserverUrl = process.env.HOMESERVER_URL;
+    }
+
+    if (process.env.RAW_HOMESERVER_URL) {
+        loadedConfig.rawHomeserverUrl = process.env.RAW_HOMESERVER_URL;
+    }
+
+    if (process.env.MANAGEMENT_ROOM) {
+        loadedConfig.managementRoom = process.env.MANAGEMENT_ROOM;
+    }
+
+    if (process.env.HMA_URL) {
+        loadedConfig.hma = { ...(loadedConfig.hma || {}), url: process.env.HMA_URL };
+    }
+
     return extend({}, defaultConfig, loadedConfig);
 }
 
