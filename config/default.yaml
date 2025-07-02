@@ -1,25 +1,25 @@
 # Endpoint URL that Mjolnir uses to interact with the matrix homeserver (client-server API),
 # set this to the pantalaimon URL if you're using that.
-homeserverUrl: "https://matrix.org"
+homeserverUrl: "https://matrix-client.matrix.org"
 
 # Endpoint URL that Mjolnir could use to fetch events related to reports (client-server API and /_synapse/),
 # only set this to the public-internet homeserver client API URL, do NOT set this to the pantalaimon URL.
-rawHomeserverUrl: "https://matrix.org"
+rawHomeserverUrl: "https://matrix-client.matrix.org"
 
 # Matrix Access Token to use
-accessToken: "YOUR_TOKEN_HERE"
+accessToken: "mat_AUyLaErvY4sdNVufNb8K5YjJpbandP_4qe202"
 
 # Options related to native encryption
 encryption:
   # whether to use native encryption in mjolnir, rather than using pantalaimon as a proxy
   # note that if encryption is enabled here, pantaliamon must be disabled, and vice versa
-  use: true
+  use: false
 
   # the username to log in with
-  username: "mjolnir"
+  username: "hma-test:matrix.org"
 
   # the password to log in with
-  password: "password"
+  password: "matrix-hma-test"
 
 # Options related to Pantalaimon (https://github.com/matrix-org/pantalaimon)
 # Note that this option is now deprecated as native encryption is now supported in mjolnir,
@@ -50,7 +50,7 @@ autojoinOnlyIfManager: true
 
 # If `autojoinOnlyIfManager` is false, only the members in this space can invite
 # the bot to new rooms.
-acceptInvitesFromSpace: "!example:example.org"
+acceptInvitesFromSpace: "#hmatest:matrix.org"
 
 # Whether Mjolnir should report ignored invites to the management room (if autojoinOnlyIfManager is true).
 recordIgnoredInvites: false
@@ -63,7 +63,7 @@ recordIgnoredInvites: false
 #
 # Note: By default, Mjolnir is fairly verbose - expect a lot of messages in this room.
 # (see verboseLogging to adjust this a bit.)
-managementRoom: "#moderators:example.org"
+managementRoom: "!xxUTkdiszaFvYkvLLE:matrix.org"
 
 # Forward any messages mentioning the bot user to the mangement room. Repeated mentions within
 # a 10 minute period are ignored.
@@ -89,7 +89,7 @@ verifyPermissionsOnStartup: true
 
 # Whether or not Mjolnir should actually apply bans and policy lists,
 # turn on to trial some untrusted configuration or lists.
-noop: false
+noop: true
 
 # Whether Mjolnir should check member lists quicker (by using a different endpoint),
 # keep in mind that enabling this will miss invited (but not joined) users.
@@ -111,6 +111,7 @@ fasterMembershipChecks: false
 automaticallyRedactForReasons:
   - "spam"
   - "advertising"
+  - "match"
 
 # A list of rooms to protect. Mjolnir will add this to the list it knows from its account data.
 #
@@ -119,7 +120,8 @@ automaticallyRedactForReasons:
 #
 # Note: These must be matrix.to URLs
 protectedRooms:
-  - "https://matrix.to/#/#yourroom:example.org"
+  - "https://matrix.to/#/!jPaVErgCWehLLZJHhc:matrix.org"
+  - "https://matrix.to/#/!ardbEWZMFntqYIotcm:matrix.org"
 
 # Whether or not to add all joined rooms to the "protected rooms" list
 # (excluding the management room and watched policy list rooms, see below).
@@ -132,7 +134,7 @@ protectedRooms:
 #
 # Note: Ban list rooms the bot is watching but didn't create will not be protected.
 # Explicitly add these rooms as a protected room list if you want them protected.
-protectAllJoinedRooms: false
+protectAllJoinedRooms: true
 
 # Increase this delay to have Mjölnir wait longer between two consecutive backgrounded
 # operations. The total duration of operations will be longer, but the homeserver won't
@@ -159,7 +161,7 @@ commands:
   # Note: Mjolnir can also be pinged by display name instead of having to use
   # the !mjolnir prefix. For example, "my_moderator_bot: ban @spammer:example.org"
   # will address only my_moderator_bot.
-  allowNoPrefix: false
+  allowNoPrefix: true
 
   # Any additional bot prefixes that Mjolnir will listen to. i.e. adding `mod` will allow `!mod help`.
   additionalPrefixes:
@@ -178,10 +180,10 @@ protections:
     #
     # WordList will ban users who use these words when first joining a room, so take caution when selecting them.
     words:
-      - "LoReM"
-      - "IpSuM"
-      - "DoLoR"
-      - "aMeT"
+      - "fox"
+      - "coyote"
+      - "eagle"
+      - "csam"
 
     # For how long (in minutes) the user is "new" to the WordList plugin.
     #
@@ -204,8 +206,8 @@ health:
     # Whether the healthz integration should be enabled (default false)
     enabled: false
 
-    # The port to expose the webserver on. Defaults to 8080.
-    port: 8080
+    # The port to expose the webserver on. Defaults to 8080, changed to 8888
+    port: 8888
 
     # The address to listen for requests on. Defaults to all addresses.
     address: "0.0.0.0"
@@ -241,8 +243,8 @@ web:
   # Whether to enable web APIs.
   enabled: false
 
-  # The port to expose the webserver on. Defaults to 8080.
-  port: 8080
+  # The port to expose the webserver on. Defaults to 8080, changed to 8888.
+  port: 8888
 
   # The address to listen for requests on. Defaults to only the current
   # computer.
@@ -291,10 +293,7 @@ nsfwSensitivity: .6
 # This plugin hashes media content (images, videos, files, audio, stickers) and submits
 # MD5, SHA1, SHA256, and PDQ hashes to an external service for comparison against known CSAM databases
 hma:
-  # URL of the HMA service endpoint (leave empty to disable)
-  # Example: "https://hma-service.example.com/api/v1/check"
-  url: ""
-  
-  # Whether HMA scanning is enabled (default: false)
-  # Note: Even if enabled, scanning will not occur if url is empty
-  enabled: false
+  # Replace this if you're using the plugin
+  enabled: true
+  endpoint: "http://localhost:8888/hma-mock"
+  pollIntervalSeconds: 30

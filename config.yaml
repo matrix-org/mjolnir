@@ -1,0 +1,23 @@
+# Matrix homeserver and bot credentials
+homeserverUrl: "https://matrix-client.matrix.org"
+accessToken: "mat_AUyLaErvY4sdNVufNb8K5YjJpbandP_4qe202"
+managementRoom: "!ardbEWZMFntqYIotcm:matrix.org"
+
+# Basic bot setup
+protectAllJoinedRooms: false
+autoJoinRooms: true
+useEncryption: false  # Set to true if using encrypted rooms (requires megolm backup and keys)
+logLevel: "info"
+
+# Enable the HMA plugin
+hma:
+  enabled: true
+  endpoint: "http://localhost:8080/hma-mock"  # or real HMA API URL
+  pollIntervalSeconds: 30  # how often to check for new HMA matches
+
+# Optional: Logging setup
+logFile: "mjolnir.log"
+
+# Optional: Ban lists (can be empty)
+banLists: []
+
