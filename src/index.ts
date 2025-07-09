@@ -81,8 +81,10 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
             if (accessToken) {
                 client = new MatrixClient(config.homeserverUrl, accessToken, storage, cryptoStorage);
             } else {
+                LogService.info("index", "Access token not found, logging in.");
                 const auth = new MatrixAuth(config.homeserverUrl);
                 const tempClient = await auth.passwordLogin(config.encryption.username, config.encryption.password);
+                storage.storeValue("access_token", tempClient.accessToken);
                 client = new MatrixClient(config.homeserverUrl, tempClient.accessToken, storage, cryptoStorage);
             }
             try {
