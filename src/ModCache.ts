@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
+import { LogService } from "@vector-im/matrix-bot-sdk";
 
 export class ModCache {
     private modRoomMembers: string[] = [];
@@ -59,7 +60,20 @@ export class ModCache {
      * Populate the cache by fetching moderation room members
      */
     public async populateCache() {
-        const members = await this.client.getJoinedRoomMembers(this.managementRoomId);
+        function delay(ms: number): Promise<void> {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        const members = await this.client.getJoinedRoomMembers(this.managementRoomId).catch(async (e) => {
+            if (e.body?.statusCode === 503) {
+                LogService.info("ModCache", "Retrying membership fetch due to 503 error");
+                await delay(1000);
+                return await this.client.getJoinedRoomMembers(this.managementRoomId);
+            } else {
+                return Promise.reject(e);
+            }
+        });
+
         this.modRoomMembers = [];
         members.forEach((member) => {
             if (!this.modRoomMembers.includes(member)) {
