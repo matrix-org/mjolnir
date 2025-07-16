@@ -221,7 +221,21 @@ class PolicyList extends EventEmitter {
                 `Creating a policy room with a type other than the policy room type is not supported, you probably don't want to do this.`,
             );
         }
-        const listRoomId = await client.createRoom(finalRoomCreateOptions);
+        // janky workaround for the fact that if a server's default room version is v12 the
+        // power_level_content_override will cause the createRoom request fail due to the creator
+        // (the bot) being in `users`, try again with creator removed
+        let listRoomId;
+        try {
+            listRoomId = await client.createRoom(finalRoomCreateOptions);
+        } catch (e) {
+            powerLevels.users = {
+                ...invite.reduce((users, mxid) => ({ ...users, [mxid]: 50 }), {}),
+            };
+            finalRoomCreateOptions.power_level_content_override = powerLevels;
+
+            listRoomId = await client.createRoom(finalRoomCreateOptions);
+        }
+
         return listRoomId;
     }
 
