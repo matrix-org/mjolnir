@@ -100,7 +100,8 @@ describe("Test: Testing RoomV12 Permissions", function () {
         await this.mjolnir.client.joinRoom(roomID);
 
         const errors = await this.mjolnir.protectionManager.verifyPermissionsIn(roomID);
-        expect(errors).toEqual([
+        const additionalPermissions = this.mjolnir.protectionManager.requiredProtectionPermissions();
+        const expectedErrors = [
             {
                 errorKind: "permission",
                 errorMessage: "Missing power level for bans: 0 < 50",
@@ -121,6 +122,15 @@ describe("Test: Testing RoomV12 Permissions", function () {
                 errorMessage: "Missing power level for server ACLs: 0 < 100",
                 roomId: roomID,
             },
-        ]);
+        ];
+        for (const permission of additionalPermissions) {
+            const addlError = {
+                errorKind: "permission",
+                errorMessage: `Missing power level for "${permission}" state events: 0 < 50`,
+                roomId: roomID,
+            };
+            expectedErrors.push(addlError);
+        }
+        expect(errors).toEqual(expectedErrors);
     });
 });
