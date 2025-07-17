@@ -381,8 +381,13 @@ export class ProtectionManager {
                 encodeURIComponent("m.room.create") +
                 "/" +
                 encodeURIComponent("");
-            const createEvent = await this.mjolnir.client.doRequest("GET", path, { format: "event" });
-            console.log(JSON.stringify(createEvent));
+
+            let createEvent;
+            try {
+                createEvent = await this.mjolnir.client.doRequest("GET", path, { format: "event" });
+            } catch (e) {
+                throw new Error("Missing create event: " + e);
+            }
 
             function plDefault(val: number | undefined | null, def: number): number {
                 if (!val && val !== 0) return def;
