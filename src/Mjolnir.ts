@@ -694,7 +694,7 @@ export class Mjolnir {
      * @returns True if the user would be affected by at least one user or server rule.
      */
     public doesUserHaveApplicableRule(userId: string): boolean {
-        const userServer = (new UserID(userId)).domain;
+        const userServer = new UserID(userId).domain;
         for (const list of this.protectedRoomsTracker.watchedLists) {
             // Check server rules first, because that list is typically shorter
             for (const serverRule of list.serverRules) {

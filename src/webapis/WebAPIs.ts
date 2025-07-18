@@ -20,7 +20,7 @@ import { LogService, MatrixClient } from "@vector-im/matrix-bot-sdk";
 import RuleServer from "../models/RuleServer";
 import { ReportManager } from "../report/ReportManager";
 import { IConfig } from "../config";
-import {Mjolnir} from "../Mjolnir";
+import { Mjolnir } from "../Mjolnir";
 
 /**
  * A common prefix for all web-exposed APIs.
@@ -100,39 +100,14 @@ export class WebAPIs {
             LogService.info("WebAPIs", `configuring ${updatesUrl}... DONE`);
         }
 
-        if (this.config.web.antispam?.enabled) {
+        if (this.config.web.synapseHTTPAntispam?.enabled) {
             // API for https://github.com/maunium/synapse-http-antispam
 
             // TODO: Support the other callbacks
-            const invitesUrl = `${API_PREFIX}/antispam/user_may_invite`;
+            const invitesUrl = `${API_PREFIX}/spam_check/user_may_invite`;
             LogService.info("WebAPIs", `Configuring ${invitesUrl}...`);
             this.webController.post(invitesUrl, async (request, response) => {
-                // TODO: Move this code somewhere sensible
-                let body = request.body;
-                if (typeof body === "string") {
-                    body = JSON.parse(body);
-                }
-                LogService.info("WebAPIs", `Received a request on ${invitesUrl}:`, body);
-
-                const auth = request.get('Authorization');
-                if (!auth || auth !== `Bearer ${this.config.web.antispam!.secret}`) { // XXX: Technically, `Bearer` is supposed to be case insensitive
-                    response.status(401).send(JSON.stringify({"error": "Missing or incorrect access token"}));
-                    return;
-                }
-
-                let inviter = body["inviter"];
-                if (!inviter) {
-                    response.status(400).send(JSON.stringify({"error": "Missing inviter"}));
-                    return;
-                }
-                inviter = inviter.toString(); // convert non-string types, which shouldn't happen
-
-                const banned = this.mjolnir.doesUserHaveApplicableRule(inviter);
-                if (banned) {
-                    response.status(403).send(JSON.stringify({"error": "User is banned"}));
-                    return;
-                }
-                response.status(200).send("{}"); // empty object is fine
+                await this.handleInviteSpamCheckRequest(request, response);
             });
             LogService.info("WebAPIs", `Configuring ${invitesUrl}... DONE`);
         }
@@ -270,5 +245,33 @@ export class WebAPIs {
         } catch (ex) {
             LogService.error("WebAPIs", `Error responding to a rule server updates request`, since, ex);
         }
+    }
+
+    async handleInviteSpamCheckRequest(request: express.Request, response: express.Response) {
+        let body = request.body;
+        if (typeof body === "string") {
+            body = JSON.parse(body);
+        }
+
+        const auth = request.get("Authorization");
+        if (!auth || auth !== `Bearer ${this.config.web.synapseHTTPAntispam!.authorization}`) {
+            // XXX: Technically, `Bearer` is supposed to be case insensitive
+            response.status(401).send(JSON.stringify({ error: "Missing or incorrect access token" }));
+            return;
+        }
+
+        let inviter = body["inviter"];
+        if (!inviter) {
+            response.status(400).send(JSON.stringify({ error: "Missing inviter" }));
+            return;
+        }
+        inviter = inviter.toString(); // convert non-string types, which shouldn't happen
+
+        const banned = this.mjolnir.doesUserHaveApplicableRule(inviter);
+        if (banned) {
+            response.status(403).send(JSON.stringify({ error: "User is banned" }));
+            return;
+        }
+        response.status(200).send("{}"); // empty object is fine
     }
 }
