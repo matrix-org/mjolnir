@@ -9,7 +9,6 @@ import { Mjolnir } from "../../src/Mjolnir";
 import { ALL_RULE_TYPES, Recommendation, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/ListRule";
 import AccessControlUnit, { Access, EntityAccess } from "../../src/models/AccessControlUnit";
 import { randomUUID } from "crypto";
-import { MatrixSendClient } from "../../src/MatrixEmitter";
 import * as utils from "../../src/utils";
 
 describe("Test: Updating the PolicyList", function () {
