@@ -326,7 +326,7 @@ export class Mjolnir {
         // Setup Web APIs
         console.log("Creating Web APIs");
         this.reportManager = new ReportManager(this);
-        this.webapis = new WebAPIs(this.reportManager, this.config, this.ruleServer);
+        this.webapis = new WebAPIs(this.reportManager, this.config, this.ruleServer, this);
         if (config.pollReports) {
             this.reportPoller = new ReportPoller(this, this.reportManager);
         }
@@ -686,5 +686,29 @@ export class Mjolnir {
             LogService.error("Mjolnir", "Could not quarantine media for user", userId);
             throw extractRequestError(e);
         }
+    }
+
+    /**
+     * Determines if a user has a user or server rule which would impact them.
+     * @param userId The user ID to check.
+     * @returns True if the user would be affected by at least one user or server rule.
+     */
+    public doesUserHaveApplicableRule(userId: string): boolean {
+        const userServer = new UserID(userId).domain;
+        for (const list of this.protectedRoomsTracker.watchedLists) {
+            // Check server rules first, because that list is typically shorter
+            for (const serverRule of list.serverRules) {
+                if (serverRule.isMatch(userServer)) {
+                    return true;
+                }
+            }
+
+            for (const userRule of list.userRules) {
+                if (userRule.isMatch(userId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

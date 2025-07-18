@@ -637,3 +637,48 @@ export function getMXCsInMessage(content: unknown): MXCUrl[] {
     const matches = contentStr.match(/(mxc:\/\/[^\s'"]+)/gim);
     return matches?.map((v) => MXCUrl.parse(v)) ?? [];
 }
+
+/**
+ * Create a policy rule in a policy room.
+ * @param client A matrix client that is logged in
+ * @param policyRoomId The room id to add the policy to.
+ * @param policyType The type of policy to add e.g. m.policy.rule.user. (Use RULE_USER though).
+ * @param entity The entity to ban e.g. @foo:example.org
+ * @param reason A reason for the rule e.g. 'Wouldn't stop posting spam links'
+ * @param template The template to use for the policy rule event.
+ * @returns The event id of the newly created policy rule.
+ */
+export async function createPolicyRule(
+    client: MatrixSendClient,
+    policyRoomId: string,
+    policyType: string,
+    entity: string,
+    reason: string,
+    template = { recommendation: "m.ban" },
+    stateKey = `rule:${entity}`,
+) {
+    return await client.sendStateEvent(policyRoomId, policyType, stateKey, {
+        entity,
+        reason,
+        ...template,
+    });
+}
+
+/**
+ * Remove a policy rule from a list.
+ * @param client A matrix client that is logged in
+ * @param policyRoomId The room id to add the policy to.
+ * @param policyType The type of policy to add e.g. m.policy.rule.user. (Use RULE_USER though).
+ * @param entity The entity to ban e.g. @foo:example.org
+ * @param stateKey The key for the rule.
+ * @returns The event id of the void rule that was created to override the old one.
+ */
+export async function removePolicyRule(
+    client: MatrixSendClient,
+    policyRoomId: string,
+    policyType: string,
+    entity: string,
+    stateKey = `rule:${entity}`,
+) {
+    return await client.sendStateEvent(policyRoomId, policyType, stateKey, {});
+}

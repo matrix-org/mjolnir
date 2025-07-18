@@ -9,52 +9,7 @@ import { Mjolnir } from "../../src/Mjolnir";
 import { ALL_RULE_TYPES, Recommendation, RULE_SERVER, RULE_USER, SERVER_RULE_TYPES } from "../../src/models/ListRule";
 import AccessControlUnit, { Access, EntityAccess } from "../../src/models/AccessControlUnit";
 import { randomUUID } from "crypto";
-import { MatrixSendClient } from "../../src/MatrixEmitter";
-
-/**
- * Create a policy rule in a policy room.
- * @param client A matrix client that is logged in
- * @param policyRoomId The room id to add the policy to.
- * @param policyType The type of policy to add e.g. m.policy.rule.user. (Use RULE_USER though).
- * @param entity The entity to ban e.g. @foo:example.org
- * @param reason A reason for the rule e.g. 'Wouldn't stop posting spam links'
- * @param template The template to use for the policy rule event.
- * @returns The event id of the newly created policy rule.
- */
-async function createPolicyRule(
-    client: MatrixSendClient,
-    policyRoomId: string,
-    policyType: string,
-    entity: string,
-    reason: string,
-    template = { recommendation: "m.ban" },
-    stateKey = `rule:${entity}`,
-) {
-    return await client.sendStateEvent(policyRoomId, policyType, stateKey, {
-        entity,
-        reason,
-        ...template,
-    });
-}
-
-/**
- * Remove a policy rule from a list.
- * @param client A matrix client that is logged in
- * @param policyRoomId The room id to add the policy to.
- * @param policyType The type of policy to add e.g. m.policy.rule.user. (Use RULE_USER though).
- * @param entity The entity to ban e.g. @foo:example.org
- * @param stateKey The key for the rule.
- * @returns The event id of the void rule that was created to override the old one.
- */
-async function removePolicyRule(
-    client: MatrixSendClient,
-    policyRoomId: string,
-    policyType: string,
-    entity: string,
-    stateKey = `rule:${entity}`,
-) {
-    return await client.sendStateEvent(policyRoomId, policyType, stateKey, {});
-}
+import * as utils from "../../src/utils";
 
 describe("Test: Updating the PolicyList", function () {
     it("Calculates what has changed correctly.", async function () {
@@ -68,7 +23,7 @@ describe("Test: Updating the PolicyList", function () {
         assert.equal(banList.allRules.length, 0);
 
         // Test adding a new rule
-        await createPolicyRule(mjolnir.client, banListId, RULE_USER, "@added:localhost:9999", "");
+        await utils.createPolicyRule(mjolnir.client, banListId, RULE_USER, "@added:localhost:9999", "");
         let { changes } = await banList.updateList();
         assert.equal(changes.length, 1, "There should only be one change");
         assert.equal(changes[0].changeType, ChangeType.Added);
@@ -77,7 +32,7 @@ describe("Test: Updating the PolicyList", function () {
         assert.equal(banList.allRules.length, 1);
 
         // Test modifiying a rule
-        let originalEventId = await createPolicyRule(
+        let originalEventId = await utils.createPolicyRule(
             mjolnir.client,
             banListId,
             RULE_USER,
@@ -85,7 +40,7 @@ describe("Test: Updating the PolicyList", function () {
             "",
         );
         await banList.updateList();
-        let modifyingEventId = await createPolicyRule(
+        let modifyingEventId = await utils.createPolicyRule(
             mjolnir.client,
             banListId,
             RULE_USER,
@@ -101,7 +56,7 @@ describe("Test: Updating the PolicyList", function () {
             "There should be a previous state event for a modified rule",
         );
         assert.equal(changes[0].event["event_id"], modifyingEventId);
-        let modifyingAgainEventId = await createPolicyRule(
+        let modifyingAgainEventId = await utils.createPolicyRule(
             mjolnir.client,
             banListId,
             RULE_USER,
@@ -124,7 +79,13 @@ describe("Test: Updating the PolicyList", function () {
         );
 
         // Test redacting a rule
-        const redactThis = await createPolicyRule(mjolnir.client, banListId, RULE_USER, "@redacted:localhost:9999", "");
+        const redactThis = await utils.createPolicyRule(
+            mjolnir.client,
+            banListId,
+            RULE_USER,
+            "@redacted:localhost:9999",
+            "",
+        );
         await banList.updateList();
         assert.equal(banList.userRules.filter((r) => r.entity === "@redacted:localhost:9999").length, 1);
         await mjolnir.client.redactEvent(banListId, redactThis);
@@ -155,7 +116,7 @@ describe("Test: Updating the PolicyList", function () {
 
         // Test soft redaction of a rule
         const softRedactedEntity = "@softredacted:localhost:9999";
-        await createPolicyRule(mjolnir.client, banListId, RULE_USER, softRedactedEntity, "");
+        await utils.createPolicyRule(mjolnir.client, banListId, RULE_USER, softRedactedEntity, "");
         await banList.updateList();
         assert.equal(banList.userRules.filter((r) => r.entity === softRedactedEntity).length, 1);
         await mjolnir.client.sendStateEvent(banListId, RULE_USER, `rule:${softRedactedEntity}`, {});
@@ -194,7 +155,7 @@ describe("Test: Updating the PolicyList", function () {
         );
 
         // Test that different (old) rule types will be modelled as the latest event type.
-        originalEventId = await createPolicyRule(
+        originalEventId = await utils.createPolicyRule(
             mjolnir.client,
             banListId,
             "org.matrix.mjolnir.rule.user",
@@ -205,7 +166,7 @@ describe("Test: Updating the PolicyList", function () {
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Added);
         assert.equal(banList.userRules.filter((r) => r.entity === "@old:localhost:9999").length, 1);
-        modifyingEventId = await createPolicyRule(
+        modifyingEventId = await utils.createPolicyRule(
             mjolnir.client,
             banListId,
             "m.room.rule.user",
@@ -222,7 +183,7 @@ describe("Test: Updating the PolicyList", function () {
             "There should be a previous state event for a modified rule",
         );
         assert.equal(banList.userRules.filter((r) => r.entity === "@old:localhost:9999").length, 1);
-        modifyingAgainEventId = await createPolicyRule(
+        modifyingAgainEventId = await utils.createPolicyRule(
             mjolnir.client,
             banListId,
             RULE_USER,
@@ -249,7 +210,7 @@ describe("Test: Updating the PolicyList", function () {
         await mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         const entity = "@old:localhost:9999";
-        let originalEventId = await createPolicyRule(mjolnir.client, banListId, "m.room.rule.user", entity, "");
+        let originalEventId = await utils.createPolicyRule(mjolnir.client, banListId, "m.room.rule.user", entity, "");
         let { changes } = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Added);
@@ -282,7 +243,7 @@ describe("Test: Updating the PolicyList", function () {
         await mjolnir.client.setUserPowerLevel(await moderator.getUserId(), banListId, 100);
 
         const entity = "@old:localhost:9999";
-        let originalEventId = await createPolicyRule(mjolnir.client, banListId, "m.room.rule.user", entity, "");
+        let originalEventId = await utils.createPolicyRule(mjolnir.client, banListId, "m.room.rule.user", entity, "");
         let { changes } = await banList.updateList();
         assert.equal(changes.length, 1);
         assert.equal(changes[0].changeType, ChangeType.Added);
@@ -291,7 +252,7 @@ describe("Test: Updating the PolicyList", function () {
             1,
             "There should be a rule stored that we just added...",
         );
-        let updatedEventId = await createPolicyRule(mjolnir.client, banListId, RULE_USER, entity, "");
+        let updatedEventId = await utils.createPolicyRule(mjolnir.client, banListId, RULE_USER, entity, "");
         changes = (await banList.updateList()).changes;
         // If in the future you change this and it fails, it's really subjective whether this constitutes a modification, since the only thing that has changed
         // is the rule type. The actual content is identical.
@@ -341,7 +302,7 @@ describe("Test: Updating the PolicyList", function () {
         const banListId = await mjolnir.client.createRoom();
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
         for (let i = 0; i < ALL_RULE_TYPES.length; i++) {
-            await createPolicyRule(mjolnir.client, banListId, ALL_RULE_TYPES[i], `*${i}*`, "");
+            await utils.createPolicyRule(mjolnir.client, banListId, ALL_RULE_TYPES[i], `*${i}*`, "");
         }
         let { changes } = await banList.updateList();
         assert.equal(changes.length, ALL_RULE_TYPES.length);
@@ -356,9 +317,9 @@ describe("Test: We will not be able to ban ourselves via ACL.", function () {
         const banListId = await mjolnir.client.createRoom();
         const banList = new PolicyList(banListId, banListId, mjolnir.client);
         const aclUnit = new AccessControlUnit([banList]);
-        await createPolicyRule(mjolnir.client, banListId, RULE_SERVER, serverName, "");
-        await createPolicyRule(mjolnir.client, banListId, RULE_SERVER, "evil.com", "");
-        await createPolicyRule(mjolnir.client, banListId, RULE_SERVER, "*", "");
+        await utils.createPolicyRule(mjolnir.client, banListId, RULE_SERVER, serverName, "");
+        await utils.createPolicyRule(mjolnir.client, banListId, RULE_SERVER, "evil.com", "");
+        await utils.createPolicyRule(mjolnir.client, banListId, RULE_SERVER, "*", "");
         // We should still intern the matching rules rule.
         let { changes } = await banList.updateList();
         assert.equal(banList.serverRules.length, 3);
@@ -410,7 +371,7 @@ describe("Test: ACL updates will batch when rules are added in succession.", fun
         for (let i = 0; i < evilServerCount; i++) {
             const badServer = `${i}.evil.com`;
             acl.denyServer(badServer);
-            await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule #${i}`);
+            await utils.createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule #${i}`);
             // Give them a bit of a spread over time.
             await new Promise((resolve) => setTimeout(resolve, 10));
         }
@@ -488,11 +449,11 @@ describe("Test: unbaning entities via the PolicyList.", function () {
         const newerBadServer = "new.evil.example";
         await Promise.all(
             SERVER_RULE_TYPES.map((type) =>
-                createPolicyRule(moderator, banListId, type, olderBadServer, "gregg rulz ok"),
+                utils.createPolicyRule(moderator, banListId, type, olderBadServer, "gregg rulz ok"),
             ),
         );
-        await createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, "this is bad sort it out.");
-        await createPolicyRule(
+        await utils.createPolicyRule(moderator, banListId, RULE_SERVER, newerBadServer, "this is bad sort it out.");
+        await utils.createPolicyRule(
             moderator,
             banListId,
             RULE_SERVER,
@@ -612,7 +573,7 @@ describe("Test: should apply bans to the most recently active rooms first", func
                 }
             });
             // create the rule that will ban the server.
-            await createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule ${badServer}`);
+            await utils.createPolicyRule(moderator, banListId, RULE_SERVER, badServer, `Rule ${badServer}`);
         });
 
         // Wait until all the ACL events have been applied.
@@ -664,11 +625,11 @@ describe("Test: AccessControlUnit interaction with policy lists.", function () {
             "Empty lists should implicitly allow.",
         );
 
-        await createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, "matrix.org", "", {
+        await utils.createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, "matrix.org", "", {
             recommendation: Recommendation.Allow,
         });
         // we want to imagine that the banned server was never taken off the allow after being banned.
-        await createPolicyRule(
+        await utils.createPolicyRule(
             mjolnir.client,
             policyListId,
             RULE_SERVER,
@@ -677,10 +638,10 @@ describe("Test: AccessControlUnit interaction with policy lists.", function () {
             { recommendation: Recommendation.Allow },
             "something-else",
         );
-        await createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, "bad.example.com", "", {
+        await utils.createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, "bad.example.com", "", {
             recommendation: Recommendation.Ban,
         });
-        await createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, "*.ddns.example.com", "", {
+        await utils.createPolicyRule(mjolnir.client, policyListId, RULE_SERVER, "*.ddns.example.com", "", {
             recommendation: Recommendation.Ban,
         });
 
@@ -697,7 +658,7 @@ describe("Test: AccessControlUnit interaction with policy lists.", function () {
         assertAccess(Access.NotAllowed, aclUnit.getAccessForUser("@anyone:meow.ddns.example.com", "CHECK_SERVER"));
 
         assertAccess(Access.Allowed, aclUnit.getAccessForUser("@spam:matrix.org", "CHECK_SERVER"));
-        await createPolicyRule(mjolnir.client, policyListId, RULE_USER, "@spam:matrix.org", "", {
+        await utils.createPolicyRule(mjolnir.client, policyListId, RULE_USER, "@spam:matrix.org", "", {
             recommendation: Recommendation.Ban,
         });
         await policyList.updateList();
@@ -718,11 +679,11 @@ describe("Test: AccessControlUnit interaction with policy lists.", function () {
         assert.equal(roomAcl.allow.includes("matrix.org"), true);
 
         // Now we remove the rules and hope that everything functions noramally.
-        await removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "matrix.org");
-        await removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "bad.example.com", "something-else");
-        await removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "bad.example.com");
-        await removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "*.ddns.example.com");
-        await removePolicyRule(mjolnir.client, policyListId, RULE_USER, "@spam:matrix.org");
+        await utils.removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "matrix.org");
+        await utils.removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "bad.example.com", "something-else");
+        await utils.removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "bad.example.com");
+        await utils.removePolicyRule(mjolnir.client, policyListId, RULE_SERVER, "*.ddns.example.com");
+        await utils.removePolicyRule(mjolnir.client, policyListId, RULE_USER, "@spam:matrix.org");
         const { changes } = await policyList.updateList();
         await mjolnir.protectedRoomsTracker.syncLists();
 
@@ -754,7 +715,7 @@ describe("Test: AccessControlUnit interaction with policy lists.", function () {
         const aclUnit = new AccessControlUnit(policyLists);
         await Promise.all(
             policyLists.map((policyList) => {
-                return createPolicyRule(mjolnir.client, policyList.roomId, RULE_SERVER, banMeServer, "", {
+                return utils.createPolicyRule(mjolnir.client, policyList.roomId, RULE_SERVER, banMeServer, "", {
                     recommendation: Recommendation.Ban,
                 });
             }),
@@ -763,10 +724,10 @@ describe("Test: AccessControlUnit interaction with policy lists.", function () {
         assertAccess(Access.Banned, aclUnit.getAccessForServer(banMeServer));
 
         // remove the rule that bans `banme.example.com` from just one of the lists.
-        await removePolicyRule(mjolnir.client, policyLists[0].roomId, RULE_SERVER, banMeServer);
+        await utils.removePolicyRule(mjolnir.client, policyLists[0].roomId, RULE_SERVER, banMeServer);
         await Promise.all(policyLists.map((list) => list.updateList()));
         assertAccess(Access.Banned, aclUnit.getAccessForServer(banMeServer), "Should still be banned at this point.");
-        await removePolicyRule(mjolnir.client, policyLists[1].roomId, RULE_SERVER, banMeServer);
+        await utils.removePolicyRule(mjolnir.client, policyLists[1].roomId, RULE_SERVER, banMeServer);
         await Promise.all(policyLists.map((list) => list.updateList()));
         assertAccess(Access.Allowed, aclUnit.getAccessForServer(banMeServer), "Should not longer be any rules");
     });

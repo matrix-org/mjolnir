@@ -219,3 +219,8 @@ web:
   # GET /api/1/ruleserver/updates
   ruleServer:
     enabled: false
+
+  synapseHTTPAntispam:
+    enabled: true
+    # The token used by the module
+    authorization: "test_http_antispam"
