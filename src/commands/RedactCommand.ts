@@ -73,7 +73,8 @@ export async function execRedactCommand(roomId: string, event: any, mjolnir: Mjo
     }
 
     const targetRoomIds = targetRoom ? [targetRoom] : mjolnir.protectedRoomsTracker.getProtectedRooms();
-    await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, false, limit);
+    const isAdmin = await mjolnir.isSynapseAdmin();
+    await redactUserMessagesIn(mjolnir.client, mjolnir.managementRoomOutput, userId, targetRoomIds, isAdmin, limit);
     if (quarantine) {
         const mxcs = await mjolnir.protectedRoomsTracker.getMediaIdsForUserIdInRooms(userId, targetRoomIds);
         for (const mxc of mxcs) {
