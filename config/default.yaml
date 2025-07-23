@@ -265,7 +265,9 @@ web:
 
   # A web API for https://github.com/maunium/synapse-http-antispam
   #
-  # Set your config to `http(s)://<mjolnir url>/api/1/antispam`
+  # Note: Currently only  the `user_may_invite` route is supported. More may be added in future releases
+  #
+  # Set your config to `http(s)://<mjolnir url>/api/1/spam_check`
   synapseHTTPAntispam:
     enabled: false
     # The token used by the module
