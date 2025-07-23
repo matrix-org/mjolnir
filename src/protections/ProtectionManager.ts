@@ -374,9 +374,25 @@ export class ProtectionManager {
             const ownUserId = await this.mjolnir.client.getUserId();
 
             const powerLevels = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
+
             if (!powerLevels) {
                 // noinspection ExceptionCaughtLocallyJS
                 throw new Error("Missing power levels state event");
+            }
+
+            const path =
+                "/_matrix/client/v3/rooms/" +
+                encodeURIComponent(roomId) +
+                "/state/" +
+                encodeURIComponent("m.room.create") +
+                "/" +
+                encodeURIComponent("");
+
+            let createEvent;
+            try {
+                createEvent = await this.mjolnir.client.doRequest("GET", path, { format: "event" });
+            } catch (e) {
+                throw new Error("Missing create event: " + e);
             }
 
             function plDefault(val: number | undefined | null, def: number): number {
@@ -384,6 +400,8 @@ export class ProtectionManager {
                 return val;
             }
 
+            const creator = createEvent["sender"];
+            const additionalCreators: string[] = createEvent["content"]["additional_creators"] || undefined;
             const users = powerLevels["users"] || {};
             const events = powerLevels["events"] || {};
             const usersDefault = plDefault(powerLevels["users_default"], 0);
@@ -392,7 +410,16 @@ export class ProtectionManager {
             const kick = plDefault(powerLevels["kick"], 50);
             const redact = plDefault(powerLevels["redact"], 50);
 
-            const userLevel = plDefault(users[ownUserId], usersDefault);
+            let userLevel;
+            const verToCheck = ["12", "org.matrix.hydra.11"];
+            if (
+                verToCheck.includes(createEvent.content["room_version"]) &&
+                (creator === ownUserId || additionalCreators?.includes(ownUserId))
+            ) {
+                userLevel = Infinity;
+            } else {
+                userLevel = plDefault(users[ownUserId], usersDefault);
+            }
             const aclLevel = plDefault(events["m.room.server_acl"], stateDefault);
 
             // Wants: ban, kick, redact, m.room.server_acl
