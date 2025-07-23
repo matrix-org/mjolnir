@@ -177,6 +177,9 @@ class PolicyList extends EventEmitter {
         invite: string[],
         createRoomOptions: RoomCreateOptions = {},
     ): Promise<string /* room id */> {
+        // fetch default room version
+        const resp = await client.doRequest("get", "/_matrix/client/v3/capabilities");
+        const roomVersion = resp.capabilities["m.room_versions"].default;
         const powerLevels: { [key: string]: any } = {
             ban: 50,
             events: {
@@ -192,11 +195,14 @@ class PolicyList extends EventEmitter {
             redact: 50,
             state_default: 50,
             users: {
-                [await client.getUserId()]: 100,
                 ...invite.reduce((users, mxid) => ({ ...users, [mxid]: 50 }), {}),
             },
             users_default: 0,
         };
+        if (roomVersion != "12" || roomVersion != "org.matrix.hydra.11") {
+            const clientId = await client.getUserId();
+            powerLevels.users[clientId] = 100;
+        }
         const finalRoomCreateOptions: RoomCreateOptions = {
             // Support for MSC3784.
             creation_content: {
@@ -221,20 +227,7 @@ class PolicyList extends EventEmitter {
                 `Creating a policy room with a type other than the policy room type is not supported, you probably don't want to do this.`,
             );
         }
-        // janky workaround for the fact that if a server's default room version is v12 the
-        // power_level_content_override will cause the createRoom request fail due to the creator
-        // (the bot) being in `users`, try again with creator removed
-        let listRoomId;
-        try {
-            listRoomId = await client.createRoom(finalRoomCreateOptions);
-        } catch (e) {
-            powerLevels.users = {
-                ...invite.reduce((users, mxid) => ({ ...users, [mxid]: 50 }), {}),
-            };
-            finalRoomCreateOptions.power_level_content_override = powerLevels;
-
-            listRoomId = await client.createRoom(finalRoomCreateOptions);
-        }
+        const listRoomId = await client.createRoom(finalRoomCreateOptions);
 
         return listRoomId;
     }

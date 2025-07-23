@@ -22,7 +22,36 @@ import { DoHttpRequestOpts } from "@vector-im/matrix-bot-sdk/src/http";
 describe("Test: Testing RoomV12 Permissions", function () {
     it("verifyPermissionsIn should correctly determine permissions in v12 room where bot is creator", async function () {
         const roomId = await this.mjolnir.client.createRoom({});
-        // mock out the power level event for v12 room, ensuring the creator of the room is not in "users"
+        const mjolnirId = await this.mjolnir.client.getUserId();
+
+        // mock out the power level and create events for v12 room, ensuring the creator of the room is not in "users"
+        // and setting the room version 12
+        this.mjolnir.client.doRequest = (
+            method: any,
+            endpoint: any,
+            qs: any,
+            body: any,
+            timeout: number,
+            raw: boolean,
+            contentType: string,
+            noEncoding: boolean,
+            opts: DoHttpRequestOpts,
+        ): Promise<any> => {
+            let createEvent = {
+                type: "m.room.create",
+                room_id: "!roomID",
+                sender: mjolnirId,
+                content: {
+                    room_version: "12",
+                    creator: mjolnirId,
+                },
+                state_key: "",
+                origin_server_ts: 1752704623219,
+                unsigned: { age_ts: 1752704623219 },
+            };
+            return Promise.resolve(createEvent);
+        };
+
         this.mjolnir.client.getRoomStateEvent = (roomId: string, type: any, stateKey: any): Promise<any> => {
             let plEvent = {
                 ban: 50,

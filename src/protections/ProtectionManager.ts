@@ -374,6 +374,12 @@ export class ProtectionManager {
             const ownUserId = await this.mjolnir.client.getUserId();
 
             const powerLevels = await this.mjolnir.client.getRoomStateEvent(roomId, "m.room.power_levels", "");
+
+            if (!powerLevels) {
+                // noinspection ExceptionCaughtLocallyJS
+                throw new Error("Missing power levels state event");
+            }
+
             const path =
                 "/_matrix/client/v3/rooms/" +
                 encodeURIComponent(roomId) +
@@ -405,7 +411,11 @@ export class ProtectionManager {
             const redact = plDefault(powerLevels["redact"], 50);
 
             let userLevel;
-            if (creator === ownUserId || (additionalCreators ? additionalCreators.includes(ownUserId) : false)) {
+            const verToCheck = ["12", "org.matrix.hydra.11"];
+            if (
+                verToCheck.includes(createEvent.content["room_version"]) &&
+                (creator === ownUserId || additionalCreators?.includes(ownUserId))
+            ) {
                 userLevel = Infinity;
             } else {
                 userLevel = plDefault(users[ownUserId], usersDefault);
