@@ -185,6 +185,10 @@ export interface IConfig {
         ruleServer?: {
             enabled: boolean;
         };
+        synapseHTTPAntispam: {
+            enabled: boolean;
+            authorization: string;
+        };
     };
     nsfwSensitivity: number;
 
@@ -271,6 +275,10 @@ const defaultConfig: IConfig = {
         },
         ruleServer: {
             enabled: false,
+        },
+        synapseHTTPAntispam: {
+            enabled: false,
+            authorization: "",
         },
     },
     nsfwSensitivity: 0.6,

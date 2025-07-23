@@ -263,6 +263,16 @@ web:
     # Whether to enable this feature.
     enabled: false
 
+  # A web API for https://github.com/maunium/synapse-http-antispam
+  #
+  # Note: Currently only  the `user_may_invite` route is supported. More may be added in future releases
+  #
+  # Set your config to `http(s)://<mjolnir url>/api/1/spam_check`
+  synapseHTTPAntispam:
+    enabled: false
+    # The token used by the module
+    authorization: changeme
+
 # Whether or not to actively poll synapse for abuse reports, to be used
 # instead of intercepting client calls to synapse's abuse endpoint, when that
 # isn't possible/practical.
