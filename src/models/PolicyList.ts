@@ -199,7 +199,7 @@ class PolicyList extends EventEmitter {
             },
             users_default: 0,
         };
-        if (roomVersion !== "12" || roomVersion !== "org.matrix.hydra.11") {
+        if (roomVersion !== "12" && roomVersion !== "org.matrix.hydra.11") {
             const clientId = await client.getUserId();
             powerLevels.users[clientId] = 100;
         }
