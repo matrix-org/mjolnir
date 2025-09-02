@@ -95,14 +95,18 @@ export class ProtectionManager {
     public async registerProtection(protection: Protection) {
         this._protections.set(protection.name, protection);
 
-        let enabledProtections: { enabled: string[] } | null = null;
+        // Commented out for September 2nd, 2025 database incident
+        // let enabledProtections: { enabled: string[] } | null = null;
         try {
-            enabledProtections = await this.mjolnir.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
+            // Commented out for September 2nd, 2025 database incident
+            // enabledProtections = await this.mjolnir.client.getAccountData(ENABLED_PROTECTIONS_EVENT_TYPE);
         } catch {
             // this setting either doesn't exist, or we failed to read it (bad network?)
             // TODO: retry on certain failures?
         }
-        protection.enabled = enabledProtections?.enabled.includes(protection.name) ?? false;
+        // Commented out for September 2nd, 2025 database incident
+        // protection.enabled = enabledProtections?.enabled.includes(protection.name) ?? false;
+        protection.enabled = false;
 
         const savedSettings = await this.getProtectionSettings(protection.name);
         for (let [key, value] of Object.entries(savedSettings)) {
