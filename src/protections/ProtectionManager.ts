@@ -72,7 +72,8 @@ export class ProtectionManager {
      */
     public async start() {
         this.mjolnir.reportManager.on("report.new", this.handleReport.bind(this));
-        this.mjolnir.matrixEmitter.on("room.event", (...args) => this.handleEvent(...args));
+        // Commented out for September 2nd, 2025 database incident
+        // this.mjolnir.matrixEmitter.on("room.event", (...args) => this.handleEvent(...args));
         for (const protection of PROTECTIONS) {
             try {
                 await this.registerProtection(protection);
@@ -187,8 +188,9 @@ export class ProtectionManager {
      * Make a list of the names of enabled protections and save them in a state event
      */
     private async saveEnabledProtections() {
-        const protections = this.enabledProtections.map((p) => p.name);
-        await this.mjolnir.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
+        // Commented out for September 2nd, 2025 database incident
+        // const protections = this.enabledProtections.map((p) => p.name);
+        // await this.mjolnir.client.setAccountData(ENABLED_PROTECTIONS_EVENT_TYPE, { enabled: protections });
     }
     /*
      * Enable a protection by name and persist its enable state in to a state event
@@ -200,11 +202,12 @@ export class ProtectionManager {
         if (protection === undefined) {
             return;
         }
-        protection.enabled = true;
-        await this.saveEnabledProtections();
-        for (let roomId of this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
-            await protection.startProtectingRoom(this.mjolnir, roomId);
-        }
+        // Commented out for September 2nd, 2025 database incident
+        // protection.enabled = true;
+        // await this.saveEnabledProtections();
+        // for (let roomId of this.mjolnir.protectedRoomsTracker.getProtectedRooms()) {
+        //     await protection.startProtectingRoom(this.mjolnir, roomId);
+        // }
     }
 
     public get enabledProtections(): Protection[] {
