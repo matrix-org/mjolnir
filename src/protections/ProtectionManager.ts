@@ -24,10 +24,8 @@ import { MessageIsMedia } from "./MessageIsMedia";
 import { TrustedReporters } from "./TrustedReporters";
 import { JoinWaveShortCircuit } from "./JoinWaveShortCircuit";
 import { Mjolnir } from "../Mjolnir";
-import { extractRequestError, LogLevel, LogService, Permalinks } from "@vector-im/matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { ProtectionSettingValidationError } from "./ProtectionSettings";
-import { Consequence } from "./consequence";
-import { htmlEscape } from "../utils";
 import { ERROR_KIND_FATAL, ERROR_KIND_PERMISSION } from "../ErrorCache";
 import { RoomUpdateError } from "../models/RoomUpdateError";
 import { LocalAbuseReports } from "./LocalAbuseReports";
@@ -52,8 +50,10 @@ const PROTECTIONS: Protection[] = [
     new FirstMessageIsLink(),
 ];
 
-const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
-const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
+// Commented out for September 2nd, 2025 database incident
+// const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
+// Commented out for September 2nd, 2025 database incident
+// const CONSEQUENCE_EVENT_DATA = "org.matrix.mjolnir.consequence";
 
 /**
  * This is responsible for informing protections about relevant events and handle standard consequences.
@@ -285,89 +285,91 @@ export class ProtectionManager {
         return validatedSettings;
     }
 
-    private async handleConsequences(
-        protection: Protection,
-        roomId: string,
-        eventId: string,
-        sender: string,
-        consequences: Consequence[],
-    ) {
-        for (const consequence of consequences) {
-            try {
-                if (consequence.name === "alert") {
-                    /* take no additional action, just print the below message to management room */
-                } else if (consequence.name === "ban") {
-                    if (this.mjolnir.moderators.checkMembership(sender)) {
-                        await this.mjolnir.managementRoomOutput.logMessage(
-                            LogLevel.WARN,
-                            "ProtectionManager",
-                            `Attempting to ban ${sender} but this is a member of management room, skipping.`,
-                        );
-                        continue;
-                    }
-                    await this.mjolnir.client.banUser(sender, roomId, "abuse detected");
-                } else if (consequence.name === "redact") {
-                    await this.mjolnir.client.redactEvent(roomId, eventId, "abuse detected");
-                } else {
-                    throw new Error(`unknown consequence ${consequence.name}`);
-                }
+    // Commented out for September 2nd, 2025 database incident
+    // private async handleConsequences(
+    //     protection: Protection,
+    //     roomId: string,
+    //     eventId: string,
+    //     sender: string,
+    //     consequences: Consequence[],
+    // ) {
+    //     for (const consequence of consequences) {
+    //         try {
+    //             if (consequence.name === "alert") {
+    //                 /* take no additional action, just print the below message to management room */
+    //             } else if (consequence.name === "ban") {
+    //                 if (this.mjolnir.moderators.checkMembership(sender)) {
+    //                     await this.mjolnir.managementRoomOutput.logMessage(
+    //                         LogLevel.WARN,
+    //                         "ProtectionManager",
+    //                         `Attempting to ban ${sender} but this is a member of management room, skipping.`,
+    //                     );
+    //                     continue;
+    //                 }
+    //                 await this.mjolnir.client.banUser(sender, roomId, "abuse detected");
+    //             } else if (consequence.name === "redact") {
+    //                 await this.mjolnir.client.redactEvent(roomId, eventId, "abuse detected");
+    //             } else {
+    //                 throw new Error(`unknown consequence ${consequence.name}`);
+    //             }
 
-                let message =
-                    `protection ${protection.name} enacting` +
-                    ` ${consequence.name}` +
-                    ` against ${htmlEscape(sender)}` +
-                    ` in ${htmlEscape(roomId)}` +
-                    ` (reason: ${htmlEscape(consequence.reason)})`;
-                await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, {
-                    msgtype: "m.notice",
-                    body: message,
-                    [CONSEQUENCE_EVENT_DATA]: {
-                        who: sender,
-                        room: roomId,
-                        types: [consequence.name],
-                    },
-                });
-            } catch (e) {
-                await this.mjolnir.managementRoomOutput.logMessage(
-                    LogLevel.ERROR,
-                    "handleConsequences",
-                    `Failed to enact ${consequence.name} consequence: ${e}`,
-                );
-            }
-        }
-    }
+    //             let message =
+    //                 `protection ${protection.name} enacting` +
+    //                 ` ${consequence.name}` +
+    //                 ` against ${htmlEscape(sender)}` +
+    //                 ` in ${htmlEscape(roomId)}` +
+    //                 ` (reason: ${htmlEscape(consequence.reason)})`;
+    //             await this.mjolnir.client.sendMessage(this.mjolnir.managementRoomId, {
+    //                 msgtype: "m.notice",
+    //                 body: message,
+    //                 [CONSEQUENCE_EVENT_DATA]: {
+    //                     who: sender,
+    //                     room: roomId,
+    //                     types: [consequence.name],
+    //                 },
+    //             });
+    //         } catch (e) {
+    //             await this.mjolnir.managementRoomOutput.logMessage(
+    //                 LogLevel.ERROR,
+    //                 "handleConsequences",
+    //                 `Failed to enact ${consequence.name} consequence: ${e}`,
+    //             );
+    //         }
+    //     }
+    // }
 
-    private async handleEvent(roomId: string, event: any) {
-        if (this.mjolnir.protectedRoomsTracker.getProtectedRooms().includes(roomId)) {
-            if (event["sender"] === (await this.mjolnir.client.getUserId())) return; // Ignore ourselves
+    // Commented out for September 2nd, 2025 database incident
+    // private async handleEvent(roomId: string, event: any) {
+    //     if (this.mjolnir.protectedRoomsTracker.getProtectedRooms().includes(roomId)) {
+    //         if (event["sender"] === (await this.mjolnir.client.getUserId())) return; // Ignore ourselves
 
-            // Iterate all the enabled protections
-            for (const protection of this.enabledProtections) {
-                let consequences: Consequence[] | undefined = undefined;
-                try {
-                    consequences = await protection.handleEvent(this.mjolnir, roomId, event);
-                } catch (e) {
-                    const eventPermalink = Permalinks.forEvent(roomId, event["event_id"]);
-                    LogService.error("ProtectionManager", "Error handling protection: " + protection.name);
-                    LogService.error("ProtectionManager", "Failed event: " + eventPermalink);
-                    LogService.error("ProtectionManager", extractRequestError(e));
-                    await this.mjolnir.client.sendNotice(
-                        this.mjolnir.managementRoomId,
-                        `There was an error processing an event through a protection (${protection.name}) - see log for details. Event: ${eventPermalink}`,
-                    );
-                    continue;
-                }
+    //         // Iterate all the enabled protections
+    //         for (const protection of this.enabledProtections) {
+    //             let consequences: Consequence[] | undefined = undefined;
+    //             try {
+    //                 consequences = await protection.handleEvent(this.mjolnir, roomId, event);
+    //             } catch (e) {
+    //                 const eventPermalink = Permalinks.forEvent(roomId, event["event_id"]);
+    //                 LogService.error("ProtectionManager", "Error handling protection: " + protection.name);
+    //                 LogService.error("ProtectionManager", "Failed event: " + eventPermalink);
+    //                 LogService.error("ProtectionManager", extractRequestError(e));
+    //                 await this.mjolnir.client.sendNotice(
+    //                     this.mjolnir.managementRoomId,
+    //                     `There was an error processing an event through a protection (${protection.name}) - see log for details. Event: ${eventPermalink}`,
+    //                 );
+    //                 continue;
+    //             }
 
-                if (consequences !== undefined) {
-                    await this.handleConsequences(protection, roomId, event["event_id"], event["sender"], consequences);
-                }
-            }
+    //             if (consequences !== undefined) {
+    //                 await this.handleConsequences(protection, roomId, event["event_id"], event["sender"], consequences);
+    //             }
+    //         }
 
-            // Run the event handlers - we always run this after protections so that the protections
-            // can flag the event for redaction.
-            await this.mjolnir.unlistedUserRedactionHandler.handleEvent(roomId, event, this.mjolnir); // FIXME: That's rather spaghetti
-        }
-    }
+    //         // Run the event handlers - we always run this after protections so that the protections
+    //         // can flag the event for redaction.
+    //         await this.mjolnir.unlistedUserRedactionHandler.handleEvent(roomId, event, this.mjolnir); // FIXME: That's rather spaghetti
+    //     }
+    // }
 
     private requiredProtectionPermissions(): Set<string> {
         return new Set(this.enabledProtections.map((p) => p.requiredStatePermissions).flat());
