@@ -15,9 +15,9 @@ jobs:
     name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
-    - uses: actions/setup-node@v3
+    - uses: actions/setup-node@v5
       node-version-file: '.nodeversion'
     - run: yarn install
     - run: yarn build
@@ -26,8 +26,8 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       node-version-file: '.nodeversion'
     - run: yarn install
     - run: yarn test
@@ -36,8 +36,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       node-version-file: '.nodeversion'
     - name: Fetch and build mx-tester (cached across runs)
       uses: baptiste0928/cargo-install@v1
@@ -57,8 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       node-version-file: '.nodeversion'
     - name: Fetch and build mx-tester (cached across runs)
       uses: baptiste0928/cargo-install@v1
