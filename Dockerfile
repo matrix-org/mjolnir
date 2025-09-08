@@ -1,5 +1,5 @@
 # We can't use alpine anymore because crypto has rust deps.
-FROM node:20-slim
+FROM node:24-slim
 COPY . /tmp/src
 RUN cd /tmp/src \
     && yarn install \
