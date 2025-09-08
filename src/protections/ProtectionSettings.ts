@@ -25,7 +25,7 @@ export class ProtectionSettingValidationError extends Error {}
  */
 export class AbstractProtectionSetting<TChange, TValue> extends EventEmitter {
     // the current value of this setting
-    value: TValue;
+    value!: TValue;
 
     /*
      * Deserialise a value for this setting type from a string

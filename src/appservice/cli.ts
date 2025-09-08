@@ -16,7 +16,7 @@ const cli = new Cli({
         defaults: {},
     },
     generateRegistration: MjolnirAppService.generateRegistration,
-    run: async function (port: number) {
+    run: async function (port: number|null) {
         const config: IAppserviceConfig | null = cli.getConfig() as any;
         if (config === null) {
             throw new Error("Couldn't load config");
@@ -24,7 +24,7 @@ const cli = new Cli({
         addDefaults(config);
         utils.initializeSentry(config);
         utils.initializeGlobalPerformanceMetrics(config);
-        await MjolnirAppService.run(port, config, cli.getRegistrationFilePath());
+        await MjolnirAppService.run(port ?? 9000, config, cli.getRegistrationFilePath());
     },
 });
 

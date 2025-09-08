@@ -119,7 +119,7 @@ async function botRedactUserMessagesIn(
                     }
                 }
             });
-        } catch (error) {
+        } catch (error: any) {
             await client.sendMessage(managementRoom.managementRoomId, {
                 msgtype: "m.text",
                 body: `Caught an error while trying to redact messages for ${userIdOrGlob} in ${targetRoomId}: ${error}`,
@@ -200,7 +200,7 @@ export async function redactUserMessagesIn(
     if (isAdmin && !usingGlob) {
         try {
             await adminRedactUserMessagesIn(client, managementRoom, userIdOrGlob, filteredRooms, limit);
-        } catch (e) {
+        } catch (e: any) {
             LogService.error(
                 "utils#redactUserMessagesIn",
                 `Error using admin API to redact messages: ${extractRequestError(e)}`,
@@ -407,7 +407,7 @@ function patchMatrixClientForConciseExceptions() {
                     // make sure that we're providing it.
                     try {
                         body = JSON.parse(body);
-                    } catch (ex) {
+                    } catch (ex: any) {
                         // Not JSON.
                     }
                     // Define the property but don't make it visible during logging.
@@ -495,13 +495,13 @@ function patchMatrixClientForRetry() {
                     // This is our final result.
                     // Pass result, whether success or error.
                     return cb(...result);
-                } catch (err) {
+                } catch (err: any) {
                     // Need to retry.
                     let retryAfterMs = attempt * attempt * REQUEST_RETRY_BASE_DURATION_MS;
                     if ("retry_after_ms" in err) {
                         try {
                             retryAfterMs = Number.parseInt(err.retry_after_ms, 10);
-                        } catch (ex) {
+                        } catch (ex: any) {
                             // Use default value.
                         }
                     }

@@ -35,7 +35,7 @@ import { IConfig } from "../../src/config";
 export async function ensureAliasedRoomExists(client: MatrixClient, alias: string): Promise<string> {
     try {
         return await client.resolveRoom(alias);
-    } catch (e) {
+    } catch (e: any) {
         if (e?.body?.errcode === "M_NOT_FOUND") {
             console.info(`${alias} hasn't been created yet, so we're making it now.`);
             let roomId = await client.createRoom({

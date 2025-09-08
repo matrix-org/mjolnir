@@ -19,7 +19,6 @@ import {
     Bridge,
     Request,
     WeakEvent,
-    BridgeContext,
     MatrixUser,
     Logger,
 } from "matrix-appservice-bridge";
@@ -127,7 +126,7 @@ export class MjolnirAppService {
      * @param request A matrix-appservice-bridge request encapsulating a Matrix event.
      * @param context Additional context for the Matrix event.
      */
-    public async onEvent(request: Request<WeakEvent>, context: BridgeContext) {
+    public async onEvent(request: Request<WeakEvent>) {
         const mxEvent = request.getData();
         // Provision a new mjolnir for the invitee when the appservice bot (designated by this.bridge.botUserId) is invited to a room.
         // Acts as an alternative to the web api provided for the widget.
@@ -183,7 +182,7 @@ export class MjolnirAppService {
             }
         }
         this.accessControl.handleEvent(mxEvent["room_id"], mxEvent);
-        this.mjolnirManager.onEvent(request, context);
+        this.mjolnirManager.onEvent(request);
     }
 
     /**

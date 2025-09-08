@@ -72,7 +72,7 @@ export class ReportPoller {
                 dir: "f",
                 from: this.from.toString(),
             });
-        } catch (ex) {
+        } catch (ex: any) {
             await this.mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "getAbuseReports",
@@ -95,7 +95,7 @@ export class ReportPoller {
                         `/_synapse/admin/v1/rooms/${report.room_id}/context/${report.event_id}?limit=1`,
                     )
                 ).event;
-            } catch (ex) {
+            } catch (ex: any) {
                 this.mjolnir.managementRoomOutput.logMessage(
                     LogLevel.ERROR,
                     "getAbuseReports",
@@ -121,7 +121,7 @@ export class ReportPoller {
             this.from = response.next_token;
             try {
                 await this.mjolnir.client.setAccountData(REPORT_POLL_EVENT_TYPE, { from: response.next_token });
-            } catch (ex) {
+            } catch (ex: any) {
                 await this.mjolnir.managementRoomOutput.logMessage(
                     LogLevel.ERROR,
                     "getAbuseReports",
@@ -136,7 +136,7 @@ export class ReportPoller {
 
         try {
             await this.getAbuseReports();
-        } catch (ex) {
+        } catch (ex: any) {
             await this.mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "tryGetAbuseReports",

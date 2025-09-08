@@ -108,7 +108,7 @@ export class ReportManager extends EventEmitter {
                         break;
                     }
                 }
-            } catch (ex) {
+            } catch (ex: any) {
                 LogService.error("ReportManager", "Uncaught error while handling an event", ex);
             }
         });
@@ -121,7 +121,7 @@ export class ReportManager extends EventEmitter {
                         break;
                     }
                 }
-            } catch (ex) {
+            } catch (ex: any) {
                 LogService.error("ReportManager", "Uncaught error while handling an event", ex);
             }
         });
@@ -210,7 +210,7 @@ export class ReportManager extends EventEmitter {
         let event;
         try {
             event = await this.mjolnir.client.getEvent(roomId, eventId);
-        } catch (ex) {
+        } catch (ex: any) {
             LogService.warn(
                 "ReportManager",
                 "Received a moderation request with an event that we cannot read",
@@ -254,7 +254,7 @@ export class ReportManager extends EventEmitter {
         let relation;
         try {
             relation = event["content"]["m.relates_to"]!;
-        } catch (ex) {
+        } catch (ex: any) {
             return;
         }
 
@@ -272,11 +272,11 @@ export class ReportManager extends EventEmitter {
             }
             let content = originalEvent["content"];
             if (ABUSE_REPORT_KEY in content) {
-                initialNoticeReport = content[ABUSE_REPORT_KEY]!;
+                initialNoticeReport = content[ABUSE_REPORT_KEY] as unknown as IReport;
             } else if (ABUSE_ACTION_CONFIRMATION_KEY in content) {
-                confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]!;
+                confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY] as unknown as IReportWithAction;
             }
-        } catch (ex) {
+        } catch (ex: any) {
             return;
         }
         if (!initialNoticeReport && !confirmationReport) {
@@ -458,7 +458,7 @@ export class ReportManager extends EventEmitter {
                 throw new Error("Security error: Cannot execute this action.");
             }
             response = await action.execute(this, report, moderationRoomId, this.displayManager);
-        } catch (ex) {
+        } catch (ex: any) {
             error = ex;
         }
         if (error) {
@@ -664,7 +664,7 @@ class RedactMessage implements IUIAction {
                 report.room_id,
                 PowerLevelAction.RedactEvents,
             );
-        } catch (ex) {
+        } catch (ex: any) {
             return false;
         }
     }
@@ -698,7 +698,7 @@ class KickAccused implements IUIAction {
                 report.room_id,
                 PowerLevelAction.Kick,
             );
-        } catch (ex) {
+        } catch (ex: any) {
             return false;
         }
     }
@@ -729,7 +729,7 @@ class MuteAccused implements IUIAction {
                 "m.room.power_levels",
                 true,
             );
-        } catch (ex) {
+        } catch (ex: any) {
             return false;
         }
     }
@@ -759,7 +759,7 @@ class BanAccused implements IUIAction {
                 report.room_id,
                 PowerLevelAction.Ban,
             );
-        } catch (ex) {
+        } catch (ex: any) {
             return false;
         }
     }
@@ -835,7 +835,7 @@ class EscalateToServerModerationRoom implements IUIAction {
         }
         try {
             await manager.mjolnir.client.getEvent(report.room_id, report.event_id);
-        } catch (ex) {
+        } catch (ex: any) {
             // We can't fetch the event.
             return false;
         }
@@ -907,7 +907,7 @@ class DisplayManager {
         let roomAliasOrId = roomId;
         try {
             roomAliasOrId = (await this.owner.mjolnir.client.getPublishedAlias(roomId)) || roomId;
-        } catch (ex) {
+        } catch (ex: any) {
             // Ignore.
         }
 
@@ -938,7 +938,7 @@ class DisplayManager {
             } else {
                 eventContent = { msg: "Malformed event, cannot read content." };
             }
-        } catch (ex) {
+        } catch (ex: any) {
             eventContent = {
                 msg: `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.`,
             };
@@ -950,13 +950,13 @@ class DisplayManager {
         try {
             reporterDisplayName =
                 (await this.owner.mjolnir.client.getUserProfile(reporterId))["displayname"] || reporterId;
-        } catch (ex) {
+        } catch (ex: any) {
             reporterDisplayName = "<Error: Cannot extract reporter display name>";
         }
         try {
             accusedDisplayName =
                 (await this.owner.mjolnir.client.getUserProfile(accusedId))["displayname"] || accusedId;
-        } catch (ex) {
+        } catch (ex: any) {
             accusedDisplayName = "<Error: Cannot extract accused display name>";
         }
 
@@ -966,7 +966,7 @@ class DisplayManager {
         let eventTimestamp;
         try {
             eventTimestamp = new Date(event["origin_server_ts"]).toUTCString();
-        } catch (ex) {
+        } catch (ex: any) {
             eventTimestamp = `<Cannot extract event. Please verify that Mjölnir has been invited to room ${roomAliasOrId} and made room moderator or administrator>.`;
         }
 

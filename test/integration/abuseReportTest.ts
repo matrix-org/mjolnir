@@ -81,7 +81,7 @@ describe("Test: Reporting abuse", async () => {
                     text: badText,
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send first report", e.body || e);
                 throw e;
             }
@@ -102,7 +102,7 @@ describe("Test: Reporting abuse", async () => {
                     text: badText2,
                     comment: badEvent2Comment,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send second report", e.body || e);
                 throw e;
             }
@@ -120,7 +120,7 @@ describe("Test: Reporting abuse", async () => {
                     text: badText3,
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send third report", e.body || e);
                 throw e;
             }
@@ -139,7 +139,7 @@ describe("Test: Reporting abuse", async () => {
                     textPrefix: badText4.substring(0, 256),
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send fourth report", e.body || e);
                 throw e;
             }
@@ -158,7 +158,7 @@ describe("Test: Reporting abuse", async () => {
                     textPrefix: badText5.substring(0, 256).split("\n").join(" "),
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send fifth report", e.body || e);
                 throw e;
             }
@@ -339,7 +339,7 @@ describe("Test: Reporting abuse", async () => {
                 "POST",
                 `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`,
             );
-        } catch (e) {
+        } catch (e: any) {
             console.error("Could not send first report", e.body || e);
             throw e;
         }
