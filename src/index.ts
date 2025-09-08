@@ -90,7 +90,7 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
             try {
                 LogService.info("index", "Preparing encrypted client...");
                 await client.crypto.prepare();
-            } catch (e) {
+            } catch (e: any) {
                 LogService.error("Index", `Error preparing encrypted client ${e}`);
                 throw e;
             }
@@ -101,14 +101,14 @@ import { initializeSentry, initializeGlobalPerformanceMetrics, patchMatrixClient
         config.RUNTIME.client = client;
 
         bot = await Mjolnir.setupMjolnirFromConfig(client, client, config);
-    } catch (err) {
+    } catch (err: any) {
         console.error(`Failed to setup mjolnir from the config ${config.dataPath}: ${err}`);
         throw err;
     }
     try {
         await bot.start();
         healthz.isHealthy = true;
-    } catch (err) {
+    } catch (err: any) {
         console.error(`Mjolnir failed to start: ${err}`);
         throw err;
     }

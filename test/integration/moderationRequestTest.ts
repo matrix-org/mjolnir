@@ -44,13 +44,13 @@ describe("Test: Requesting moderation", async () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
             try {
                 await goodUser.getRoomStateEvent(roomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderated_by not setup yet, waiting");
                 continue;
             }
             try {
                 await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderator_of not setup yet, waiting");
                 continue;
             }
@@ -94,13 +94,13 @@ describe("Test: Requesting moderation", async () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
             try {
                 await goodUser.getRoomStateEvent(roomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderated_by not setup yet, waiting");
                 continue;
             }
             try {
                 await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderator_of not setup yet, waiting");
                 continue;
             }
@@ -146,13 +146,13 @@ describe("Test: Requesting moderation", async () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
             try {
                 await goodUser.getRoomStateEvent(roomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderated_by not setup yet, waiting");
                 continue;
             }
             try {
                 await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderator_of not setup yet, waiting");
                 continue;
             }
@@ -394,13 +394,13 @@ describe("Test: Requesting moderation", async () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
             try {
                 await goodUser.getRoomStateEvent(roomId, EVENT_MODERATED_BY, EVENT_MODERATED_BY);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderated_by not setup yet, waiting");
                 continue;
             }
             try {
                 await this.mjolnir.client.getRoomStateEvent(this.mjolnir.managementRoomId, EVENT_MODERATOR_OF, roomId);
-            } catch (ex) {
+            } catch (ex: any) {
                 console.log("moderator_of not setup yet, waiting");
                 continue;
             }

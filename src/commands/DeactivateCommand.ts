@@ -32,8 +32,8 @@ export async function execDeactivateCommand(roomId: string, event: any, mjolnir:
 
     if (mjolnir.usingMAS) {
         try {
-            await mjolnir.MASClient.deactivateMASUser(target);
-        } catch (err) {
+            await mjolnir.MASClient!.deactivateMASUser(target);
+        } catch (err: any) {
             mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "Deactivate Command",

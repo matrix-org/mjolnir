@@ -84,7 +84,7 @@ describe("Test: DetectFederationLag protection", function () {
                     return null;
                 }
                 return event;
-            } catch (ex) {
+            } catch (ex: any) {
                 // No such event.
                 return null;
             }

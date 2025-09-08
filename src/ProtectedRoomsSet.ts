@@ -392,7 +392,7 @@ export class ProtectedRoomsSet {
                         );
                         continue;
                     }
-                } catch (e) {
+                } catch (e: any) {
                     // ignore - assume no ACL
                 }
 
@@ -413,7 +413,7 @@ export class ProtectedRoomsSet {
                         roomId,
                     );
                 }
-            } catch (e) {
+            } catch (e: any) {
                 const message = e.message || (e.body ? e.body.error : "<no message>");
                 const kind =
                     message && message.includes("You don't have permission to post that to the room")
@@ -458,7 +458,7 @@ export class ProtectedRoomsSet {
                         .map((s) => {
                             return {
                                 userId: s["state_key"],
-                                membership: s["content"] ? s["content"]["membership"] : "leave",
+                                membership: s["content"] ? s["content"]["membership"] as string : "leave",
                             };
                         });
                 }
@@ -513,7 +513,7 @@ export class ProtectedRoomsSet {
                         }
                     }
                 }
-            } catch (e) {
+            } catch (e: any) {
                 const message = e.message || (e.body ? e.body.error : "<no message>");
                 errors.push({
                     roomId,

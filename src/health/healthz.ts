@@ -20,7 +20,7 @@ import { IConfig } from "../config";
 // allowed to use the global configuration since this is only intended to be used by `src/index.ts`.
 
 export class Healthz {
-    private healthCode: number;
+    private healthCode = 500;
 
     constructor(private config: IConfig) {}
 

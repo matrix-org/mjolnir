@@ -42,7 +42,7 @@ export class OpenMetrics {
         // Make sure that we collect the Prometheus-recommended metrics.
         try {
             collectDefaultMetrics({ register });
-        } catch (ex) {
+        } catch (ex: any) {
             if (ex.message.startsWith("A metric with the name")) {
                 // `collectDefaultMetrics` throws this error if it is called
                 // more than once in the same process, as is the case during
@@ -83,7 +83,7 @@ export class OpenMetrics {
             try {
                 response.set("Content-Type", register.contentType);
                 response.end(await register.metrics());
-            } catch (ex) {
+            } catch (ex: any) {
                 response.status(500).end(ex);
             }
         });

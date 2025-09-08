@@ -122,7 +122,7 @@ describe("Test: First message is link", function () {
         };
         try {
             await fineClient.sendMessage(testRoom, goodContent);
-        } catch (error) {
+        } catch (error: any) {
             assert.fail("User should have been able to send more messages.");
         }
     });

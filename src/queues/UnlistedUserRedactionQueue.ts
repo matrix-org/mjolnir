@@ -57,7 +57,7 @@ export class UnlistedUserRedactionQueue {
                         `Tried to redact ${permalink} but Mjolnir is running in no-op mode`,
                     );
                 }
-            } catch (e) {
+            } catch (e: any) {
                 mjolnir.managementRoomOutput.logMessage(
                     LogLevel.WARN,
                     "AutomaticRedactionQueue",

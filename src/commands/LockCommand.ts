@@ -32,8 +32,8 @@ export async function execLockCommand(roomId: string, event: any, mjolnir: Mjoln
 
     if (mjolnir.usingMAS) {
         try {
-            await mjolnir.MASClient.lockMASUser(target);
-        } catch (err) {
+            await mjolnir.MASClient!.lockMASUser(target);
+        } catch (err: any) {
             mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "Lock Command",
