@@ -35,6 +35,7 @@ import { NsfwProtection } from "./NsfwProtection";
 import { MentionSpam } from "./MentionSpam";
 import { MessageIsVideo } from "./MessageIsVideo";
 import { FirstMessageIsLink } from "./FirstMessageIsLink";
+import {RedactPolicyServerFlaggedEvents} from "./RedactPolicyServerFlaggedEvents";
 
 const PROTECTIONS: Protection[] = [
     new FirstMessageIsImage(),
@@ -50,6 +51,7 @@ const PROTECTIONS: Protection[] = [
     new MentionSpam(),
     new MessageIsVideo(),
     new FirstMessageIsLink(),
+    new RedactPolicyServerFlaggedEvents(),
 ];
 
 const ENABLED_PROTECTIONS_EVENT_TYPE = "org.matrix.mjolnir.enabled_protections";
