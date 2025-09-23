@@ -123,10 +123,10 @@ export default class ProtectedRoomsConfig {
                 additionalProtectedRooms = Array.isArray(roomConfig.rooms) ? roomConfig.rooms : [];
             } catch (e: any) {
                 LogService.warn(
-                            "ProtectedRoomsConfig",
-                            "Could not load protected rooms from account data",
-                            extractRequestError(e),
-                        )
+                    "ProtectedRoomsConfig",
+                    "Could not load protected rooms from account data",
+                    extractRequestError(e),
+                );
                 additionalProtectedRooms = [];
             }
             const roomsToSave = new Set([...this.explicitlyProtectedRooms.keys(), ...additionalProtectedRooms]);

@@ -53,7 +53,7 @@
     "await-lock": "^2.2.2",
     "axios": "^1.8.2",
     "body-parser": "^1.20.1",
-    "config": "^3.3.8",
+    "config": "^4.0.0",
     "express": "^4.20",
     "html-to-text": "^8.0.0",
     "humanize-duration": "^3.27.1",

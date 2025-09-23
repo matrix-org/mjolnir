@@ -458,7 +458,7 @@ export class ProtectedRoomsSet {
                         .map((s) => {
                             return {
                                 userId: s["state_key"],
-                                membership: s["content"] ? s["content"]["membership"] as string : "leave",
+                                membership: s["content"] ? (s["content"]["membership"] as string) : "leave",
                             };
                         });
                 }

@@ -16,7 +16,7 @@ const cli = new Cli({
         defaults: {},
     },
     generateRegistration: MjolnirAppService.generateRegistration,
-    run: async function (port: number|null) {
+    run: async function (port: number | null) {
         const config: IAppserviceConfig | null = cli.getConfig() as any;
         if (config === null) {
             throw new Error("Couldn't load config");
