@@ -601,7 +601,7 @@ describe("Test: Testing RoomMemberManager", function () {
                 command: (roomId: string, roomAlias: string) => string;
                 shouldAffectControlProtected?: boolean;
                 n?: number;
-                method;
+                method: any;
                 sameRoom?: boolean;
             }) {
                 this.name = name;
