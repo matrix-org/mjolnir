@@ -564,7 +564,7 @@ describe("Test: Testing RoomMemberManager", function () {
             kick: "kick",
             ban: "ban",
             mute: "mute",
-            unmute: "unmute"
+            unmute: "unmute",
         } as const;
         class Experiment {
             // A human-readable name for the command.
