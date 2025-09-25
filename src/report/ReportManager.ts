@@ -210,6 +210,7 @@ export class ReportManager extends EventEmitter {
         let event;
         try {
             event = await this.mjolnir.client.getEvent(roomId, eventId);
+            event = event.event
         } catch (ex: any) {
             LogService.warn(
                 "ReportManager",
@@ -262,6 +263,7 @@ export class ReportManager extends EventEmitter {
         let initialNoticeReport: IReport | undefined, confirmationReport: IReportWithAction | undefined;
         try {
             let originalEvent = await this.mjolnir.client.getEvent(roomId, relation.event_id);
+            originalEvent = originalEvent.event
             if (originalEvent.sender !== (await this.mjolnir.client.getUserId())) {
                 // Let's not handle reactions to events we didn't send as
                 // some setups have two or more Mjolnir's in the same management room.
@@ -854,6 +856,7 @@ class EscalateToServerModerationRoom implements IUIAction {
         displayManager: DisplayManager,
     ): Promise<string | undefined> {
         let event = await manager.mjolnir.client.getEvent(report.room_id, report.event_id);
+        event = event.event
 
         // Display the report and UI directly in the management room, as if it had been
         // received from /report.

@@ -36,6 +36,9 @@ describe("Test: Reporting abuse", async () => {
                 }
             });
 
+            // wait for listeners to begin listening
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
             // Create a few users and a room.
             let goodUser = await newTestUser(this.config.homeserverUrl, {
                 name: { contains: "reporting-abuse-good-user" },
@@ -299,7 +302,7 @@ describe("Test: Reporting abuse", async () => {
                 notices.push(event);
             }
         });
-
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         // Create a moderator.
         let moderatorUser = await newTestUser(this.config.homeserverUrl, {
             name: { contains: "reporting-abuse-moderator-user" },
@@ -345,7 +348,7 @@ describe("Test: Reporting abuse", async () => {
         }
 
         console.log("Test: Reporting abuse - wait");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
         let mjolnirRooms = new Set(await this.mjolnir.client.getJoinedRooms());
         assert.ok(mjolnirRooms.has(roomId), "Mjölnir should be a member of the room");
