@@ -256,7 +256,7 @@ async function execSinceCommandAux(
                         try {
                             await mjolnir.client.kickUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
-                        } catch (ex) {
+                        } catch (ex: any) {
                             LogService.warn("SinceCommand", "Error while attempting to kick user", ex);
                             results.failed.push(join.userId);
                         }
@@ -277,7 +277,7 @@ async function execSinceCommandAux(
                             }
                             await mjolnir.client.banUser(join.userId, targetRoomId, reason);
                             results.succeeded.push(join.userId);
-                        } catch (ex) {
+                        } catch (ex: any) {
                             LogService.warn("SinceCommand", "Error while attempting to ban user", ex);
                             results.failed.push(join.userId);
                         }
@@ -300,7 +300,7 @@ async function execSinceCommandAux(
                         for (let join of recentJoins) {
                             results.succeeded.push(join.userId);
                         }
-                    } catch (ex) {
+                    } catch (ex: any) {
                         LogService.warn("SinceCommand", "Error while attempting to mute users", ex);
                         for (let join of recentJoins) {
                             results.failed.push(join.userId);
@@ -324,7 +324,7 @@ async function execSinceCommandAux(
                         for (let join of recentJoins) {
                             results.succeeded.push(join.userId);
                         }
-                    } catch (ex) {
+                    } catch (ex: any) {
                         LogService.warn("SinceCommand", "Error while attempting to unmute users", ex);
                         for (let join of recentJoins) {
                             results.failed.push(join.userId);

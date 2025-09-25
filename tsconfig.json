@@ -1,24 +1,29 @@
 {
+    "extends": "@tsconfig/node24",
     "compilerOptions": {
         "skipLibCheck": true,
         "alwaysStrict": true,
-        "esModuleInterop": true,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
-        "module": "commonjs",
-        "moduleResolution": "node",
         "newLine": "LF",
         "noImplicitReturns": true,
         "noUnusedLocals": true,
-        "target": "es2021",
         "noImplicitAny": true,
         "sourceMap": true,
         "strictNullChecks": true,
         "outDir": "./lib",
+        "lib": [
+            "es2024",
+            "ESNext.Array",
+            "ESNext.Collection",
+            "ESNext.Iterator",
+            "ESNext.Promise",
+            "DOM"
+        ],
         "types": [
             "node",
-            "mocha"
-        ]
+            "mocha",
+        ],
     },
     "include": [
         "./src/**/*",

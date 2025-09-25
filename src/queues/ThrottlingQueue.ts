@@ -34,25 +34,22 @@ export class ThrottlingQueue {
     private timeout: ReturnType<typeof setTimeout> | null;
 
     /**
-     * How long we should wait between the completion of a tasks and the start of the next task.
-     * Any >=0 number is good.
-     */
-    private _delayMS: number;
-
-    /**
      * Construct an empty queue.
      *
      * This queue will start executing whenever `push()` is called and stop
      * whenever it runs out of tasks to execute.
      *
-     * @param delayMS The default delay between executing two tasks, in ms.
+     * @param _delayMS The default delay between executing two tasks, in ms.
      */
     constructor(
         private mjolnir: Mjolnir,
-        delayMS: number,
+        /**
+         * How long we should wait between the completion of a tasks and the start of the next task.
+         * Any >=0 number is good.
+         */
+        private _delayMS: number,
     ) {
         this.timeout = null;
-        this.delayMS = delayMS;
         this._tasks = [];
     }
 
@@ -85,7 +82,7 @@ export class ThrottlingQueue {
                 try {
                     const result: T = await task(this);
                     resolve(result);
-                } catch (ex) {
+                } catch (ex: any) {
                     reject(ex);
                 }
             };
@@ -125,7 +122,7 @@ export class ThrottlingQueue {
             // Nothing to do.
             return;
         }
-        this.timeout = setTimeout(async () => this.step(), this._delayMS);
+        this.timeout = setTimeout(async () => this.step(), this.delayMS);
     }
 
     /**
@@ -180,7 +177,7 @@ export class ThrottlingQueue {
         }
         try {
             await task();
-        } catch (ex) {
+        } catch (ex: any) {
             await this.mjolnir.managementRoomOutput.logMessage(
                 LogLevel.WARN,
                 "Error while executing task",

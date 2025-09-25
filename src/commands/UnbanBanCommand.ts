@@ -45,7 +45,7 @@ export async function parseArguments(
     try {
         const data: { shortcode: string } = await mjolnir.client.getAccountData(DEFAULT_LIST_EVENT_TYPE);
         defaultShortcode = data["shortcode"];
-    } catch (e) {
+    } catch (e: any) {
         LogService.warn("UnbanBanCommand", "Non-fatal error getting default ban list");
         LogService.warn("UnbanBanCommand", extractRequestError(e));
 
@@ -90,7 +90,7 @@ export async function parseArguments(
                     entity = permParts.roomIdOrAlias;
                     ruleType = RULE_ROOM;
                 }
-            } catch (e) {
+            } catch (e: any) {
                 // okay it's not a matrix.to link, run it through the rest of the parser
             }
         }

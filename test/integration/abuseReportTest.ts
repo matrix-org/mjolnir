@@ -36,6 +36,9 @@ describe("Test: Reporting abuse", async () => {
                 }
             });
 
+            // wait for listeners to begin listening
+            await new Promise((resolve) => setTimeout(resolve, 5000));
+
             // Create a few users and a room.
             let goodUser = await newTestUser(this.config.homeserverUrl, {
                 name: { contains: "reporting-abuse-good-user" },
@@ -81,7 +84,7 @@ describe("Test: Reporting abuse", async () => {
                     text: badText,
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send first report", e.body || e);
                 throw e;
             }
@@ -102,7 +105,7 @@ describe("Test: Reporting abuse", async () => {
                     text: badText2,
                     comment: badEvent2Comment,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send second report", e.body || e);
                 throw e;
             }
@@ -120,7 +123,7 @@ describe("Test: Reporting abuse", async () => {
                     text: badText3,
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send third report", e.body || e);
                 throw e;
             }
@@ -139,7 +142,7 @@ describe("Test: Reporting abuse", async () => {
                     textPrefix: badText4.substring(0, 256),
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send fourth report", e.body || e);
                 throw e;
             }
@@ -158,7 +161,7 @@ describe("Test: Reporting abuse", async () => {
                     textPrefix: badText5.substring(0, 256).split("\n").join(" "),
                     comment: null,
                 });
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Could not send fifth report", e.body || e);
                 throw e;
             }
@@ -299,7 +302,7 @@ describe("Test: Reporting abuse", async () => {
                 notices.push(event);
             }
         });
-
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         // Create a moderator.
         let moderatorUser = await newTestUser(this.config.homeserverUrl, {
             name: { contains: "reporting-abuse-moderator-user" },
@@ -339,13 +342,13 @@ describe("Test: Reporting abuse", async () => {
                 "POST",
                 `/_matrix/client/r0/rooms/${encodeURIComponent(roomId)}/report/${encodeURIComponent(badEventId)}`,
             );
-        } catch (e) {
+        } catch (e: any) {
             console.error("Could not send first report", e.body || e);
             throw e;
         }
 
         console.log("Test: Reporting abuse - wait");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
         let mjolnirRooms = new Set(await this.mjolnir.client.getJoinedRooms());
         assert.ok(mjolnirRooms.has(roomId), "Mjölnir should be a member of the room");
