@@ -16,7 +16,7 @@ limitations under the License.
 
 import { Server } from "http";
 import express from "express";
-import {LogService, MatrixClient, RoomEvent} from "@vector-im/matrix-bot-sdk";
+import { LogService, MatrixClient, RoomEvent } from "@vector-im/matrix-bot-sdk";
 import RuleServer from "../models/RuleServer";
 import { ReportManager } from "../report/ReportManager";
 import { IConfig } from "../config";
@@ -219,7 +219,7 @@ export class WebAPIs {
                 // By doing this with the reporterClient, we ensure that this feature of Mjölnir can work
                 // with all Matrix homeservers, rather than just Synapse.
                 event = await reporterClient.getEvent(roomId, eventId);
-                event = event.event
+                event = event.event;
             }
 
             let reason = request.body["reason"];
