@@ -57,7 +57,7 @@ describe("Test: lock/unlock command", function () {
         try {
             await badUser.sendMessage(room, { msgtype: "m.text", body: `testing` });
             assert.fail("Bad user successfully sent message.");
-        } catch (error) {
+        } catch (error: any) {
             assert.match(error.message, /M_USER_LOCKED/i);
         }
 

@@ -219,6 +219,7 @@ export class WebAPIs {
                 // By doing this with the reporterClient, we ensure that this feature of Mjölnir can work
                 // with all Matrix homeservers, rather than just Synapse.
                 event = await reporterClient.getEvent(roomId, eventId);
+                event = event.raw;
             }
 
             let reason = request.body["reason"];
@@ -226,7 +227,7 @@ export class WebAPIs {
 
             // Match the spec behavior of `/report`: return 200 and an empty JSON.
             response.status(200).json({});
-        } catch (ex) {
+        } catch (ex: any) {
             console.warn("Error responding to an abuse report", roomId, eventId, ex);
             response.status(503);
         }
@@ -242,7 +243,7 @@ export class WebAPIs {
         response.set("Connection", "close");
         try {
             response.json(ruleServer.getUpdates(since)).status(200);
-        } catch (ex) {
+        } catch (ex: any) {
             LogService.error("WebAPIs", `Error responding to a rule server updates request`, since, ex);
         }
     }

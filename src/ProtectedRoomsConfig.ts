@@ -68,7 +68,7 @@ export default class ProtectedRoomsConfig {
                     this.explicitlyProtectedRooms.add(roomId);
                 }
             }
-        } catch (e) {
+        } catch (e: any) {
             if (e.statusCode === 404) {
                 LogService.warn(
                     "ProtectedRoomsConfig",
@@ -117,20 +117,18 @@ export default class ProtectedRoomsConfig {
         //       but it doesn't stop a third party client on the same account racing with us instead.
         await this.accountDataLock.acquireAsync();
         try {
-            const additionalProtectedRooms: string[] = await this.client
-                .getAccountData(PROTECTED_ROOMS_EVENT_TYPE)
-                .then((rooms: { rooms?: string[] }) => (Array.isArray(rooms?.rooms) ? rooms.rooms : []))
-                .catch(
-                    (e) => (
-                        LogService.warn(
-                            "ProtectedRoomsConfig",
-                            "Could not load protected rooms from account data",
-                            extractRequestError(e),
-                        ),
-                        []
-                    ),
+            let additionalProtectedRooms: string[];
+            try {
+                const roomConfig: { rooms?: string[] } = await this.client.getAccountData(PROTECTED_ROOMS_EVENT_TYPE);
+                additionalProtectedRooms = Array.isArray(roomConfig.rooms) ? roomConfig.rooms : [];
+            } catch (e: any) {
+                LogService.warn(
+                    "ProtectedRoomsConfig",
+                    "Could not load protected rooms from account data",
+                    extractRequestError(e),
                 );
-
+                additionalProtectedRooms = [];
+            }
             const roomsToSave = new Set([...this.explicitlyProtectedRooms.keys(), ...additionalProtectedRooms]);
             excludeRooms.forEach(roomsToSave.delete, roomsToSave);
             await this.client.setAccountData(PROTECTED_ROOMS_EVENT_TYPE, { rooms: Array.from(roomsToSave.keys()) });
