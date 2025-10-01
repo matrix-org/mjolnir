@@ -28,7 +28,7 @@ describe("Test: Reporting abuse", async () => {
             this.timeout(90000);
 
             // Listen for any notices that show up.
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 5000));
             let notices: any[] = [];
             this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
                 if ((roomId = this.mjolnir.managementRoomId)) {
@@ -37,7 +37,7 @@ describe("Test: Reporting abuse", async () => {
             });
 
             // wait for listeners to begin listening
-            await new Promise((resolve) => setTimeout(resolve, 5000));
+            await new Promise((resolve) => setTimeout(resolve, 8000));
 
             // Create a few users and a room.
             let goodUser = await newTestUser(this.config.homeserverUrl, {
@@ -295,14 +295,14 @@ describe("Test: Reporting abuse", async () => {
         this.timeout(60000);
 
         // Listen for any notices that show up.
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         let notices: any[] = [];
         this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
             if ((roomId = this.mjolnir.managementRoomId)) {
                 notices.push(event);
             }
         });
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 8000));
         // Create a moderator.
         let moderatorUser = await newTestUser(this.config.homeserverUrl, {
             name: { contains: "reporting-abuse-moderator-user" },
