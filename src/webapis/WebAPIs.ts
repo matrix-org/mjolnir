@@ -219,8 +219,7 @@ export class WebAPIs {
                 // By doing this with the reporterClient, we ensure that this feature of Mjölnir can work
                 // with all Matrix homeservers, rather than just Synapse.
                 event = await reporterClient.getEvent(roomId, eventId);
-                // @ts-ignore
-                event = event.event;
+                event = event.raw();
             }
 
             let reason = request.body["reason"];
