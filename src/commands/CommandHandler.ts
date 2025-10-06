@@ -254,7 +254,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 body: "Unknown command - use `!mjolnir help` to display the help menu.",
             });
         }
-    } catch (e) {
+    } catch (e: any) {
         LogService.error("CommandHandler", extractRequestError(e));
         const text = "There was an error processing your command - see console/log for details";
         const reply = RichReply.createFor(roomId, event, text, text);

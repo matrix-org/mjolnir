@@ -93,7 +93,12 @@ describe("Test: First message is link", function () {
 
         // bad user banned for spam so their events should be redacted
         let processedLink = await modClient.getEvent(testRoom, linkMessage);
-        assert.equal(processedLink?.redacted_because?.redacts, linkMessage, "This  event should have been redacted");
+        // @ts-ignore
+        assert.equal(
+            processedLink.event?.redacted_because?.redacts,
+            linkMessage,
+            "This  event should have been redacted",
+        );
     });
 
     it("Doesn't ban safe messages", async function () {
@@ -122,7 +127,7 @@ describe("Test: First message is link", function () {
         };
         try {
             await fineClient.sendMessage(testRoom, goodContent);
-        } catch (error) {
+        } catch (error: any) {
             assert.fail("User should have been able to send more messages.");
         }
     });

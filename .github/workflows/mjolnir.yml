@@ -15,12 +15,12 @@ jobs:
     name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v5
 
-    - name: Specifically use node 20 like in the readme.
-      uses: actions/setup-node@v3
+    - uses: actions/setup-node@v5
       with:
-        node-version: '20'
+        with:
+        node-version-file: '.nodeversion'
     - run: yarn install
     - run: yarn build
     - run: yarn lint
@@ -28,11 +28,10 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Specifically use node 20 like in the readme.
-      uses: actions/setup-node@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       with:
-        node-version: '20'
+        node-version-file: '.nodeversion'
     - run: yarn install
     - run: yarn test
   integration:
@@ -40,10 +39,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       with:
-        node-version: '20'
+        node-version-file: '.nodeversion'
     - name: Fetch and build mx-tester (cached across runs)
       uses: baptiste0928/cargo-install@v1
       with:
@@ -62,10 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@v5
+    - uses: actions/setup-node@v5
       with:
-        node-version: '20'
+        node-version-file: '.nodeversion'
     - name: Fetch and build mx-tester (cached across runs)
       uses: baptiste0928/cargo-install@v1
       with:

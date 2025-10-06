@@ -121,7 +121,7 @@ export class EventRedactionQueue {
             for (const redaction of currentBatch) {
                 try {
                     await redaction.redact(client, managementRoom);
-                } catch (e) {
+                } catch (e: any) {
                     let roomError: RoomUpdateError;
                     if (e.roomId && e.errorMessage && e.errorKind) {
                         roomError = e;

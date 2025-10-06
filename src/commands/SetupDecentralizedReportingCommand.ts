@@ -28,7 +28,7 @@ export async function execSetupProtectedRoom(commandRoomId: string, event: any, 
                 EVENT_MODERATED_BY,
                 EVENT_MODERATED_BY,
             );
-        } catch (ex) {
+        } catch (ex: any) {
             previousState = null;
         }
 
@@ -45,7 +45,7 @@ export async function execSetupProtectedRoom(commandRoomId: string, event: any, 
             await mjolnir.client.sendStateEvent(commandRoomId, EVENT_MODERATOR_OF, protectedRoomId, {
                 user_id: userId,
             });
-        } catch (ex) {
+        } catch (ex: any) {
             // If the second `sendStateEvent` fails, we could end up with a room half setup, which
             // is bad. Attempt to rollback.
             try {
@@ -64,7 +64,7 @@ export async function execSetupProtectedRoom(commandRoomId: string, event: any, 
                 throw ex;
             }
         }
-    } catch (ex) {
+    } catch (ex: any) {
         mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "execSetupProtectedRoom", ex.message);
         await mjolnir.client.unstableApis.addReactionToEvent(commandRoomId, event["event_id"], "❌");
     }

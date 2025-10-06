@@ -682,7 +682,7 @@ export class Revision {
  * A manager for all the policy lists for this Mjölnir
  */
 export class PolicyListManager {
-    private policyLists: PolicyList[];
+    private policyLists: PolicyList[] = [];
 
     /**
      * A list of references (matrix.to URLs) to policy lists that
@@ -786,13 +786,12 @@ export class PolicyListManager {
      * Load the watched policy lists from account data, only used when Mjolnir is initialized.
      */
     public async init() {
-        this.policyLists = [];
         const joinedRooms = await this.mjolnir.client.getJoinedRooms();
 
         let watchedListsEvent: { references?: string[] } | null = null;
         try {
             watchedListsEvent = await this.mjolnir.client.getAccountData(WATCHED_LISTS_EVENT_TYPE);
-        } catch (e) {
+        } catch (e: any) {
             if (e.statusCode === 404) {
                 LogService.warn(
                     "Mjolnir",
@@ -811,7 +810,7 @@ export class PolicyListManager {
             let roomId;
             try {
                 roomId = await this.mjolnir.client.resolveRoom(permalink.roomIdOrAlias);
-            } catch (ex) {
+            } catch (ex: any) {
                 // Let's not fail startup because of a problem resolving a room id or an alias.
                 LogService.warn(
                     "Mjolnir",
@@ -877,7 +876,7 @@ export class PolicyListManager {
             if (accountData && accountData.warned) {
                 return; // already warned
             }
-        } catch (e) {
+        } catch (e: any) {
             // Expect that we haven't warned yet.
         }
 
