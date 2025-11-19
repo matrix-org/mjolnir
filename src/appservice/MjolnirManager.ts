@@ -1,5 +1,5 @@
 import { Mjolnir } from "../Mjolnir";
-import { Request, WeakEvent, Bridge, Intent, Logger } from "matrix-appservice-bridge";
+import { Request, WeakEvent, BridgeContext, Bridge, Intent, Logger } from "matrix-appservice-bridge";
 import { getProvisionedMjolnirConfig } from "../config";
 import { IConfig as IAppserviceConfig } from "./config/config";
 import PolicyList from "../models/PolicyList";
@@ -109,7 +109,7 @@ export class MjolnirManager {
     /**
      * Listener that should be setup and called by `MjolnirAppService` while listening to the bridge abstraction provided by matrix-appservice-bridge.
      */
-    public onEvent(request: Request<WeakEvent>) {
+    public onEvent(request: Request<WeakEvent>, context: BridgeContext) {
         // TODO We need a way to map a room id (that the event is from) to a set of managed mjolnirs that should be informed.
         // https://github.com/matrix-org/mjolnir/issues/412
         [...this.perMjolnirId.values()].forEach((mj: ManagedMjolnir) => mj.onEvent(request));

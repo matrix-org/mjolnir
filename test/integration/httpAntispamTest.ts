@@ -53,7 +53,7 @@ describe("Test: http-antispam integration", function () {
         };
         try {
             await axios(canInviteConfig);
-        } catch (error: any) {
+        } catch (error) {
             if (error.isAxiosError && error.response && error.response.status === 403) {
                 // pass test, correct error thrown
             } else {

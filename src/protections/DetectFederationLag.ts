@@ -321,7 +321,7 @@ class RoomInfo {
      * If non-`null`, the date at which this room started being on alert.
      * Otherwise, the room is not an alert.
      */
-    public latestAlertStart: Date | null = null;
+    public latestAlertStart: Date | null;
 
     /**
      * The date at which we last issued a warning on this room.
@@ -542,7 +542,7 @@ export class DetectFederationLag extends Protection {
     private firstMessage: Date | null = null;
     // The latest instant at which we have started cleaning up old data.
     private latestCleanup: Date = new Date(0);
-    private latestHistogramSettings!: HistogramSettings;
+    private latestHistogramSettings: HistogramSettings;
     constructor() {
         super();
         // Initialize and watch `this.latestHistogramSettings`.

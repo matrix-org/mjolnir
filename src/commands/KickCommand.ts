@@ -70,7 +70,7 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                         await mjolnir.taskQueue.push(async () => {
                             return mjolnir.client.kickUser(target, protectedRoomId, reason);
                         });
-                    } catch (e: any) {
+                    } catch (e) {
                         await mjolnir.client.sendMessage(mjolnir.managementRoomId, {
                             msgtype: "m.text",
                             body: `An error happened while trying to kick ${target}: ${e}`,

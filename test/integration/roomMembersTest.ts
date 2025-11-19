@@ -560,12 +560,12 @@ describe("Test: Testing RoomMemberManager", function () {
         const roomIds = allRoomIds.slice(2);
         const roomAliases = allRoomAliases.slice(2);
 
-        const Method = {
-            kick: "kick",
-            ban: "ban",
-            mute: "mute",
-            unmute: "unmute",
-        } as const;
+        enum Method {
+            kick,
+            ban,
+            mute,
+            unmute,
+        }
         class Experiment {
             // A human-readable name for the command.
             readonly name: string;
@@ -578,7 +578,7 @@ describe("Test: Testing RoomMemberManager", function () {
             // Defaults to `1`.
             readonly n: number;
             // How affected users should leave the room.
-            readonly method;
+            readonly method: Method;
 
             // If `true`, should this experiment look at the same room as the previous one.
             // Defaults to `false`.
@@ -601,7 +601,7 @@ describe("Test: Testing RoomMemberManager", function () {
                 command: (roomId: string, roomAlias: string) => string;
                 shouldAffectControlProtected?: boolean;
                 n?: number;
-                method: any;
+                method: Method;
                 sameRoom?: boolean;
             }) {
                 this.name = name;

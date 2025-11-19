@@ -58,9 +58,8 @@ export const STATE_RUNNING = "running";
 export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
 
 export class Mjolnir {
-    // Set during startup
-    private displayName!: string;
-    private localpart!: string;
+    private displayName: string;
+    private localpart: string;
     private currentState: string = STATE_NOT_STARTED;
     public readonly roomJoins: RoomMemberManager;
     /**
@@ -111,7 +110,7 @@ export class Mjolnir {
     /**
      * Client for making calls to MAS (if using)
      */
-    public MASClient?: MASClient;
+    public MASClient: MASClient;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -230,8 +229,6 @@ export class Mjolnir {
         if (config.MAS.use) {
             this.usingMAS = true;
             this.MASClient = new MASClient(config);
-        } else {
-            this.usingMAS = false;
         }
 
         // Setup bot.
@@ -381,7 +378,7 @@ export class Mjolnir {
                 let reportPollSetting: { from: number } = { from: 0 };
                 try {
                     reportPollSetting = await this.client.getAccountData(REPORT_POLL_EVENT_TYPE);
-                } catch (err: any) {
+                } catch (err) {
                     if (err.body?.errcode !== "M_NOT_FOUND") {
                         throw err;
                     } else {
@@ -431,7 +428,7 @@ export class Mjolnir {
             );
             // update protected rooms set
             this.protectedRoomsTracker.isAdmin = await this.isSynapseAdmin();
-        } catch (err: any) {
+        } catch (err) {
             try {
                 LogService.error("Mjolnir", "Error during startup:");
                 LogService.error("Mjolnir", extractRequestError(err));
@@ -441,7 +438,7 @@ export class Mjolnir {
                     "Mjolnir@startup",
                     "Startup failed due to error - see console",
                 );
-            } catch (e: any) {
+            } catch (e) {
                 LogService.error("Mjolnir", `Failed to report startup error to the management room: ${e}`);
             }
             throw err;
@@ -589,13 +586,13 @@ export class Mjolnir {
     public async isSynapseAdmin(): Promise<boolean> {
         try {
             if (this.usingMAS) {
-                return await this.MASClient!.UserIsMASAdmin(this.clientUserId);
+                return await this.MASClient.UserIsMASAdmin(this.clientUserId);
             } else {
                 const endpoint = `/_synapse/admin/v1/users/${await this.client.getUserId()}/admin`;
                 const response = await this.client.doRequest("GET", endpoint);
                 return response["admin"];
             }
-        } catch (e: any) {
+        } catch (e) {
             LogService.error("Mjolnir", "Error determining if Mjolnir is a server admin:");
             LogService.error("Mjolnir", extractRequestError(e));
             return false; // assume not
@@ -656,7 +653,7 @@ export class Mjolnir {
             return await this.client.doRequest("POST", endpoint, null, {
                 user_id: userId || (await this.client.getUserId()) /* if not specified make the bot administrator */,
             });
-        } catch (e: any) {
+        } catch (e) {
             return extractRequestError(e);
         }
     }
@@ -669,7 +666,7 @@ export class Mjolnir {
         try {
             const endpoint = `/_synapse/admin/v1/media/quarantine/${encodeURIComponent(mxc.domain)}/${encodeURIComponent(mxc.mediaId)}`;
             return await this.client.doRequest("POST", endpoint, null, {});
-        } catch (e: any) {
+        } catch (e) {
             LogService.error("Mjolnir", "Could not quarantine media", mxc);
             LogService.error("Mjolnir", extractRequestError(e));
         }
@@ -685,7 +682,7 @@ export class Mjolnir {
             const endpoint = `/_synapse/admin/v1/user/${encodeURIComponent(userId)}/media/quarantine`;
             const data = await this.client.doRequest("POST", endpoint, null, {});
             return data.num_quarantined;
-        } catch (e: any) {
+        } catch (e) {
             LogService.error("Mjolnir", "Could not quarantine media for user", userId);
             throw extractRequestError(e);
         }
