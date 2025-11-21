@@ -32,11 +32,11 @@ function createTestMjolnir(defaultShortcode: string | null = null): Mjolnir {
             throw new Error(`Unknown event type ${eventType}, expected ${DEFAULT_LIST_EVENT_TYPE}`);
         },
     };
-    return <Mjolnir>{
+    return {
         client,
         config,
         policyListManager: {},
-    };
+    } as Mjolnir;
 }
 
 function createFakeEvent(command: string): any {
