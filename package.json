@@ -57,7 +57,7 @@
     "html-to-text": "^8.0.0",
     "humanize-duration": "^3.27.1",
     "humanize-duration-ts": "^2.1.1",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "jsdom": "^16.6.0",
     "matrix-appservice-bridge": "^10.3.3",
     "nsfwjs": "^4.1.0",
