@@ -30,7 +30,7 @@ const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";
  * Setup decentralized abuse reports in protected rooms.
  */
 export class LocalAbuseReports extends Protection {
-    settings: {} = {};
+    settings: {};
     public readonly name = "LocalAbuseReports";
     public readonly description =
         "Enables MSC3215-compliant web clients to send abuse reports to the moderator instead of the homeserver admin";
@@ -51,7 +51,7 @@ export class LocalAbuseReports extends Protection {
                     EVENT_MODERATED_BY,
                     EVENT_MODERATED_BY,
                 );
-            } catch (ex: any) {
+            } catch (ex) {
                 previousState = null;
             }
             if (previousState && previousState["room_id"] && previousState["user_id"]) {
@@ -80,7 +80,7 @@ export class LocalAbuseReports extends Protection {
                     room_id: mjolnir.managementRoomId,
                     user_id: userId,
                 });
-            } catch (ex: any) {
+            } catch (ex) {
                 mjolnir.managementRoomOutput.logMessage(
                     LogLevel.ERROR,
                     "LocalAbuseReports",
@@ -94,7 +94,7 @@ export class LocalAbuseReports extends Protection {
                 await mjolnir.client.sendStateEvent(mjolnir.managementRoomId, EVENT_MODERATOR_OF, protectedRoomId, {
                     user_id: userId,
                 });
-            } catch (ex: any) {
+            } catch (ex) {
                 // If the second `sendStateEvent` fails, we could end up with a room half setup, which
                 // is bad. Attempt to rollback.
                 mjolnir.managementRoomOutput.logMessage(
@@ -109,7 +109,7 @@ export class LocalAbuseReports extends Protection {
                     throw ex;
                 }
             }
-        } catch (ex: any) {
+        } catch (ex) {
             mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, "LocalAbuseReports", ex.message);
         }
     }

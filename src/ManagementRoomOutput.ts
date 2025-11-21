@@ -79,7 +79,7 @@ export default class ManagementRoomOutput {
             let alias = roomId;
             try {
                 alias = (await this.client.getPublishedAlias(roomId)) || roomId;
-            } catch (e: any) {
+            } catch (e) {
                 // This is a recursive call, so tell the function not to try and call us
                 await this.logMessage(
                     LogLevel.WARN,
@@ -146,7 +146,7 @@ export default class ManagementRoomOutput {
 
             try {
                 await client.sendMessage(this.managementRoomId, evContent);
-            } catch (ex: any) {
+            } catch (ex) {
                 // We want to be informed if we cannot log a message.
                 Sentry.captureException(ex);
             }

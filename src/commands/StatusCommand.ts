@@ -162,7 +162,7 @@ async function showJoinsStatus(destinationRoomId: string, event: any, mjolnir: M
         let targetRoomId;
         try {
             targetRoomId = await mjolnir.client.resolveRoom(targetRoomAliasOrId);
-        } catch (ex: any) {
+        } catch (ex) {
             return {
                 html: `Cannot resolve room ${htmlEscape(targetRoomAliasOrId)}.`,
                 text: `Cannot resolve room \`${targetRoomAliasOrId}\`.`,

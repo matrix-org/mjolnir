@@ -52,7 +52,7 @@ export async function registerUser(
         try {
             let resp = await axios(registerConfig);
             return resp.data?.access_token;
-        } catch (ex: any) {
+        } catch (ex) {
             const code = ex.response.data.errcode;
 
             // In case of timeout or throttling, backoff and retry.
@@ -121,7 +121,7 @@ async function registerNewTestUser(homeserver: string, options: RegistrationOpti
         try {
             accessToken = await registerUser(homeserver, username, username, username, Boolean(options.isAdmin));
             return accessToken;
-        } catch (e: any) {
+        } catch (e) {
             console.error(`failed to register user ${e}`);
             throw e;
         }

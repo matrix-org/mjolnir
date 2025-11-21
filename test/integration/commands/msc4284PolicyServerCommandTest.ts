@@ -123,7 +123,7 @@ describe("Test: The msc4284_set command", function () {
         try {
             const { via: via1 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
             assert.equal(via1, undefined); // verify we didn't touch the room
-        } catch (e: any) {
+        } catch (e) {
             if (e.statusCode !== 404) {
                 throw e;
             }
@@ -143,7 +143,7 @@ describe("Test: The msc4284_set command", function () {
         try {
             const { via: via3 } = await mjolnir.getRoomStateEvent(unprotectedRoomId, "org.matrix.msc4284.policy", "");
             assert.equal(via3, undefined); // shouldn't have changed
-        } catch (e: any) {
+        } catch (e) {
             if (e.statusCode !== 404) {
                 throw e;
             }

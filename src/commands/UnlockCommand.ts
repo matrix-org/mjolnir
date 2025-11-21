@@ -32,8 +32,8 @@ export async function execUnlockCommand(roomId: string, event: any, mjolnir: Mjo
 
     if (mjolnir.usingMAS) {
         try {
-            await mjolnir.MASClient!.unlockMASUser(target);
-        } catch (err: any) {
+            await mjolnir.MASClient.unlockMASUser(target);
+        } catch (err) {
             mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "Unlock Command",

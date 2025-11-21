@@ -26,7 +26,7 @@ const DEFAULT_JOIN_CACHE_EXPIRY_HOURS = 24;
 export class FirstMessageIsLink extends Protection {
     private justJoined: { [roomId: string]: { ts: number; stateKey: string }[] } = {};
     private recentlyBanned: string[] = [];
-    private cacheIntervalTimer?: NodeJS.Timeout;
+    private cacheIntervalTimer: NodeJS.Timeout;
 
     settings = {
         joinCacheExpiryHours: new NumberProtectionSetting(DEFAULT_JOIN_CACHE_EXPIRY_HOURS),

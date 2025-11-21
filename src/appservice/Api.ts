@@ -39,7 +39,7 @@ export class Api {
                     let response: { sub: string };
                     try {
                         response = JSON.parse(body);
-                    } catch (e: any) {
+                    } catch (e) {
                         log.error(
                             `Received ill formed response from ${this.homeserver} when resolving an openID token`,
                             e,

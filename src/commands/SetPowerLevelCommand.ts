@@ -61,7 +61,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
                 return;
             }
             await mjolnir.client.setUserPowerLevel(target, targetRoomId, level);
-        } catch (e: any) {
+        } catch (e) {
             const message = e.message || (e.body ? e.body.error : "<no message>");
             await mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,

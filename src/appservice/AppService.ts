@@ -14,7 +14,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { AppServiceRegistration, Bridge, Request, WeakEvent, MatrixUser, Logger } from "matrix-appservice-bridge";
+import {
+    AppServiceRegistration,
+    Bridge,
+    Request,
+    WeakEvent,
+    BridgeContext,
+    MatrixUser,
+    Logger,
+} from "matrix-appservice-bridge";
 import { MjolnirManager } from ".//MjolnirManager";
 import { DataStore, PgDataStore } from ".//datastore";
 import { Api } from "./Api";
@@ -119,7 +127,7 @@ export class MjolnirAppService {
      * @param request A matrix-appservice-bridge request encapsulating a Matrix event.
      * @param context Additional context for the Matrix event.
      */
-    public async onEvent(request: Request<WeakEvent>) {
+    public async onEvent(request: Request<WeakEvent>, context: BridgeContext) {
         const mxEvent = request.getData();
         // Provision a new mjolnir for the invitee when the appservice bot (designated by this.bridge.botUserId) is invited to a room.
         // Acts as an alternative to the web api provided for the widget.
@@ -175,7 +183,7 @@ export class MjolnirAppService {
             }
         }
         this.accessControl.handleEvent(mxEvent["room_id"], mxEvent);
-        this.mjolnirManager.onEvent(request);
+        this.mjolnirManager.onEvent(request, context);
     }
 
     /**

@@ -24,7 +24,7 @@ export async function execEnableProtection(roomId: string, event: any, mjolnir: 
     try {
         await mjolnir.protectionManager.enableProtection(parts[2]);
         await mjolnir.client.unstableApis.addReactionToEvent(roomId, event["event_id"], "✅");
-    } catch (e: any) {
+    } catch (e) {
         LogService.error("ProtectionsCommands", extractRequestError(e));
 
         const message = `Error enabling protection '${parts[0]}' - check the name and try again.`;
@@ -84,7 +84,7 @@ async function _execConfigChangeProtection(mjolnir: Mjolnir, parts: string[], ac
 
     try {
         await mjolnir.protectionManager.setProtectionSettings(protectionName, { [settingName]: value });
-    } catch (e: any) {
+    } catch (e) {
         return `Failed to set setting: ${e.message}`;
     }
 

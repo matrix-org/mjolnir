@@ -30,7 +30,7 @@ export async function execRemoveProtectedRoom(roomId: string, event: any, mjolni
     await mjolnir.removeProtectedRoom(protectedRoomId);
     try {
         await mjolnir.client.leaveRoom(protectedRoomId);
-    } catch (e: any) {
+    } catch (e) {
         LogService.warn("AddRemoveProtectedRoomsCommand", extractRequestError(e));
         await mjolnir.managementRoomOutput.logMessage(
             LogLevel.WARN,

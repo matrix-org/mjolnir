@@ -76,7 +76,7 @@ export class ProtectionManager {
         for (const protection of PROTECTIONS) {
             try {
                 await this.registerProtection(protection);
-            } catch (e: any) {
+            } catch (e) {
                 this.mjolnir.managementRoomOutput.logMessage(
                     LogLevel.WARN,
                     "ProtectionManager",
@@ -320,7 +320,7 @@ export class ProtectionManager {
                         types: [consequence.name],
                     },
                 });
-            } catch (e: any) {
+            } catch (e) {
                 await this.mjolnir.managementRoomOutput.logMessage(
                     LogLevel.ERROR,
                     "handleConsequences",
@@ -339,7 +339,7 @@ export class ProtectionManager {
                 let consequences: Consequence[] | undefined = undefined;
                 try {
                     consequences = await protection.handleEvent(this.mjolnir, roomId, event);
-                } catch (e: any) {
+                } catch (e) {
                     const eventPermalink = Permalinks.forEvent(roomId, event["event_id"]);
                     LogService.error("ProtectionManager", "Error handling protection: " + protection.name);
                     LogService.error("ProtectionManager", "Failed event: " + eventPermalink);
@@ -391,7 +391,7 @@ export class ProtectionManager {
             let createEvent;
             try {
                 createEvent = await this.mjolnir.client.doRequest("GET", path, { format: "event" });
-            } catch (e: any) {
+            } catch (e) {
                 throw new Error("Missing create event: " + e);
             }
 
@@ -468,7 +468,7 @@ export class ProtectionManager {
             }
 
             // Otherwise OK
-        } catch (e: any) {
+        } catch (e) {
             LogService.error("Mjolnir", extractRequestError(e));
             errors.push({
                 roomId,
@@ -500,7 +500,7 @@ export class ProtectionManager {
         for (const protection of this.enabledProtections) {
             try {
                 await protection.startProtectingRoom(this.mjolnir, roomId);
-            } catch (ex: any) {
+            } catch (ex) {
                 this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, protection.name, ex);
             }
         }
@@ -510,7 +510,7 @@ export class ProtectionManager {
         for (const protection of this.enabledProtections) {
             try {
                 await protection.stopProtectingRoom(this.mjolnir, roomId);
-            } catch (ex: any) {
+            } catch (ex) {
                 this.mjolnir.managementRoomOutput.logMessage(LogLevel.ERROR, protection.name, ex);
             }
         }

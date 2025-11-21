@@ -22,7 +22,7 @@ import { LogService } from "@vector-im/matrix-bot-sdk";
 export class MASClient {
     public readonly config: IConfig;
     private client: ClientCredentials;
-    private accessToken?: AccessToken;
+    private accessToken: AccessToken;
 
     constructor(config: IConfig) {
         LogService.info("MAS client", "Setting up MAS client");
@@ -46,7 +46,7 @@ export class MASClient {
             const tokenParams = { scope: "urn:mas:admin" };
             try {
                 this.accessToken = await this.client.getToken(tokenParams);
-            } catch (error: any) {
+            } catch (error) {
                 LogService.error("MAS client", "Error fetching auth token for MAS:", error.message);
                 throw error;
             }
@@ -61,7 +61,7 @@ export class MASClient {
         try {
             const resp = await this.doRequest("get", `/api/admin/v1/users/by-username/${localpart}`);
             return resp.data.id;
-        } catch (error: any) {
+        } catch (error) {
             LogService.error("MAS client", `Error fetching MAS id for user ${userId}:`, error.message);
             throw error;
         }
@@ -71,7 +71,7 @@ export class MASClient {
         const MASId = await this.getMASUserId(userId);
         try {
             await this.doRequest("post", `/api/admin/v1/users/${MASId}/deactivate`);
-        } catch (error: any) {
+        } catch (error) {
             LogService.error("MAS client", `Error deactivating user ${userId} via MAS`, error.message);
             throw error;
         }
@@ -81,7 +81,7 @@ export class MASClient {
         const MASId = await this.getMASUserId(userId);
         try {
             await this.doRequest("post", `/api/admin/v1/users/${MASId}/lock`);
-        } catch (error: any) {
+        } catch (error) {
             LogService.error("MAS client", `Error locking user ${userId} via MAS:`, error.message);
             throw error;
         }
@@ -91,7 +91,7 @@ export class MASClient {
         const MASId = await this.getMASUserId(userId);
         try {
             await this.doRequest("post", `/api/admin/v1/users/${MASId}/unlock`);
-        } catch (error: any) {
+        } catch (error) {
             LogService.error("MAS client", `Error unlocking user ${userId} via MAS:`, error.message);
             throw error;
         }
@@ -105,7 +105,7 @@ export class MASClient {
         let resp;
         try {
             resp = await this.doRequest("get", path);
-        } catch (error: any) {
+        } catch (error) {
             LogService.error("MAS client", `Error determining if MAS user ${userId} is admin: `, error.message);
             throw error;
         }

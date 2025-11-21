@@ -79,7 +79,7 @@ export class NsfwProtection extends Protection {
             let decodedImage;
             try {
                 decodedImage = await node.decodeImage(image.data, 3);
-            } catch (e: any) {
+            } catch (e) {
                 LogService.error("NsfwProtection", `There was an error processing an image: ${e}`);
                 continue;
             }
@@ -108,7 +108,7 @@ export class NsfwProtection extends Protection {
     private async redactEvent(mjolnir: Mjolnir, roomId: string, event: any, room: string): Promise<any> {
         try {
             await mjolnir.client.redactEvent(roomId, event["event_id"]);
-        } catch (err: any) {
+        } catch (err) {
             await mjolnir.managementRoomOutput.logMessage(
                 LogLevel.ERROR,
                 "NSFWProtection",
