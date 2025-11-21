@@ -16,11 +16,6 @@ const EVENT_MODERATED_BY = "org.matrix.msc3215.room.moderation.moderated_by";
 const EVENT_MODERATOR_OF = "org.matrix.msc3215.room.moderation.moderator_of";
 const EVENT_MODERATION_REQUEST = "org.matrix.msc3215.abuse.report";
 
-enum SetupMechanism {
-    ManualCommand,
-    Protection,
-}
-
 describe("Test: Requesting moderation", async () => {
     it(`Mjölnir can setup a room for moderation requests using !mjolnir command`, async function () {
         // Create a few users and a room, make sure that Mjölnir is moderator in the room.

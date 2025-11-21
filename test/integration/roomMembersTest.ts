@@ -1,4 +1,4 @@
-import { strict as assert } from "assert";
+import { equal, ok } from "node:assert/strict";
 import { randomUUID } from "crypto";
 import { Mjolnir } from "../../src/Mjolnir";
 import { RoomMemberManager } from "../../src/RoomMembers";
@@ -42,8 +42,8 @@ describe("Test: Testing RoomMemberManager", function () {
                 const user = userId(i);
                 let map = i % 2 === 0 ? joins0ByUserId : joins1ByUserId;
                 const ts = map.get(user);
-                assert.ok(ts, `User ${user} should have been seen joining room ${i % 2}`);
-                assert.equal(
+                ok(ts, `User ${user} should have been seen joining room ${i % 2}`);
+                equal(
                     ts,
                     joinDate(i).getTime(),
                     `User ${user} should have been seen joining the room at the right timestamp`,
@@ -51,8 +51,8 @@ describe("Test: Testing RoomMemberManager", function () {
                 map.delete(user);
             }
 
-            assert.equal(joins0ByUserId.size, 0, "We should have found all the users in room 0");
-            assert.equal(joins1ByUserId.size, 0, "We should have found all the users in room 1");
+            equal(joins0ByUserId.size, 0, "We should have found all the users in room 0");
+            equal(joins1ByUserId.size, 0, "We should have found all the users in room 1");
         }
 
         // Now, let's add a few leave events.
@@ -91,20 +91,20 @@ describe("Test: Testing RoomMemberManager", function () {
                 let isStillJoined = i % 3 !== 0;
                 const ts = map.get(user);
                 if (isStillJoined) {
-                    assert.ok(ts, `User ${user} should have been seen joining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `User ${user} should have been seen joining room ${i % 2}`);
+                    equal(
                         ts,
                         joinDate(i).getTime(),
                         `User ${user} should have been seen joining the room at the right timestamp`,
                     );
                     map.delete(user);
                 } else {
-                    assert.ok(!ts, `User ${user} should not be seen as a member of room ${i % 2} anymore`);
+                    ok(!ts, `User ${user} should not be seen as a member of room ${i % 2} anymore`);
                 }
             }
 
-            assert.equal(joins0ByUserId.size, 0, "We should have found all the users in room 0");
-            assert.equal(joins1ByUserId.size, 0, "We should have found all the users in room 1");
+            equal(joins0ByUserId.size, 0, "We should have found all the users in room 0");
+            equal(joins1ByUserId.size, 0, "We should have found all the users in room 1");
         }
 
         // Now let's make a few of these users rejoin.
@@ -144,18 +144,18 @@ describe("Test: Testing RoomMemberManager", function () {
                 let hasRejoined = i % 9 === 0;
                 const ts = map.get(user);
                 if (hasRejoined) {
-                    assert.ok(ts, `User ${user} should have been seen rejoining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `User ${user} should have been seen rejoining room ${i % 2}`);
+                    equal(
                         ts,
                         rejoinDate(i).getTime(),
                         `User ${user} should have been seen rejoining the room at the right timestamp, got ${ts}`,
                     );
                     map.delete(user);
                 } else if (hasLeft) {
-                    assert.ok(!ts, `User ${user} should not be seen as a member of room ${i % 2} anymore`);
+                    ok(!ts, `User ${user} should not be seen as a member of room ${i % 2} anymore`);
                 } else {
-                    assert.ok(ts, `User ${user} should have been seen joining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `User ${user} should have been seen joining room ${i % 2}`);
+                    equal(
                         ts,
                         joinDate(i).getTime(),
                         `User ${user} should have been seen joining the room at the right timestamp`,
@@ -164,8 +164,8 @@ describe("Test: Testing RoomMemberManager", function () {
                 }
             }
 
-            assert.equal(joins0ByUserId.size, 0, "We should have found all the users in room 0");
-            assert.equal(joins1ByUserId.size, 0, "We should have found all the users in room 1");
+            equal(joins0ByUserId.size, 0, "We should have found all the users in room 0");
+            equal(joins1ByUserId.size, 0, "We should have found all the users in room 1");
         }
 
         // Now let's check only the most recent joins.
@@ -182,23 +182,23 @@ describe("Test: Testing RoomMemberManager", function () {
                 let hasRejoined = i % 9 === 0;
                 const ts = map.get(user);
                 if (hasRejoined) {
-                    assert.ok(ts, `User ${user} should have been seen rejoining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `User ${user} should have been seen rejoining room ${i % 2}`);
+                    equal(
                         ts,
                         rejoinDate(i).getTime(),
                         `User ${user} should have been seen rejoining the room at the right timestamp, got ${ts}`,
                     );
                     map.delete(user);
                 } else {
-                    assert.ok(
+                    ok(
                         !ts,
                         `When looking only at recent entries, user ${user} should not be seen as a member of room ${i % 2} anymore`,
                     );
                 }
             }
 
-            assert.equal(joins0ByUserId.size, 0, "We should have found all the users who recently joined room 0");
-            assert.equal(joins1ByUserId.size, 0, "We should have found all the users who recently joined room 1");
+            equal(joins0ByUserId.size, 0, "We should have found all the users who recently joined room 0");
+            equal(joins1ByUserId.size, 0, "We should have found all the users who recently joined room 1");
         }
 
         // Perform a cleanup on both rooms, check that we have the same results.
@@ -221,21 +221,18 @@ describe("Test: Testing RoomMemberManager", function () {
                 let hasRejoined = i % 9 === 0;
                 const ts = map.get(user);
                 if (hasRejoined) {
-                    assert.ok(ts, `After cleanup, user ${user} should have been seen rejoining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `After cleanup, user ${user} should have been seen rejoining room ${i % 2}`);
+                    equal(
                         ts,
                         rejoinDate(i).getTime(),
                         `After cleanup, user ${user} should have been seen rejoining the room at the right timestamp, got ${ts}`,
                     );
                     map.delete(user);
                 } else if (hasLeft) {
-                    assert.ok(
-                        !ts,
-                        `After cleanup, user ${user} should not be seen as a member of room ${i % 2} anymore`,
-                    );
+                    ok(!ts, `After cleanup, user ${user} should not be seen as a member of room ${i % 2} anymore`);
                 } else {
-                    assert.ok(ts, `After cleanup, user ${user} should have been seen joining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `After cleanup, user ${user} should have been seen joining room ${i % 2}`);
+                    equal(
                         ts,
                         joinDate(i).getTime(),
                         `After cleanup, user ${user} should have been seen joining the room at the right timestamp`,
@@ -244,8 +241,8 @@ describe("Test: Testing RoomMemberManager", function () {
                 }
             }
 
-            assert.equal(joins0ByUserId.size, 0, "After cleanup, we should have found all the users in room 0");
-            assert.equal(joins1ByUserId.size, 0, "After cleanup, we should have found all the users in room 1");
+            equal(joins0ByUserId.size, 0, "After cleanup, we should have found all the users in room 0");
+            equal(joins1ByUserId.size, 0, "After cleanup, we should have found all the users in room 1");
         }
 
         // Now let's check only the most recent joins.
@@ -262,27 +259,27 @@ describe("Test: Testing RoomMemberManager", function () {
                 let hasRejoined = i % 9 === 0;
                 const ts = map.get(user);
                 if (hasRejoined) {
-                    assert.ok(ts, `After cleanup, user ${user} should have been seen rejoining room ${i % 2}`);
-                    assert.equal(
+                    ok(ts, `After cleanup, user ${user} should have been seen rejoining room ${i % 2}`);
+                    equal(
                         ts,
                         rejoinDate(i).getTime(),
                         `After cleanup, user ${user} should have been seen rejoining the room at the right timestamp, got ${ts}`,
                     );
                     map.delete(user);
                 } else {
-                    assert.ok(
+                    ok(
                         !ts,
                         `After cleanup, when looking only at recent entries, user ${user} should not be seen as a member of room ${i % 2} anymore`,
                     );
                 }
             }
 
-            assert.equal(
+            equal(
                 joins0ByUserId.size,
                 0,
                 "After cleanup, we should have found all the users who recently joined room 0",
             );
-            assert.equal(
+            equal(
                 joins1ByUserId.size,
                 0,
                 "After cleanup, we should have found all the users who recently joined room 1",
@@ -354,8 +351,8 @@ describe("Test: Testing RoomMemberManager", function () {
         const manager: RoomMemberManager = mjolnir.roomJoins;
         for (let roomId of roomIds) {
             const joined = manager.getUsersInRoom(roomId, start, 100);
-            assert.equal(joined.length, 1, "Initially, we shouldn't know about any other user in these rooms");
-            assert.equal(
+            equal(joined.length, 1, "Initially, we shouldn't know about any other user in these rooms");
+            equal(
                 joined[0].userId,
                 await mjolnir.client.getUserId(),
                 "Initially, Mjölnir should be the only known user in these rooms",
@@ -369,7 +366,7 @@ describe("Test: Testing RoomMemberManager", function () {
                 return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: "m.text", body: command });
             });
             const body = reply["content"]?.["body"] as string;
-            assert.ok(body.includes("\n1 recent joins"), "Initially the command should respond with 1 user");
+            ok(body.includes("\n1 recent joins"), "Initially the command should respond with 1 user");
         }
 
         // Now join a few rooms.
@@ -381,7 +378,7 @@ describe("Test: Testing RoomMemberManager", function () {
         for (let i = 0; i < roomIds.length; ++i) {
             const roomId = roomIds[i];
             const joined = manager.getUsersInRoom(roomId, start, 100);
-            assert.equal(
+            equal(
                 joined.length,
                 SAMPLE_SIZE / 2 /* half of the users */ + 1 /* mjolnir */,
                 "We should now see all joined users in the room",
@@ -391,18 +388,18 @@ describe("Test: Testing RoomMemberManager", function () {
                 return this.moderator.sendMessage(mjolnir.managementRoomId, { msgtype: "m.text", body: command });
             });
             const body = reply["content"]?.["body"] as string;
-            assert.ok(
+            ok(
                 body.includes(`\n${joined.length} recent joins`),
                 `After joins, the command should respond with ${joined.length} users`,
             );
             for (let j = 0; j < userIds.length; ++j) {
                 if (j % roomIds.length === i) {
-                    assert.ok(
+                    ok(
                         body.includes(userIds[j]),
                         `After joins, the command should display user ${userIds[j]} in room ${roomId}`,
                     );
                 } else {
-                    assert.ok(
+                    ok(
                         !body.includes(userIds[j]),
                         `After joins, the command should NOT display user ${userIds[j]} in room ${roomId}`,
                     );
@@ -436,12 +433,12 @@ describe("Test: Testing RoomMemberManager", function () {
             for (let j = 0; j < userIds.length; ++j) {
                 const userId = userIds[j];
                 if (j % roomIds.length === i && !removedUsers.has(userId)) {
-                    assert.ok(
+                    ok(
                         body.includes(userId),
                         `After kicks, the command should display user ${userId} in room ${roomId}`,
                     );
                 } else {
-                    assert.ok(
+                    ok(
                         !body.includes(userId),
                         `After kicks, the command should NOT display user ${userId} in room ${roomId}`,
                     );
@@ -560,12 +557,12 @@ describe("Test: Testing RoomMemberManager", function () {
         const roomIds = allRoomIds.slice(2);
         const roomAliases = allRoomAliases.slice(2);
 
-        enum Method {
-            kick,
-            ban,
-            mute,
-            unmute,
-        }
+        const Method = {
+            kick: "kick",
+            ban: "ban",
+            mute: "mute",
+            unmute: "unmute",
+        } as const;
         class Experiment {
             // A human-readable name for the command.
             readonly name: string;
@@ -578,7 +575,7 @@ describe("Test: Testing RoomMemberManager", function () {
             // Defaults to `1`.
             readonly n: number;
             // How affected users should leave the room.
-            readonly method: Method;
+            readonly method;
 
             // If `true`, should this experiment look at the same room as the previous one.
             // Defaults to `false`.
@@ -601,7 +598,7 @@ describe("Test: Testing RoomMemberManager", function () {
                 command: (roomId: string, roomAlias: string) => string;
                 shouldAffectControlProtected?: boolean;
                 n?: number;
-                method: Method;
+                method: any;
                 sameRoom?: boolean;
             }) {
                 this.name = name;
@@ -767,21 +764,21 @@ describe("Test: Testing RoomMemberManager", function () {
                 await mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
             const usersInControlProtected = await mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
-                assert.ok(
+                ok(
                     usersInUnprotectedControlProtected.includes(userId),
                     `Initially, good user ${userId} should be in the unprotected control room`,
                 );
-                assert.ok(
+                ok(
                     usersInControlProtected.includes(userId),
                     `Initially, good user ${userId} should be in the control room`,
                 );
             }
             for (let userId of badUserIds) {
-                assert.ok(
+                ok(
                     usersInUnprotectedControlProtected.includes(userId),
                     `Initially, bad user ${userId} should be in the unprotected control room`,
                 );
-                assert.ok(
+                ok(
                     usersInControlProtected.includes(userId),
                     `Initially, bad user ${userId} should be in the control room`,
                 );
@@ -797,7 +794,7 @@ describe("Test: Testing RoomMemberManager", function () {
             console.debug(
                 `Running experiment ${i} "${experiment.name}" in room index ${index} (${roomId} / ${roomAlias}): \`${experiment.command(roomId, roomAlias)}\``,
             );
-            assert.ok(
+            ok(
                 joined.length >= 2 * SAMPLE_SIZE,
                 `In experiment ${experiment.name}, we should have seen ${2 * SAMPLE_SIZE} users, saw ${joined.length}`,
             );
@@ -818,15 +815,15 @@ describe("Test: Testing RoomMemberManager", function () {
                 await mjolnir.client.getJoinedRoomMembers(CONTROL_UNPROTECTED_ROOM_ID);
             const usersInControlProtected = await mjolnir.client.getJoinedRoomMembers(CONTROL_PROTECTED_ID);
             for (let userId of goodUserIds) {
-                assert.ok(
+                ok(
                     usersInRoom.includes(userId),
                     `After a ${experiment.name}, good user ${userId} should still be in affected room`,
                 );
-                assert.ok(
+                ok(
                     usersInControlProtected.includes(userId),
                     `After a ${experiment.name}, good user ${userId} should still be in control room (${CONTROL_PROTECTED_ID})`,
                 );
-                assert.ok(
+                ok(
                     usersInUnprotectedControlProtected.includes(userId),
                     `After a ${experiment.name}, good user ${userId} should still be in unprotected control room (${CONTROL_UNPROTECTED_ROOM_ID})`,
                 );
@@ -834,14 +831,14 @@ describe("Test: Testing RoomMemberManager", function () {
             if (experiment.method === Method.mute) {
                 for (let userId of goodUserIds) {
                     let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
-                    assert.ok(
+                    ok(
                         canSpeak,
                         `After a ${experiment.name}, good user ${userId} should still be allowed to speak in the room`,
                     );
                 }
                 for (let userId of badUserIds) {
                     let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
-                    assert.ok(
+                    ok(
                         !canSpeak,
                         `After a ${experiment.name}, bad user ${userId} should NOT be allowed to speak in the room`,
                     );
@@ -849,40 +846,40 @@ describe("Test: Testing RoomMemberManager", function () {
             } else if (experiment.method === Method.unmute) {
                 for (let userId of goodUserIds) {
                     let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
-                    assert.ok(
+                    ok(
                         canSpeak,
                         `After a ${experiment.name}, good user ${userId} should still be allowed to speak in the room`,
                     );
                 }
                 for (let userId of badUserIds) {
                     let canSpeak = await mjolnir.client.userHasPowerLevelFor(userId, roomId, "m.message", false);
-                    assert.ok(
+                    ok(
                         canSpeak,
                         `After a ${experiment.name}, bad user ${userId} should AGAIN be allowed to speak in the room`,
                     );
                 }
             } else {
                 for (let userId of badUserIds) {
-                    assert.ok(
+                    ok(
                         !usersInRoom.includes(userId),
                         `After a ${experiment.name}, bad user ${userId} should NOT be in affected room`,
                     );
-                    assert.equal(
+                    equal(
                         usersInControlProtected.includes(userId),
                         !experiment.shouldAffectControlProtected,
                         `After a ${experiment.name}, bad user ${userId} should ${experiment.shouldAffectControlProtected ? "NOT" : "still"} be in control room`,
                     );
-                    assert.ok(
+                    ok(
                         usersInUnprotectedControlProtected.includes(userId),
                         `After a ${experiment.name}, bad user ${userId} should still be in unprotected control room`,
                     );
                     const leaveEvent = await mjolnir.client.getRoomStateEvent(roomId, "m.room.member", userId);
                     switch (experiment.method) {
                         case Method.kick:
-                            assert.equal(leaveEvent.membership, "leave");
+                            equal(leaveEvent.membership, "leave");
                             break;
                         case Method.ban:
-                            assert.equal(leaveEvent.membership, "ban");
+                            equal(leaveEvent.membership, "ban");
                             break;
                     }
                 }

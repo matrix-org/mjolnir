@@ -16,11 +16,13 @@ describe("Test: Report polling", function () {
 
         const eventId = await client.sendMessage(protectedRoomId, { msgtype: "m.text", body: "uwNd3q" });
         class CustomProtection extends Protection {
+            private resolve;
             name = "jYvufI";
             description = "A test protection";
             settings = {};
-            constructor(private resolve) {
+            constructor(resolve) {
                 super();
+                this.resolve = resolve;
             }
             async handleReport(mjolnir: Mjolnir, roomId: string, reporterId: string, event: any, reason?: string) {
                 if (reason === "x5h1Je") {

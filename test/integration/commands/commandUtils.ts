@@ -1,5 +1,5 @@
 import { MatrixClient } from "@vector-im/matrix-bot-sdk";
-import { strict as assert } from "assert";
+import { equal } from "node:assert/strict";
 import * as crypto from "crypto";
 import { MatrixEmitter } from "../../../src/MatrixEmitter";
 
@@ -150,7 +150,7 @@ export async function createBanList(
             body: `!mjolnir list create ${listName} ${listName}`,
         });
     });
-    assert.equal(
+    equal(
         listCreationResponse.content.body.includes("This list is now being watched."),
         true,
         "could not create a list to test with.",

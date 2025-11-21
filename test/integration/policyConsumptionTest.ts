@@ -1,4 +1,4 @@
-import { strict as assert } from "assert";
+import { ok, rejects } from "node:assert/strict";
 
 import { newTestUser } from "./clientHelper";
 import { Mjolnir } from "../../src/Mjolnir";
@@ -102,19 +102,19 @@ describe("Test: that policy lists are consumed by the associated synapse module"
                 });
             });
         });
-        await assert.rejects(
+        await rejects(
             badUser.sendMessage(unprotectedRoom, { msgtype: "m.text", body: "test" }),
             "The bad user should be banned and unable to send messages.",
         );
-        await assert.rejects(
+        await rejects(
             badUser.inviteUser(mjolnirUserId, unprotectedRoom),
             "They should also be unable to send invitations.",
         );
-        assert.ok(
+        ok(
             await moderator.inviteUser("@test:localhost:9999", unprotectedRoom),
             "The moderator is not banned though so should still be able to invite",
         );
-        assert.ok(
+        ok(
             await moderator.sendMessage(unprotectedRoom, { msgtype: "m.text", body: "test" }),
             "They should be able to send messages still too.",
         );
@@ -128,8 +128,8 @@ describe("Test: that policy lists are consumed by the associated synapse module"
                 });
             });
         });
-        assert.ok(await badUser.sendMessage(unprotectedRoom, { msgtype: "m.text", body: "test" }));
-        assert.ok(await badUser.inviteUser(mjolnirUserId, unprotectedRoom));
+        ok(await badUser.sendMessage(unprotectedRoom, { msgtype: "m.text", body: "test" }));
+        ok(await badUser.inviteUser(mjolnirUserId, unprotectedRoom));
     });
     it("Test: Cannot send message to a room that is listed in a policy list and cannot invite a user to the room either", async function () {
         this.timeout(20000);
@@ -148,19 +148,19 @@ describe("Test: that policy lists are consumed by the associated synapse module"
                 });
             });
         });
-        await assert.rejects(
+        await rejects(
             badUser.sendMessage(badRoom, { msgtype: "m.text", body: "test" }),
             "should not be able to send messagea to a room which is listed.",
         );
-        await assert.rejects(
+        await rejects(
             badUser.inviteUser(await moderator.getUserId(), badRoom),
             "should not be able to invite people to a listed room.",
         );
-        assert.ok(
+        ok(
             await badUser.sendMessage(unrelatedRoom, { msgtype: "m.text.", body: "hey" }),
             "should be able to send messages to unrelated room",
         );
-        assert.ok(
+        ok(
             await badUser.inviteUser(await moderator.getUserId(), unrelatedRoom),
             "They should still be able to invite to other rooms though",
         );
@@ -174,11 +174,11 @@ describe("Test: that policy lists are consumed by the associated synapse module"
             });
         });
 
-        assert.ok(
+        ok(
             await badUser.sendMessage(badRoom, { msgtype: "m.text", body: "test" }),
             "should now be able to send messages to the room.",
         );
-        assert.ok(
+        ok(
             await badUser.inviteUser(await moderator.getUserId(), badRoom),
             "should now be able to send messages to the room.",
         );
@@ -198,7 +198,7 @@ describe("Test: that policy lists are consumed by the associated synapse module"
                 });
             });
         });
-        await assert.rejects(
+        await rejects(
             moderator.sendMessage(targetRoom, { msgtype: "m.text", body: "test" }),
             "should not be able to send messages to a room which is listed.",
         );
@@ -212,7 +212,7 @@ describe("Test: that policy lists are consumed by the associated synapse module"
             });
         });
 
-        assert.ok(
+        ok(
             await moderator.sendMessage(targetRoom, { msgtype: "m.text", body: "test" }),
             "should now be able to send messages to the room.",
         );
