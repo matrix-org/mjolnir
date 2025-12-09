@@ -22,6 +22,7 @@ describe("Test: NSFW protection", function () {
         const mjolnirId = await this.mjolnir.client.getUserId();
         const spammerId = await spammer.getUserId();
         room = await modClient.createRoom({ invite: [mjolnirId, spammerId] });
+        await spammer.joinRoom(room);
         await modClient.joinRoom(room);
         await modClient.joinRoom(this.config.managementRoom);
         await modClient.setUserPowerLevel(mjolnirId, room, 100);

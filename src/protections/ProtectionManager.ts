@@ -337,11 +337,7 @@ export class ProtectionManager {
             // we don't want to apply protection actions to members of the moderation room, thus don't
             // need to spend the cycles checking the event
             if (this.mjolnir.moderators.checkMembership(sender)) {
-                this.mjolnir.managementRoomOutput.logMessage(
-                    LogLevel.WARN,
-                    "Protection",
-                    `Skipping checking event from ${sender} in protections`,
-                );
+                LogService.warn("ProtectionManager", `Skipping checking event from ${sender} in moderation room`);
                 return;
             }
 
