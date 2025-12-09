@@ -332,7 +332,18 @@ export class ProtectionManager {
 
     private async handleEvent(roomId: string, event: any) {
         if (this.mjolnir.protectedRoomsTracker.getProtectedRooms().includes(roomId)) {
-            if (event["sender"] === (await this.mjolnir.client.getUserId())) return; // Ignore ourselves
+            const sender = event["sender"];
+            if (sender === (await this.mjolnir.client.getUserId())) return; // Ignore ourselves
+            // we don't want to apply protection actions to members of the moderation room, thus don't
+            // need to spend the cycles checking the event
+            if (this.mjolnir.moderators.checkMembership(sender)) {
+                this.mjolnir.managementRoomOutput.logMessage(
+                    LogLevel.WARN,
+                    "Protection",
+                    `Skipping checking event from ${sender} in protections`,
+                );
+                return;
+            }
 
             // Iterate all the enabled protections
             for (const protection of this.enabledProtections) {

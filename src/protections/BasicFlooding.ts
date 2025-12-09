@@ -76,14 +76,6 @@ export class BasicFlooding extends Protection {
                 formatted_body: `Banning <span data-mx-spoiler>${htmlEscape(event["sender"])}</span> in ${roomId} for flooding (${messageCount} messages in the last minute).`,
             });
             if (!mjolnir.config.noop) {
-                if (mjolnir.moderators.checkMembership(event["sender"])) {
-                    mjolnir.managementRoomOutput.logMessage(
-                        LogLevel.WARN,
-                        "BasicFlooding",
-                        `Attempting to ban ${event["sender"]} but this is a member of the management room, aborting.`,
-                    );
-                    return;
-                }
                 await mjolnir.client.banUser(event["sender"], roomId, "spam");
             } else {
                 await mjolnir.managementRoomOutput.logMessage(
