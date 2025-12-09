@@ -17,7 +17,7 @@ limitations under the License.
 import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { newTestUser } from "./clientHelper";
 import { getFirstReaction } from "./commands/commandUtils";
-import { strict as assert } from "assert";
+import { equal, fail } from "node:assert/strict";
 import { findLink } from "../../src/utils";
 
 describe("Test: First message is link", function () {
@@ -26,12 +26,13 @@ describe("Test: First message is link", function () {
     let badClientId: string;
     let fineClient: MatrixClient;
     let testRoom: string;
+    let mjolnirId: string;
     this.beforeEach(async function () {
         modClient = await newTestUser(this.config.homeserverUrl, {
             name: { contains: "first-message-is-link-test-moderator" },
         });
         await modClient.start();
-        const mjolnirId = await this.mjolnir.client.getUserId();
+        mjolnirId = await this.mjolnir.client.getUserId();
 
         badClient = await newTestUser(this.config.homeserverUrl, {
             name: { contains: "first-message-is-link-test-bad-actor" },
@@ -87,13 +88,13 @@ describe("Test: First message is link", function () {
         await delay(3000);
         const badId = await badClient.getUserId();
         const banEvents = await modClient.getRoomMembersByMembership(testRoom, "ban");
-        assert.equal(banEvents.length, 1, "Bad user should be only ban in room.");
+        equal(banEvents.length, 1, "Bad user should be only ban in room.");
         const banEvent = banEvents[0];
-        assert.equal(banEvent.stateKey, badId, "Bad user should have been banned.");
+        equal(banEvent.stateKey, badId, "Bad user should have been banned.");
 
         // bad user banned for spam so their events should be redacted
         let processedLink = await modClient.getEvent(testRoom, linkMessage);
-        assert.equal(processedLink?.redacted_because?.redacts, linkMessage, "This  event should have been redacted");
+        equal(processedLink?.redacted_because?.redacts, linkMessage, "This  event should have been redacted");
     });
 
     it("Doesn't ban safe messages", async function () {
@@ -114,7 +115,7 @@ describe("Test: First message is link", function () {
 
         await delay(3000);
         const banEvents = await modClient.getRoomMembersByMembership(testRoom, "ban");
-        assert.equal(banEvents.length, 0, "There should be no ban in the room.");
+        equal(banEvents.length, 0, "There should be no ban in the room.");
 
         let goodContent = {
             msgtype: "m.text",
@@ -123,18 +124,48 @@ describe("Test: First message is link", function () {
         try {
             await fineClient.sendMessage(testRoom, goodContent);
         } catch (error) {
-            assert.fail("User should have been able to send more messages.");
+            fail("User should have been able to send more messages.");
         }
     });
     it("picks up links but not acceptable messages", async function () {
-        assert.equal(findLink("https://www.example.com"), true);
-        assert.equal(findLink("http://subdomain.example.co.uk/path?query=value#hash"), true);
-        assert.equal(findLink("www.example.com"), true);
-        assert.equal(findLink("domain.com/spamspam"), true);
+        equal(findLink("https://www.example.com"), true);
+        equal(findLink("http://subdomain.example.co.uk/path?query=value#hash"), true);
+        equal(findLink("www.example.com"), true);
+        equal(findLink("domain.com/spamspam"), true);
 
-        assert.equal(findLink("not a link"), false);
-        assert.equal(findLink("invalid url: example"), false);
-        assert.equal(findLink(" "), false);
-        assert.equal(findLink("@something:matrix"), false);
+        equal(findLink("not a link"), false);
+        equal(findLink("invalid url: example"), false);
+        equal(findLink(" "), false);
+        equal(findLink("@something:matrix"), false);
+    });
+    it("Doesn't ban moderator user who posts link as first message if protection enabled", async function () {
+        this.timeout(20000);
+
+        const modId = await modClient.getUserId();
+        const newRoom = await badClient.createRoom({ invite: [modId, mjolnirId] });
+        await modClient.joinRoom(newRoom);
+        await this.mjolnir.client.joinRoom(newRoom);
+        await badClient.setUserPowerLevel(mjolnirId, newRoom, 100);
+
+        await modClient.sendMessage(this.mjolnir.managementRoomId, {
+            msgtype: "m.text",
+            body: `!mjolnir rooms add ${newRoom}`,
+        });
+        await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
+            return await modClient.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir enable FirstMessageIsLinkProtection`,
+            });
+        });
+        let linkContent = { msgtype: "m.text", body: "check out www.spam.org" };
+        let linkMessage = await modClient.sendMessage(newRoom, linkContent);
+
+        await delay(3000);
+        const banEvents = await badClient.getRoomMembersByMembership(newRoom, "ban");
+        equal(banEvents.length, 0, "There should be no bans in the room.");
+
+        // the moderators message should not have been redacted
+        let processedLink = await badClient.getEvent(newRoom, linkMessage);
+        equal(Object.keys(processedLink.content).length, 2, "This  event should not have been redacted");
     });
 });
