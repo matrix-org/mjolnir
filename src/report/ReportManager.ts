@@ -272,9 +272,9 @@ export class ReportManager extends EventEmitter {
             }
             let content = originalEvent["content"];
             if (ABUSE_REPORT_KEY in content) {
-                initialNoticeReport = content[ABUSE_REPORT_KEY]!;
+                initialNoticeReport = content[ABUSE_REPORT_KEY]! as any; // XXX: Type coercion is bad
             } else if (ABUSE_ACTION_CONFIRMATION_KEY in content) {
-                confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]!;
+                confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]! as any; // XXX: Type coercion is bad
             }
         } catch (ex) {
             return;

@@ -41,7 +41,7 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
         if (stateEvent["type"] === "m.room.member" && stateEvent["state_key"] !== "") {
             // Member event - check for ban
             if (content["membership"] === "ban") {
-                const reason = content["reason"] || "<no reason>";
+                const reason = <string|undefined>content["reason"] || "<no reason>";
 
                 await mjolnir.client.sendNotice(
                     mjolnir.managementRoomId,
@@ -53,7 +53,7 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
         } else if (stateEvent["type"] === "m.room.server_acl" && stateEvent["state_key"] === "") {
             // ACL event - ban denied servers
             if (!content["deny"]) continue;
-            for (const server of content["deny"]) {
+            for (const server of <string[]>content["deny"]) {
                 const reason = "<no reason>";
 
                 await mjolnir.client.sendNotice(mjolnir.managementRoomId, `Adding server ${server} to ban list`);

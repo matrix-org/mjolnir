@@ -146,6 +146,7 @@ export class MjolnirManager {
                 name: `${requestingUserId}'s mjolnir`,
             });
 
+            // @ts-ignore - this wants a slightly different client from a slightly different dependency
             const mjolnir = await this.makeInstance(requestingUserId, managementRoomId, mjIntent.matrixClient);
             await mjolnir.createFirstList(requestingUserId, "list");
 
@@ -202,6 +203,7 @@ export class MjolnirManager {
                 await this.makeInstance(
                     mjolnirRecord.owner,
                     mjolnirRecord.management_room,
+                    // @ts-ignore - this wants a slightly different client from a slightly different dependency
                     mjIntent.matrixClient,
                 ).catch((e: any) => {
                     log.error(`Could not start mjolnir ${mjolnirRecord.local_part} for ${mjolnirRecord.owner}:`, e);
