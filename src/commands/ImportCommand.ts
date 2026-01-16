@@ -41,7 +41,7 @@ export async function execImportCommand(roomId: string, event: any, mjolnir: Mjo
         if (stateEvent["type"] === "m.room.member" && stateEvent["state_key"] !== "") {
             // Member event - check for ban
             if (content["membership"] === "ban") {
-                const reason = <string|undefined>content["reason"] || "<no reason>";
+                const reason = <string | undefined>content["reason"] || "<no reason>";
 
                 await mjolnir.client.sendNotice(
                     mjolnir.managementRoomId,
