@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { PowerLevelAction } from "@vector-im/matrix-bot-sdk/lib/models/PowerLevelAction";
-import { LogLevel, LogService, UserID } from "@vector-im/matrix-bot-sdk";
+import { PowerLevelAction, LogLevel, LogService, UserID } from "@vector-im/matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
 import { htmlEscape } from "../utils";
 import { JSDOM } from "jsdom";

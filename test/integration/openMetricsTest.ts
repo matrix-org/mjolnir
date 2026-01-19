@@ -11,6 +11,7 @@ async function fetchMetrics(config: IConfig): Promise<string> {
     uri.port = `${config.health.openMetrics!.port}`;
     uri.pathname = config.health.openMetrics!.endpoint;
     return await new Promise((resolve, reject) =>
+        // @ts-ignore - the bot-sdk made decisions about types here
         getRequestFn()(
             {
                 method: "GET",

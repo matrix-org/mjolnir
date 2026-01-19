@@ -45,7 +45,6 @@ export class AccessControl {
         const accessControlList = new PolicyList(
             accessControlListId,
             Permalinks.forRoom(accessControlListId),
-            // @ts-ignore - this wants a slightly different client from a slightly different dependency
             bridge.getBot().getClient(),
         );
         const accessControlUnit = new AccessControlUnit([accessControlList]);
