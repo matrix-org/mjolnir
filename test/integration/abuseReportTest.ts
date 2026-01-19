@@ -31,7 +31,7 @@ describe("Test: Reporting abuse", async () => {
             await new Promise((resolve) => setTimeout(resolve, 1000));
             let notices: any[] = [];
             this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
-                if ((roomId === this.mjolnir.managementRoomId)) {
+                if (roomId === this.mjolnir.managementRoomId) {
                     notices.push(event);
                 }
             });
