@@ -900,6 +900,7 @@ class DisplayManager {
     }) {
         let { kind, event, reporterId, reason, nature, moderationRoomId, error } = args;
 
+        event = event.raw;
         let roomId = event["room_id"]!;
         let eventId = event["event_id"]!;
 
