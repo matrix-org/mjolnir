@@ -14,8 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import { PowerLevelAction } from "@vector-im/matrix-bot-sdk/lib/models/PowerLevelAction";
-import { LogLevel, LogService, UserID } from "@vector-im/matrix-bot-sdk";
+import { PowerLevelAction, LogLevel, LogService, UserID } from "@vector-im/matrix-bot-sdk";
 import { htmlToText } from "html-to-text";
 import { htmlEscape } from "../utils";
 import { JSDOM } from "jsdom";
@@ -272,9 +271,9 @@ export class ReportManager extends EventEmitter {
             }
             let content = originalEvent["content"];
             if (ABUSE_REPORT_KEY in content) {
-                initialNoticeReport = content[ABUSE_REPORT_KEY]!;
+                initialNoticeReport = content[ABUSE_REPORT_KEY]! as any; // XXX: Type coercion is bad
             } else if (ABUSE_ACTION_CONFIRMATION_KEY in content) {
-                confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]!;
+                confirmationReport = content[ABUSE_ACTION_CONFIRMATION_KEY]! as any; // XXX: Type coercion is bad
             }
         } catch (ex) {
             return;
@@ -901,6 +900,7 @@ class DisplayManager {
     }) {
         let { kind, event, reporterId, reason, nature, moderationRoomId, error } = args;
 
+        event = event.raw;
         let roomId = event["room_id"]!;
         let eventId = event["event_id"]!;
 

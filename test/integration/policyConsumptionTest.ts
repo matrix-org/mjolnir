@@ -11,6 +11,7 @@ import { createBanList, getFirstReaction } from "./commands/commandUtils";
  */
 async function currentRules(mjolnir: Mjolnir): Promise<{ start: object; stop: object; since: string }> {
     return await new Promise((resolve, reject) =>
+        // @ts-ignore - the bot-sdk made decisions about types here
         getRequestFn()(
             {
                 uri: `http://${mjolnir.config.web.address}:${mjolnir.config.web.port}/api/1/ruleserver/updates/`,

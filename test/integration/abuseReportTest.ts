@@ -28,10 +28,10 @@ describe("Test: Reporting abuse", async () => {
             this.timeout(90000);
 
             // Listen for any notices that show up.
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 5000));
             let notices: any[] = [];
             this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
-                if ((roomId = this.mjolnir.managementRoomId)) {
+                if (roomId === this.mjolnir.managementRoomId) {
                     notices.push(event);
                 }
             });
@@ -164,7 +164,7 @@ describe("Test: Reporting abuse", async () => {
             }
 
             console.log("Test: Reporting abuse - wait");
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+            await new Promise((resolve) => setTimeout(resolve, 5000));
             let found: any[] = [];
             for (let toFind of reportsToFind) {
                 for (let event of notices) {
@@ -266,7 +266,8 @@ describe("Test: Reporting abuse", async () => {
                     }
                 }
             }
-            assert.deepEqual(found, reportsToFind);
+            console.log("found", found, "reportsToFind", reportsToFind);
+            assert.deepEqual(found, reportsToFind, "deep equal failled");
 
             // Since Mjölnir is not a member of the room, the only buttons we should find
             // are `help` and `ignore`.
@@ -292,7 +293,7 @@ describe("Test: Reporting abuse", async () => {
         this.timeout(60000);
 
         // Listen for any notices that show up.
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         let notices: any[] = [];
         this.mjolnir.client.on("room.event", (roomId: string, event: any) => {
             if ((roomId = this.mjolnir.managementRoomId)) {
@@ -345,7 +346,7 @@ describe("Test: Reporting abuse", async () => {
         }
 
         console.log("Test: Reporting abuse - wait");
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
 
         let mjolnirRooms = new Set(await this.mjolnir.client.getJoinedRooms());
         assert.ok(mjolnirRooms.has(roomId), "Mjölnir should be a member of the room");
