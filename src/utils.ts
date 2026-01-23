@@ -341,6 +341,7 @@ function patchMatrixClientForConciseExceptions() {
         // Store an error early, to maintain *some* semblance of stack.
         // We'll only throw the error if there is one.
         let error = new Error("STACK CAPTURE");
+        // @ts-ignore - the bot-sdk made decisions about types here
         originalRequestFn(
             params,
             function conciseExceptionRequestFn(
@@ -465,6 +466,7 @@ function patchMatrixClientForRetry() {
             while (true) {
                 try {
                     let result: any[] = await new Promise((resolve, reject) => {
+                        // @ts-ignore - the bot-sdk made decisions about types here
                         originalRequestFn(
                             params,
                             function requestFnWithRetry(
@@ -564,6 +566,7 @@ export function initializeGlobalPerformanceMetrics(config: IHealthConfig) {
     });
     setRequestFn(async (params: { [k: string]: any }, cb: any) => {
         let timer = perfHistogram.startTimer();
+        // @ts-ignore - the bot-sdk made decisions about types here
         return await originalRequestFn(params, function (error: object, response: any, body: string) {
             // Stop timer before calling callback.
             timer();

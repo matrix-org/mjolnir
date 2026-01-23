@@ -71,8 +71,12 @@ describe("Test: Message is video", function () {
         let videoMessage = await spammer.sendMessage(testRoom, videoContent);
 
         await delay(3000);
-        let processedVideo = await spammer.getEvent(testRoom, videoMessage);
-        equal(processedVideo?.redacted_because?.redacts, videoMessage, "This  event should have been redacted");
+        let processedVideo = await client.getEvent(testRoom, videoMessage);
+        equal(
+            processedVideo.raw.redacted_because?.redacts,
+            videoMessage,
+            "This  event should have been redacted",
+        );
     });
 
     it("Doesn't redact massages that are not video.", async function () {
