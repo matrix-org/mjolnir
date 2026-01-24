@@ -36,7 +36,7 @@ export async function execSuspendCommand(roomId: string, event: any, mjolnir: Mj
     let mediaCount = "";
     if (quarantine) {
         // We choose to quarantine ALL media for a user on suspension, rather than just recent media.
-        const count = await mjolnir.quarantineMediaForUser(roomId);
+        const count = await mjolnir.quarantineMediaForUser(target);
         mediaCount = ` ${count} media items were quarantined.`;
     }
 
