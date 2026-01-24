@@ -94,7 +94,7 @@ describe("Test: First message is link", function () {
 
         // bad user banned for spam so their events should be redacted
         let processedLink = await modClient.getEvent(testRoom, linkMessage);
-        equal(processedLink.raw.redacts, linkMessage, "This  event should have been redacted");
+        equal(processedLink.raw.redacted_because?.redacts, linkMessage, "This  event should have been redacted");
     });
 
     it("Doesn't ban safe messages", async function () {

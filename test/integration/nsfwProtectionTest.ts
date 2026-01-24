@@ -142,7 +142,7 @@ describe("Test: NSFW protection", function () {
         const mjolnirClient = this.config.RUNTIME.client!;
         const { media } = await mjolnirClient.doRequest(
             "GET",
-            `/_synapse/admin/v1/users/${encodeURIComponent(await modClient.getUserId())}/media`,
+            `/_synapse/admin/v1/users/${encodeURIComponent(await spammer.getUserId())}/media`,
         );
 
         equal(media[0].media_id, mediaId);
