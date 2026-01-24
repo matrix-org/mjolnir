@@ -74,6 +74,10 @@ describe("Test: The quarantineMedia command", function () {
             `/_synapse/admin/v1/users/${encodeURIComponent(badUserId)}/media`,
         );
         assert.equal(media.length, 3);
+        const mjolnirId = await mjolnir.getUserId();
+        assert.equal(media[0].quarantined_by, mjolnirId);
+        assert.equal(media[1].quarantined_by, mjolnirId);
+        assert.equal(media[2].quarantined_by, mjolnirId);
     });
 
     it("Correctly quarantines media by server", async function () {
@@ -106,12 +110,11 @@ describe("Test: The quarantineMedia command", function () {
                 body: mxc,
             });
         }
-        const serverPart = badUserId.split(":")[1];
 
         await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
             return await moderator.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
-                body: `!mjolnir quarantine-media ${serverPart}`,
+                body: `!mjolnir quarantine-media localhost:9999`,
             });
         });
 
@@ -119,12 +122,20 @@ describe("Test: The quarantineMedia command", function () {
             "GET",
             `/_synapse/admin/v1/users/${encodeURIComponent(badUserId)}/media`,
         );
+        const mjolnirId = await mjolnir.getUserId();
         assert.equal(mediaA.length, 3);
+        assert.equal(mediaA[0].quarantined_by, mjolnirId);
+        assert.equal(mediaA[1].quarantined_by, mjolnirId);
+        assert.equal(mediaA[2].quarantined_by, mjolnirId);
+
         const { media: mediaB } = await mjolnir.doRequest(
             "GET",
             `/_synapse/admin/v1/users/${encodeURIComponent(badUserId2)}/media`,
         );
         assert.equal(mediaB.length, 3);
+        assert.equal(mediaB[0].quarantined_by, mjolnirId);
+        assert.equal(mediaB[1].quarantined_by, mjolnirId);
+        assert.equal(mediaB[2].quarantined_by, mjolnirId);
     });
 
     it("Correctly quarantines media by roomId", async function () {
@@ -153,5 +164,9 @@ describe("Test: The quarantineMedia command", function () {
             `/_synapse/admin/v1/users/${encodeURIComponent(badUserId)}/media`,
         );
         assert.equal(mediaA.length, 3);
+        const mjolnirId = await mjolnir.getUserId();
+        assert.equal(mediaA[0].quarantined_by, mjolnirId);
+        assert.equal(mediaA[1].quarantined_by, mjolnirId);
+        assert.equal(mediaA[2].quarantined_by, mjolnirId);
     });
 });

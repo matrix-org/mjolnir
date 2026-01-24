@@ -64,14 +64,21 @@ export class NsfwProtection extends Protection {
         const maybeAlias = await mjolnir.client.getPublishedAlias(roomId);
         const room = maybeAlias ? maybeAlias : roomId;
 
+        let shouldQuarantine = false;
+
         // Skip classification if sensitivity is 0, as it's a waste of resources
         // We are using 0.0001 as a threshold to avoid floating point errors
         if (mjolnir.config.nsfwSensitivity <= 0.0001) {
             await this.redactEvent(mjolnir, roomId, event, room);
+            shouldQuarantine = this.settings.quarantine.value;
+            if (shouldQuarantine) {
+                console.log("Attempting to quarantine", mxcs);
+                for (const mxc of mxcs) {
+                    await mjolnir.quarantineMedia(mxc);
+                }
+            }
             return;
         }
-
-        let shouldQuarantine = false;
 
         for (const mxc of mxcs) {
             const image = await mjolnir.client.downloadContent(`mxc://${mxc.domain}/${mxc.mediaId}`);

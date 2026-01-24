@@ -142,6 +142,8 @@ describe("Test: NSFW protection", function () {
         );
 
         assert.equal(media[0].media_id, mediaId);
+        const mjolnirUserId = await mjolnirClient.getUserId();
+        assert.equal(media[0].quarantined_by, mjolnirUserId);
     });
 
     it("Nsfw protection does not react messages without any MXCs", async function () {
