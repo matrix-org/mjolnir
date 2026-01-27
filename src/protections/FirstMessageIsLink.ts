@@ -82,14 +82,6 @@ export class FirstMessageIsLink extends Protection {
                     formatted_body: `Banning <span data-mx-spoiler>${htmlEscape(event["sender"])}</span> for posting a link as the first thing after joining in ${roomId}.`,
                 });
                 if (!mjolnir.config.noop) {
-                    if (mjolnir.moderators.checkMembership(event["sender"])) {
-                        await mjolnir.managementRoomOutput.logMessage(
-                            LogLevel.WARN,
-                            "FirstMessageIsLink",
-                            `Attempting to ban ${event["sender"]} but they are member of moderation room, aborting.`,
-                        );
-                        return;
-                    }
                     await mjolnir.client.banUser(event["sender"], roomId, "spam");
                 } else {
                     await mjolnir.managementRoomOutput.logMessage(
