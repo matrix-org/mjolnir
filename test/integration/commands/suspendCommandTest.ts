@@ -131,14 +131,16 @@ describe("Test: suspend/unsuspend command", function () {
         await new Promise(async (resolve) => {
             await admin.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
-                body: `!mjolnir suspend ${badUserId}`,
+                body: `!mjolnir suspend ${badUserId} --quarantine`,
             });
             admin.on("room.event", (roomId, event) => {
                 if (
                     roomId === this.mjolnir.managementRoomId &&
                     event?.type === "m.room.message" &&
                     event.sender === this.mjolnir.client.userId &&
-                    event.content?.body.endsWith(`User ${badUserId} has been suspended.`)
+                    event.content?.body.endsWith(
+                        `User ${badUserId} has been suspended. 1 media items were quarantined.`,
+                    )
                 ) {
                     resolve(event);
                 }
@@ -150,5 +152,6 @@ describe("Test: suspend/unsuspend command", function () {
             `/_synapse/admin/v1/users/${encodeURIComponent(badUserId)}/media`,
         );
         assert.equal(media[0].media_id, mediaId);
+        assert.equal(media[0].quarantined_by, mjolnirUserId);
     });
 });
