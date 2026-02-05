@@ -132,8 +132,8 @@ describe("Test: NSFW protection", function () {
         let processedImage = await modClient.getEvent(room, imageMessage);
         equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
 
-        let processedHtml = await client.getEvent(room, htmlMessage);
-        assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
+        let processedHtml = await modClient.getEvent(room, htmlMessage);
+        equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
     });
 
     it("Nsfw protection does not react messages without any MXCs", async function () {
