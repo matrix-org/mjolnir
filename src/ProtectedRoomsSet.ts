@@ -496,6 +496,7 @@ export class ProtectedRoomsSet {
                                 await this.client.sendStateEvent(roomId, "m.room.member", member.userId, {
                                     "membership": "ban",
                                     "org.matrix.msc4293.redact_events": true,
+                                    "reason": reason,
                                 });
 
                                 // Fallback
