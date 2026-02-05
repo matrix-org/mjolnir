@@ -2,12 +2,13 @@ import { newTestUser } from "./clientHelper";
 
 import { MatrixClient, MXCUrl } from "@vector-im/matrix-bot-sdk";
 import { getFirstReaction } from "./commands/commandUtils";
-import { strict as assert } from "assert";
+import { equal } from "node:assert/strict";
 import { readFileSync } from "fs";
 import { ProtectionManager } from "../../src/protections/ProtectionManager";
 
 describe("Test: NSFW protection", function () {
-    let client: MatrixClient;
+    let modClient: MatrixClient;
+    let spammer: MatrixClient;
     let room: string;
     this.beforeEach(async function () {
         // verify mjolnir is admin
@@ -15,16 +16,19 @@ describe("Test: NSFW protection", function () {
         if (!admin) {
             throw new Error(`Mjolnir needs to be admin for this test.`);
         }
-        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "nsfw-protection" } });
-        await client.start();
+        modClient = await newTestUser(this.config.homeserverUrl, { name: { contains: "nsfw-protection-moderator" } });
+        spammer = await newTestUser(this.config.homeserverUrl, { name: { contains: "nsfw-protection-spammer" } });
+        await modClient.start();
         const mjolnirId = await this.mjolnir.client.getUserId();
-        room = await client.createRoom({ invite: [mjolnirId] });
-        await client.joinRoom(room);
-        await client.joinRoom(this.config.managementRoom);
-        await client.setUserPowerLevel(mjolnirId, room, 100);
+        const spammerId = await spammer.getUserId();
+        room = await modClient.createRoom({ invite: [mjolnirId, spammerId] });
+        await spammer.joinRoom(room);
+        await modClient.joinRoom(room);
+        await modClient.joinRoom(this.config.managementRoom);
+        await modClient.setUserPowerLevel(mjolnirId, room, 100);
     });
     this.afterEach(async function () {
-        await client.stop();
+        await modClient.stop();
     });
 
     function delay(ms: number) {
@@ -34,25 +38,25 @@ describe("Test: NSFW protection", function () {
     it("Nsfw protection doesn't redact sfw images", async function () {
         this.timeout(20000);
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {
+        await modClient.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text",
             body: `!mjolnir rooms add ${room}`,
         });
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
+            return await modClient.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir enable NsfwProtection`,
             });
         });
 
         const data = readFileSync("test_tree.jpg");
-        const mxc = await client.uploadContent(data, "image/png");
+        const mxc = await spammer.uploadContent(data, "image/png");
         let content = { msgtype: "m.image", body: "test.jpeg", url: mxc };
-        let imageMessage = await client.sendMessage(room, content);
+        let imageMessage = await spammer.sendMessage(room, content);
 
         await delay(500);
-        let processedImage = await client.getEvent(room, imageMessage);
-        assert.equal(Object.keys(processedImage.content).length, 3, "This event should not have been redacted");
+        let processedImage = await spammer.getEvent(room, imageMessage);
+        equal(Object.keys(processedImage.content).length, 3, "This event should not have been redacted");
     });
 
     it("Nsfw protection redacts nsfw images", async function () {
@@ -60,21 +64,21 @@ describe("Test: NSFW protection", function () {
         // dial the sensitivity on the protection way up so that all images are flagged as NSFW
         this.mjolnir.config.nsfwSensitivity = 0.0;
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {
+        await modClient.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text",
             body: `!mjolnir rooms add ${room}`,
         });
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
+            return await modClient.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir enable NsfwProtection`,
             });
         });
 
         const data = readFileSync("test_tree.jpg");
-        const mxc = await client.uploadContent(data, "image/png");
+        const mxc = await spammer.uploadContent(data, "image/png");
         let content = { msgtype: "m.image", body: "test.jpeg", url: mxc };
-        let imageMessage = await client.sendMessage(room, content);
+        let imageMessage = await spammer.sendMessage(room, content);
 
         let formatted_body = `<img src=${mxc} />`;
         let htmlContent = {
@@ -83,14 +87,14 @@ describe("Test: NSFW protection", function () {
             format: "org.matrix.custom.html",
             formatted_body: formatted_body,
         };
-        let htmlMessage = await client.sendMessage(room, htmlContent);
+        let htmlMessage = await spammer.sendMessage(room, htmlContent);
 
         await delay(500);
-        let processedImage = await client.getEvent(room, imageMessage);
-        assert.equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
+        let processedImage = await modClient.getEvent(room, imageMessage);
+        equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
 
-        let processedHtml = await client.getEvent(room, htmlMessage);
-        assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
+        let processedHtml = await modClient.getEvent(room, htmlMessage);
+        equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
     });
 
     it("Nsfw protection redacts nsfw images", async function () {
@@ -98,22 +102,22 @@ describe("Test: NSFW protection", function () {
         // dial the sensitivity on the protection way up so that all images are flagged as NSFW
         this.mjolnir.config.nsfwSensitivity = 0.0;
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {
+        await modClient.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text",
             body: `!mjolnir rooms add ${room}`,
         });
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
+            return await modClient.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir enable NsfwProtection`,
             });
         });
 
         const data = readFileSync("test_tree.jpg");
-        const mxc = await client.uploadContent(data, "image/png");
+        const mxc = await spammer.uploadContent(data, "image/png");
         const mediaId = MXCUrl.parse(mxc).mediaId;
         let content = { msgtype: "m.image", body: "test.jpeg", url: mxc };
-        let imageMessage = await client.sendMessage(room, content);
+        let imageMessage = await spammer.sendMessage(room, content);
 
         let formatted_body = `<img src=${mxc} />`;
         let htmlContent = {
@@ -122,11 +126,11 @@ describe("Test: NSFW protection", function () {
             format: "org.matrix.custom.html",
             formatted_body: formatted_body,
         };
-        let htmlMessage = await client.sendMessage(room, htmlContent);
+        let htmlMessage = await spammer.sendMessage(room, htmlContent);
 
         await delay(500);
-        let processedImage = await client.getEvent(room, imageMessage);
-        assert.equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
+        let processedImage = await modClient.getEvent(room, imageMessage);
+        equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted");
 
         let processedHtml = await client.getEvent(room, htmlMessage);
         assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
@@ -152,22 +156,59 @@ describe("Test: NSFW protection", function () {
             };
         });
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {
+        await modClient.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text",
             body: `!mjolnir rooms add ${room}`,
         });
 
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
+            return await modClient.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir enable NsfwProtection`,
             });
         });
 
         let content = { body: "This is just some text", msgtype: "m.text" };
-        sentEventId = await client.sendMessage(room, content);
+        sentEventId = await spammer.sendMessage(room, content);
         await handledEventPromise;
-        let processedEvent = await client.getEvent(room, sentEventId);
-        assert.equal(Object.keys(processedEvent.content).length, 2, "This event should not have been redacted");
+        let processedEvent = await modClient.getEvent(room, sentEventId);
+        equal(Object.keys(processedEvent.content).length, 2, "This event should not have been redacted");
+    });
+    it("Nsfw protection does not redact images from moderators", async function () {
+        this.timeout(20000);
+        // dial the sensitivity on the protection way up so that all images are flagged as NSFW
+        this.mjolnir.config.nsfwSensitivity = 0.0;
+
+        await modClient.sendMessage(this.mjolnir.managementRoomId, {
+            msgtype: "m.text",
+            body: `!mjolnir rooms add ${room}`,
+        });
+        await getFirstReaction(modClient, this.mjolnir.managementRoomId, "✅", async () => {
+            return await modClient.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir enable NsfwProtection`,
+            });
+        });
+
+        const data = readFileSync("test_tree.jpg");
+        const mxc = await modClient.uploadContent(data, "image/png");
+        let content = { msgtype: "m.image", body: "test.jpeg", url: mxc };
+        let imageMessage = await modClient.sendMessage(room, content);
+
+        let formatted_body = `<img src=${mxc} />`;
+        let htmlContent = {
+            msgtype: "m.image",
+            body: formatted_body,
+            format: "org.matrix.custom.html",
+            formatted_body: formatted_body,
+        };
+        let htmlMessage = await modClient.sendMessage(room, htmlContent);
+
+        await delay(500);
+        let processedImage = await modClient.getEvent(room, imageMessage);
+        equal(Object.keys(processedImage.content).length, 3, "This event should not have been redacted");
+
+        let processedHtml = await modClient.getEvent(room, htmlMessage);
+        equal(Object.keys(processedHtml.content).length, 4, "This html image event should not have been redacted");
     });
 });

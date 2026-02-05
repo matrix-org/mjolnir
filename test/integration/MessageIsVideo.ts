@@ -18,28 +18,32 @@ import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 import { newTestUser } from "./clientHelper";
 import { getFirstReaction } from "./commands/commandUtils";
 import { readFileSync } from "fs";
-import { strict as assert } from "assert";
+import { equal } from "node:assert/strict";
 
 describe("Test: Message is video", function () {
-    let client: MatrixClient;
+    let moderator: MatrixClient;
+    let spammer: MatrixClient;
     let testRoom: string;
     this.beforeEach(async function () {
-        client = await newTestUser(this.config.homeserverUrl, { name: { contains: "message-is-video" } });
-        await client.start();
+        moderator = await newTestUser(this.config.homeserverUrl, { name: { contains: "message-is-video" } });
+        spammer = await newTestUser(this.config.homeserverUrl, { name: { contains: "message-is-video-spammer" } });
+        await moderator.start();
         const mjolnirId = await this.mjolnir.client.getUserId();
-        testRoom = await client.createRoom({ invite: [mjolnirId] });
-        await client.joinRoom(testRoom);
-        await client.joinRoom(this.config.managementRoom);
-        await client.setUserPowerLevel(mjolnirId, testRoom, 100);
+        const spammerId = await spammer.getUserId();
+        testRoom = await moderator.createRoom({ invite: [mjolnirId, spammerId] });
+        await moderator.joinRoom(testRoom);
+        await spammer.joinRoom(testRoom);
+        await moderator.joinRoom(this.config.managementRoom);
+        await moderator.setUserPowerLevel(mjolnirId, testRoom, 100);
     });
     this.afterEach(async function () {
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir disable MessageIsVideoProtection`,
             });
         });
-        await client.stop();
+        await moderator.stop();
     });
 
     function delay(ms: number) {
@@ -49,51 +53,70 @@ describe("Test: Message is video", function () {
     it("Redacts all messages that are video msgtype if protection enabled", async function () {
         this.timeout(20000);
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {
+        await moderator.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text",
             body: `!mjolnir rooms add ${testRoom}`,
         });
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir enable MessageIsVideoProtection`,
             });
         });
         const data = readFileSync("test_tree.jpg");
-        const mxc = await client.uploadContent(data, "image/png");
+        const mxc = await spammer.uploadContent(data, "image/png");
 
         // use a bogus mxc for video message as it doesn't matter for this test
         let videoContent = { msgtype: "m.video", body: "some_file.mp4", url: mxc };
-        let videoMessage = await client.sendMessage(testRoom, videoContent);
+        let videoMessage = await spammer.sendMessage(testRoom, videoContent);
 
         await delay(3000);
         let processedVideo = await client.getEvent(testRoom, videoMessage);
-        assert.equal(
-            processedVideo.raw.redacted_because?.redacts,
-            videoMessage,
-            "This  event should have been redacted",
-        );
+        equal(processedVideo.raw.redacted_because?.redacts, videoMessage, "This  event should have been redacted");
     });
 
     it("Doesn't redact massages that are not video.", async function () {
         this.timeout(20000);
 
-        await client.sendMessage(this.mjolnir.managementRoomId, {
+        await moderator.sendMessage(this.mjolnir.managementRoomId, {
             msgtype: "m.text",
             body: `!mjolnir rooms add ${testRoom}`,
         });
-        await getFirstReaction(client, this.mjolnir.managementRoomId, "✅", async () => {
-            return await client.sendMessage(this.mjolnir.managementRoomId, {
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, {
                 msgtype: "m.text",
                 body: `!mjolnir enable MessageIsVideoProtection`,
             });
         });
 
         let content = { msgtype: "m.text", body: "don't redact me bro" };
-        let textMessage = await client.sendMessage(testRoom, content);
+        let textMessage = await spammer.sendMessage(testRoom, content);
 
         await delay(500);
-        let processedMessage = await client.getEvent(testRoom, textMessage);
-        assert.equal(Object.keys(processedMessage.content).length, 2, "This event should not have been redacted.");
+        let processedMessage = await spammer.getEvent(testRoom, textMessage);
+        equal(Object.keys(processedMessage.content).length, 2, "This event should not have been redacted.");
+    });
+
+    it("Doesn't redact messages that are video msgtype if sender is member of management room", async function () {
+        this.timeout(20000);
+
+        await moderator.sendMessage(this.mjolnir.managementRoomId, {
+            msgtype: "m.text",
+            body: `!mjolnir rooms add ${testRoom}`,
+        });
+        await getFirstReaction(moderator, this.mjolnir.managementRoomId, "✅", async () => {
+            return await moderator.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir enable MessageIsVideoProtection`,
+            });
+        });
+
+        // use a bogus mxc for video message as it doesn't matter for this test
+        let videoContent = { msgtype: "m.video", body: "some_file.mp4", url: "mxc://server/doesntmatter" };
+        let videoMessage = await moderator.sendMessage(testRoom, videoContent);
+
+        await delay(3000);
+        let processedVideo = await moderator.getEvent(testRoom, videoMessage);
+        equal(Object.keys(processedVideo.content).length, 3, "This event should not have been redacted.");
     });
 });
