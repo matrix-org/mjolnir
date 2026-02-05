@@ -93,7 +93,7 @@ describe("Test: NSFW protection", function () {
         assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
     });
 
-    it("Nsfw protection redacts and quarantines nsfw images", async function () {
+    it("Nsfw protection redacts nsfw images", async function () {
         this.timeout(20000);
         // dial the sensitivity on the protection way up so that all images are flagged as NSFW
         this.mjolnir.config.nsfwSensitivity = 0.0;
@@ -107,10 +107,6 @@ describe("Test: NSFW protection", function () {
                 msgtype: "m.text",
                 body: `!mjolnir enable NsfwProtection`,
             });
-        });
-        await client.sendMessage(this.mjolnir.managementRoomId, {
-            msgtype: "m.text",
-            body: `!mjolnir config set NsfwProtection.quarantine true`,
         });
 
         const data = readFileSync("test_tree.jpg");
@@ -134,16 +130,6 @@ describe("Test: NSFW protection", function () {
 
         let processedHtml = await client.getEvent(room, htmlMessage);
         assert.equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
-
-        const mjolnirClient = this.config.RUNTIME.client!;
-        const { media } = await mjolnirClient.doRequest(
-            "GET",
-            `/_synapse/admin/v1/users/${encodeURIComponent(await client.getUserId())}/media`,
-        );
-
-        assert.equal(media[0].media_id, mediaId);
-        const mjolnirUserId = await mjolnirClient.getUserId();
-        assert.equal(media[0].quarantined_by, mjolnirUserId);
     });
 
     it("Nsfw protection does not react messages without any MXCs", async function () {

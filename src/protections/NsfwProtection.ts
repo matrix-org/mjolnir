@@ -20,12 +20,9 @@ import * as nsfw from "nsfwjs";
 import { LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
 import { node } from "@tensorflow/tfjs-node";
 import { getMXCsInMessage } from "../utils";
-import { BooleanProtectionSetting } from "./ProtectionSettings";
 
 export class NsfwProtection extends Protection {
-    settings = {
-        quarantine: new BooleanProtectionSetting(),
-    };
+    settings = {};
     // @ts-ignore
     private model: any;
 
@@ -44,9 +41,7 @@ export class NsfwProtection extends Protection {
     public get description(): string {
         return (
             "Scans all images sent into a protected room to determine if the image is " +
-            "NSFW. If it is, the image will automatically be redacted." +
-            " This protection may optionally also automatically quarantine media, see the" +
-            "`quarantine` protection setting."
+            "NSFW. If it is, the image will automatically be redacted."
         );
     }
 
@@ -64,19 +59,10 @@ export class NsfwProtection extends Protection {
         const maybeAlias = await mjolnir.client.getPublishedAlias(roomId);
         const room = maybeAlias ? maybeAlias : roomId;
 
-        let shouldQuarantine = false;
-
         // Skip classification if sensitivity is 0, as it's a waste of resources
         // We are using 0.0001 as a threshold to avoid floating point errors
         if (mjolnir.config.nsfwSensitivity <= 0.0001) {
             await this.redactEvent(mjolnir, roomId, event, room);
-            shouldQuarantine = this.settings.quarantine.value;
-            if (shouldQuarantine) {
-                console.log("Attempting to quarantine", mxcs);
-                for (const mxc of mxcs) {
-                    await mjolnir.quarantineMedia(mxc);
-                }
-            }
             return;
         }
 
@@ -97,18 +83,11 @@ export class NsfwProtection extends Protection {
                 if (["Hentai", "Porn"].includes(prediction["className"])) {
                     if (prediction["probability"] > mjolnir.config.nsfwSensitivity) {
                         await this.redactEvent(mjolnir, roomId, event, room);
-                        shouldQuarantine = this.settings.quarantine.value;
                         break;
                     }
                 }
             }
             decodedImage.dispose();
-        }
-        if (shouldQuarantine) {
-            console.log("Attempting to quarantine", mxcs);
-            for (const mxc of mxcs) {
-                await mjolnir.quarantineMedia(mxc);
-            }
         }
     }
 
