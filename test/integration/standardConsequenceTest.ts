@@ -19,9 +19,12 @@ describe("Test: standard consequences", function () {
     it("Mjolnir applies a standard consequence redaction", async function () {
         this.timeout(20000);
 
-        let protectedRoomId = await this.mjolnir.client.createRoom({ invite: [await badUser.getUserId()] });
-        await badUser.joinRoom(this.mjolnir.managementRoomId);
+        let protectedRoomId = await this.mjolnir.client.createRoom({
+            invite: [await badUser.getUserId(), await goodUser.getUserId()],
+        });
+        await goodUser.joinRoom(this.mjolnir.managementRoomId);
         await badUser.joinRoom(protectedRoomId);
+        await goodUser.joinRoom(protectedRoomId);
         await this.mjolnir.addProtectedRoom(protectedRoomId);
 
         await this.mjolnir.protectionManager.registerProtection(
@@ -41,7 +44,7 @@ describe("Test: standard consequences", function () {
         let reply: Promise<any> = new Promise(async (resolve, reject) => {
             const messageId = await badUser.sendMessage(protectedRoomId, { msgtype: "m.text", body: "ngmWkF" });
             let redaction;
-            badUser.on("room.event", (roomId, event) => {
+            goodUser.on("room.event", (roomId, event) => {
                 if (roomId === protectedRoomId && event?.type === "m.room.redaction" && event.redacts === messageId) {
                     redaction = event;
                 }
