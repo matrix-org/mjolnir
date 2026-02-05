@@ -87,7 +87,6 @@ export class StringProtectionSetting extends AbstractProtectionSetting<string, s
     validate = (data: string): boolean => true;
 }
 
-
 export class StringListProtectionSetting extends AbstractProtectionListSetting<string, string[]> {
     value: string[] = [];
     fromString = (data: string): string => data;
