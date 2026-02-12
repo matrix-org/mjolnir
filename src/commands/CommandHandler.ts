@@ -228,6 +228,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir msc4284_set <room alias/ID> unset                          - Unset/disable the policy server in a specific room. Same constraints as the room ID/alias set command.\n" +
                 "!mjolnir msc4284_set * <policy server name>                         - Set the policy server for all Mjolnir-protected rooms.\n" +
                 "!mjolnir msc4284_set * unset                                        - Unset/disable the policy server for all Mjolnir-protected rooms\n" +
+                "!mjolnir synapse_ext policy_server_spammy <true|false>              - Enable/disable receiving events flagged as spammy by policy servers. Requires compatible server.\n" +
                 ""; // empty segment to reduce diff noise
 
             const botMenu =
