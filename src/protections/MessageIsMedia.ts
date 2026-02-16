@@ -41,29 +41,30 @@ export class MessageIsMedia extends Protection {
             }
             const msgtype = content["msgtype"] || "m.text";
             const formattedBody = content["formatted_body"] || "";
-            const isMedia =
-                msgtype === "m.image" ||
-                msgtype === "m.video" ||
-                msgtype === "m.sticker" ||
-                formattedBody.toLowerCase().includes("<img");
-            if (isMedia) {
-                await mjolnir.managementRoomOutput.logMessage(
-                    LogLevel.WARN,
-                    "MessageIsMedia",
-                    `Redacting event from ${event["sender"]} for posting an image/video. ${Permalinks.forEvent(roomId, event["event_id"], [new UserID(await mjolnir.client.getUserId()).domain])}`,
-                );
-                // Redact the event
-                if (!mjolnir.config.noop) {
-                    await mjolnir.client.redactEvent(roomId, event["event_id"], "Images/videos are not permitted here");
-                } else {
-                    await mjolnir.managementRoomOutput.logMessage(
-                        LogLevel.WARN,
-                        "MessageIsMedia",
-                        `Tried to redact ${event["event_id"]} in ${roomId} but Mjolnir is running in no-op mode`,
-                        roomId,
-                    );
-                }
+            if (msgtype !== "m.image" && msgtype !== "m.video" && !formattedBody.toLowerCase().includes("<img")) {
+                // Not a media message.
+                return;
             }
+        } else if (event["type"] !== "m.sticker") {
+            // Not a media event.
+            return;
+        }
+
+        await mjolnir.managementRoomOutput.logMessage(
+            LogLevel.WARN,
+            "MessageIsMedia",
+            `Redacting event from ${event["sender"]} for posting an image/video. ${Permalinks.forEvent(roomId, event["event_id"], [new UserID(await mjolnir.client.getUserId()).domain])}`,
+        );
+        // Redact the event
+        if (!mjolnir.config.noop) {
+            await mjolnir.client.redactEvent(roomId, event["event_id"], "Images/videos are not permitted here");
+        } else {
+            await mjolnir.managementRoomOutput.logMessage(
+                LogLevel.WARN,
+                "MessageIsMedia",
+                `Tried to redact ${event["event_id"]} in ${roomId} but Mjolnir is running in no-op mode`,
+                roomId,
+            );
         }
     }
 }
