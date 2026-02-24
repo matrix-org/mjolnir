@@ -65,7 +65,7 @@ export class ModCache {
         }
 
         const members = await this.client.getJoinedRoomMembers(this.managementRoomId).catch(async (e) => {
-            if (e.body?.statusCode === 503) {
+            if (e.statusCode === 503) {
                 LogService.info("ModCache", "Retrying membership fetch due to 503 error");
                 await delay(1000);
                 return await this.client.getJoinedRoomMembers(this.managementRoomId);
