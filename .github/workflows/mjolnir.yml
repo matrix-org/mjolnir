@@ -10,15 +10,19 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions: {}
+
 jobs:
   build:
     name: Build & Lint
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      with:
+        persist-credentials: false
 
     - name: Specifically use node 22 like in the readme.
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
       with:
         node-version: '22'
     - run: yarn install
@@ -28,9 +32,11 @@ jobs:
     name: Unit tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      with:
+        persist-credentials: false
     - name: Specifically use node 22 like in the readme.
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
       with:
         node-version: '22'
     - run: yarn install
@@ -40,12 +46,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
       with:
         node-version: '22'
     - name: Fetch and build mx-tester (cached across runs)
-      uses: baptiste0928/cargo-install@v1
+      uses: baptiste0928/cargo-install@b687c656bda5733207e629b50a22bf68974a0305
       with:
         crate: mx-tester
         version: "0.3.3"
@@ -62,12 +70,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-    - uses: actions/checkout@v3
-    - uses: actions/setup-node@v3
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+      with:
+        persist-credentials: false
+    - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
       with:
         node-version: '22'
     - name: Fetch and build mx-tester (cached across runs)
-      uses: baptiste0928/cargo-install@v1
+      uses: baptiste0928/cargo-install@b687c656bda5733207e629b50a22bf68974a0305
       with:
         crate: mx-tester
         version: "0.3.3"

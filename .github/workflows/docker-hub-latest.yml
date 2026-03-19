@@ -11,20 +11,25 @@ env:
   # Only push if this is main, otherwise we just want to build
   PUSH: ${{ github.ref == 'refs/heads/main' }}
 
+permissions: {}
+
 jobs:
   docker-latest:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: Check out
-        uses: actions/checkout@v2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+        with:
+          persist-credentials: false
       - name: Log in to Docker Hub
-        uses: docker/login-action@v1
+        uses: docker/login-action@b45d80f862d83dbcd57f89517bcf500b2ab88fb2
         with:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
       - name: Build image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294
         with:
           context: .
           file: ./Dockerfile
