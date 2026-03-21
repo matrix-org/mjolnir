@@ -28,6 +28,7 @@ import { EventRedactionQueue, RedactUserInRoom } from "./queues/EventRedactionQu
 import { ProtectedRoomActivityTracker } from "./queues/ProtectedRoomActivityTracker";
 import { getMXCsInMessage, htmlEscape } from "./utils";
 import { ModCache } from "./ModCache";
+import { PolicyServer } from "./PolicyServer";
 
 const KEEP_MEDIA_EVENTS_FOR_MS = 4 * 24 * 60 * 60 * 1000;
 
@@ -104,6 +105,8 @@ export class ProtectedRoomsSet {
         /** The last revision we used to sync protected rooms. */ Revision
     >();
 
+    private enabledPolicyServer: PolicyServer | undefined;
+
     /**
      * whether the mjolnir instance is server admin
      */
@@ -137,6 +140,21 @@ export class ProtectedRoomsSet {
         // Setup room activity watcher
         this.protectedRoomActivityTracker = new ProtectedRoomActivityTracker();
         this.listUpdateListener = this.syncWithUpdatedPolicyList.bind(this);
+    }
+
+    public async setPolicyServer(server: PolicyServer | undefined, skipSync = false): Promise<void> {
+        if (server?.name !== this.enabledPolicyServer?.name) {
+            this.enabledPolicyServer = server;
+        }
+
+        if (!skipSync) {
+            const errors = await this.applyPolicyServerConfig(this.protectedRoomsByActivity());
+            await this.printActionResult(errors, "Errors updating policy server config:");
+        }
+    }
+
+    public get policyServer(): PolicyServer | undefined {
+        return this.enabledPolicyServer;
     }
 
     /**
@@ -261,14 +279,16 @@ export class ProtectedRoomsSet {
      */
     private async syncRoomsWithPolicies() {
         let hadErrors = false;
-        const [aclErrors, banErrors] = await Promise.all([
+        const [aclErrors, banErrors, psErrors] = await Promise.all([
             this.applyServerAcls(this.policyLists, this.protectedRoomsByActivity()),
             this.applyUserBans(this.protectedRoomsByActivity()),
+            this.applyPolicyServerConfig(this.protectedRoomsByActivity()),
         ]);
         const redactionErrors = await this.processRedactionQueue();
         hadErrors = hadErrors || (await this.printActionResult(aclErrors, "Errors updating server ACLs:"));
         hadErrors = hadErrors || (await this.printActionResult(banErrors, "Errors updating member bans:"));
         hadErrors = hadErrors || (await this.printActionResult(redactionErrors, "Error updating redactions:"));
+        hadErrors = hadErrors || (await this.printActionResult(psErrors, "Error updating policy server config:"));
 
         if (!hadErrors) {
             const html = `<font color="#00cc00">Done updating rooms - no errors</font>`;
@@ -338,6 +358,75 @@ export class ProtectedRoomsSet {
         // This can fail if the change is very large and it is much less important than applying bans, so do it last.
         // We always print changes because we make this listener responsible for doing it.
         await this.printBanlistChanges(changes, policyList);
+    }
+
+    private async applyPolicyServerConfig(roomIds: string[]): Promise<RoomUpdateError[]> {
+        const errors: RoomUpdateError[] = [];
+        for (const roomId of roomIds) {
+            await this.managementRoomOutput.logMessage(
+                LogLevel.DEBUG,
+                "ApplyPolicyServerConfig",
+                `Checking policy server config in ${roomId}`,
+                roomId,
+            );
+
+            try {
+                let currentPolicyServerName: string | undefined | null = null; // string=name, undefined=explict not set, null=unknown
+                try {
+                    const content = await this.client.getRoomStateEventContent(roomId, "m.room.policy", "");
+                    currentPolicyServerName = content["via"] as string | undefined;
+                } catch (e) {
+                    // ignore error and fall back to unstable type
+                    try {
+                        const content = await this.client.getRoomStateEventContent(roomId, "org.matrix.msc4284.policy", "");
+                        currentPolicyServerName = content["via"] as string | undefined;
+                    } catch (e) {
+                        // ignore - assume no policy server config
+                    }
+                }
+
+                // Because we use null to represent unknown, this won't trigger when we're unable to get the current state.
+                if (currentPolicyServerName === this.enabledPolicyServer?.name) {
+                    await this.managementRoomOutput.logMessage(
+                        LogLevel.DEBUG,
+                        "ApplyPolicyServerConfig",
+                        `Skipping policy server config in ${roomId} because the server name already matches`,
+                        roomId,
+                    );
+                    continue;
+                }
+
+                await this.managementRoomOutput.logMessage(
+                    LogLevel.DEBUG,
+                    "ApplyPolicyServerConfig",
+                    `Updating policy server config in ${roomId}`,
+                    roomId,
+                );
+                if (this.enabledPolicyServer) {
+                    // We expect the homeserver to deduplicate the state event setting for us.
+                    const ed25519Key = await this.enabledPolicyServer.getEd25519Key();
+                    await this.client.sendStateEvent(roomId, "m.room.policy", "", {
+                        via: this.enabledPolicyServer.name,
+                        public_keys: {
+                            ed25519: ed25519Key,
+                        },
+                    });
+                    // We also set the unstable, though this is less important as time goes on
+                    await this.client.sendStateEvent(roomId, "org.matrix.msc4284.policy", "", {
+                        via: this.enabledPolicyServer.name,
+                        public_key: ed25519Key,
+                    });
+                } else {
+                    // "Remove" the policy server by unsetting the state events
+                    await this.client.sendStateEvent(roomId, "m.room.policy", "", {});
+                    await this.client.sendStateEvent(roomId, "org.matrix.msc4284.policy", "", {});
+                }
+            } catch (e) {
+                errors.push({ roomId, errorMessage: e.message, errorKind: ERROR_KIND_FATAL });
+            }
+        }
+
+        return errors;
     }
 
     /**

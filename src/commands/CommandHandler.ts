@@ -54,6 +54,7 @@ import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
 import { execQuarantineMediaCommand } from "./QuarantineMediaCommand";
+import {execSetPolicyServerCommand} from "./SetPolicyServerCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 
@@ -155,6 +156,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
             return await execLockCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "unlock") {
             return await execUnlockCommand(roomId, event, mjolnir, parts);
+        } else if (parts[1] === "policy_server") {
+            return await execSetPolicyServerCommand(roomId, event, mjolnir, parts);
         } else if (parts[1] === "help") {
             // Help menu
             const protectionMenu =
@@ -198,7 +201,8 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir default <shortcode>                                        - Sets the default list for commands\n" +
                 "!mjolnir rules                                                      - Lists the rules currently in use by Mjolnir\n" +
                 "!mjolnir rules matching <user|room|server>                          - Lists the rules in use that will match this entity e.g. `!rules matching @foo:example.com` will show all the user and server rules, including globs, that match this user\n" +
-                "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n";
+                "!mjolnir sync                                                       - Force updates of all lists and re-apply rules\n" +
+                "!mjolnir policy_server <name or 'unset'>                            - Sets the policy server name in protected rooms, or removes it if 'unset' is given\n";
 
             const roomsMenu =
                 "" +
