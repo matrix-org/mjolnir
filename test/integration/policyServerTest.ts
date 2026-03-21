@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {Mjolnir} from "../../src/Mjolnir";
+import { Mjolnir } from "../../src/Mjolnir";
 import * as http from "node:http";
-import {AddressInfo} from "node:net";
+import { AddressInfo } from "node:net";
 import { strict as assert } from "assert";
 
 describe("Test: Policy Servers", function () {
@@ -34,15 +34,17 @@ describe("Test: Policy Servers", function () {
         mjolnir = this.config.RUNTIME.client!;
         policyServer = http.createServer((req, res) => {
             res.writeHead(200, { "Content-Type": "application/json" });
-            res.end(JSON.stringify({
-                "public_keys": {
-                    "ed25519": ed25519Key,
-                },
-            }));
+            res.end(
+                JSON.stringify({
+                    public_keys: {
+                        ed25519: ed25519Key,
+                    },
+                }),
+            );
         });
         // grab any port by not specifying one to listen on
         policyServer.listen(() => {
-            policyServerUrl = `http://localhost:${(policyServer.address()! as AddressInfo).port}`
+            policyServerUrl = `http://localhost:${(policyServer.address()! as AddressInfo).port}`;
         });
 
         // Create a room we can inspect
@@ -74,7 +76,7 @@ describe("Test: Policy Servers", function () {
             body: `!mjolnir policy_server ${policyServerUrl}`,
         });
         await delay(1500);
-        const policyServerContent = await mjolnir.client.getRoomStateEventContent(lookInRoomId, "m.room.policy", "");
+        let policyServerContent = await mjolnir.client.getRoomStateEventContent(lookInRoomId, "m.room.policy", "");
         assert.equal(policyServerContent.url, policyServerUrl);
         assert.equal((policyServerContent.public_keys! as Record<string, string>).ed25519, ed25519Key);
 
@@ -84,7 +86,7 @@ describe("Test: Policy Servers", function () {
             body: `!mjolnir policy_server unset`,
         });
         await delay(1500);
-        const policyServerContent = await mjolnir.client.getRoomStateEventContent(lookInRoomId, "m.room.policy", "");
+        policyServerContent = await mjolnir.client.getRoomStateEventContent(lookInRoomId, "m.room.policy", "");
         assert.equal(policyServerContent.url, undefined);
         assert.equal(policyServerContent.public_keys, undefined);
     });

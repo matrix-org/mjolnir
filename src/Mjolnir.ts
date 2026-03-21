@@ -382,19 +382,30 @@ export class Mjolnir {
 
             // Get policy server configuration
             try {
-                const policyServerData = await this.client.getAccountData<{ name: string | undefined }>(POLICY_SERVER_CONFIG_ACCOUNT_DATA_TYPE);
-                await this.protectedRoomsTracker.setPolicyServer(policyServerData.name ? new PolicyServer(policyServerData.name) : undefined, true);
+                const policyServerData = await this.client.getAccountData<{ name: string | undefined }>(
+                    POLICY_SERVER_CONFIG_ACCOUNT_DATA_TYPE,
+                );
+                await this.protectedRoomsTracker.setPolicyServer(
+                    policyServerData.name ? new PolicyServer(policyServerData.name) : undefined,
+                    true,
+                );
             } catch (e) {
                 if (e.body?.errcode !== "M_NOT_FOUND") {
                     throw e;
                 }
 
                 // else account data wasn't found - use default from config
-                await this.protectedRoomsTracker.setPolicyServer(this.config.defaultPolicyServer ? new PolicyServer(this.config.defaultPolicyServer) : undefined, true);
+                await this.protectedRoomsTracker.setPolicyServer(
+                    this.config.defaultPolicyServer ? new PolicyServer(this.config.defaultPolicyServer) : undefined,
+                    true,
+                );
             }
             LogService.info("Mjolnir", `Policy server name set to: ${this.protectedRoomsTracker.policyServer?.name}`);
             // We log the key primarily to seed the cache before doing work with it.
-            LogService.info("Mjolnir", `Policy server public key is: ${await this.protectedRoomsTracker.policyServer?.getEd25519Key()}`);
+            LogService.info(
+                "Mjolnir",
+                `Policy server public key is: ${await this.protectedRoomsTracker.policyServer?.getEd25519Key()}`,
+            );
 
             if (this.reportPoller) {
                 let reportPollSetting: { from: number } = { from: 0 };

@@ -54,7 +54,7 @@ import { execIgnoreCommand, execListIgnoredCommand } from "./IgnoreCommand";
 import { execLockCommand } from "./LockCommand";
 import { execUnlockCommand } from "./UnlockCommand";
 import { execQuarantineMediaCommand } from "./QuarantineMediaCommand";
-import {execSetPolicyServerCommand} from "./SetPolicyServerCommand";
+import { execSetPolicyServerCommand } from "./SetPolicyServerCommand";
 
 export const COMMAND_PREFIX = "!mjolnir";
 

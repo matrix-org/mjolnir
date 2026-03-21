@@ -378,7 +378,11 @@ export class ProtectedRoomsSet {
                 } catch (e) {
                     // ignore error and fall back to unstable type
                     try {
-                        const content = await this.client.getRoomStateEventContent(roomId, "org.matrix.msc4284.policy", "");
+                        const content = await this.client.getRoomStateEventContent(
+                            roomId,
+                            "org.matrix.msc4284.policy",
+                            "",
+                        );
                         currentPolicyServerName = content["via"] as string | undefined;
                     } catch (e) {
                         // ignore - assume no policy server config

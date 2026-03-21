@@ -39,12 +39,12 @@ export class PolicyServer {
     }
 
     public async getEd25519Key(): Promise<string | undefined> {
-        const keyStillFresh = (this.lastCheck.getTime() + 1000 * 60 * 60 * 24) > Date.now(); // valid for 24 hours
+        const keyStillFresh = this.lastCheck.getTime() + 1000 * 60 * 60 * 24 > Date.now(); // valid for 24 hours
         if (this.ed25519Key && keyStillFresh) {
             return this.ed25519Key;
         }
 
-        const errorStillFresh = (this.lastCheck.getTime() + 1000 * 60 * 60) > Date.now(); // errors are valid for 1 hour
+        const errorStillFresh = this.lastCheck.getTime() + 1000 * 60 * 60 > Date.now(); // errors are valid for 1 hour
         if (!this.ed25519Key && errorStillFresh) {
             return undefined;
         }
@@ -54,7 +54,8 @@ export class PolicyServer {
         // As per spec/MSC4284
         // We allow HTTP URIs in the server name for testing purposes
         let schemeAndHostname = `https://${this.name}`; // will be the hostname if an HTTP link, per constructor
-        if (this.serverName.startsWith("http://")) { // this is the unnormalized name
+        if (this.serverName.startsWith("http://")) {
+            // this is the unnormalized name
             LogService.warn("PolicyServer", "Using non-HTTP URI for policy server: " + this.serverName);
             schemeAndHostname = this.serverName;
         }
@@ -66,7 +67,11 @@ export class PolicyServer {
         }
 
         const keyInfo = await response.json();
-        if (typeof keyInfo !== "object" || typeof keyInfo.public_keys !== "object" || typeof keyInfo.public_keys.ed25519 !== "string") {
+        if (
+            typeof keyInfo !== "object" ||
+            typeof keyInfo.public_keys !== "object" ||
+            typeof keyInfo.public_keys.ed25519 !== "string"
+        ) {
             LogService.warn("PolicyServer", `Failed to parse ed25519 key for ${this.name}: invalid response or no key`);
             this.ed25519Key = undefined;
             return undefined;
