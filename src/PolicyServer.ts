@@ -19,9 +19,23 @@ import { LogService } from "@vector-im/matrix-bot-sdk";
 export class PolicyServer {
     private ed25519Key: string | undefined;
     private lastCheck: Date;
+    private serverNameOverride: string | undefined;
 
-    constructor(public readonly name: string) {
+    constructor(private serverName: string) {
+        // Check for HTTP URIs in the server name, just in case we're running a test
+        if (this.serverName.startsWith("http://")) {
+            const uri = new URL(this.serverName);
+            this.serverNameOverride = uri.hostname;
+        }
+
         this.lastCheck = new Date(0);
+    }
+
+    public get name(): string {
+        if (this.serverNameOverride) {
+            return this.serverNameOverride;
+        }
+        return this.serverName;
     }
 
     public async getEd25519Key(): Promise<string | undefined> {
@@ -38,7 +52,13 @@ export class PolicyServer {
         this.lastCheck = new Date();
 
         // As per spec/MSC4284
-        const response = await fetch(`https://${this.name}/.well-known/matrix/policy_server`);
+        // We allow HTTP URIs in the server name for testing purposes
+        let schemeAndHostname = `https://${this.name}`; // will be the hostname if an HTTP link, per constructor
+        if (this.serverName.startsWith("http://")) { // this is the unnormalized name
+            LogService.warn("PolicyServer", "Using non-HTTP URI for policy server: " + this.serverName);
+            schemeAndHostname = this.serverName;
+        }
+        const response = await fetch(`${schemeAndHostname}/.well-known/matrix/policy_server`);
         if (!response.ok) {
             LogService.warn("PolicyServer", `Failed to fetch ed25519 key for ${this.name}: ${response.statusText}`);
             this.ed25519Key = undefined;
