@@ -37,4 +37,21 @@ export class PolicyservClient {
         });
         return response.ok;
     }
+
+    public async addRoom(roomId: string): Promise<void> {
+        const url = `${this.baseUrl}/_policyserv/v1/join/${encodeURIComponent(roomId)}`;
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${this.apiKey}`,
+            },
+        });
+        if (!response.ok) {
+            if (response.status === 400) {
+                // policyserv uses a 400 Bad Request to indicate the room is already joined, so we can ignore that error
+                return
+            }
+            throw new Error(`Failed to add room: ${response.statusText}`);
+        }
+    }
 }

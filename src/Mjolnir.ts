@@ -502,6 +502,13 @@ export class Mjolnir {
     private protectRoom(roomId: string): void {
         this.protectedRoomsTracker.addProtectedRoom(roomId);
         this.roomJoins.addRoom(roomId);
+        if (this.psClient) {
+            this.psClient.addRoom(roomId).catch((e) => {
+                // The error might contain sensitive details - don't log it to the room.
+                LogService.error("Mjolnir", `Failed to add room to policyserv`, e);
+                this.managementRoomOutput.logMessage(LogLevel.ERROR, "Mjolnir", `Failed to add ${roomId} to policyserv. See logs for details.`);
+            });
+        }
     }
 
     /**
