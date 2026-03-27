@@ -346,11 +346,17 @@ export class ProtectionManager {
                 try {
                     const allowed = await this.mjolnir.psClient.checkEventId(event["event_id"]);
                     if (allowed) {
-                        LogService.info("ProtectionManager", `Event ${event["event_id"]} was explicitly allowed by policy server - not running protections`);
+                        LogService.info(
+                            "ProtectionManager",
+                            `Event ${event["event_id"]} was explicitly allowed by policy server - not running protections`,
+                        );
                         return;
                     }
                 } catch (e) {
-                    LogService.error("ProtectionManager", `Error checking event ${event["event_id"]} against policy server - assuming unsafe: ${e}`);
+                    LogService.error(
+                        "ProtectionManager",
+                        `Error checking event ${event["event_id"]} against policy server - assuming unsafe: ${e}`,
+                    );
                     // fall through, per log message
                 }
             }

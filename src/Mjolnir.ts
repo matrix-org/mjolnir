@@ -506,7 +506,11 @@ export class Mjolnir {
             this.psClient.addRoom(roomId).catch((e) => {
                 // The error might contain sensitive details - don't log it to the room.
                 LogService.error("Mjolnir", `Failed to add room to policyserv`, e);
-                this.managementRoomOutput.logMessage(LogLevel.ERROR, "Mjolnir", `Failed to add ${roomId} to policyserv. See logs for details.`);
+                this.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "Mjolnir",
+                    `Failed to add ${roomId} to policyserv. See logs for details.`,
+                );
             });
         }
     }
@@ -644,16 +648,22 @@ export class Mjolnir {
             type: "spki",
         });
         const signature = decodeBase64(toDeviceMessage.content["signatures"]?.[verifyName]?.["ed25519:policy_server"]);
-        const contentNoSig = {...toDeviceMessage.content};
+        const contentNoSig = { ...toDeviceMessage.content };
         delete contentNoSig["signatures"];
         const signedData = Buffer.from(canonicalStringify(contentNoSig));
         if (!crypto.verify(null, signedData, publicKey, signature)) {
-            LogService.warn("Mjolnir", `Received policyserv redact command in ${roomId} - signature verification failed (ignoring command)`);
+            LogService.warn(
+                "Mjolnir",
+                `Received policyserv redact command in ${roomId} - signature verification failed (ignoring command)`,
+            );
             return;
         }
 
         // At this point it's a valid command - do the action
-        LogService.info("Mjolnir", `Received policyserv redact command in ${roomId} - executing on ${toDeviceMessage.content.event_id}`);
+        LogService.info(
+            "Mjolnir",
+            `Received policyserv redact command in ${roomId} - executing on ${toDeviceMessage.content.event_id}`,
+        );
         await this.client.redactEvent(roomId, toDeviceMessage.content.event_id);
     }
 

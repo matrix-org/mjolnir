@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import {LogService} from "@vector-im/matrix-bot-sdk";
+import { LogService } from "@vector-im/matrix-bot-sdk";
 
 export class PolicyservClient {
     public readonly baseUrl: string;
@@ -30,9 +30,9 @@ export class PolicyservClient {
         const url = `${this.baseUrl}/_policyserv/v1/check/event_id`;
         const response = await fetch(url, {
             method: "POST",
-            body: JSON.stringify({event_id: eventId}),
+            body: JSON.stringify({ event_id: eventId }),
             headers: {
-                "Authorization": `Bearer ${this.apiKey}`,
+                Authorization: `Bearer ${this.apiKey}`,
             },
         });
         return response.ok;
@@ -43,13 +43,13 @@ export class PolicyservClient {
         const response = await fetch(url, {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${this.apiKey}`,
+                Authorization: `Bearer ${this.apiKey}`,
             },
         });
         if (!response.ok) {
             if (response.status === 400) {
                 // policyserv uses a 400 Bad Request to indicate the room is already joined, so we can ignore that error
-                return
+                return;
             }
             throw new Error(`Failed to add room: ${response.statusText}`);
         }
