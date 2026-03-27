@@ -45,6 +45,7 @@ import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
 import { MASClient } from "./MASClient";
+import { PolicyservClient } from "./PolicyservClient";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -111,6 +112,8 @@ export class Mjolnir {
      * Client for making calls to MAS (if using)
      */
     public MASClient: MASClient;
+
+    public readonly psClient: PolicyservClient | undefined;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -229,6 +232,10 @@ export class Mjolnir {
         if (config.MAS.use) {
             this.usingMAS = true;
             this.MASClient = new MASClient(config);
+        }
+
+        if (config.policyserv?.apiKey) {
+            this.psClient = new PolicyservClient(config.policyserv.baseUrl, config.policyserv.apiKey);
         }
 
         // Setup bot.
