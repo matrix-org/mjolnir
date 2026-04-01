@@ -67,7 +67,7 @@
     "shell-quote": "^1.7.3",
     "simple-oauth2": "^5.1.0",
     "ulidx": "^0.3.0",
-    "yaml": "^2.2.2"
+    "yaml": "^2.8.3"
   },
   "engines": {
     "node": ">=22.0.0"
