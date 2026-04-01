@@ -22,7 +22,7 @@ jobs:
         persist-credentials: false
 
     - name: Specifically use node 22 like in the readme.
-      uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
       with:
         node-version: '22'
     - run: yarn install
@@ -36,7 +36,7 @@ jobs:
       with:
         persist-credentials: false
     - name: Specifically use node 22 like in the readme.
-      uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+      uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
       with:
         node-version: '22'
     - run: yarn install
@@ -49,11 +49,11 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       with:
         persist-credentials: false
-    - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
       with:
         node-version: '22'
     - name: Fetch and build mx-tester (cached across runs)
-      uses: baptiste0928/cargo-install@b687c656bda5733207e629b50a22bf68974a0305
+      uses: baptiste0928/cargo-install@f204293d9709061b7bc1756fec3ec4e2cd57dec0
       with:
         crate: mx-tester
         version: "0.3.3"
@@ -73,11 +73,11 @@ jobs:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
       with:
         persist-credentials: false
-    - uses: actions/setup-node@2028fbc5c25fe9cf00d9f06a71cc4710d4507903
+    - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f
       with:
         node-version: '22'
     - name: Fetch and build mx-tester (cached across runs)
-      uses: baptiste0928/cargo-install@b687c656bda5733207e629b50a22bf68974a0305
+      uses: baptiste0928/cargo-install@f204293d9709061b7bc1756fec3ec4e2cd57dec0
       with:
         crate: mx-tester
         version: "0.3.3"
