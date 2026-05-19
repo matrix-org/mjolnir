@@ -62,3 +62,14 @@ on your homeserver join. The antispam module will not join the rooms for you.
 
 If you change the configuration, you will need to restart Synapse. You'll also need
 to restart Synapse to install the plugin.
+
+### Docker 
+Installations that use the Docker image of `synapse` that wish to use the synapse module require the `./mjolnir/synapse_antispam/mjolnir` project directory to be bind mounted into the `synapse` container's `/usr/local/lib/python3.11/site-packages/mjolnir` directory.  Clone the project (`git clone https://github.com/matrix-org/mjolnir.git`), then use the following `docker-compose` block as an example.
+     
+```yaml
+version: '3.7'
+services:
+  synapse:
+    volumes:
+      - /<path>/mjolnir/synapse_antispam/mjolnir:/usr/local/lib/python3.11/site-packages/mjolnir
+```
