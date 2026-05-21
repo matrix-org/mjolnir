@@ -719,7 +719,7 @@ ajv@^8.0.1:
 
 another-json@^0.2.0:
   version "0.2.0"
-  resolved "https://registry.npmjs.org/another-json/-/another-json-0.2.0.tgz"
+  resolved "https://registry.yarnpkg.com/another-json/-/another-json-0.2.0.tgz#b5f4019c973b6dd5c6506a2d93469cb6d32aeedc"
   integrity sha512-/Ndrl68UQLhnCdsAzEXLMFuOR546o2qbYRqCglaNHbjXrwG1ayTcdwr3zkSGOGtGXDyR5X9nCFfnyG2AFJIsqg==
 
 ansi-colors@4.1.1, ansi-colors@^4.1.1:

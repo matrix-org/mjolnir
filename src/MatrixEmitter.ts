@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import EventEmitter from "events";
-import { MatrixClient } from "@vector-im/matrix-bot-sdk";
+import { MatrixClient, IToDeviceMessage } from "@vector-im/matrix-bot-sdk";
 
 /**
  * This is an interface created in order to keep the event listener
@@ -42,6 +42,8 @@ export declare interface MatrixEmitter extends EventEmitter {
 
     on(event: "room.archived", listener: (roomId: string, mxEvent: any) => void): this;
     emit(event: "room.archived", roomId: string, mxEvent: any): boolean;
+
+    on(event: "to-device", listener: (message: IToDeviceMessage) => void): this;
 
     start(): Promise<void>;
     stop(): void;
