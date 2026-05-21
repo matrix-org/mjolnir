@@ -106,6 +106,7 @@ export interface IConfig {
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
     protectAllJoinedRooms: boolean;
+    defaultPolicyServer: string;
     /**
      * Backgrounded tasks: number of milliseconds to wait between the completion
      * of one background task and the start of the next one.
@@ -236,6 +237,7 @@ const defaultConfig: IConfig = {
     fasterMembershipChecks: false,
     automaticallyRedactForReasons: ["spam", "advertising"],
     protectAllJoinedRooms: false,
+    defaultPolicyServer: "",
     backgroundDelayMS: 500,
     pollReports: false,
     displayReports: true,
