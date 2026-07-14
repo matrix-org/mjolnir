@@ -23,6 +23,30 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
     const level = Math.round(Number(parts[3]));
     const inRoom = parts[4];
 
+    if (typeof target !== 'string' ) { 
+        await mjolnir.managementRoomOutput.logMessage(
+            LogLevel.ERROR,
+            "SetPowerLevelCommand",
+            `Failed to set power level: invalid or undefined target`
+        );
+    } 
+        
+    if (typeof level !== 'number') { 
+        await mjolnir.managementRoomOutput.logMessage(
+            LogLevel.ERROR,
+            "SetPowerLevelCommand",
+            `Failed to set power level: invalid or undefined powerlevel`
+        );
+    }
+    
+    if (typeof inRoom !== 'string' ) {
+        await mjolnir.managementRoomOutput.logMessage(
+            LogLevel.ERROR,
+            "SetPowerLevelCommand",
+            `Failed to set power level: invalid or undefined room`
+        );
+    }
+
     const mjolnirId = await mjolnir.client.getUserId();
 
     let targetRooms = inRoom
