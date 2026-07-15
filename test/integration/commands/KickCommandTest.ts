@@ -18,7 +18,6 @@ import { strict as assert } from "assert";
 import { newTestUser } from "../clientHelper";
 import { getFirstReaction } from "./commandUtils";
 
-
 describe("Test: kick command", function () {
     it("Does not allow the bot to kick itself", async function () {
         this.timeout(60000);
