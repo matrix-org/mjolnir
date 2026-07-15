@@ -23,7 +23,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
     const level = Math.round(Number(parts[3]));
     const inRoom = parts[4];
 
-    if (typeof target !== 'string') {
+    if (typeof target !== 'string' || !target.trim()) {
         await mjolnir.managementRoomOutput.logMessage(
             LogLevel.ERROR,
             "SetPowerLevelCommand",
@@ -31,7 +31,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
         );
     }
 
-    if (typeof level !== 'number') {
+    if (Number.isSafeInteger(level)) {
         await mjolnir.managementRoomOutput.logMessage(
             LogLevel.ERROR,
             "SetPowerLevelCommand",
@@ -39,7 +39,7 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
         );
     }
 
-    if (typeof inRoom !== 'string') {
+    if (inRoom && typeof inRoom !== 'string') {
         await mjolnir.managementRoomOutput.logMessage(
             LogLevel.ERROR,
             "SetPowerLevelCommand",
