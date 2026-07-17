@@ -96,7 +96,8 @@ export async function execResolveCommand(roomId: string, event: any, mjolnir: Mj
         html = `Room ID for ${htmlEscape(toResolve)} is ${htmlEscape(resolvedRoomId)}`;
     } else {
         message = `${toResolve} is not a valid room ID or alias`;
-        html = `${htmlEscape(toResolve)} is not a valid room ID or alias`
+        html = `${htmlEscape(toResolve)} is not a valid room ID or alias`;
+    }
     const reply = RichReply.createFor(roomId, event, message, html);
     reply["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, reply);
