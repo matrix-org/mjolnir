@@ -80,21 +80,23 @@ export async function execRemoveAliasCommand(roomId: string, event: any, mjolnir
 // !mjolnir resolve <alias>
 export async function execResolveCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
     const toResolve = parts[2];
-    let message, html: string;
+    let message: string, html: string;
     if (toResolve.startsWith("!")) {
-        const resolvedAlias = mjolnir.client.getPublishedAlias(toResolve);
+        const resolvedAlias = await mjolnir.client.getPublishedAlias(toResolve);
         if (!resolvedAlias) {
-            message = "Alias for room ${toResolve} was not found";
+            message = `Alias for room ${toResolve} was not found`;
             html = `Alias for room ${htmlEscape(toResolve)} was not found`;
         } else {
-            message = "Alias for room ${toResolve} is ${resolvedRoomAlias}";
+            message = `Alias for room ${toResolve} is ${resolvedRoomAlias}`;
             html = `Alias for room ${htmlEscape(toResolve)} is ${htmlEscape(resolvedAlias)}`;
         }
-    } else {
+    } else if (toResolve.startsWith("\\#")) {
         const resolvedRoomId = await mjolnir.client.resolveRoom(toResolve);
         message = `Room ID for ${toResolve} is ${resolvedRoomId}`;
         html = `Room ID for ${htmlEscape(toResolve)} is ${htmlEscape(resolvedRoomId)}`;
-    }
+    } else {
+        message = `${toResolve} is not a valid room ID or alias`;
+        html = `${htmlEscape(toResolve)} is not a valid room ID or alias`
     const reply = RichReply.createFor(roomId, event, message, html);
     reply["msgtype"] = "m.notice";
     await mjolnir.client.sendMessage(roomId, reply);
