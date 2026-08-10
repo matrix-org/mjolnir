@@ -2,16 +2,9 @@ name: mjolnir
 
 up:
   before:
-    - docker run --rm --network $MX_TEST_NETWORK_NAME --name mjolnir-test-postgres --domainname mjolnir-test-postgres -e POSTGRES_PASSWORD=mjolnir-test -e POSTGRES_USER=mjolnir-tester -e POSTGRES_DB=mjolnir-test-db -d -p 127.0.0.1:8083:5432 postgres
-    # Wait until postgresql is ready
-    - until psql postgres://mjolnir-tester:mjolnir-test@localhost:8083/mjolnir-test-db -c ""; do echo "Waiting for psql..."; sleep 1s; done
-    # Make table in postgres
-    - psql postgres://mjolnir-tester:mjolnir-test@localhost:8083/mjolnir-test-db -c "CREATE TABLE mjolnir (local_part VARCHAR(255), owner VARCHAR(255), management_room TEXT)"
     # Launch the reverse proxy, listening for connections *only* on the local host.
     - docker run --rm --network host --name mjolnir-test-reverse-proxy -p 127.0.0.1:8081:80 -v $MX_TEST_CWD/test/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx
     - yarn install
-    - npx ts-node src/appservice/cli.ts -r -u "http://host.docker.internal:9000"
-    - cp mjolnir-registration.yaml $MX_TEST_SYNAPSE_DIR/data/
   after:
     # Wait until Synapse is ready
     - until curl localhost:9999 --stderr /dev/null > /dev/null; do echo "Waiting for Synapse..."; sleep 1s; done
@@ -22,7 +15,6 @@ run:
 
 down:
   finally:
-    - docker stop mjolnir-test-postgres || true
     - docker stop mjolnir-test-reverse-proxy || true
 
 modules:
@@ -43,9 +35,6 @@ homeserver:
   # Make manual testing easier
   enable_registration: true
   enable_registration_without_verification: true
-
-  app_service_config_files:
-    - "/data/mjolnir-registration.yaml"
 
   # We remove rc_message so we can test rate limiting,
   # but we keep the others because of https://github.com/matrix-org/synapse/issues/11785
@@ -81,18 +70,7 @@ homeserver:
     msc3823_account_suspension: true
 
 
-# Creating a few users simplifies testing.
+# Creating an admin user simplifies testing.
 users:
   - localname: admin
     admin: true
-    rooms:
-      - public: true
-        name: "List of users"
-        alias: access-control-list
-        members:
-          - admin
-          - user_in_mjolnir_for_all
-  # This user can use Mjölnir-for-all
-  - localname: user_in_mjolnir_for_all
-  # This user cannot
-  - localname: user_regular
