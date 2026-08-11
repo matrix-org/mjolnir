@@ -20,9 +20,8 @@ import { MatrixClient } from "@vector-im/matrix-bot-sdk";
 /**
  * This is an interface created in order to keep the event listener
  * Mjolnir uses for new events generic.
- * Used to provide a unified API for messages received from matrix-bot-sdk (using GET /sync)
- * when we're in single bot mode and messages received from matrix-appservice-bridge (using pushed /transaction)
- * when we're in appservice mode.
+ * Currently the only implementation is the matrix-bot-sdk's `MatrixClient`,
+ * which sources messages from GET /sync.
  */
 export declare interface MatrixEmitter extends EventEmitter {
     on(event: "room.event", listener: (roomId: string, mxEvent: any) => void): this;
