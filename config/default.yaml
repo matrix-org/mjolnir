@@ -112,6 +112,25 @@ automaticallyRedactForReasons:
   - "spam"
   - "advertising"
 
+# When a policyserv apiKey is set, Mjolnir will talk to the policyserv instance to:
+#   - Auto-add rooms to policyserv when they're added to Mjolnir's protected rooms list.
+#   - Redact events upon command from policyserv.
+#   - Ignore events that were approved by policyserv when checking protections.
+#
+# This is not needed if your community doesn't use policyserv.
+#
+# More information about policyserv can be found here: https://github.com/matrix-org/policyserv
+#
+# Note: In future this may be more generic than just policyserv support. If other policy server implementations support
+# the policyserv API, then Mjolnir will work with them too.
+policyserv:
+  # The base URL where the policyserv Server-Centric API is hosted.
+  baseUrl: "https://policyserv.example.org"
+
+  # An API key to use the policyserv Server-Centric API. If not set or is empty, policyserv support is disabled.
+  # See https://github.com/matrix-org/policyserv/blob/main/docs/server_centric_api.md for details.
+  apiKey: ""
+
 # A list of rooms to protect. Mjolnir will add this to the list it knows from its account data.
 #
 # It won't, however, add it to the account data.

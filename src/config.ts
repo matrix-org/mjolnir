@@ -102,6 +102,10 @@ export interface IConfig {
     syncOnStartup: boolean;
     verifyPermissionsOnStartup: boolean;
     noop: boolean;
+    policyserv?: {
+        baseUrl: string;
+        apiKey?: string;
+    };
     protectedRooms: string[]; // matrix.to urls
     fasterMembershipChecks: boolean;
     automaticallyRedactForReasons: string[]; // case-insensitive globs
@@ -235,6 +239,10 @@ const defaultConfig: IConfig = {
     protectedRooms: [],
     fasterMembershipChecks: false,
     automaticallyRedactForReasons: ["spam", "advertising"],
+    policyserv: {
+        baseUrl: "https://policy.example.org",
+        apiKey: "", // empty string disables policyserv support
+    },
     protectAllJoinedRooms: false,
     backgroundDelayMS: 500,
     pollReports: false,

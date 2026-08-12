@@ -16,13 +16,18 @@ limitations under the License.
 
 import {
     extractRequestError,
+    IToDeviceMessage,
     LogLevel,
     LogService,
     MembershipEvent,
     MXCUrl,
     Permalinks,
     UserID,
+    decodeBase64,
 } from "@vector-im/matrix-bot-sdk";
+import crypto from "crypto";
+// @ts-ignore - there are no types for this
+import { stringify as canonicalStringify } from "another-json";
 
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
@@ -45,6 +50,7 @@ import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
 import { MASClient } from "./MASClient";
+import { PolicyservClient } from "./PolicyservClient";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -111,6 +117,8 @@ export class Mjolnir {
      * Client for making calls to MAS (if using)
      */
     public MASClient: MASClient;
+
+    public readonly psClient: PolicyservClient | undefined;
 
     /**
      * Adds a listener to the client that will automatically accept invitations.
@@ -229,6 +237,11 @@ export class Mjolnir {
         if (config.MAS.use) {
             this.usingMAS = true;
             this.MASClient = new MASClient(config);
+        }
+
+        if (config.policyserv?.apiKey) {
+            this.psClient = new PolicyservClient(config.policyserv.baseUrl, config.policyserv.apiKey);
+            matrixEmitter.on("to-device", this.handleToDevice.bind(this));
         }
 
         // Setup bot.
@@ -489,6 +502,17 @@ export class Mjolnir {
     private protectRoom(roomId: string): void {
         this.protectedRoomsTracker.addProtectedRoom(roomId);
         this.roomJoins.addRoom(roomId);
+        if (this.psClient) {
+            this.psClient.addRoom(roomId).catch((e) => {
+                // The error might contain sensitive details - don't log it to the room.
+                LogService.error("Mjolnir", `Failed to add room to policyserv`, e);
+                this.managementRoomOutput.logMessage(
+                    LogLevel.ERROR,
+                    "Mjolnir",
+                    `Failed to add ${roomId} to policyserv. See logs for details.`,
+                );
+            });
+        }
     }
 
     /**
@@ -581,6 +605,66 @@ export class Mjolnir {
         if (event.sender !== this.clientUserId) {
             this.protectedRoomsTracker.handleEvent(roomId, event);
         }
+    }
+
+    private async handleToDevice(toDeviceMessage: IToDeviceMessage) {
+        LogService.debug("Mjolnir", `Received to-device message: ${JSON.stringify(toDeviceMessage)}`);
+
+        if (toDeviceMessage.type !== "org.matrix.policyserv.command") {
+            return; // not something this function cares about
+        }
+
+        if (toDeviceMessage.content.command !== "redact") {
+            return; // no point in validating something we don't know what to do with
+        }
+
+        const roomId = toDeviceMessage.content.room_id;
+        if (!this.protectedRoomsTracker.isProtectedRoom(roomId)) {
+            return; // not something we're likely to have permissions in
+        }
+
+        LogService.info("Mjolnir", `Received policyserv redact command in ${roomId} - verifying`);
+
+        // Get the (stable) policy server configuration event for the target room. This will give us the
+        // key so we can verify the signature.
+        let verifyName: string | undefined;
+        let verifyKey: string | undefined;
+        try {
+            const policyServerContent = await this.client.getRoomStateEventContent(roomId, "m.room.policy", "");
+            verifyName = policyServerContent["via"] as string;
+            verifyKey = (<any>policyServerContent)["public_keys"]?.["ed25519"];
+        } catch (e) {
+            // treat as unprotected and give up
+            return;
+        }
+        if (!verifyName || !verifyKey) {
+            return; // no policy server in the room
+        }
+
+        // Verify the signature on the to-device message
+        const publicKey = crypto.createPublicKey({
+            key: Buffer.concat([Buffer.from("302a300506032b6570032100", "hex"), decodeBase64(verifyKey)]),
+            format: "der",
+            type: "spki",
+        });
+        const signature = decodeBase64(toDeviceMessage.content["signatures"]?.[verifyName]?.["ed25519:policy_server"]);
+        const contentNoSig = { ...toDeviceMessage.content };
+        delete contentNoSig["signatures"];
+        const signedData = Buffer.from(canonicalStringify(contentNoSig));
+        if (!crypto.verify(null, signedData, publicKey, signature)) {
+            LogService.warn(
+                "Mjolnir",
+                `Received policyserv redact command in ${roomId} - signature verification failed (ignoring command)`,
+            );
+            return;
+        }
+
+        // At this point it's a valid command - do the action
+        LogService.info(
+            "Mjolnir",
+            `Received policyserv redact command in ${roomId} - executing on ${toDeviceMessage.content.event_id}`,
+        );
+        await this.client.redactEvent(roomId, toDeviceMessage.content.event_id);
     }
 
     public async isSynapseAdmin(): Promise<boolean> {
