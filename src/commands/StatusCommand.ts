@@ -72,6 +72,9 @@ async function showMjolnirStatus(roomId: string, event: any, mjolnir: Mjolnir) {
     html += `<b>Protected rooms: </b> ${mjolnir.protectedRoomsTracker.getProtectedRooms().length}<br/>`;
     text += `Protected rooms: ${mjolnir.protectedRoomsTracker.getProtectedRooms().length}\n`;
 
+    html += `<b>Policy server name: </b> ${mjolnir.protectedRoomsTracker.policyServer?.name}<br/>`;
+    text += `Policy server name: ${mjolnir.protectedRoomsTracker.policyServer?.name}\n`;
+
     // Append list information
     const renderPolicyLists = (header: string, lists: PolicyList[]) => {
         html += `<b>${header}:</b><br><ul>`;
