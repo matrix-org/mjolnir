@@ -47,6 +47,14 @@ export class RedactUserInRoom implements QueuedRedaction {
         public readonly mediaIds: Iterable<MXCUrl>,
     ) {}
 
+    /**
+     * Whether this redaction can be carried out by the Synapse admin API, which redacts a user
+     * across a list of rooms in a single request. Globs are not supported by the admin endpoint.
+     */
+    public get isBatchableByAdminApi(): boolean {
+        return this.isAdmin && !this.userId.includes("*");
+    }
+
     public async redact(client: MatrixClient, managementRoom: ManagementRoomOutput) {
         await managementRoom.logMessage(
             LogLevel.DEBUG,
@@ -117,39 +125,76 @@ export class EventRedactionQueue {
         limitToRoomId?: string,
     ): Promise<RoomUpdateError[]> {
         const errors: RoomUpdateError[] = [];
-        const redact = async (currentBatch: QueuedRedaction[]) => {
-            for (const redaction of currentBatch) {
-                try {
-                    await redaction.redact(client, managementRoom);
-                } catch (e) {
-                    let roomError: RoomUpdateError;
-                    if (e.roomId && e.errorMessage && e.errorKind) {
-                        roomError = e;
-                    } else {
-                        const message = e.message || (e.body ? e.body.error : "<no message>");
-                        roomError = {
-                            roomId: redaction.roomId,
-                            errorMessage: message,
-                            errorKind: ERROR_KIND_FATAL,
-                        };
-                    }
-                    errors.push(roomError);
-                }
-            }
-        };
+
+        // Take everything we're going to process off the queue first, so that redactions for the
+        // same user in different rooms can be batched together below.
+        const batch: QueuedRedaction[] = [];
         if (limitToRoomId) {
             // There might not actually be any queued redactions for this room.
             let queuedRedactions = this.toRedact.get(limitToRoomId);
             if (queuedRedactions) {
                 this.toRedact.delete(limitToRoomId);
-                await redact(queuedRedactions);
+                batch.push(...queuedRedactions);
             }
         } else {
             for (const [roomId, redactions] of this.toRedact) {
                 this.toRedact.delete(roomId);
-                await redact(redactions);
+                batch.push(...redactions);
             }
         }
+
+        // The admin API redacts a user across a list of rooms in one task so issue a
+        // single request per user rather than one per room.
+        const adminRedactions = new Map<string, RedactUserInRoom[]>();
+        const remaining: QueuedRedaction[] = [];
+        for (const redaction of batch) {
+            if (redaction instanceof RedactUserInRoom && redaction.isBatchableByAdminApi) {
+                const entry = adminRedactions.get(redaction.userId);
+                if (entry) {
+                    entry.push(redaction);
+                } else {
+                    adminRedactions.set(redaction.userId, [redaction]);
+                }
+            } else {
+                remaining.push(redaction);
+            }
+        }
+
+        for (const [userId, redactions] of adminRedactions) {
+            const roomIds = redactions.map((r) => r.roomId);
+            try {
+                await managementRoom.logMessage(
+                    LogLevel.DEBUG,
+                    "Mjolnir",
+                    `Redacting events from ${userId} in rooms ${roomIds.join(", ")}.`,
+                );
+                await redactUserMessagesIn(client, managementRoom, userId, roomIds, true);
+            } catch (e) {
+                // We can't tell which room(s) the batch failed for, so report the error against each.
+                errors.push(...roomIds.map((roomId) => redactionError(e, roomId)));
+            }
+        }
+
+        for (const redaction of remaining) {
+            try {
+                await redaction.redact(client, managementRoom);
+            } catch (e) {
+                errors.push(redactionError(e, redaction.roomId));
+            }
+        }
+
         return errors;
     }
+}
+
+function redactionError(e: any, roomId: string): RoomUpdateError {
+    if (e.roomId && e.errorMessage && e.errorKind) {
+        return e;
+    }
+    const message = e.message || (e.body ? e.body.error : "<no message>");
+    return {
+        roomId,
+        errorMessage: message,
+        errorKind: ERROR_KIND_FATAL,
+    };
 }
