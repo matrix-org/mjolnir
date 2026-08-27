@@ -39,6 +39,7 @@ import { MatrixSendClient } from "../MatrixEmitter";
 import AwaitLock from "await-lock";
 import { monotonicFactory } from "ulidx";
 import { Mjolnir } from "../Mjolnir";
+import { getJoinedRoomsWithBackoff } from "../utils";
 
 /**
  * Account data event type used to store the permalinks to each of the policylists.
@@ -718,7 +719,7 @@ export class PolicyListManager {
     }
 
     public async watchList(roomRef: string): Promise<PolicyList | null> {
-        const joinedRooms = await this.mjolnir.client.getJoinedRooms();
+        const joinedRooms = await getJoinedRoomsWithBackoff(this.mjolnir.client);
         const permalink = Permalinks.parseUrl(roomRef);
         if (!permalink.roomIdOrAlias) return null;
 
@@ -787,7 +788,7 @@ export class PolicyListManager {
      */
     public async init() {
         this.policyLists = [];
-        const joinedRooms = await this.mjolnir.client.getJoinedRooms();
+        const joinedRooms = await getJoinedRoomsWithBackoff(this.mjolnir.client);
 
         let watchedListsEvent: { references?: string[] } | null = null;
         try {

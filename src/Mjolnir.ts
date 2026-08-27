@@ -27,7 +27,7 @@ import {
 import { ALL_RULE_TYPES as ALL_BAN_LIST_RULE_TYPES } from "./models/ListRule";
 import { COMMAND_PREFIX, handleCommand } from "./commands/CommandHandler";
 import { UnlistedUserRedactionQueue } from "./queues/UnlistedUserRedactionQueue";
-import { htmlEscape } from "./utils";
+import { getJoinedRoomMembersWithBackoff, getJoinedRoomsWithBackoff, htmlEscape } from "./utils";
 import { ReportManager } from "./report/ReportManager";
 import { ReportPoller } from "./report/ReportPoller";
 import { WebAPIs } from "./webapis/WebAPIs";
@@ -146,11 +146,11 @@ export class Mjolnir {
             };
 
             if (options.autojoinOnlyIfManager) {
-                const managers = await client.getJoinedRoomMembers(mjolnir.managementRoomId);
+                const managers = await getJoinedRoomMembersWithBackoff(client, mjolnir.managementRoomId);
                 if (!managers.includes(membershipEvent.sender)) return reportInvite(); // ignore invite
             } else if (options.acceptInvitesFromSpace) {
                 const spaceId = await client.resolveRoom(options.acceptInvitesFromSpace);
-                const spaceUserIds = await client.getJoinedRoomMembers(spaceId).catch(async (e) => {
+                const spaceUserIds = await getJoinedRoomMembersWithBackoff(client, spaceId).catch(async (e) => {
                     if (e.body?.errcode === "M_FORBIDDEN") {
                         await mjolnir.managementRoomOutput.logMessage(
                             LogLevel.ERROR,
@@ -158,7 +158,7 @@ export class Mjolnir {
                             `Mjolnir is not in the space configured for acceptInvitesFromSpace, did you invite it?`,
                         );
                         await client.joinRoom(spaceId);
-                        return await client.getJoinedRoomMembers(spaceId);
+                        return await getJoinedRoomMembersWithBackoff(client, spaceId);
                     } else {
                         return Promise.reject(e);
                     }
@@ -187,7 +187,7 @@ export class Mjolnir {
                 "`autojoinOnlyIfManager` has been disabled but you have not set `acceptInvitesFromSpace`. Please make it empty to accept invites from everywhere or give it a namespace alias or room id.",
             );
         }
-        const joinedRooms = await client.getJoinedRooms();
+        const joinedRooms = await getJoinedRoomsWithBackoff(client);
 
         // Ensure we're also in the management room
         LogService.info("index", "Resolving management room...");
@@ -527,7 +527,7 @@ export class Mjolnir {
         };
 
         const joinedRoomIdsToProtect = new Set([
-            ...(await this.client.getJoinedRooms()).filter(filterOutManagementAndPolicyRooms),
+            ...(await getJoinedRoomsWithBackoff(this.client)).filter(filterOutManagementAndPolicyRooms),
             // We do this specifically so policy lists that have been explicitly marked as protected
             // will be protected.
             ...this.protectedRoomsConfig.getExplicitlyProtectedRooms(),

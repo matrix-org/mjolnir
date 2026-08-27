@@ -18,6 +18,7 @@ import AwaitLock from "await-lock";
 import { extractRequestError, LogService, Permalinks } from "@vector-im/matrix-bot-sdk";
 import { IConfig } from "./config";
 import { MatrixSendClient } from "./MatrixEmitter";
+import { getJoinedRoomsWithBackoff } from "./utils";
 const PROTECTED_ROOMS_EVENT_TYPE = "org.matrix.mjolnir.protected_rooms";
 
 /**
@@ -42,7 +43,7 @@ export default class ProtectedRoomsConfig {
     public async loadProtectedRoomsFromConfig(config: IConfig): Promise<void> {
         // Ensure we're also joined to the rooms we're protecting
         LogService.info("ProtectedRoomsConfig", "Resolving protected rooms...");
-        const joinedRooms = await this.client.getJoinedRooms();
+        const joinedRooms = await getJoinedRoomsWithBackoff(this.client);
         for (const roomRef of config.protectedRooms) {
             const permalink = Permalinks.parseUrl(roomRef);
             if (!permalink.roomIdOrAlias) continue;
