@@ -64,6 +64,59 @@ export function isTrueJoinEvent(event: any): boolean {
     return membership === "join" && prevMembership !== "join";
 }
 
+const MEMBERSHIP_LOOKUP_MAX_ATTEMPTS = 5;
+const MEMBERSHIP_LOOKUP_MAX_BACKOFF_MS = 30000;
+
+/**
+ * Run a membership lookup, retrying with an exponential backoff if the homeserver returns a 503.
+ *
+ * @param description What is being fetched, for logging.
+ * @param fetch The lookup to run.
+ * @returns The result of the lookup.
+ */
+async function membershipLookupWithBackoff<T>(description: string, fetch: () => Promise<T>): Promise<T> {
+    for (let attempt = 1; ; attempt++) {
+        try {
+            return await fetch();
+        } catch (e) {
+            if (attempt >= MEMBERSHIP_LOOKUP_MAX_ATTEMPTS || e?.statusCode !== 503) {
+                LogService.error(
+                    "utils#membershipLookupWithBackoff",
+                    `Failed to fetch ${description} after ${attempt} attempt(s): ${extractRequestError(e)}`,
+                );
+                throw e;
+            }
+            const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), MEMBERSHIP_LOOKUP_MAX_BACKOFF_MS);
+            LogService.warn(
+                "utils#membershipLookupWithBackoff",
+                `Failed to fetch ${description} (attempt ${attempt}/${MEMBERSHIP_LOOKUP_MAX_ATTEMPTS}), retrying in ${delayMs}ms: ${extractRequestError(e)}`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
+    }
+}
+
+/**
+ * Fetch the list of rooms the client has joined, retrying with an exponential backoff on a 503.
+ *
+ * @param client The client to fetch the joined rooms of.
+ * @returns The room IDs the client has joined.
+ */
+export async function getJoinedRoomsWithBackoff(client: MatrixSendClient): Promise<string[]> {
+    return await membershipLookupWithBackoff("joined rooms", () => client.getJoinedRooms());
+}
+
+/**
+ * Fetch the joined members of a room, retrying with an exponential backoff on a 503.
+ *
+ * @param client The client to fetch the members with.
+ * @param roomId The room to fetch the joined members of.
+ * @returns The user IDs joined to the room.
+ */
+export async function getJoinedRoomMembersWithBackoff(client: MatrixSendClient, roomId: string): Promise<string[]> {
+    return await membershipLookupWithBackoff(`joined members of ${roomId}`, () => client.getJoinedRoomMembers(roomId));
+}
+
 async function adminRedactUserMessagesIn(
     client: MatrixSendClient,
     managementRoom: ManagementRoomOutput,
