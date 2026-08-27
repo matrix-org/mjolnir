@@ -15,7 +15,8 @@ limitations under the License.
 */
 
 import { MatrixEmitter, MatrixSendClient } from "./MatrixEmitter";
-import { LogService } from "@vector-im/matrix-bot-sdk";
+import { extractRequestError, LogService } from "@vector-im/matrix-bot-sdk";
+import { getJoinedRoomMembersWithBackoff } from "./utils";
 
 export class ModCache {
     private modRoomMembers: string[] = [];
@@ -27,11 +28,19 @@ export class ModCache {
     private lastInvalidation = 0;
     private interval: any;
 
+    /**
+     * Log a cache refresh that failed, so it doesn't surface as an unhandled rejection.
+     * The previous cache contents are kept, and `lastInvalidation` is left untouched so the
+     * interval below retries within a minute.
+     */
+    private logPopulateFailure = (e: any) => {
+        LogService.error("ModCache", `Failed to refresh the moderator cache: ${extractRequestError(e)}`);
+    };
+
     constructor(client: MatrixSendClient, emitter: MatrixEmitter, managementRoomId: string) {
         this.client = client;
         this.emitter = emitter;
         this.managementRoomId = managementRoomId;
-        this.lastInvalidation = Date.now();
         this.init();
     }
 
@@ -39,19 +48,18 @@ export class ModCache {
      * Initially populate cache and set bot listening for membership events in moderation room
      */
     async init() {
-        await this.populateCache();
+        await this.populateCache().catch(this.logPopulateFailure);
         this.interval = setInterval(
             () => {
                 if (Date.now() - this.lastInvalidation > this.ttl) {
-                    this.populateCache();
+                    this.populateCache().catch(this.logPopulateFailure);
                 }
             },
             1000 * 60, // check invalidation status every minute
         );
         this.emitter.on("room.event", async (roomId: string, event: any) => {
             if (roomId === this.managementRoomId && event.type === "m.room.member") {
-                await this.populateCache();
-                this.lastInvalidation = Date.now();
+                await this.populateCache().catch(this.logPopulateFailure);
             }
         });
     }
@@ -60,19 +68,8 @@ export class ModCache {
      * Populate the cache by fetching moderation room members
      */
     public async populateCache() {
-        function delay(ms: number): Promise<void> {
-            return new Promise((resolve) => setTimeout(resolve, ms));
-        }
-
-        const members = await this.client.getJoinedRoomMembers(this.managementRoomId).catch(async (e) => {
-            if (e.statusCode === 503) {
-                LogService.info("ModCache", "Retrying membership fetch due to 503 error");
-                await delay(1000);
-                return await this.client.getJoinedRoomMembers(this.managementRoomId);
-            } else {
-                return Promise.reject(e);
-            }
-        });
+        const members = await getJoinedRoomMembersWithBackoff(this.client, this.managementRoomId);
+        this.lastInvalidation = Date.now();
 
         this.modRoomMembers = [];
         members.forEach((member) => {
