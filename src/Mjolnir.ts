@@ -216,7 +216,7 @@ export class Mjolnir {
 
     constructor(
         public readonly client: MatrixSendClient,
-        private readonly clientUserId: string,
+        public readonly clientUserId: string,
         public readonly matrixEmitter: MatrixEmitter,
         public readonly managementRoomId: string,
         public readonly config: IConfig,
