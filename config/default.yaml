@@ -134,6 +134,11 @@ protectedRooms:
 # Explicitly add these rooms as a protected room list if you want them protected.
 protectAllJoinedRooms: false
 
+# Uncomment and populate this to set the default policy server to use. This can be
+# overridden with the `!mjolnir policy_server` command. For an example policy server,
+# see https://github.com/matrix-org/policyserv
+#defaultPolicyServer: "beta2.matrix.org"
+
 # Increase this delay to have Mjölnir wait longer between two consecutive backgrounded
 # operations. The total duration of operations will be longer, but the homeserver won't
 # be affected as much. Conversely, decrease this delay to have Mjölnir chain operations
