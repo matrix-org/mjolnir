@@ -115,9 +115,11 @@ export class MASClient {
     public async doRequest(method: string, path: string) {
         const url = this.config.MAS.url + path;
         const accessToken = await this.getAccessToken();
+        // Note: no Content-Type header is set, as these requests have no body. MAS keys its
+        // optional-body extraction off the presence of Content-Type, so sending
+        // `application/json` with an empty body is treated as a malformed payload.
         const headers = {
             "User-Agent": "Mjolnir",
-            "Content-Type": "application/json; charset=UTF-8",
             "Authorization": `Bearer ${accessToken.token.access_token}`,
         };
         LogService.info("MAS client", `Calling ${url}`);
