@@ -211,7 +211,7 @@ export async function handleCommand(roomId: string, event: { content: { body: st
                 "!mjolnir directory remove <room alias/ID>                           - Removes a room from the server's room directory\n" +
                 "!mjolnir alias add <room alias> <target room alias/ID>              - Adds <room alias> to <target room>\n" +
                 "!mjolnir alias remove <room alias>                                  - Deletes the room alias from whatever room it is attached to\n" +
-                "!mjolnir resolve <room alias>                                       - Resolves a room alias to a room ID\n" +
+                "!mjolnir resolve <room alias/ID>                                    - Resolves a room alias to a room ID or vice versa\n" +
                 "!mjolnir shutdown room <room alias/ID> [message]                    - Uses the bot's account to shut down a room, preventing access to the room on this server\n";
 
             const botMenu =
