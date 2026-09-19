@@ -68,6 +68,9 @@ describe("Test: Message is media", function () {
         let content = { msgtype: "m.image", body: "test.jpeg", url: mxc };
         let imageMessage = await spammer.sendMessage(testRoom, content);
 
+        let stickerContent = { body: "test.jpeg", info: {}, url: mxc };
+        let stickerEvent = await spammer.sendEvent(testRoom, "m.sticker", stickerContent);
+
         let formatted_body = `<img src="${mxc}" />`;
         let htmlContent = {
             msgtype: "m.image",
@@ -84,6 +87,9 @@ describe("Test: Message is media", function () {
         await delay(700);
         let processedImage = await client.getEvent(testRoom, imageMessage);
         equal(Object.keys(processedImage.content).length, 0, "This event should have been redacted.");
+
+        let processedSticker = await client.getEvent(testRoom, stickerEvent);
+        equal(Object.keys(processedSticker.content).length, 0, "This sticker event should have been redacted.");
 
         let processedHtml = await client.getEvent(testRoom, htmlMessage);
         equal(Object.keys(processedHtml.content).length, 0, "This html image event should have been redacted");
