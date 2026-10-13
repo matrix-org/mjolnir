@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { Mjolnir } from "../Mjolnir";
-import { extractRequestError, LogLevel, LogService } from "@vector-im/matrix-bot-sdk";
+import { extractRequestError, LogLevel, LogService, PLManager } from "@vector-im/matrix-bot-sdk";
 
 // !mjolnir powerlevel <user ID> <level> [room]
 export async function execSetPowerLevelCommand(roomId: string, event: any, mjolnir: Mjolnir, parts: string[]) {
@@ -37,8 +37,12 @@ export async function execSetPowerLevelCommand(roomId: string, event: any, mjoln
 
     for (const targetRoomId of targetRooms) {
         try {
-            const currentLevels = await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", "");
-            const currentLevel = currentLevels["users"][mjolnirId];
+            // PLManager accounts for room v12+ creators, who have implicit power and are absent from `users`.
+            const powerLevels = new PLManager(
+                await mjolnir.client.getRoomCreateEvent(targetRoomId),
+                await mjolnir.client.getRoomStateEvent(targetRoomId, "m.room.power_levels", ""),
+            );
+            const currentLevel = powerLevels.getUserPowerLevel(target);
             if (!force) {
                 if (mjolnir.moderators.checkMembership(target)) {
                     // don't let the bot demote members of moderation room without --force arg

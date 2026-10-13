@@ -85,6 +85,39 @@ describe("Test: power levels", function () {
         mod.stop();
     });
 
+    it("Does allow the bot to promote members of management room to below the bot's own level.", async function () {
+        this.timeout(60000);
+        const mod = await newTestUser(this.config.homeserverUrl, { name: { contains: "promote-moderator" } });
+        const mod2 = await newTestUser(this.config.homeserverUrl, { name: { contains: "promote-moderator2" } });
+        await mod.joinRoom(this.config.managementRoom);
+        await mod2.joinRoom(this.config.managementRoom);
+
+        const targetRoom = await mod.createRoom({ preset: "public_chat" });
+        await this.mjolnir.client.joinRoom(targetRoom);
+        await mod2.joinRoom(targetRoom);
+        const botId = await this.mjolnir.client.getUserId();
+        await mod.setUserPowerLevel(botId, targetRoom, 100);
+        const mod2Id = await mod2.getUserId();
+
+        await mod.sendMessage(this.mjolnir.managementRoomId, {
+            msgtype: "m.text.",
+            body: `!mjolnir rooms add ${targetRoom}`,
+        });
+
+        mod.start();
+        await getFirstReaction(mod, this.mjolnir.managementRoomId, "✅", async () => {
+            return await mod.sendMessage(this.mjolnir.managementRoomId, {
+                msgtype: "m.text",
+                body: `!mjolnir powerlevel ${mod2Id} 50 ${targetRoom}`,
+            });
+        });
+        const currentLevels = await mod.getRoomStateEvent(targetRoom, "m.room.power_levels", "");
+        const mod2Level = currentLevels["users"][mod2Id];
+        assert.equal(mod2Level, 50);
+
+        mod.stop();
+    });
+
     it("Does allow the bot to demote members of management room in a protected room with a --force argument.", async function () {
         this.timeout(60000);
         const mod = await newTestUser(this.config.homeserverUrl, { name: { contains: "force-moderator" } });
