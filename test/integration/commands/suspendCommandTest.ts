@@ -110,7 +110,6 @@ describe("Test: suspend/unsuspend command", function () {
             power_level_content_override: {
                 users: {
                     [mjolnirUserId]: 100,
-                    [await admin.getUserId()]: 100,
                 },
             },
         });

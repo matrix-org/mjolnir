@@ -731,9 +731,11 @@ describe("Test: Creating policy lists.", function () {
         const policyListId = await PolicyList.createList(mjolnir.client, randomUUID(), invite);
         // Check power levels are right.
         const powerLevelEvent = await mjolnir.client.getRoomStateEvent(policyListId, "m.room.power_levels", "");
-        equal(Object.keys(powerLevelEvent.users ?? {}).length, invite.length + 1);
-        // Check create event for MSC3784 support.
         const createEvent = await mjolnir.client.getRoomStateEvent(policyListId, "m.room.create", "");
+        // In room v12+ the creator has implicit infinite power and is not listed in `users`.
+        const creatorListed = createEvent.room_version !== "12" && createEvent.room_version !== "org.matrix.hydra.11";
+        equal(Object.keys(powerLevelEvent.users ?? {}).length, invite.length + (creatorListed ? 1 : 0));
+        // Check create event for MSC3784 support.
         equal(createEvent.type, PolicyList.ROOM_TYPE);
         // We can't create rooms without forgetting the type.
         await rejects(async () => {

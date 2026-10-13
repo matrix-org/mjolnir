@@ -17,17 +17,20 @@ describe("Test: Accept Invites From Space", function () {
         const mjolnir: Mjolnir = this.mjolnir!;
         const mjolnirUserId = await mjolnir.client.getUserId();
 
-        const space = await client.createSpace({
+        // Not using `client.createSpace` as it puts the creator in the power level users,
+        // which is rejected in room v12+ where creators have implicit power.
+        const spaceId = await client.createRoom({
             name: "mjolnir space invite test",
-            invites: [mjolnirUserId],
-            isPublic: false,
+            preset: "private_chat",
+            creation_content: { type: "m.space" },
+            invite: [mjolnirUserId],
         });
 
-        await this.mjolnir.client.joinRoom(space.roomId);
+        await this.mjolnir.client.joinRoom(spaceId);
 
         // we're mutating a static object, which may affect other tests :(
         mjolnir.config.autojoinOnlyIfManager = false;
-        mjolnir.config.acceptInvitesFromSpace = space.roomId;
+        mjolnir.config.acceptInvitesFromSpace = spaceId;
 
         const promise = new Promise(async (resolve) => {
             const newRoomId = await client.createRoom({ invite: [mjolnirUserId] });
