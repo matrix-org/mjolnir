@@ -64,7 +64,14 @@ export async function execKickCommand(roomId: string, event: any, mjolnir: Mjoln
                     format: "org.matrix.custom.html",
                     formatted_body: `Removing <span data-mx-spoiler>${htmlEscape(target)}</span> in ${protectedRoomId}.`,
                 });
-
+                if (target === mjolnir.clientUserId) {
+                    await mjolnir.managementRoomOutput.logMessage(
+                        LogLevel.WARN,
+                        "KickCommand",
+                        `Tried to kick ${target} in ${protectedRoomId} but the bot is disallowed from kicking itself`,
+                        protectedRoomId,
+                    );
+                }
                 if (!mjolnir.config.noop) {
                     try {
                         await mjolnir.taskQueue.push(async () => {
