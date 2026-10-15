@@ -205,7 +205,6 @@ describe("Test: The redaction command - if admin", function () {
             power_level_content_override: {
                 users: {
                     [mjolnirUserId]: 100,
-                    [await moderator.getUserId()]: 100,
                 },
             },
         });

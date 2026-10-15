@@ -29,7 +29,6 @@ describe("Test: The quarantineMedia command", function () {
             power_level_content_override: {
                 users: {
                     [mjolnirUserId]: 100,
-                    [await moderator.getUserId()]: 100,
                 },
             },
         });
