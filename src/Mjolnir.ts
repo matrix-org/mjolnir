@@ -45,6 +45,7 @@ import { OpenMetrics } from "./webapis/OpenMetrics";
 import { LRUCache } from "lru-cache";
 import { ModCache } from "./ModCache";
 import { MASClient } from "./MASClient";
+import { PolicyServer } from "./PolicyServer";
 
 export const STATE_NOT_STARTED = "not_started";
 export const STATE_CHECKING_PERMISSIONS = "checking_permissions";
@@ -56,6 +57,11 @@ export const STATE_RUNNING = "running";
  * to store that for pagination on further polls
  */
 export const REPORT_POLL_EVENT_TYPE = "org.matrix.mjolnir.report_poll";
+
+/**
+ * The account data type which stores the policy server name (if set).
+ */
+const POLICY_SERVER_CONFIG_ACCOUNT_DATA_TYPE = "org.matrix.mjolnir.policy_server_config";
 
 export class Mjolnir {
     private displayName: string;
@@ -374,6 +380,33 @@ export class Mjolnir {
             console.log("Starting web server");
             await this.webapis.start();
 
+            // Get policy server configuration
+            try {
+                const policyServerData = await this.client.getAccountData<{ name: string | undefined }>(
+                    POLICY_SERVER_CONFIG_ACCOUNT_DATA_TYPE,
+                );
+                await this.protectedRoomsTracker.setPolicyServer(
+                    policyServerData.name ? new PolicyServer(policyServerData.name) : undefined,
+                    true,
+                );
+            } catch (e) {
+                if (e.body?.errcode !== "M_NOT_FOUND") {
+                    throw e;
+                }
+
+                // else account data wasn't found - use default from config
+                await this.protectedRoomsTracker.setPolicyServer(
+                    this.config.defaultPolicyServer ? new PolicyServer(this.config.defaultPolicyServer) : undefined,
+                    true,
+                );
+            }
+            LogService.info("Mjolnir", `Policy server name set to: ${this.protectedRoomsTracker.policyServer?.name}`);
+            // We log the key primarily to seed the cache before doing work with it.
+            LogService.info(
+                "Mjolnir",
+                `Policy server public key is: ${await this.protectedRoomsTracker.policyServer?.getEd25519Key()}`,
+            );
+
             if (this.reportPoller) {
                 let reportPollSetting: { from: number } = { from: 0 };
                 try {
@@ -469,6 +502,15 @@ export class Mjolnir {
      */
     public get explicitlyProtectedRooms(): string[] {
         return this.protectedRoomsConfig.getExplicitlyProtectedRooms();
+    }
+
+    /**
+     * Sets the policy server to use in all protected rooms. This will cause it to be applied immediately.
+     * @param server The policy server to use.
+     */
+    public async setPolicyServer(server: PolicyServer | undefined): Promise<void> {
+        await this.client.setAccountData(POLICY_SERVER_CONFIG_ACCOUNT_DATA_TYPE, { name: server?.name });
+        return this.protectedRoomsTracker.setPolicyServer(server);
     }
 
     /**
